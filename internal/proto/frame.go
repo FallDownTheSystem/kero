@@ -19,6 +19,11 @@ const (
 	FrameResize byte = 'r'
 	// FrameClosed tells the client the session is gone (daemon → client).
 	FrameClosed byte = 'c'
+	// FrameResized tells the client where in the output the session's
+	// terminal took a size, as FrameResize carries it (daemon → client):
+	// the client's terminal takes it there too, so that both lay out each
+	// byte at one size.
+	FrameResized byte = 'z'
 )
 
 // maxFrame bounds a frame's payload, against a corrupt stream.

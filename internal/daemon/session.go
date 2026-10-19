@@ -405,6 +405,11 @@ func (s *pane) resize(cols, rows int) {
 	if s.proc != nil {
 		s.proc.Resize(cols, rows)
 	}
+	// Where in the output this terminal took the size, which the clients'
+	// take there too: see proto.FrameResized.
+	for c := range s.clients {
+		c.send(proto.FrameResized, proto.ResizePayload(cols, rows))
+	}
 }
 
 // exited ends the session as its shell exits: a shell the user exited

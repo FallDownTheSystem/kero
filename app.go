@@ -510,7 +510,15 @@ func (a *App) ensureTerm(id string) {
 			return
 		}
 		g := &gated{Stream: stream, ready: make(chan struct{})}
-		term, err := terminal.New(a.termOptions(id, g))
+		o := a.termOptions(id, g)
+		// The terminal takes sizes where kerod's did, in the output, so
+		// that both lay it out alike: resized at once, ours would lay out
+		// what a program wrote for the size before at the new one, and the
+		// program's redraws, relative to where it thinks the cursor is,
+		// would land elsewhere here or in kerod's, which the next window
+		// attaching shows.
+		o.ResizeByConn = true
+		term, err := terminal.New(o)
 		if err != nil {
 			stream.Close()
 			a.update(func() {
@@ -521,6 +529,7 @@ func (a *App) ensureTerm(id string) {
 			return
 		}
 		term.Resize(stream.Welcome.Cols, stream.Welcome.Rows)
+		stream.OnResized = term.Resize
 		close(g.ready)
 		a.update(func() {
 			if a.terms[id] != e {

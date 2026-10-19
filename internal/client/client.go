@@ -261,6 +261,10 @@ type Stream struct {
 	// Gone is closed when the daemon closed the session (FrameClosed).
 	Gone     chan struct{}
 	goneOnce sync.Once
+	// OnResized, when set, gets the sizes the session's terminal takes
+	// (FrameResized), within Read, before the output after them: set it
+	// before the first Read.
+	OnResized func(cols, rows int)
 }
 
 // Attach opens a session's stream. What reads from it gets the snapshot
@@ -289,6 +293,10 @@ func (s *Stream) Read(p []byte) (int, error) {
 			s.buf = payload
 		case proto.FrameClosed:
 			s.goneOnce.Do(func() { close(s.Gone) })
+		case proto.FrameResized:
+			if c, r, ok := proto.ParseResize(payload); ok && s.OnResized != nil {
+				s.OnResized(c, r)
+			}
 		}
 	}
 	n := copy(p, s.buf)
