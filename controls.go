@@ -64,19 +64,56 @@ func popupFace(c *ui.Context, trig ui.Element, text string, open bool, pal *pale
 func popup[T comparable](c *ui.Context, key string, value *T, options []T, label func(T) string, width float32, pal *palette) ui.Element {
 	sel := ui.SelectBase(c.Key(key), value)
 	trig := sel.Trigger.MaxWidth(width)
-	popupFace(c, trig, label(*value), sel.Open(), pal)
-	at := max(slices.Index(options, *value), 0)
+	open := sel.Open()
+	popupFace(c, trig, label(*value), open, pal)
+	var spot ui.Element
+	maxH := float32(0)
+	if open {
+		spot, maxH = menuSpot(c, key, trig.Bounds(), max(slices.Index(options, *value), 0), len(options))
+	}
 	sel.Popup(func(panel ui.Element) {
-		// Over the button, the current item's label on the button's, as
-		// macOS opens a pop-up button's menu.
-		menuPanel(panel, pal).AttachTo(trig, ui.AnchorTopLeft, ui.AnchorTopLeft).
-			Top(-(menuPad + float32(at)*menuItemH + (menuItemH-popupH)/2)).
-			Left(-(menuPad + menuTextX - 10))
-		for _, o := range options {
-			menuItem(c, sel.Item(o), label(o), o == *value, pal)
-		}
+		menuPanel(panel, pal).AttachTo(spot, ui.AnchorTopLeft, ui.AnchorTopLeft)
+		menuWidths[key] = panel.Bounds().W
+		ui.Scroll(c.Key("items")).MaxHeight(maxH - 2*menuPad).Children(func() {
+			for _, o := range options {
+				menuItem(c, sel.Item(o), label(o), o == *value, pal)
+			}
+		})
 	})
 	return trig
+}
+
+// menuWidths are the pop-up menus' widths as last shown, by key, which
+// keep a menu that opens again in the window.
+var menuWidths = map[string]float32{}
+
+// menuSpot places the menu of a pop-up button, whose bounds are b, as
+// macOS does: over the button, its current item, the at'th of n, on the
+// button, its label on the button's; then moved into the window, where a
+// menu too tall for it scrolls. It returns an element to attach the menu
+// to, at its top left, and the height the menu may take.
+//
+// The menu attaches to this spot rather than to the button: AttachTo
+// moves what would leave the window to the other side of its target
+// before Top and Left move it, which threw a menu under the bottom of
+// the window above the button, and further up.
+func menuSpot(c *ui.Context, key string, b ui.Rect, at, n int) (ui.Element, float32) {
+	const edge = 8 // kept from the window's edges
+	w, h := c.Size()
+	maxH := h - 2*edge
+	menuH := min(2*menuPad+float32(n)*menuItemH, maxH)
+	y := b.Y - (menuPad + float32(at)*menuItemH + (menuItemH-popupH)/2)
+	y = max(edge, min(y, h-edge-menuH))
+	x := b.X - (menuPad + menuTextX - 10)
+	if mw := max(menuWidths[key], b.W); x+mw > w-edge {
+		x = w - edge - mw
+	}
+	x = max(edge, x)
+	var spot ui.Element
+	ui.Overlay(c, func() {
+		spot = ui.Box(c.Key(key+"-spot")).Absolute().Left(x).Top(y).Size(0, 0).PassThrough()
+	})
+	return spot, maxH
 }
 
 // menuPanel styles a menu: rounded, lifted off the window.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -386,5 +387,51 @@ func TestPopupButtons(t *testing.T) {
 		if a.set.FontFamily != "Iosevka Term, Symbols Nerd Font" {
 			t.Errorf("font %q", a.set.FontFamily)
 		}
+	}
+}
+
+// A pop-up button's menu opens over it, its current item on the button,
+// and stays in the window: near the window's bottom it moves up, where
+// it once went above the button, and further up, cut off by the top.
+func TestPopupMenuStaysInWindow(t *testing.T) {
+	for _, h := range []int{900, 400} {
+		a := testApp(t)
+		a.ss.page = "terminal"
+		a.set.FontSize = 15
+		tt := ui.NewTester(a.settingsView, 820, h)
+		tt.Frame()
+		r, ok := tt.Find("15 pt")
+		if !ok {
+			t.Fatalf("h %d: no size button; texts %q", h, tt.Texts())
+		}
+		tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		shot(t, tt, fmt.Sprintf("popup-size-%d", h))
+		for _, item := range []string{"10 pt", "28 pt"} {
+			got, ok := tt.Find(item)
+			if !ok || got.Y < 0 || got.Y+got.H > float32(h) {
+				t.Errorf("h %d: %s at %v, out of the window", h, item, got)
+			}
+		}
+		items := 0
+		for _, txt := range tt.Texts() {
+			if txt == "15 pt" {
+				items++
+			}
+		}
+		if items < 2 {
+			t.Fatalf("h %d: the menu did not open; texts %q", h, tt.Texts())
+		}
+		at, _ := tt.Find("12 pt")
+		if h == 900 {
+			// Room enough: 15 pt lies on the button, three items under 12 pt.
+			if d := r.Y - (at.Y + 3*menuItemH); d < -4 || d > 4 {
+				t.Errorf("h %d: 12 pt at %v, the button at %v: 15 pt is not on the button", h, at, r)
+			}
+		}
+		tt.Key(0, ui.KeyEscape)
+		tt.Frame()
 	}
 }
