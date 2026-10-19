@@ -89,7 +89,8 @@ func (a *App) view(c *ui.Context) {
 			ui.Column(c).Width(a.prefs.SidebarWidth).Shrink(0).Margin(0, 0, 0, w-a.prefs.SidebarWidth).
 				Opacity(0.4 + 0.6*shown).Children(func() { a.sidebar(c, pal, bar) })
 		})
-		main := ui.Column(c).Grow(1).MinWidth(0).Padding(cardGap, cardGap, cardGap, a.chrome.mainPad)
+		// The gaps around the cards move the window too.
+		main := ui.Column(c).Grow(1).MinWidth(0).Padding(cardGap, cardGap, cardGap, a.chrome.mainPad).DragWindow()
 		main.Children(func() {
 			if shown > 0.01 {
 				a.resizeHandle(c, pal)
@@ -368,7 +369,7 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 }
 
 func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
-	ui.Row(c).Height(36).Shrink(0).Padding(0, 12, 4, 18).Gap(8).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Height(36).Shrink(0).Padding(0, 12, 4, 18).Gap(8).AlignItems(ui.Center).DragWindow().Children(func() {
 		var label string
 		dot := pal.textFaint
 		switch a.conn {

@@ -162,6 +162,12 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 	card := ui.Column(c.Key("pane-" + p.ID)).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Radius(14).Clip().Bind(a.paneRef("card-" + p.ID))
 	raised(card.Background(card.AnimateColor("bg", bg, ui.Animation{Duration: 140 * time.Millisecond})), pal)
 	hovered := card.Hovered()
+	// The card takes presses: one on its padding, beside the terminal,
+	// focuses the pane, rather than going on to what drags the window.
+	if card.Pressed() && !focused {
+		a.setFocus(s, p.ID)
+		a.paneRef(p.ID).Focus()
+	}
 
 	// Another pane dragged over this one: where it would go.
 	zone := zoneNone
@@ -329,9 +335,6 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		pad = a.chrome.headerPad
 	}
 	h := ui.Row(c.Key("hdr")).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, pad).Gap(8)
-	if top {
-		h.DragWindow()
-	}
 	if h.Pressed() && !focused {
 		a.setFocus(s, p.ID)
 		a.paneRef(p.ID).Focus()
@@ -378,7 +381,13 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			}
 			ui.Text(c, proto.ShortDir(p.Dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
 		})
-		ui.Spacer(c)
+		// The header's empty stretch moves the window, as a title bar
+		// does, and zooms it on a double click: the header around it
+		// takes clicks, which focus the pane.
+		gap := ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch)
+		if top {
+			gap.DragWindow()
+		}
 		a.paneChips(c, pal, p)
 		show := (hovered || focused && multi) && !dragging
 		ctl := ui.Row(c.Key("controls")).Gap(0).AlignItems(ui.Center)

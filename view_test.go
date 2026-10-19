@@ -145,3 +145,25 @@ func TestSidebarAnimationNoHolds(t *testing.T) {
 		prev = w
 	}
 }
+
+// The window moves from the panes' headers and the gaps around them, and
+// not from a press on a pane, which focuses it.
+func TestWindowDragRegions(t *testing.T) {
+	a := testApp(t)
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	// Pane b's header, past its title: it moves the window, and leaves
+	// the focus where it was.
+	b, _ := tt.Find("zsh")
+	tt.ClickAt(b.X+200, b.Y+b.H/2)
+	tt.Frame()
+	if f := a.focusOf(&a.st.Sessions[0]); f != "a" {
+		t.Errorf("a press on a header's empty stretch moved the focus to %q", f)
+	}
+	// Pane b's body: it takes the press, and the focus.
+	tt.ClickAt(b.X+200, 400)
+	tt.Frame()
+	if f := a.focusOf(&a.st.Sessions[0]); f != "b" {
+		t.Errorf("a press on pane b left the focus on %q", f)
+	}
+}
