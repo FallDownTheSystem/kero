@@ -55,7 +55,8 @@ type settingsState struct {
 	service      string // kerod, as last asked
 	notice       string // a line under the keyboard page, as of a conflict
 	toast        string
-	combo        map[string]*string // the text of combo fields, by key
+	combo     map[string]*string // the text of combo fields, by key
+	problems  []string           // what the configuration file got wrong
 }
 
 // openSettings shows the Settings window, on a page.
@@ -149,6 +150,20 @@ func (a *App) settingsView(c *ui.Context) {
 		ui.Column(c).Width(212).Shrink(0).Padding(topBar, 10, 12, 10).Gap(2).DragWindow().Children(func() {
 			for _, p := range settingsPages {
 				a.settingsNav(c, pal, p)
+			}
+			ui.Spacer(c)
+			link := ui.ButtonBase(c.Key("open-config")).Padding(6, 10).Gap(6).Radius(7).AlignItems(ui.Center).Label("Open the config file")
+			fg := pal.textMuted
+			if link.Hovered() {
+				fg = pal.text
+				link.Background(pal.rowHover)
+			}
+			link.TextColor(fg).Tooltip(proto.ShortDir(settings.Path())).Children(func() {
+				ui.Icon(c, glyph("f7-chevron-left-slash-chevron-right")).Size(13, 13)
+				ui.Text(c, "Open config file").FontSize(12.5).SingleLine()
+			})
+			if link.Clicked() {
+				a.openConfig()
 			}
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Padding(cardGap, cardGap, cardGap, 0).Children(func() {
@@ -640,6 +655,23 @@ func codeBlock(c *ui.Context, pal *palette, code string) {
 }
 
 func (a *App) advancedPage(c *ui.Context, pal *palette) {
+	settingsGroup(c, pal, "Configuration", "Every setting here is a line of this file, as Ghostty’s: edit it in any editor, and what you save applies at once. kero config show lists every key.", func() {
+		settingRow(c, pal, "Config file", proto.ShortDir(settings.Path()), func() {
+			if button(c, "reveal-config", "Show in Finder", "", false, pal) {
+				a.ensureConfig()
+				exec.Command("/usr/bin/open", "-R", settings.Path()).Start()
+			}
+			if button(c, "edit-config", "Open", "", true, pal) {
+				a.openConfig()
+			}
+		})
+		for i, p := range a.ss.problems {
+			ui.Row(c.Key("problem"+strconv.Itoa(i))).Padding(0, 0, 8, 0).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Box(c).Size(6, 6).Radius(3).Background(pal.attention).Shrink(0)
+				ui.Text(c, p).FontSize(12.5).TextColor(pal.attention).Grow(1).MinWidth(0)
+			})
+		}
+	})
 	settingsGroup(c, pal, "Background service", "kerod runs your sessions: quitting kero leaves it running.", func() {
 		settingRow(c, pal, "kerod", a.ss.service, func() {
 			if button(c, "svc-restart", "Restart", "", false, pal) {
@@ -666,11 +698,6 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 				exec.Command("/usr/bin/open", proto.Dir()).Start()
 			}
 		})
-		settingRow(c, pal, "Settings file", proto.ShortDir(settings.Path()), func() {
-			if button(c, "edit", "Open", "", false, pal) {
-				exec.Command("/usr/bin/open", "-t", settings.Path()).Start()
-			}
-		})
 		settingRow(c, pal, "Reset all settings", "Back to how kero comes, shortcuts included.", func() {
 			if button(c, "reset", "Reset…", "", false, pal) {
 				a.confirm = &confirmation{
@@ -683,6 +710,20 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 			}
 		})
 	})
+}
+
+// ensureConfig writes the configuration file, with its header, when
+// there is none yet, so that there is a file to open.
+func (a *App) ensureConfig() {
+	if _, err := os.Stat(settings.Path()); err != nil {
+		settings.Save(a.set)
+	}
+}
+
+// openConfig opens the configuration in the user's text editor.
+func (a *App) openConfig() {
+	a.ensureConfig()
+	exec.Command("/usr/bin/open", "-t", settings.Path()).Start()
 }
 
 // toastIn shows a short message in the window c is of.

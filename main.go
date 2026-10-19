@@ -103,6 +103,7 @@ func runApp() {
 		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.reportView() }) })
 		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
 		a.connect()
+		go a.watchConfig()
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

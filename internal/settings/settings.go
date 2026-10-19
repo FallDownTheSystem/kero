@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"kero/internal/proto"
@@ -101,63 +102,102 @@ var Backgrounds = []struct{ ID, Name string }{
 	{"plain", "Plain"},
 }
 
-// Path returns the settings' file.
-func Path() string { return filepath.Join(proto.Dir(), "settings.json") }
+// Path returns the settings' file, the configuration (ConfigPath).
+func Path() string { return ConfigPath() }
+
+// legacyPath is where kero kept its settings before the configuration
+// file, as JSON, which the first Load moves into it.
+func legacyPath() string { return filepath.Join(proto.Dir(), "settings.json") }
 
 var (
-	mu    sync.Mutex
-	cache *Settings
-	mtime int64
+	mu       sync.Mutex
+	cache    *Settings
+	mtime    int64
+	problems []string
 )
 
 // Load returns the settings, the defaults where the file says nothing.
 // It reads the file again when it changed, so that a long-running reader,
-// as kerod, sees the app's changes.
+// as kerod, sees the app's changes, and the user's.
 func Load() Settings {
 	mu.Lock()
 	defer mu.Unlock()
+	migrate()
 	st, err := os.Stat(Path())
 	if err != nil {
+		cache, problems = nil, nil
 		return Default()
 	}
 	if cache != nil && st.ModTime().UnixNano() == mtime {
 		return clone(*cache)
 	}
-	s := Default()
-	if b, err := os.ReadFile(Path()); err == nil {
-		// Over the defaults: fields the file leaves out keep them.
-		json.Unmarshal(b, &s)
+	b, err := os.ReadFile(Path())
+	if err != nil {
+		return Default()
 	}
-	s.normalize()
-	cache, mtime = &s, st.ModTime().UnixNano()
+	s, probs := parse(string(b))
+	cache, mtime, problems = &s, st.ModTime().UnixNano(), probs
 	return clone(s)
 }
 
-// Save writes the settings.
-func Save(s Settings) error {
-	s.normalize()
-	b, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(proto.Dir(), 0o700); err != nil {
-		return err
-	}
-	tmp := Path() + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o600); err != nil {
-		return err
-	}
-	if err := os.Rename(tmp, Path()); err != nil {
-		return err
-	}
+// Problems returns what the file got wrong, as of the last Load: keys
+// kero does not know, and values it cannot take, which keep their
+// defaults.
+func Problems() []string {
 	mu.Lock()
+	defer mu.Unlock()
+	return slices.Clone(problems)
+}
+
+// migrate moves the settings of the JSON file kero kept before into the
+// configuration, once; mu is held.
+func migrate() {
+	if _, err := os.Stat(Path()); err == nil {
+		return
+	}
+	b, err := os.ReadFile(legacyPath())
+	if err != nil {
+		return
+	}
+	s := Default()
+	if json.Unmarshal(b, &s) != nil {
+		return
+	}
+	s.normalize()
+	if write(s) == nil {
+		os.Rename(legacyPath(), legacyPath()+".migrated")
+	}
+}
+
+// Save writes the settings into the configuration, keeping what the user
+// wrote around them (see format).
+func Save(s Settings) error {
+	mu.Lock()
+	defer mu.Unlock()
+	s.normalize()
+	if err := write(s); err != nil {
+		return err
+	}
 	c := clone(s)
-	cache = &c
+	cache, problems = &c, nil
 	if st, err := os.Stat(Path()); err == nil {
 		mtime = st.ModTime().UnixNano()
 	}
-	mu.Unlock()
 	return nil
+}
+
+// write writes the configuration; mu is held.
+func write(s Settings) error {
+	old, _ := os.ReadFile(Path())
+	data := format(s, string(old))
+	if err := os.MkdirAll(filepath.Dir(Path()), 0o755); err != nil {
+		return err
+	}
+	tmp := Path() + ".tmp"
+	if err := os.WriteFile(tmp, []byte(data), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, Path())
 }
 
 // Clone returns a copy that shares nothing with s.

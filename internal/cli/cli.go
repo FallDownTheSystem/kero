@@ -60,6 +60,10 @@ Usage:
   kero do <action> [key=value…]  run an action of the app, as its menus do
                                 (needs Remote Control, in Settings › Agents)
   kero actions                  list the actions kero do runs
+  kero config path|show|edit|check
+                                the configuration file: where it is, every
+                                key with its value (--defaults: as kero
+                                comes), open it in $EDITOR, check it
   kero projects [--json]
   kero skill setup|show|remove  teach coding agents to use kero
   kero daemon status|stop|restart
@@ -75,7 +79,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "status",
-	"rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "daemon", "do", "actions",
+	"rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "daemon", "do", "actions", "config",
 	"help", "--help", "-h", "version", "--version"}
 
 // Errors of exit statuses other than 1.
@@ -173,6 +177,8 @@ func run(args []string) error {
 		return w.Flush()
 	case "skill":
 		return skillCmd(args)
+	case "config":
+		return configCmd(args)
 	}
 	c, err := client.Connect(false)
 	if err != nil {

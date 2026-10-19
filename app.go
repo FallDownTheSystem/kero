@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -129,6 +130,7 @@ func newApp() *App {
 		refs: map[string]*ui.Handle{}, focus: map[string]string{}, arrived: map[string]bool{}}
 	a.loadPrefs()
 	a.set = settings.Load()
+	a.ss.problems = settings.Problems()
 	a.applied = a.set.Clone()
 	a.selected = a.prefs.Selected
 	return a
@@ -605,11 +607,17 @@ func (a *App) zoom(steps int, reset bool) {
 // applySettings makes settings the app's, saving them: the terminals take
 // what changed at once, and are attached again for what only a new
 // terminal takes.
-func (a *App) applySettings(s settings.Settings) {
+func (a *App) applySettings(s settings.Settings) { a.apply(s, true) }
+
+// apply makes settings the app's, saving them to the configuration when
+// they come from the app rather than from the file.
+func (a *App) apply(s settings.Settings, save bool) {
 	old := a.applied
 	a.set, a.applied = s, s.Clone()
-	if err := settings.Save(s); err != nil {
-		a.toast("Couldn’t save the settings: " + err.Error())
+	if save {
+		if err := settings.Save(s); err != nil {
+			a.toast("Couldn’t save the settings: " + err.Error())
+		}
 	}
 	font := old.FontFamily != s.FontFamily || old.FontSize != s.FontSize || old.FontWeight != s.FontWeight ||
 		old.LineHeight != s.LineHeight || old.Ligatures != s.Ligatures || old.Thicken != s.Thicken
@@ -657,6 +665,35 @@ func (a *App) applySettings(s settings.Settings) {
 	}
 	if a.setWin != nil {
 		a.setWin.Invalidate()
+	}
+}
+
+// watchConfig applies the configuration as the user saves it in an
+// editor, and tells what it got wrong. Load reads the file again only
+// when it changed, so a look a second costs a stat.
+func (a *App) watchConfig() {
+	prev := settings.Load()
+	prevProblems := strings.Join(settings.Problems(), "\n")
+	for range time.Tick(time.Second) {
+		cur := settings.Load()
+		problems := settings.Problems()
+		joined := strings.Join(problems, "\n")
+		if reflect.DeepEqual(cur, prev) && joined == prevProblems {
+			continue
+		}
+		prev, prevProblems = cur, joined
+		a.update(func() {
+			a.ss.problems = problems
+			if !reflect.DeepEqual(cur, a.applied) {
+				a.apply(cur, false)
+			}
+			if len(problems) > 0 {
+				a.toast(fmt.Sprintf("Your config has %d problem(s): see Settings › Advanced", len(problems)))
+			}
+			if a.setWin != nil {
+				a.setWin.Invalidate()
+			}
+		})
 	}
 }
 

@@ -17,7 +17,10 @@ import (
 // and no kerod.
 func testApp(t *testing.T) *App {
 	t.Helper()
-	t.Setenv("KERO_HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("KERO_HOME", home)
+	// The configuration too: never the user's.
+	t.Setenv("KERO_CONFIG", filepath.Join(home, "config"))
 	a := newApp()
 	var l *proto.Layout
 	a.st = proto.State{
