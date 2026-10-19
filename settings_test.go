@@ -13,7 +13,7 @@ import (
 func TestSettingsPages(t *testing.T) {
 	a := testApp(t)
 	a.ss.draft = map[string]string{}
-	tt := ui.NewTester(a.settingsView, 820, 640)
+	tt := ui.NewTester(a.settingsView, 820, 900)
 	want := map[string]string{
 		"general": "Restore sessions after a restart", "appearance": "Translucent window", "terminal": "Line height",
 		"shell": "Scrollback", "notifications": "A session needs me", "keyboard": "Split Right",

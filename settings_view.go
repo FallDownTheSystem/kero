@@ -243,7 +243,9 @@ func settingsGroup(c *ui.Context, pal *palette, title, note string, fn func()) {
 		if title != "" {
 			ui.Text(c, title).FontSize(12).FontWeight(600).TextColor(pal.textMuted).Padding(0, 4)
 		}
-		ui.Column(c).Radius(12).Background(pal.chip).Padding(4, 16).Children(fn)
+		if fn != nil { // a group of a note alone has no panel
+			ui.Column(c).Radius(12).Background(pal.chip).Padding(4, 16).Children(fn)
+		}
 		if note != "" {
 			ui.Text(c, note).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4).Padding(0, 4)
 		}
@@ -645,7 +647,7 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			})
 		}
 	})
-	settingsGroup(c, pal, "Program status", "Programs report what they do with OSC 7501, Superlogical’s program status protocol: the sidebar shows it, and notifies you.", func() {})
+	settingsGroup(c, pal, "Program status", "Programs report what they do with OSC 7501, Superlogical’s program status protocol: the sidebar shows it, and notifies you.", nil)
 	codeBlock(c, pal, "kero report working \"Deploying\" --progress 40\nkero report blocked \"Approve the migration?\" --kind permission\nkero report done \"Deployed\"")
 }
 
