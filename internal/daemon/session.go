@@ -48,8 +48,8 @@ type pane struct {
 
 	lastInput time.Time
 	lastWork  time.Time
-	workBytes int
-	dirty     bool // output since the last snapshot on disk
+	work      workMeter // output, until it is work
+	dirty     bool      // output since the last snapshot on disk
 	// osc finds OSC 7501 and 133 in the output; records are the programs'
 	// status reports (OSC 7501), by id, and reported tells that one came.
 	osc      oscScanner
@@ -192,10 +192,10 @@ func (s *pane) output(p []byte) {
 	if now.Sub(s.lastInput) > echoWindow {
 		s.lastWork = now
 		if s.info.Status != proto.Working && !s.declared() && s.programBusy(now) {
-			s.workBytes += len(p)
-			// A redraw of a few bytes is not work yet: a prompt's clock,
-			// a cursor moving.
-			if s.workBytes > 48 || proto.TitleBusy(s.info.Title) {
+			s.work.add(now, len(p))
+			// A redraw is not work yet: a prompt's clock, a cursor
+			// moving, a TUI's toast going away.
+			if s.work.working() || proto.TitleBusy(s.info.Title) {
 				s.setStatus(proto.Working)
 				s.info.Message = ""
 			}
@@ -258,7 +258,7 @@ func (s *pane) needsUser(msg string) {
 	if msg != "" {
 		s.info.Message = msg
 	}
-	s.workBytes = 0
+	s.work.reset()
 	if !s.viewed() {
 		s.info.Unread = true
 	}
@@ -321,7 +321,7 @@ func (s *pane) tick(now time.Time) bool {
 		}
 	}
 	if s.info.Status == proto.Working && now.Sub(s.lastWork) > quietAfter && !proto.TitleBusy(s.info.Title) && !s.declared() {
-		s.workBytes = 0
+		s.work.reset()
 		if s.asksQuestion() {
 			s.setStatus(proto.Waiting)
 		} else {
@@ -331,9 +331,6 @@ func (s *pane) tick(now time.Time) bool {
 			s.info.Unread = true
 		}
 		changed = true
-	}
-	if s.info.Status == proto.Idle && s.workBytes > 0 && now.Sub(s.lastWork) > quietAfter {
-		s.workBytes = 0
 	}
 	return changed
 }
