@@ -156,8 +156,9 @@ type searchMenu struct {
 	open    bool
 	query   string
 	hi      int
-	hovered string // the item the pointer came to last
-	reveal  bool   // the highlighted item scrolls into view, once
+	hovered string  // the item the pointer came to last
+	reveal  bool    // the highlighted item scrolls into view, once
+	at      ui.Rect // the button's bounds as the menu opened
 }
 
 // searchPopup chooses value among options as a pop-up button, whose menu
@@ -179,6 +180,13 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		m.open = !m.open
 		m.query, m.hovered, m.reveal = "", "", true
 		m.hi = max(slices.Index(options, value), 0)
+		m.at = trig.Bounds()
+	}
+	// The page scrolling under the menu, or the window resizing, closes
+	// it, as a menu of macOS's does not stay open through either: it
+	// would follow the button under the page's header, or off the page.
+	if b := trig.Bounds(); m.open && (abs(b.X-m.at.X) > 0.5 || abs(b.Y-m.at.Y) > 0.5) {
+		m.open = false
 	}
 	popupFace(c, trig, value, m.open, pal)
 	// The list takes what the window has below the button, or above it,
@@ -348,4 +356,11 @@ func slider(c *ui.Context, key string, value *float64, lo, hi float64, width flo
 		}
 	})
 	return s
+}
+
+func abs(v float32) float32 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }

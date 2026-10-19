@@ -514,3 +514,30 @@ func TestSearchMenuOneHighlight(t *testing.T) {
 		}
 	}
 }
+
+// Scrolling the page under a search menu closes it, rather than carrying
+// it under the page's header with its button.
+func TestSearchMenuClosesOnScroll(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "terminal"
+	tt := ui.NewTester(a.settingsView, 820, 600)
+	tt.Frame()
+	if err := tt.Click("JetBrains Mono Nerd Font"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	if !a.ss.menus["font"].open {
+		t.Fatal("the font menu did not open")
+	}
+	tt.Scroll(400, 500, 0, 120)
+	tt.Frame()
+	tt.Frame()
+	if a.ss.scrolls["terminal"].Y == 0 {
+		t.Fatal("the page did not scroll")
+	}
+	if a.ss.menus["font"].open {
+		t.Error("the font menu stayed open as the page scrolled")
+	}
+}
