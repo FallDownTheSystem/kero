@@ -74,9 +74,16 @@ func popup[T comparable](c *ui.Context, key string, value *T, options []T, label
 	sel.Popup(func(panel ui.Element) {
 		menuPanel(panel, pal).AttachTo(spot, ui.AnchorTopLeft, ui.AnchorTopLeft)
 		menuWidths[key] = panel.Bounds().W
+		over := panel.Hovered()
 		ui.Scroll(c.Key("items")).MaxHeight(maxH - 2*menuPad).Children(func() {
 			for _, o := range options {
-				menuItem(c, sel.Item(o), label(o), o == *value, pal)
+				item := sel.Item(o)
+				// As macOS's: the item under the pointer, or the one the
+				// arrows moved to; none while the pointer is off the menu,
+				// as the current item, highlighted as the menu opens, is
+				// then.
+				hi := item.Highlighted() && (item.Hovered() || !over && o != *value)
+				menuRow(c, item, label(o), o == *value, hi, pal)
 			}
 		})
 	})

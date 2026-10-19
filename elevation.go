@@ -30,15 +30,21 @@ func chosen(e ui.Element, pal *palette) ui.Element {
 	return e.Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.06)).Shadow(0, 0.5, 2, 0, ui.RGBA(0, 0, 0, 0.05))
 }
 
-// menu lifts a menu as macOS does: a crisp gray hairline around it, and
-// a faint, soft shadow, nearly even, lighter than floating's, which a
-// small surface wears as a smear.
+// menu lifts a menu as macOS 27 does, measured from its own: a fill a
+// shade off white, lighter at the top; a dark hairline, a pixel of about
+// 30% black, with a pixel of white inside it top and bottom; and a soft
+// shadow, a little
+// below, darkening what is under the menu's edge by about 9% at its sides
+// and 16% under it, gone some 9 DIPs out.
 func menu(e ui.Element, pal *palette) ui.Element {
-	edge, near, far := ui.RGBA(0, 0, 0, 0.1), ui.RGBA(0, 0, 0, 0.05), ui.RGBA(0, 0, 0, 0.08)
 	if pal.dark {
-		edge, near, far = ui.RGBA(255, 255, 255, 0.12), ui.RGBA(0, 0, 0, 0.25), ui.RGBA(0, 0, 0, 0.3)
+		return e.Background(pal.popover).InsetShadow(0, 0, 0, 1, ui.RGBA(255, 255, 255, 0.12)).
+			Shadow(0, 1, 3, 0, ui.RGBA(0, 0, 0, 0.25)).Shadow(0, 4, 16, 0, ui.RGBA(0, 0, 0, 0.4))
 	}
-	return e.Background(pal.popover).InsetShadow(0, 0, 0, 1, edge).Shadow(0, 1, 3, 0, near).Shadow(0, 6, 20, 0, far)
+	return e.LinearGradient(ui.LinearGradient{Angle: 180, From: ui.Hex("#fbfbfb"), To: ui.Hex("#f4f4f5")}).
+		InsetShadow(0, 1, 0, 0, ui.RGBA(255, 255, 255, 0.9)).InsetShadow(0, -1, 0, 0, ui.RGBA(255, 255, 255, 0.9)).
+		InsetShadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.3)).
+		Shadow(0, 5, 10, 0, ui.RGBA(0, 0, 0, 0.22))
 }
 
 // floating lifts a surface above the window: the palette, dialogs.
