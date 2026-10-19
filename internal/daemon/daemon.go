@@ -1,0 +1,595 @@
+// Package daemon is kerod: the process that owns every session's
+// pseudo-terminal, so that sessions outlive the app. The app, and the kero
+// CLI, attach to it through a Unix socket; quitting the app detaches it,
+// and opening it again attaches it where it left off.
+package daemon
+
+import (
+	"bufio"
+	"crypto/rand"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"os/exec"
+	"os/signal"
+	"os/user"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"syscall"
+	"time"
+
+	"kero/internal/proto"
+)
+
+// Daemon is kerod's state.
+type Daemon struct {
+	dir     string
+	exe     string
+	started time.Time
+	log     *log.Logger
+
+	mu       sync.Mutex
+	projects []proto.Project
+	sessions []*session
+	panes    map[string]*pane
+	subs     map[*controlConn]struct{}
+	conns    int
+	idleAt   time.Time
+	ending   bool
+
+	viewed   atomic.Pointer[string]
+	changeCh chan struct{}
+	saveCh   chan struct{}
+	quit     chan struct{}
+	quitOnce sync.Once
+}
+
+// Run runs the daemon until it is told to shut down, or has had no session
+// and no client for a while.
+func Run() error {
+	dir := proto.Dir()
+	if err := os.MkdirAll(filepath.Join(dir, "sessions"), 0o700); err != nil {
+		return err
+	}
+	logf, err := os.OpenFile(filepath.Join(dir, "kerod.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return err
+	}
+	defer logf.Close()
+	if st, _ := logf.Stat(); st != nil && st.Size() > 4<<20 {
+		logf.Truncate(0)
+	}
+	lg := log.New(logf, "", log.LstdFlags|log.Lmicroseconds)
+
+	// One daemon at a time: the lock is the daemon's while it runs.
+	lock, err := os.OpenFile(filepath.Join(dir, "kerod.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		return errors.New("kerod is already running")
+	}
+
+	sock := proto.SocketPath()
+	os.Remove(sock)
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		return err
+	}
+	os.Chmod(sock, 0o600)
+	defer os.Remove(sock)
+
+	exe, _ := os.Executable()
+	d := &Daemon{
+		dir: dir, exe: exe, started: time.Now(), log: lg,
+		subs:     map[*controlConn]struct{}{},
+		panes:    map[string]*pane{},
+		changeCh: make(chan struct{}, 1),
+		saveCh:   make(chan struct{}, 1),
+		quit:     make(chan struct{}),
+		idleAt:   time.Now(),
+	}
+	empty := ""
+	d.viewed.Store(&empty)
+	lg.Printf("kerod %d started (pid %d, %s)", proto.Version, os.Getpid(), exe)
+	d.linkCLI()
+	d.restore()
+
+	signal.Ignore(syscall.SIGHUP, syscall.SIGPIPE)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		s := <-sigs
+		lg.Printf("%v: saving and exiting", s)
+		d.saveSnapshots(true)
+		d.saveState()
+		d.stop()
+	}()
+
+	go d.broadcastLoop()
+	go d.saveLoop()
+	go d.tickLoop()
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go d.serve(conn)
+		}
+	}()
+	<-d.quit
+	ln.Close()
+	return nil
+}
+
+func (d *Daemon) stop() { d.quitOnce.Do(func() { close(d.quit) }) }
+
+// linkCLI keeps bin/kero pointing at this executable, which sessions have
+// on their PATH: the kero CLI, for agents to drive other sessions.
+func (d *Daemon) linkCLI() {
+	if d.exe == "" {
+		return
+	}
+	bin := filepath.Join(d.dir, "bin")
+	os.MkdirAll(bin, 0o755)
+	link := filepath.Join(bin, "kero")
+	if cur, err := os.Readlink(link); err == nil && cur == d.exe {
+		return
+	}
+	os.Remove(link)
+	if err := os.Symlink(d.exe, link); err != nil {
+		d.log.Printf("linking the CLI: %v", err)
+	}
+}
+
+func (d *Daemon) viewedID() string { return *d.viewed.Load() }
+
+// changed asks for the state to go to the subscribers, and to disk.
+func (d *Daemon) changed() {
+	select {
+	case d.changeCh <- struct{}{}:
+	default:
+	}
+	d.save()
+}
+
+// save asks for the state to go to disk.
+func (d *Daemon) save() {
+	select {
+	case d.saveCh <- struct{}{}:
+	default:
+	}
+}
+
+func (d *Daemon) broadcastLoop() {
+	for range d.changeCh {
+		// Coalesce a burst of changes into one message.
+		time.Sleep(25 * time.Millisecond)
+		select {
+		case <-d.changeCh:
+		default:
+		}
+		st := d.state()
+		d.mu.Lock()
+		for c := range d.subs {
+			c.event(proto.Message{Event: "state", State: &st})
+		}
+		d.mu.Unlock()
+	}
+}
+
+func (d *Daemon) tickLoop() {
+	t := time.NewTicker(400 * time.Millisecond)
+	defer t.Stop()
+	for now := range t.C {
+		d.mu.Lock()
+		panes := make([]*pane, 0, len(d.panes))
+		for _, p := range d.panes {
+			panes = append(panes, p)
+		}
+		idle := len(d.sessions) == 0 && d.conns == 0
+		if !idle {
+			d.idleAt = now
+		}
+		idleFor := now.Sub(d.idleAt)
+		d.mu.Unlock()
+		changed := false
+		for _, s := range panes {
+			if s.tick(now) {
+				changed = true
+			}
+		}
+		if changed {
+			d.changed()
+		}
+		// Nothing to keep: go, rather than linger in the background.
+		if idle && idleFor > 30*time.Second {
+			d.log.Printf("idle: exiting")
+			d.stop()
+			return
+		}
+	}
+}
+
+func newID() string {
+	const alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
+	var b [7]byte
+	rand.Read(b[:])
+	for i := range b {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	return string(b[:])
+}
+
+// projectFor returns the project a new session goes in: the one named, or
+// the one whose directory holds dir, or a new one for dir's repository.
+// d.mu is held.
+func (d *Daemon) projectFor(ref, dir string) string {
+	if ref != "" {
+		for _, p := range d.projects {
+			if p.ID == ref || strings.EqualFold(p.Name, ref) {
+				return p.ID
+			}
+		}
+		p := proto.Project{ID: newID(), Name: ref, Dir: dir}
+		d.projects = append(d.projects, p)
+		return p.ID
+	}
+	if dir == "" {
+		if len(d.projects) > 0 {
+			return d.projects[0].ID
+		}
+		dir = proto.Home()
+	}
+	best, bestLen := "", -1
+	for _, p := range d.projects {
+		if p.Dir != "" && (dir == p.Dir || strings.HasPrefix(dir, p.Dir+"/")) && len(p.Dir) > bestLen {
+			best, bestLen = p.ID, len(p.Dir)
+		}
+	}
+	if best != "" {
+		return best
+	}
+	root := repoRoot(dir)
+	name := filepath.Base(root)
+	if root == proto.Home() {
+		name = "Home"
+	}
+	p := proto.Project{ID: newID(), Name: name, Dir: root}
+	d.projects = append(d.projects, p)
+	return p.ID
+}
+
+// repoRoot returns the root of the git repository holding dir, or dir.
+func repoRoot(dir string) string {
+	for d := dir; ; {
+		if _, err := os.Stat(filepath.Join(d, ".git")); err == nil {
+			return d
+		}
+		parent := filepath.Dir(d)
+		if parent == d || d == proto.Home() {
+			return dir
+		}
+		d = parent
+	}
+}
+
+// environment returns the environment of a session's shell.
+func (d *Daemon) environment(sid, pid string, extra []string) []string {
+	env := make([]string, 0, len(os.Environ())+8)
+	for _, kv := range os.Environ() {
+		k, _, _ := strings.Cut(kv, "=")
+		switch {
+		case k == "CLAUDECODE", k == "TERM_PROGRAM", k == "TERM_PROGRAM_VERSION", k == "TERM_SESSION_ID",
+			k == "ITERM_SESSION_ID", k == "WINDOWID", k == "KITTY_WINDOW_ID",
+			k == "KERO_SESSION", k == "KERO_PANE", k == "MYGO_GHOSTTY_VT", k == "TMUX", k == "TMUX_PANE",
+			strings.HasPrefix(k, "CLAUDE_CODE_"), strings.HasPrefix(k, "GHOSTTY_"),
+			strings.HasPrefix(k, "VSCODE_"), strings.HasPrefix(k, "__CF"), k == "XPC_SERVICE_NAME":
+			continue
+		}
+		env = append(env, kv)
+	}
+	set := func(kv string) {
+		k, _, _ := strings.Cut(kv, "=")
+		for i, e := range env {
+			if strings.HasPrefix(e, k+"=") {
+				env[i] = kv
+				return
+			}
+		}
+		env = append(env, kv)
+	}
+	set("TERM=xterm-256color")
+	set("COLORTERM=truecolor")
+	set("TERM_PROGRAM=kero")
+	set(fmt.Sprintf("TERM_PROGRAM_VERSION=%d", proto.Version))
+	set("KERO_SESSION=" + sid)
+	set("KERO_PANE=" + pid)
+	set("KERO_SOCKET=" + proto.SocketPath())
+	if os.Getenv("LANG") == "" && os.Getenv("LC_ALL") == "" && os.Getenv("LC_CTYPE") == "" {
+		set("LANG=en_US.UTF-8")
+	}
+	// The CLI, after what the user's profile puts first.
+	path := os.Getenv("PATH")
+	if path == "" {
+		path = "/usr/bin:/bin:/usr/sbin:/sbin"
+	}
+	set("PATH=" + path + ":" + filepath.Join(d.dir, "bin"))
+	for _, kv := range extra {
+		set(kv)
+	}
+	return env
+}
+
+var (
+	shellOnce sync.Once
+	shellPath string
+)
+
+// userShell returns the user's login shell, as terminal apps take it:
+// the account's (dscl on macOS, /etc/passwd elsewhere), whatever $SHELL
+// the daemon inherited from whoever started it, else $SHELL, else zsh.
+func userShell() string {
+	shellOnce.Do(func() {
+		shellPath = accountShell()
+		if shellPath == "" {
+			shellPath = os.Getenv("SHELL")
+		}
+		if shellPath == "" {
+			shellPath = "/bin/zsh"
+		}
+	})
+	return shellPath
+}
+
+func accountShell() string {
+	u, err := user.Current()
+	if err != nil {
+		return ""
+	}
+	valid := func(sh string) string {
+		if st, err := os.Stat(sh); err == nil && !st.IsDir() && st.Mode()&0o111 != 0 {
+			return sh
+		}
+		return ""
+	}
+	if out, err := exec.Command("/usr/bin/dscl", ".", "-read", "/Users/"+u.Username, "UserShell").Output(); err == nil {
+		if _, sh, ok := strings.Cut(strings.TrimSpace(string(out)), ": "); ok {
+			return valid(strings.TrimSpace(sh))
+		}
+	}
+	if b, err := os.ReadFile("/etc/passwd"); err == nil {
+		for _, line := range strings.Split(string(b), "\n") {
+			f := strings.Split(line, ":")
+			if len(f) >= 7 && f[0] == u.Username {
+				return valid(f[6])
+			}
+		}
+	}
+	return ""
+}
+
+// shellQuote quotes an argument for a shell's command line.
+func shellQuote(shell, s string) string {
+	if s != "" && strings.IndexFunc(s, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-_./=:,+@%", r))
+	}) < 0 {
+		return s
+	}
+	if shell == "fish" {
+		return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) + "'"
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func shellJoin(shell string, args []string) string {
+	if len(args) == 1 && strings.ContainsAny(args[0], " ;|&") {
+		// A command line, as `kero new -- "npm run dev"` gives it.
+		return args[0]
+	}
+	q := make([]string, len(args))
+	for i, a := range args {
+		q[i] = shellQuote(shell, a)
+	}
+	return strings.Join(q, " ")
+}
+
+func expandHome(p string) string {
+	if p == "~" {
+		return proto.Home()
+	}
+	if strings.HasPrefix(p, "~/") {
+		return filepath.Join(proto.Home(), p[2:])
+	}
+	return p
+}
+
+// agents are the coding agents the sidebar recognizes, by the name of
+// their executable or script.
+var agents = []string{
+	"claude", "codex", "gemini", "opencode", "amp", "aider", "cursor-agent", "droid",
+	"qwen", "goose", "crush", "copilot", "kiro-cli", "cline", "auggie", "kimi", "pi",
+}
+
+func detectAgent(name string, args []string) string {
+	cands := []string{name}
+	for i, a := range args {
+		if i > 2 {
+			break
+		}
+		cands = append(cands, filepath.Base(a))
+	}
+	for _, c := range cands {
+		c = strings.ToLower(strings.TrimSuffix(c, filepath.Ext(c)))
+		for _, a := range agents {
+			if c == a || strings.HasPrefix(c, a+"-") && a != "pi" {
+				return a
+			}
+		}
+	}
+	// Scripts installed by npm: …/node_modules/@openai/codex/bin/codex.js.
+	for i, a := range args {
+		if i > 2 {
+			break
+		}
+		for _, ag := range agents {
+			if len(ag) > 3 && strings.Contains(a, "/"+ag+"/") {
+				return ag
+			}
+		}
+	}
+	return ""
+}
+
+// controlConn is a client's control connection.
+type controlConn struct {
+	conn net.Conn
+	wmu  sync.Mutex
+	enc  *json.Encoder
+	out  chan proto.Message
+	done chan struct{}
+}
+
+func (c *controlConn) write(m proto.Message) {
+	c.wmu.Lock()
+	defer c.wmu.Unlock()
+	c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := c.enc.Encode(m); err != nil {
+		c.conn.Close()
+	}
+}
+
+// event queues an event for a subscriber, dropping it when it is far
+// behind: the next state replaces it anyway.
+func (c *controlConn) event(m proto.Message) {
+	select {
+	case c.out <- m:
+	default:
+	}
+}
+
+func (d *Daemon) serve(conn net.Conn) {
+	d.mu.Lock()
+	d.conns++
+	d.mu.Unlock()
+	defer func() {
+		d.mu.Lock()
+		d.conns--
+		d.mu.Unlock()
+	}()
+	defer conn.Close()
+
+	r := bufio.NewReaderSize(conn, 64<<10)
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	line, err := r.ReadBytes('\n')
+	if err != nil {
+		return
+	}
+	conn.SetReadDeadline(time.Time{})
+	var hello proto.Hello
+	if err := json.Unmarshal(line, &hello); err != nil {
+		return
+	}
+	welcome := proto.Welcome{Version: proto.Version, PID: os.Getpid(), Started: d.started.UnixMilli()}
+	if hello.Version != proto.Version {
+		welcome.Error = fmt.Sprintf("kerod speaks protocol %d, the client %d", proto.Version, hello.Version)
+		json.NewEncoder(conn).Encode(welcome)
+		return
+	}
+	switch hello.Kind {
+	case "attach":
+		d.serveAttach(conn, r, hello, welcome)
+	default:
+		json.NewEncoder(conn).Encode(welcome)
+		d.serveControl(conn, r)
+	}
+}
+
+func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, welcome proto.Welcome) {
+	s := d.findPane(hello.Session)
+	if s == nil {
+		welcome.Error = "no session " + hello.Session
+		json.NewEncoder(conn).Encode(welcome)
+		return
+	}
+	a := newAttachment(conn)
+	snap, cols, rows, ok := s.attach(a)
+	if !ok {
+		welcome.Error = "session closed"
+		json.NewEncoder(conn).Encode(welcome)
+		return
+	}
+	defer s.detach(a)
+	defer a.finish()
+	welcome.Cols, welcome.Rows = cols, rows
+	if err := json.NewEncoder(conn).Encode(welcome); err != nil {
+		return
+	}
+	if err := proto.WriteFrame(conn, proto.FrameOutput, snap); err != nil {
+		return
+	}
+	go a.write()
+	for {
+		kind, payload, err := proto.ReadFrame(r)
+		if err != nil {
+			return
+		}
+		switch kind {
+		case proto.FrameInput:
+			s.input(payload)
+		case proto.FrameResize:
+			if c, rr, ok := proto.ParseResize(payload); ok {
+				s.resize(c, rr)
+			}
+		}
+	}
+}
+
+func (d *Daemon) serveControl(conn net.Conn, r *bufio.Reader) {
+	c := &controlConn{conn: conn, enc: json.NewEncoder(conn), out: make(chan proto.Message, 64), done: make(chan struct{})}
+	defer close(c.done)
+	defer func() {
+		d.mu.Lock()
+		delete(d.subs, c)
+		d.mu.Unlock()
+	}()
+	go func() {
+		for {
+			select {
+			case m := <-c.out:
+				c.write(m)
+			case <-c.done:
+				return
+			}
+		}
+	}()
+	for {
+		line, err := r.ReadBytes('\n')
+		if err != nil {
+			return
+		}
+		var req struct {
+			ID     int64           `json:"id"`
+			Method string          `json:"method"`
+			Params json.RawMessage `json:"params"`
+		}
+		if json.Unmarshal(line, &req) != nil {
+			continue
+		}
+		go func() {
+			res, err := d.call(c, req.Method, req.Params)
+			m := proto.Message{ID: req.ID, Result: res}
+			if err != nil {
+				m.Error = err.Error()
+			}
+			c.write(m)
+		}()
+	}
+}

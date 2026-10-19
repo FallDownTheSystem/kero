@@ -1,0 +1,412 @@
+package daemon
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
+
+	"kero/internal/proto"
+)
+
+// call runs a control method. Methods taking a pane take a session too,
+// for its focused pane.
+func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, error) {
+	decode := func(v any) error {
+		if len(raw) == 0 {
+			return nil
+		}
+		return json.Unmarshal(raw, v)
+	}
+	findPane := func(ref string) (*pane, error) {
+		if p := d.findPane(ref); p != nil {
+			return p, nil
+		}
+		return nil, fmt.Errorf("no session or pane %q", ref)
+	}
+	switch method {
+	case "state":
+		return d.state(), nil
+
+	case "subscribe":
+		d.mu.Lock()
+		d.subs[c] = struct{}{}
+		d.mu.Unlock()
+		st := d.state()
+		c.event(proto.Message{Event: "state", State: &st})
+		return true, nil
+
+	case "create", "split":
+		var p proto.CreateParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		if method == "split" && p.Split == "" {
+			return nil, errors.New("split: which pane?")
+		}
+		return d.create(p)
+
+	case "close":
+		var p proto.IDParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return true, d.removeSession(p.ID)
+
+	case "pane.close":
+		var p proto.IDParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return true, d.removePane(pn.info.ID)
+
+	case "restart":
+		var p proto.IDParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return true, pn.restart()
+
+	case "rename":
+		var p proto.RenameParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		s := d.findSessionLocked(p.ID)
+		if s != nil {
+			s.name = strings.TrimSpace(p.Name)
+		}
+		d.mu.Unlock()
+		if s == nil {
+			return nil, fmt.Errorf("no session %q", p.ID)
+		}
+		d.changed()
+		return true, nil
+
+	case "move":
+		var p proto.MoveParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return true, d.move(p)
+
+	case "focus":
+		var p proto.FocusParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		s := d.findSessionLocked(p.Session)
+		ok := s != nil && slices.ContainsFunc(s.panes, func(o *pane) bool { return o.info.ID == p.Pane })
+		if ok {
+			s.focus = p.Pane
+			if s.zoomed != "" {
+				s.zoomed = p.Pane
+			}
+		}
+		d.mu.Unlock()
+		if !ok {
+			return nil, fmt.Errorf("no pane %q in session %q", p.Pane, p.Session)
+		}
+		d.changed()
+		return true, nil
+
+	case "zoom":
+		var p proto.FocusParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		s := d.findSessionLocked(p.Session)
+		if s != nil {
+			if p.Pane == "" || s.zoomed == p.Pane {
+				s.zoomed = ""
+			} else if slices.ContainsFunc(s.panes, func(o *pane) bool { return o.info.ID == p.Pane }) {
+				s.zoomed, s.focus = p.Pane, p.Pane
+			}
+		}
+		d.mu.Unlock()
+		if s == nil {
+			return nil, fmt.Errorf("no session %q", p.Session)
+		}
+		d.changed()
+		return true, nil
+
+	case "layout":
+		var p proto.LayoutParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		s := d.findSessionLocked(p.Session)
+		ok := s != nil && sameLeaves(p.Layout, s.panes)
+		if ok {
+			s.layout = p.Layout
+			if s.layout.Leaf() {
+				s.layout = nil
+			}
+		}
+		d.mu.Unlock()
+		if !ok {
+			return nil, errors.New("layout: not the session's panes")
+		}
+		d.changed()
+		return true, nil
+
+	case "send":
+		var p proto.SendParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		pn.input([]byte(p.Data))
+		return true, nil
+
+	case "read":
+		var p proto.ReadParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return proto.ReadResult{Text: pn.readText(p.Scrollback, p.Lines)}, nil
+
+	case "view":
+		var p proto.ViewParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		id := ""
+		var panes []*pane
+		d.mu.Lock()
+		if s := d.findSessionLocked(p.ID); s != nil {
+			id, panes = s.id, slices.Clone(s.panes)
+		}
+		d.mu.Unlock()
+		d.viewed.Store(&id)
+		for _, pn := range panes {
+			pn.mu.Lock()
+			pn.info.Unread = false
+			pn.mu.Unlock()
+		}
+		d.changed()
+		return true, nil
+
+	case "select":
+		var p proto.FocusParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		s := d.findSessionLocked(p.Session)
+		if s != nil && p.Pane != "" {
+			if pn := d.findPaneLocked(p.Pane); pn != nil && pn.sid == s.id {
+				s.focus = pn.info.ID
+			}
+		}
+		n := 0
+		if s != nil {
+			for sub := range d.subs {
+				sub.event(proto.Message{Event: "select", Select: s.id})
+			}
+			n = len(d.subs)
+		}
+		d.mu.Unlock()
+		if s == nil {
+			return nil, fmt.Errorf("no session %q", p.Session)
+		}
+		d.changed()
+		return n > 0, nil
+
+	case "notify":
+		var p proto.NotifyParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		pn.mu.Lock()
+		pn.onNotify(p.Title, p.Body)
+		pn.mu.Unlock()
+		return true, nil
+
+	case "wait":
+		var p proto.WaitParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return d.wait(c, pn, p)
+
+	case "project.create":
+		var p proto.ProjectParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		dir := expandHome(p.Dir)
+		name := strings.TrimSpace(p.Name)
+		if name == "" && dir != "" {
+			name = filepath.Base(dir)
+		}
+		if name == "" {
+			return nil, errors.New("a project needs a name or a directory")
+		}
+		d.mu.Lock()
+		for _, pr := range d.projects {
+			if dir != "" && pr.Dir == dir {
+				d.mu.Unlock()
+				return pr, nil
+			}
+		}
+		pr := proto.Project{ID: newID(), Name: name, Dir: dir}
+		d.projects = append(d.projects, pr)
+		d.mu.Unlock()
+		d.changed()
+		return pr, nil
+
+	case "project.rename":
+		var p proto.ProjectParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		for i := range d.projects {
+			if d.projects[i].ID == p.ID {
+				d.projects[i].Name = strings.TrimSpace(p.Name)
+			}
+		}
+		d.mu.Unlock()
+		d.changed()
+		return true, nil
+
+	case "project.move":
+		var p proto.MoveProjectParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		i := slices.IndexFunc(d.projects, func(pr proto.Project) bool { return pr.ID == p.ID })
+		if i >= 0 {
+			pr := d.projects[i]
+			d.projects = slices.Delete(d.projects, i, i+1)
+			j := max(0, min(p.Index, len(d.projects)))
+			d.projects = slices.Insert(d.projects, j, pr)
+		}
+		d.mu.Unlock()
+		d.changed()
+		return true, nil
+
+	case "project.close":
+		var p proto.IDParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		var ids []string
+		for _, s := range d.sessions {
+			if s.project == p.ID {
+				ids = append(ids, s.id)
+			}
+		}
+		d.projects = slices.DeleteFunc(d.projects, func(pr proto.Project) bool { return pr.ID == p.ID })
+		d.mu.Unlock()
+		for _, id := range ids {
+			d.removeSession(id)
+		}
+		d.changed()
+		return true, nil
+
+	case "shutdown":
+		d.mu.Lock()
+		d.ending = true
+		ids := make([]string, 0, len(d.sessions))
+		for _, s := range d.sessions {
+			ids = append(ids, s.id)
+		}
+		d.mu.Unlock()
+		for _, id := range ids {
+			d.removeSession(id)
+		}
+		d.saveState()
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			d.stop()
+		}()
+		return true, nil
+	}
+	return nil, fmt.Errorf("unknown method %q", method)
+}
+
+// wait waits for a pane's status to be one of p.Status.
+func (d *Daemon) wait(c *controlConn, s *pane, p proto.WaitParams) (any, error) {
+	want := func(st proto.Status) bool {
+		if len(p.Status) == 0 {
+			return st != proto.Working
+		}
+		return slices.Contains(p.Status, st)
+	}
+	var timeout <-chan time.Time
+	if p.Timeout > 0 {
+		t := time.NewTimer(time.Duration(p.Timeout) * time.Millisecond)
+		defer t.Stop()
+		timeout = t.C
+	}
+	// An agent given a prompt takes a moment to start working: waiting
+	// for it to stop right away would end at once. Give it a little time
+	// to start.
+	if len(p.Status) == 0 {
+		s.mu.Lock()
+		ch, st, since := s.changed, s.info.Status, s.info.Since
+		s.mu.Unlock()
+		if st != proto.Working && time.Since(time.UnixMilli(since)) > time.Second {
+			select {
+			case <-ch:
+			case <-time.After(1500 * time.Millisecond):
+			case <-c.done:
+				return nil, errors.New("canceled")
+			}
+		}
+	}
+	for {
+		s.mu.Lock()
+		info, ch, closed := s.info, s.changed, s.closed
+		s.mu.Unlock()
+		if closed {
+			return info, errors.New("pane closed")
+		}
+		if want(info.Status) {
+			return info, nil
+		}
+		select {
+		case <-ch:
+		case <-timeout:
+			return info, errors.New("timed out")
+		case <-c.done:
+			return nil, errors.New("canceled")
+		case <-d.quit:
+			return nil, errors.New("kerod exited")
+		}
+	}
+}
