@@ -196,6 +196,9 @@ func (a *App) settingsView(c *ui.Context) {
 func (a *App) settingsNav(c *ui.Context, pal *palette, p settingsPage) {
 	sel := a.ss.page == p.id
 	item := ui.Row(c.Key(p.id)).Height(32).Padding(0, 10).Gap(10).AlignItems(ui.Center).Radius(8)
+	if pal.dark {
+		item.Border(1, ui.Transparent) // room for the chosen item's edge
+	}
 	bg := ui.Transparent
 	switch {
 	case sel:
