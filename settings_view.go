@@ -56,8 +56,9 @@ type settingsState struct {
 	service      string // kerod, as last asked
 	notice       string // a line under the keyboard page, as of a conflict
 	toast        string
-	combo        map[string]*string // the text of combo fields, by key
-	problems     []string           // what the configuration file got wrong
+	combo        map[string]*string         // the text of combo fields, by key
+	problems     []string                   // what the configuration file got wrong
+	scrolls      map[string]*ui.ScrollState // each page's, for its scroll edge
 }
 
 // openSettings shows the Settings window, on a page.
@@ -178,8 +179,21 @@ func (a *App) settingsView(c *ui.Context) {
 				}
 				// The page scrolls under its header, which macOS 27's hard
 				// scroll edge frosts it under, as System Settings does.
-				ui.Box(c.Key("page")).Grow(1).MinHeight(0).Children(func() {
-					ui.Scroll(c.Key("page-"+page.id)).Fill().Padding(headerH+4, 24, 28, 24).ScrollbarInsets(headerH, 0, 0).Children(func() {
+				// The edge shows, as AppKit's, once content is under the bar,
+				// or while the pointer is over it.
+				if a.ss.scrolls == nil {
+					a.ss.scrolls = map[string]*ui.ScrollState{}
+				}
+				sc := a.ss.scrolls[page.id]
+				if sc == nil {
+					sc = &ui.ScrollState{}
+					a.ss.scrolls[page.id] = sc
+				}
+				box := ui.Box(c.Key("page")).Grow(1).MinHeight(0)
+				_, py, over := box.PointerPosition()
+				edgeOn := sc.Y > 0.5 || over && py < headerH
+				box.Children(func() {
+					ui.Scroll(c.Key("page-"+page.id)).Fill().Padding(headerH+4, 24, 28, 24).ScrollbarInsets(headerH, 0, 0).TrackScroll(sc).Children(func() {
 						ui.Column(c).Gap(22).MaxWidth(620).Children(func() {
 							switch page.id {
 							case "general":
@@ -201,8 +215,9 @@ func (a *App) settingsView(c *ui.Context) {
 							}
 						})
 					})
-					ui.Box(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).PassThrough().
+					edge := ui.Box(c.Key("edge")).Absolute().Top(0).Left(0).Right(0).Height(headerH).PassThrough().
 						Material(glass.ScrollEdge{Hard: true, Background: pal.card})
+					edge.Opacity(edge.Animate("on", b2f(edgeOn), 160*time.Millisecond))
 					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).AlignItems(ui.Center).Padding(0, 24).DragWindow().Children(func() {
 						ui.Text(c, page.title).FontSize(15).FontWeight(650).TextColor(pal.text)
 					})
