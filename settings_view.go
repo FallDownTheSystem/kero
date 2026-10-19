@@ -55,8 +55,8 @@ type settingsState struct {
 	service      string // kerod, as last asked
 	notice       string // a line under the keyboard page, as of a conflict
 	toast        string
-	combo     map[string]*string // the text of combo fields, by key
-	problems  []string           // what the configuration file got wrong
+	combo        map[string]*string // the text of combo fields, by key
+	problems     []string           // what the configuration file got wrong
 }
 
 // openSettings shows the Settings window, on a page.
