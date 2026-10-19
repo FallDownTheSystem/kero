@@ -182,11 +182,21 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		m.hi = max(slices.Index(options, value), 0)
 		m.at = trig.Bounds()
 	}
-	// The page scrolling under the menu, or the window resizing, closes
-	// it, as a menu of macOS's does not stay open through either: it
-	// would follow the button under the page's header, or off the page.
+	// The window resizing closes the menu, which would follow the button
+	// off where it opened.
 	if b := trig.Bounds(); m.open && (abs(b.X-m.at.X) > 0.5 || abs(b.Y-m.at.Y) > 0.5) {
 		m.open = false
+	}
+	if m.open {
+		// As a menu of macOS's, the menu holds the window while it is
+		// open: a backdrop under it takes the wheel, so the page does not
+		// scroll, and a press, which closes the menu and goes no further.
+		ui.Overlay(c, func() {
+			back := ui.ButtonBase(c.Key(key + "-back")).Absolute().Left(0).Top(0).Right(0).Bottom(0).Label("Close the menu")
+			if back.Clicked() {
+				m.open = false
+			}
+		})
 	}
 	popupFace(c, trig, value, m.open, pal)
 	// The list takes what the window has below the button, or above it,

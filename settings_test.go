@@ -515,29 +515,55 @@ func TestSearchMenuOneHighlight(t *testing.T) {
 	}
 }
 
-// Scrolling the page under a search menu closes it, rather than carrying
-// it under the page's header with its button.
-func TestSearchMenuClosesOnScroll(t *testing.T) {
+// A search menu holds the window as macOS's do: the page does not scroll
+// under it, and a press outside it closes it, going no further.
+func TestSearchMenuIsModal(t *testing.T) {
 	a := testApp(t)
 	a.ss.page = "terminal"
 	tt := ui.NewTester(a.settingsView, 820, 600)
 	tt.Frame()
-	if err := tt.Click("JetBrains Mono Nerd Font"); err != nil {
-		t.Fatal(err)
+	open := func() {
+		t.Helper()
+		if err := tt.Click("JetBrains Mono Nerd Font"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		if !a.ss.menus["font"].open {
+			t.Fatal("the font menu did not open")
+		}
 	}
-	tt.Frame()
-	tt.Advance(time.Second)
-	tt.Frame()
-	if !a.ss.menus["font"].open {
-		t.Fatal("the font menu did not open")
-	}
+	open()
 	tt.Scroll(400, 500, 0, 120)
 	tt.Frame()
+	if y := a.ss.scrolls["terminal"].Y; y != 0 {
+		t.Errorf("the page scrolled %g under the menu", y)
+	}
+	if !a.ss.menus["font"].open {
+		t.Error("the wheel closed the menu")
+	}
+	// The menu's own list still scrolls.
+	before, _ := tt.Find("System")
+	tt.Scroll(before.X+20, before.Y, 0, 120)
+	tt.Frame()
+	if after, ok := tt.Find("System"); ok && after.Y == before.Y {
+		t.Error("the menu's list does not scroll")
+	}
+	// A press on the sidebar's General: the menu closes, the page stays.
+	r, _ := tt.Find("General")
+	tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+	tt.Frame()
+	if a.ss.menus["font"].open {
+		t.Error("a press outside left the menu open")
+	}
+	if a.ss.page != "terminal" {
+		t.Errorf("the press outside the menu went on: page %s", a.ss.page)
+	}
+	// Closed, the page scrolls again.
+	tt.Scroll(400, 500, 0, 120)
 	tt.Frame()
 	if a.ss.scrolls["terminal"].Y == 0 {
-		t.Fatal("the page did not scroll")
-	}
-	if a.ss.menus["font"].open {
-		t.Error("the font menu stayed open as the page scrolled")
+		t.Error("the page does not scroll once the menu closed")
 	}
 }
