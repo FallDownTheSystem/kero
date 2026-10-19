@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
@@ -168,5 +169,21 @@ func TestWindowDragRegions(t *testing.T) {
 	tt.Frame()
 	if f := a.focusOf(&a.st.Sessions[0]); f != "b" {
 		t.Errorf("a press on pane b left the focus on %q", f)
+	}
+}
+
+// A selection copied as it ends says so; a copy the user asked for, or
+// a program's, does not.
+func TestCopyOnSelectToast(t *testing.T) {
+	a := testApp(t)
+	o := a.termOptions("a", nil)
+	o.OnCopy("x", terminal.CopyUser)
+	o.OnCopy("x", terminal.CopyProgram)
+	if a.pendingToast != "" {
+		t.Errorf("toast %q for a copy that shows itself", a.pendingToast)
+	}
+	o.OnCopy("x", terminal.CopySelect)
+	if a.pendingToast != "Copied to clipboard" {
+		t.Errorf("toast %q after copying a selection", a.pendingToast)
 	}
 }

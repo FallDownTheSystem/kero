@@ -585,6 +585,15 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 			return true
 		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
+		// A selection copied as it ends shows nothing else: say so.
+		OnCopy: func(_ string, by terminal.CopySource) {
+			if by == terminal.CopySelect {
+				a.toast("Copied to clipboard")
+				if a.win != nil {
+					a.win.Invalidate()
+				}
+			}
+		},
 	}
 	if a.set.CopyOnSelect {
 		o.CopyOnSelect = terminal.CopyOnSelectClipboard

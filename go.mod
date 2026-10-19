@@ -6,7 +6,7 @@ tool github.com/egoist/mygo/cmd/mygo
 
 require (
 	github.com/ebitengine/purego v0.11.1
-	github.com/egoist/mygo v0.5.6-0.20261019214553-12b177c2f976
+	github.com/egoist/mygo v0.5.6-0.20261019222650-778512411c03
 	golang.org/x/sys v0.49.0
 	golang.org/x/term v0.47.0
 )
