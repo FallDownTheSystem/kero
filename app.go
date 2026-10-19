@@ -956,7 +956,10 @@ func (a *App) selectOffset(d int) {
 
 // jumpToAttention goes to the next session that needs the user, after the
 // one shown, else to the next with something unseen.
-func (a *App) jumpToAttention() {
+// jumpTo goes to the next session that want takes, after the one shown,
+// in the sidebar's order, opening its project, and reports whether there
+// was one.
+func (a *App) jumpTo(want func(*proto.Session) bool) bool {
 	var ids []string
 	for _, g := range a.groups() {
 		for _, s := range g.sessions {
@@ -964,18 +967,21 @@ func (a *App) jumpToAttention() {
 		}
 	}
 	i := slices.Index(ids, a.selected)
-	for _, want := range []func(*proto.Session) bool{
-		func(s *proto.Session) bool { return s.Status == proto.Waiting },
-		func(s *proto.Session) bool { return s.Unread },
-	} {
-		for k := 1; k <= len(ids); k++ {
-			id := ids[(i+k+len(ids))%len(ids)]
-			if s := a.session(id); s != nil && id != a.selected && want(s) {
-				delete(a.prefs.Collapsed, s.Project)
-				a.selectSession(id)
-				return
-			}
+	for k := 1; k <= len(ids); k++ {
+		id := ids[(i+k+len(ids))%len(ids)]
+		if s := a.session(id); s != nil && id != a.selected && want(s) {
+			delete(a.prefs.Collapsed, s.Project)
+			a.selectSession(id)
+			return true
 		}
+	}
+	return false
+}
+
+func (a *App) jumpToAttention() {
+	if a.jumpTo(func(s *proto.Session) bool { return s.Status == proto.Waiting }) ||
+		a.jumpTo(func(s *proto.Session) bool { return s.Unread }) {
+		return
 	}
 	a.toast("Nothing needs you")
 }

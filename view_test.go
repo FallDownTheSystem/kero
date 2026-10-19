@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -185,5 +186,45 @@ func TestCopyOnSelectToast(t *testing.T) {
 	o.OnCopy("x", terminal.CopySelect)
 	if a.pendingToast != "Copied to clipboard" {
 		t.Errorf("toast %q after copying a selection", a.pendingToast)
+	}
+}
+
+// The sidebar's foot counts what wants a look, each count going to the
+// next session of it, and says nothing while nothing does ($KERO_SHOTS).
+func TestSidebarFooter(t *testing.T) {
+	a := testApp(t)
+	a.conn = connReady
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	for _, txt := range tt.Texts() {
+		if strings.Contains(txt, "running") {
+			t.Errorf("the foot still says %q", txt)
+		}
+	}
+	base := a.st.Sessions[0]
+	add := func(id, name string, st proto.Status, unread bool) {
+		s := base
+		s.ID, s.Name, s.Status, s.Unread = id, name, st, unread
+		a.st.Sessions = append(a.st.Sessions, s)
+	}
+	add("s2", "deploy", proto.Waiting, true)
+	add("s3", "refactor", proto.Working, false)
+	add("s4", "tests", proto.Working, false)
+	add("s5", "docs", proto.Idle, true)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	shot(t, tt, "sidebar-footer")
+	for label, want := range map[string]string{"1 session needs you": "s2", "2 sessions working": "s3", "1 session done, unseen": "s5"} {
+		a.selected = "s1"
+		tt.Frame()
+		if err := tt.Click(label); err != nil {
+			t.Errorf("no %q in the foot: %v", label, err)
+			continue
+		}
+		tt.Frame()
+		if a.selected != want {
+			t.Errorf("%q went to %s, want %s", label, a.selected, want)
+		}
 	}
 }

@@ -372,36 +372,73 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	}
 }
 
+// sidebarFooter is the sidebar's foot: what across the sessions wants
+// a look, each a button going to the next session of it, and nothing
+// while nothing does; the connection to kerod while there is none; and
+// the buttons for projects, the palette and Settings.
 func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
-	ui.Row(c).Height(36).Shrink(0).Padding(0, 12, 4, 18).Gap(8).AlignItems(ui.Center).DragWindow().Children(func() {
-		var label string
-		dot := pal.textFaint
+	ui.Row(c).Height(36).Shrink(0).Padding(0, 12, 4, 12).Gap(2).AlignItems(ui.Center).DragWindow().Children(func() {
 		switch a.conn {
 		case connReady:
-			running := 0
-			for _, s := range a.st.Sessions {
-				if s.Status != proto.Exited {
-					running++
-				}
-			}
-			dot = ui.Hex("#34c759")
-			label = fmt.Sprintf("%d running", running)
-			if running == 1 {
-				label = "1 running"
-			}
+			waiting := func(s *proto.Session) bool { return s.Status == proto.Waiting }
+			working := func(s *proto.Session) bool { return s.Status == proto.Working }
+			done := func(s *proto.Session) bool { return s.Status == proto.Idle && s.Unread }
+			a.footerChip(c, pal, proto.Waiting, false, waiting, pal.attention, "%d session needs you", "%d sessions need you", "Go to it (⌘J)", a.jumpToAttention)
+			a.footerChip(c, pal, proto.Working, false, working, pal.textMuted, "%d session working", "%d sessions working", "Go to it", nil)
+			a.footerChip(c, pal, proto.Idle, true, done, pal.textMuted, "%d session done, unseen", "%d sessions done, unseen", "Go to it", nil)
 		case connConnecting:
-			label = "Connecting…"
+			a.footerNote(c, pal, pal.textFaint, "Connecting…")
 		default:
-			dot = pal.danger
-			label = "Disconnected"
+			a.footerNote(c, pal, pal.danger, "Disconnected")
 		}
+		ui.Spacer(c)
+		iconButton(c, "open-project", folderIcon, "Open Project… (⌘O)", pal, a.openProject)
+		iconButton(c, "palette", searchIcon, "Go to Session… (⌘P)", pal, a.openPalette)
+		iconButton(c, "settings", gearIcon, "Settings (⌘,)", pal, func() { a.openSettings("") })
+	})
+}
+
+// footerChip counts the sessions that are, by is, as their rows' status
+// icon and the count, in fg; a click goes to the next of them, by jump,
+// or else after the one shown. one and many word its label and tooltip,
+// as "%d session needs you". It shows nothing while none is.
+func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bool, is func(*proto.Session) bool, fg ui.Color, one, many, hint string, jump func()) {
+	n := 0
+	for i := range a.st.Sessions {
+		if is(&a.st.Sessions[i]) {
+			n++
+		}
+	}
+	if n == 0 {
+		return
+	}
+	words := fmt.Sprintf(many, n)
+	if n == 1 {
+		words = fmt.Sprintf(one, n)
+	}
+	b := ui.ButtonBase(c.Key("chip-"+string(st))).Height(24).Padding(0, 8, 0, 6).Gap(5).Radius(12).AlignItems(ui.Center).
+		Label(words).Tooltip(words + " · " + hint)
+	if b.Hovered() {
+		b.Background(pal.rowHover)
+	}
+	b.Children(func() {
+		statusIcon(c, pal, st, unread, 12)
+		ui.Textf(c, "%d", n).FontSize(12).FontWeight(500).TextColor(fg).FontFeatures("tnum")
+	})
+	if b.Clicked() {
+		if jump == nil {
+			jump = func() { a.jumpTo(is) }
+		}
+		jump()
+	}
+}
+
+// footerNote says how the connection to kerod is, by a dot.
+func (a *App) footerNote(c *ui.Context, pal *palette, dot ui.Color, label string) {
+	ui.Row(c).Gap(7).Padding(0, 6).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Size(6, 6).Radius(3).Background(dot)
 		ui.Text(c, label).FontSize(12).TextColor(pal.textFaint).SingleLine().
 			Tooltip("Sessions run in kerod, in the background: they keep running when you quit kero.")
-		ui.Spacer(c)
-		iconButton(c, "open-project", folderIcon, "Open Project… (⌘O)", pal, a.openProject)
-		iconButton(c, "settings", gearIcon, "Settings (⌘,)", pal, func() { a.openSettings("") })
-		iconButton(c, "palette", searchIcon, "Go to Session… (⌘P)", pal, a.openPalette)
 	})
 }
 
