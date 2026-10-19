@@ -475,7 +475,10 @@ func (a *App) paneTerminal(c *ui.Context, pal *palette, s *proto.Session, p *pro
 		a.ensureTerm(p.ID)
 		e = a.terms[p.ID]
 	}
-	ui.Box(c.Key("body")).Grow(1).MinHeight(0).Padding(2, 4, 6, 16).Children(func() {
+	// The terminal fills the card under the header: its own padding
+	// takes the colors of the cells beside it, so that a full-screen
+	// program's background reaches the card's edges.
+	ui.Box(c.Key("body")).Grow(1).MinHeight(0).Children(func() {
 		switch {
 		case e != nil && e.term != nil:
 			ref := a.paneRef(p.ID)

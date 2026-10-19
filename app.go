@@ -572,6 +572,10 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 		// The pane's card shows under it, dimmed when the user is in
 		// another pane.
 		Transparent: true,
+		// Text lines up with the pane's title; a full-screen program's
+		// colors reach the card's edges.
+		Padding:      terminal.Padding{X: 16, Y: 6},
+		PaddingColor: terminal.PaddingExtend,
 		// Every terminal zooms together, and the size is remembered.
 		OnZoom: func(z terminal.Zoom) bool {
 			a.zoom(z.Steps, z.Reset)
