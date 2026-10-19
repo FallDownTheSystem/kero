@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -28,6 +29,17 @@ func chosen(e ui.Element, pal *palette) ui.Element {
 		return raised(e, pal)
 	}
 	return e.Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.06)).Shadow(0, 0.5, 2, 0, ui.RGBA(0, 0, 0, 0.05))
+}
+
+// menu makes a menu as macOS 27's: Liquid Glass, frosted and lit along
+// its hairline rim, which what it opens over shows through, over a faint,
+// soft shadow.
+func menu(e ui.Element, pal *palette) ui.Element {
+	shade := ui.RGBA(0, 0, 0, 0.1)
+	if pal.dark {
+		shade = ui.RGBA(0, 0, 0, 0.35)
+	}
+	return e.Material(glass.Glass{}).Shadow(0, 6, 22, 0, shade)
 }
 
 // floating lifts a surface above the window: the palette, dialogs.

@@ -118,7 +118,7 @@ func menuSpot(c *ui.Context, key string, b ui.Rect, at, n int) (ui.Element, floa
 
 // menuPanel styles a menu: rounded, lifted off the window.
 func menuPanel(panel ui.Element, pal *palette) ui.Element {
-	return floating(panel.Padding(menuPad).Radius(13).Background(pal.popover), pal)
+	return menu(panel.Padding(menuPad).Radius(13), pal)
 }
 
 // menuItem styles an item of a menu: a check by the current one, and the
