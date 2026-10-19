@@ -143,11 +143,12 @@ func (a *App) comboField(c *ui.Context, key, value string, options []string, wid
 
 // slider sets *value between lo and hi, as macOS's slider: a thin track,
 // the accent's up to a white knob, which the pointer and the arrows move.
-// The knob's half width pads the track, so that the value spans the
-// knob's travel.
+// Held, the knob grows into a lens of glass that the track shows through,
+// as AppKit's does, and as MyGo's own slider draws it. The knob's half
+// width pads the track, so that the value spans the knob's travel.
 func slider(c *ui.Context, key string, value *float64, lo, hi float64, width float32, pal *palette) ui.Element {
-	const knobW, knobH, trackH = 20, 14, 4
-	s := ui.SliderBase(c.Key(key), value, lo, hi).Width(width).Height(controlH).Padding(0, knobW/2)
+	const knobW, knobH, trackH = 20, 16, 4
+	s := ui.SliderBase(c.Key(key), value, lo, hi).Width(width).Height(controlH).Padding(0, knobW/2).FocusRing(false)
 	track := pal.text.Alpha(0.14)
 	if pal.dark {
 		track = ui.RGBA(255, 255, 255, 0.18)
@@ -157,24 +158,42 @@ func slider(c *ui.Context, key string, value *float64, lo, hi float64, width flo
 		f = float32((*value - lo) / (hi - lo))
 	}
 	f = min(max(f, 0), 1)
-	accent, dark, pressed := pal.accent, pal.dark, s.Pressed()
+	held := s.Animate("held", b2f(s.Pressed()), 150*time.Millisecond)
+	accent, dark, focus := pal.accent, pal.dark, s.FocusVisible()
 	s.Draw(func(p *ui.Painter, r ui.Rect) {
 		x0, x1 := r.X+knobW/2, r.X+r.W-knobW/2
 		cy := r.Y + r.H/2
 		x := x0 + (x1-x0)*f
+		g := 1 + 0.35*held
+		knob := ui.Rect{X: x - knobW*g/2, Y: cy - knobH*g/2, W: knobW * g, H: knobH * g}
+		rad := knob.H / 2
+		if held > 0 {
+			// The lens lightens what is behind it, under the track.
+			p.Fill(knob, ui.RGBA(255, 255, 255, 0.1*held), rad)
+		}
 		p.Fill(ui.Rect{X: x0 - trackH/2, Y: cy - trackH/2, W: x1 - x0 + trackH, H: trackH}, track, trackH/2)
 		p.Fill(ui.Rect{X: x0 - trackH/2, Y: cy - trackH/2, W: x - x0 + trackH, H: trackH}, accent, trackH/2)
-		knob := ui.Rect{X: x - knobW/2, Y: cy - knobH/2, W: knobW, H: knobH}
-		p.Shadow(knob, knobH/2, 0, 0.5, 2, 0, ui.RGBA(0, 0, 0, 0.3))
-		p.Shadow(knob, knobH/2, 0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.08))
-		face := ui.Hex("#ffffff")
-		if pressed {
-			face = ui.Hex("#f2f2f4")
-		}
+		face, rim, drop := ui.Hex("#ffffff"), ui.RGBA(0, 0, 0, 0.22), ui.RGBA(0, 0, 0, 0.14)
 		if dark {
-			face = ui.Hex("#e8e8ec")
+			face, rim, drop = ui.Hex("#e0e1e1"), ui.RGBA(0, 0, 0, 0.7), ui.RGBA(0, 0, 0, 0.3)
 		}
-		p.Fill(knob, face, knobH/2)
+		if held > 0 {
+			p.Shadow(knob, rad, 0, 8, 14, -3, drop.Alpha(held))
+		}
+		if held < 1 {
+			// A tight shadow edges the knob, a soft one lifts it.
+			p.Shadow(knob, rad, 0, 0.5, 1, 0, ui.RGBA(0, 0, 0, 0.08*(1-held)))
+			p.Shadow(knob, rad, 0, 1.5, 7, 0, ui.RGBA(0, 0, 0, 0.1*(1-held)))
+			p.Fill(knob, face.Alpha(1-held), rad)
+		}
+		if held > 0 {
+			// The lens's rim, lit on the inside.
+			p.Stroke(knob, rim.Alpha(held), rad, 1)
+			p.Stroke(ui.Rect{X: knob.X + 1, Y: knob.Y + 1, W: knob.W - 2, H: knob.H - 2}, ui.RGBA(255, 255, 255, 0.25*held), rad-1, 1)
+		}
+		if focus {
+			p.FocusRing(knob, [4]float32{rad, rad, rad, rad})
+		}
 	})
 	return s
 }

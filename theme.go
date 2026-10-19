@@ -197,7 +197,7 @@ func backdrop(c *ui.Context, pal *palette, row ui.Element, s settings.Settings) 
 	}
 	stops := make([]ui.GradientStop, len(base.Stops))
 	for i, st := range base.Stops {
-		stops[i] = ui.GradientStop{Color: st.Color.Alpha(float32(st.Color.A) / 255 * alpha), At: st.At}
+		stops[i] = ui.GradientStop{Color: st.Color.Alpha(alpha), At: st.At}
 	}
 	base.Stops = stops
 	c.Root().LinearGradient(base)

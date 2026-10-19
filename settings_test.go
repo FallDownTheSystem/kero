@@ -190,5 +190,15 @@ func TestSlider(t *testing.T) {
 		if a.set.LineHeight < 1.85 {
 			t.Errorf("line height %v after a click near the slider's end", a.set.LineHeight)
 		}
+		// Held, the knob is a lens of glass. (The taller lines moved
+		// the slider down.)
+		label, _ = tt.Find("2.00×")
+		tt.Press(label.X-16, label.Y+label.H/2)
+		tt.Frame()
+		tt.Advance(400 * time.Millisecond)
+		tt.Frame()
+		shot(t, tt, "slider-held-"+map[bool]string{false: "light", true: "dark"}[dark])
+		tt.Release(label.X-16, label.Y+label.H/2)
+		tt.Frame()
 	}
 }
