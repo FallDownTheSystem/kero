@@ -243,25 +243,37 @@ func settingRow(c *ui.Context, pal *palette, label, detail string, control func(
 	})
 }
 
-// segmented chooses one of ids into value: a soft track with the choice
-// raised on it, as macOS's segmented controls.
+// segmented chooses one of ids into value, as macOS's segmented control
+// shows it: a soft track, the choice a lighter fill raised a hair, thin
+// separators between the others, and labels of one weight.
 func segmented(c *ui.Context, key string, value *string, ids, labels []string) {
 	pal := paletteFor(c)
 	i := max(slices.Index(ids, *value), 0)
+	track, thumb := ui.RGBA(0, 0, 0, 0.06), ui.Hex("#ffffff")
+	if pal.dark {
+		track, thumb = ui.RGBA(255, 255, 255, 0.07), ui.RGBA(255, 255, 255, 0.2)
+	}
 	seg := ui.SegmentedBase(c.Key(key), &i, len(labels))
-	seg.Track.Padding(2).Radius(8).Background(pal.text.Alpha(0.07)).Gap(2).Children(func() {
+	seg.Track.Height(24).Padding(2).Radius(7).Background(track).AlignItems(ui.Center).Children(func() {
 		for n, label := range labels {
-			s := seg.Segment(n).Height(24).Padding(0, 12).Radius(6).Center()
+			if n > 0 {
+				// A separator, where neither segment beside it is chosen.
+				sep := ui.Box(c).Width(1).Height(12).Shrink(0)
+				if n != i && n-1 != i {
+					sep.Background(pal.text.Alpha(0.14))
+				}
+			}
+			s := seg.Segment(n).FillHeight().Padding(0, 12).Radius(5).Center()
 			if n == i {
-				face(s, pal, pal.control)
-			} else if s.Hovered() {
-				s.Background(pal.text.Alpha(0.05))
+				s.Background(thumb)
+				if pal.dark {
+					s.Shadow(0, 1, 1, 0, ui.RGBA(0, 0, 0, 0.25))
+				} else {
+					s.Shadow(0, 0.5, 1.5, 0, ui.RGBA(0, 0, 0, 0.16)).Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.04))
+				}
 			}
 			s.Children(func() {
-				t := ui.Text(c, label).FontSize(12.5).SingleLine().TextColor(pal.textMuted)
-				if n == i {
-					t.TextColor(pal.text).FontWeight(500)
-				}
+				ui.Text(c, label).FontSize(12.5).SingleLine().TextColor(pal.text)
 			})
 		}
 	})

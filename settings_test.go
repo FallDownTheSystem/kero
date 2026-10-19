@@ -110,3 +110,23 @@ func TestDarkShots(t *testing.T) {
 	main.Frame()
 	shot(t, main, "dark-plain-main")
 }
+
+// The segmented control, light and dark, for a look ($KERO_SHOTS).
+func TestSegmentedShots(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		a := testApp(t)
+		a.ss.page = "appearance"
+		a.set.Appearance = "light"
+		a.applied = a.set.Clone()
+		tt := ui.NewTester(a.settingsView, 820, 240)
+		tt.SetDark(dark)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		name := "segmented-light"
+		if dark {
+			name = "segmented-dark"
+		}
+		shot(t, tt, name)
+	}
+}
