@@ -6,17 +6,25 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// kero draws no border lines: surfaces stand out by their color and a
-// small, soft shadow, crisp at their edge. These are its levels.
+// Surfaces stand out by their color and an edge, crisp, on whole pixels.
+// In the light, the edge is a small soft shadow and no line; in the dark,
+// where shadows hardly show, a hairline a little lighter than the
+// surface, over a dark shadow, as a lit edge. These are kero's levels.
 
 // raised lifts a surface off what is under it a little: the card, the
 // selected row, buttons.
 func raised(e ui.Element, pal *palette) ui.Element {
+	if pal.dark {
+		return e.Border(1, pal.edge).Shadow(0, 1, 3, 0, pal.cardShadow)
+	}
 	return e.Shadow(0, 1, 2, 0, pal.cardShadow).Shadow(0, 1, 6, 0, pal.cardShadow2)
 }
 
 // floating lifts a surface above the window: the palette, dialogs.
 func floating(e ui.Element, pal *palette) ui.Element {
+	if pal.dark {
+		e.Border(1, pal.edgeHigh)
+	}
 	return e.Shadow(0, 1, 3, 0, pal.cardShadow).Shadow(0, 16, 40, 0, pal.floatShadow)
 }
 
@@ -26,7 +34,7 @@ func face(e ui.Element, pal *palette, bg ui.Color) ui.Element {
 	if pal.controlShadow {
 		return e.Shadow(0, 0.5, 1.5, 0, ui.RGBA(0, 0, 0, 0.13)).Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.05))
 	}
-	return e.InsetShadow(0, 0.5, 0, 0, pal.controlLight)
+	return e.Border(1, pal.edgeHigh).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.25))
 }
 
 // button is kero's button: a raised surface, or the accent's for the

@@ -26,6 +26,10 @@ type palette struct {
 	cardShadow2 ui.Color
 	floatShadow ui.Color
 	cardDim     ui.Color // a pane the user is not in
+	// edge and edgeHigh are the hairlines around surfaces in the dark:
+	// cards and rows, and what floats or takes a click.
+	edge     ui.Color
+	edgeHigh ui.Color
 	// veil fades a pane the user is not in, its text too, as Ghostty's
 	// unfocused-split-opacity.
 	veil     ui.Color
@@ -109,6 +113,8 @@ var darkPalette = palette{
 	floatShadow:  ui.RGBA(0, 0, 0, 0.45),
 	cardDim:      ui.RGBA(35, 35, 40, 0.5),
 	veil:         ui.RGBA(14, 13, 18, 0.42),
+	edge:         ui.RGBA(255, 255, 255, 0.075),
+	edgeHigh:     ui.RGBA(255, 255, 255, 0.11),
 	buttonBg:     ui.Hex("#404047"),
 	control:      ui.Hex("#404047"),
 	controlHover: ui.Hex("#4a4a52"),
