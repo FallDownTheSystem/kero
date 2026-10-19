@@ -193,7 +193,7 @@ func (a *App) settingsView(c *ui.Context) {
 				_, py, over := box.PointerPosition()
 				edgeOn := sc.Y > 0.5 || over && py < headerH
 				box.Children(func() {
-					ui.Scroll(c.Key("page-"+page.id)).Fill().Padding(headerH+4, 24, 28, 24).ScrollbarInsets(headerH, 0, 0).TrackScroll(sc).Children(func() {
+					ui.Scroll(c.Key("page-"+page.id)).Fill().Padding(headerH+16, 24, 28, 24).ScrollbarInsets(headerH, 0, 0).TrackScroll(sc).Children(func() {
 						ui.Column(c).Gap(22).MaxWidth(620).Children(func() {
 							switch page.id {
 							case "general":
