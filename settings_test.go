@@ -259,3 +259,56 @@ func TestScrollEdgeShots(t *testing.T) {
 		shot(t, tt, "scroll-edge-"+map[bool]string{false: "light", true: "dark"}[dark])
 	}
 }
+
+// The sidebar's search finds settings by label, by their keys in the
+// configuration file, and by other words; it shows only the pages with
+// finds, the first of them when the page shown has none.
+func TestSettingsSearch(t *testing.T) {
+	a := testApp(t)
+	a.ss.draft = map[string]string{}
+	a.ss.page = "general"
+	tt := ui.NewTester(a.settingsView, 820, 640)
+	tt.Frame()
+	tt.Key(ui.Super, ui.KeyF)
+	tt.Frame()
+	tt.Type("font-size")
+	for range 3 {
+		tt.Frame()
+	}
+	if a.ss.query != "font-size" {
+		t.Fatalf("⌘F then typing: query %q", a.ss.query)
+	}
+	if a.ss.page != "terminal" || !searchHits["Size"] || searchHits["Font"] {
+		t.Errorf("font-size: page %s, hits %v", a.ss.page, searchHits)
+	}
+	if tt.HasText("General") || !tt.HasText("Terminal") {
+		t.Errorf("sidebar of pages without finds; texts %q", tt.Texts())
+	}
+	shot(t, tt, "settings-search-font-size")
+
+	// Not the notifications page: it asks the system, which needs the app.
+	for q, page := range map[string]string{"vibrancy": "appearance", "osc 52": "terminal", "split right": "keyboard", "kerod": "advanced", "remote-control": "agents", "fish": "shell"} {
+		a.ss.query = q
+		tt.Frame()
+		if a.ss.page != page {
+			t.Errorf("%q: page %s, want %s", q, a.ss.page, page)
+		}
+	}
+	a.ss.query = "split right"
+	tt.Frame()
+	if !tt.HasText("Split Right") || tt.HasText("Split Down") {
+		t.Errorf("keyboard page unfiltered; texts %q", tt.Texts())
+	}
+	shot(t, tt, "settings-search-keyboard")
+
+	a.ss.query = "zzzz"
+	tt.Frame()
+	if !tt.HasText("No Results") {
+		t.Errorf("no word of no results; texts %q", tt.Texts())
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if a.ss.query != "" || !tt.HasText("General") {
+		t.Errorf("Escape: query %q", a.ss.query)
+	}
+}

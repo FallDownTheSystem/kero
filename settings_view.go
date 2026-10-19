@@ -47,6 +47,9 @@ type settingsState struct {
 	recording    string // the action whose shortcut is being typed
 	recordRef    ui.Handle
 	filter       string // the keyboard page's search
+	query        string // the sidebar's search, of every page
+	searchRef    ui.Handle
+	revealed     string // the query and page the search last scrolled to
 	draft        map[string]string
 	envDraft     string
 	shellDraft   string
@@ -90,6 +93,7 @@ func (a *App) openSettings(page string) {
 	a.setWin.OnClosed(func() {
 		a.setWin = nil
 		a.setRecording("") // the menus take their shortcuts back
+		a.ss.query = ""
 	})
 }
 
@@ -146,12 +150,20 @@ func (a *App) settingsView(c *ui.Context) {
 		c.Toast(a.ss.toast)
 		a.ss.toast = ""
 	}
+	found := a.searchSettings()
+	c.OnShortcut(ui.Cmd, ui.KeyF, func() { a.ss.searchRef.Focus(c) })
 	row := ui.Row(c).Fill().AlignItems(ui.Stretch)
 	backdrop(c, pal, row, a.set)
 	row.Children(func() {
 		ui.Column(c).Width(212).Shrink(0).Padding(topBar, 10, 12, 10).Gap(2).DragWindow().Children(func() {
+			a.settingsSearch(c, pal)
 			for _, p := range settingsPages {
-				a.settingsNav(c, pal, p)
+				if found == nil || found[p.id] != nil {
+					a.settingsNav(c, pal, p)
+				}
+			}
+			if found != nil && len(found) == 0 {
+				ui.Text(c, "No Results").FontSize(13).TextColor(pal.textFaint).Padding(8, 10)
 			}
 			ui.Spacer(c)
 			link := ui.ButtonBase(c.Key("open-config")).Padding(6, 10).Gap(6).Radius(7).AlignItems(ui.Center).Label("Open the config file")
@@ -231,6 +243,65 @@ func (a *App) settingsView(c *ui.Context) {
 	}
 }
 
+// searchSettings applies the sidebar's search: it shows a page with
+// finds, when the page shown has none, and sets what the pages highlight.
+// It returns what searchResults does.
+func (a *App) searchSettings() map[string][]string {
+	found := searchResults(a.ss.query, a.set.Shortcuts)
+	searchHits, searchReveal = nil, ""
+	if found == nil {
+		a.ss.revealed = ""
+		return nil
+	}
+	if found[a.ss.page] == nil {
+		for _, p := range settingsPages {
+			if found[p.id] != nil {
+				a.ss.page = p.id
+				a.setRecording("")
+				break
+			}
+		}
+	}
+	labels := found[a.ss.page]
+	searchHits = map[string]bool{}
+	for _, l := range labels {
+		searchHits[l] = true
+	}
+	// The first find comes into view once for each query and page, after
+	// which the page scrolls as the user likes.
+	if at := a.ss.query + "\x00" + a.ss.page; len(labels) > 0 && a.ss.revealed != at {
+		a.ss.revealed, searchReveal = at, labels[0]
+	}
+	return found
+}
+
+// settingsSearch is the sidebar's search field, which finds settings in
+// every page by their labels, their keys in the configuration file, and
+// words for them.
+func (a *App) settingsSearch(c *ui.Context, pal *palette) {
+	var in ui.Element
+	frame := ui.Row(c.Key("search")).Cursor(ui.CursorText).Margin(0, 0, 10, 0)
+	frame.Children(func() {
+		ui.Icon(c, searchIcon).Size(13, 13).TextColor(pal.textFaint).Shrink(0)
+		in = ui.TextInputBase(c.Key("in"), &a.ss.query).Bind(&a.ss.searchRef).Grow(1).MinWidth(0).FontSize(13).
+			Placeholder("Search").Label("Search settings")
+		in.OnShortcut(0, ui.KeyEscape, func() { a.ss.query = "" })
+		if a.ss.query != "" {
+			x := ui.ButtonBase(c.Key("clear")).Size(16, 16).Radius(8).Center().Shrink(0).Label("Clear the search").
+				Background(pal.textFaint.Alpha(0.55)).TextColor(pal.card)
+			if x.Hovered() {
+				x.Background(pal.textMuted)
+			}
+			x.Children(func() { ui.Icon(c, closeIcon).Size(8, 8) })
+			if x.Clicked() {
+				a.ss.query = ""
+				a.ss.searchRef.Focus(c)
+			}
+		}
+	})
+	field(c, frame, in.Focused(), pal)
+}
+
 func (a *App) settingsNav(c *ui.Context, pal *palette, p settingsPage) {
 	sel := a.ss.page == p.id
 	item := ui.Row(c.Key(p.id)).Height(32).Padding(0, 10).Gap(10).AlignItems(ui.Center).Radius(8)
@@ -259,11 +330,21 @@ func (a *App) settingsNav(c *ui.Context, pal *palette, p settingsPage) {
 	})
 }
 
+// groupTitle is a group's title, which the search highlights as it does
+// a setting.
+func groupTitle(c *ui.Context, pal *palette, title string) {
+	row := ui.Row(c.Key("title-"+title)).Padding(0, 4)
+	row.Children(func() {
+		searchHighlight(c, row, title, pal, 2, 3)
+		ui.Text(c, title).FontSize(12).FontWeight(600).TextColor(pal.textMuted)
+	})
+}
+
 // group is a titled set of settings, on a soft panel.
 func settingsGroup(c *ui.Context, pal *palette, title, note string, fn func()) {
 	ui.Column(c).Gap(8).Children(func() {
 		if title != "" {
-			ui.Text(c, title).FontSize(12).FontWeight(600).TextColor(pal.textMuted).Padding(0, 4)
+			groupTitle(c, pal, title)
 		}
 		if fn != nil { // a group of a note alone has no panel
 			ui.Column(c).Radius(12).Background(pal.chip).Padding(4, 16).Children(fn)
@@ -276,7 +357,9 @@ func settingsGroup(c *ui.Context, pal *palette, title, note string, fn func()) {
 
 // setting is a row of a group: a label, what it does, and its control.
 func settingRow(c *ui.Context, pal *palette, label, detail string, control func()) {
-	ui.Row(c).Padding(11, 0).Gap(16).AlignItems(ui.Center).Children(func() {
+	row := ui.Row(c.Key("row-"+label)).Padding(11, 0).Gap(16).AlignItems(ui.Center)
+	row.Children(func() {
+		searchHighlight(c, row, label, pal, 10, -2)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
 			ui.Text(c, label).FontSize(13.5).TextColor(pal.text)
 			if detail != "" {
@@ -361,7 +444,7 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 		})
 	})
 	ui.Column(c).Gap(8).Children(func() {
-		ui.Text(c, "Background").FontSize(12).FontWeight(600).TextColor(pal.textMuted).Padding(0, 4)
+		groupTitle(c, pal, "Background")
 		ui.Row(c).Gap(12).Wrap().Children(func() {
 			for _, b := range settings.Backgrounds {
 				a.backgroundTile(c, pal, b.ID, b.Name)
@@ -772,7 +855,11 @@ func (a *App) keyboardPage(c *ui.Context, pal *palette) {
 		var acts []actions.Action
 		for _, act := range actions.All {
 			keys := actions.Glyphs(actions.Keys(act, a.set.Shortcuts))
-			if act.Menu == menu && (q == "" || strings.Contains(strings.ToLower(act.Title), q) || strings.Contains(strings.ToLower(keys), q) || strings.Contains(act.ID, q)) {
+			found := q == "" || strings.Contains(strings.ToLower(act.Title), q) || strings.Contains(strings.ToLower(keys), q) || strings.Contains(act.ID, q)
+			if searchHits != nil {
+				found = found && searchHits[strings.TrimSuffix(act.Title, "…")]
+			}
+			if act.Menu == menu && found {
 				acts = append(acts, act)
 			}
 		}
