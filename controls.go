@@ -181,8 +181,16 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		m.hi = max(slices.Index(options, value), 0)
 	}
 	popupFace(c, trig, value, m.open, pal)
+	// The list takes what the window has below the button, or above it,
+	// where the menu goes when there is more room there, less the search
+	// field and the menu's padding.
+	const edge, gap, inset = 8, 4, 3 // the window's edge kept; the gap to the button; the field's inset past menuPad
+	b := trig.Bounds()
+	_, h := c.Size()
+	room := max(h-(b.Y+b.H)-gap-edge, b.Y-gap-edge)
+	listH := min(300, room-(2*menuPad+2*inset+controlH+2+menuPad))
 	ui.PopoverBase(c.Key(key+"-menu"), trig, &m.open, func(panel ui.Element) {
-		menuPanel(panel, pal).Margin(4, 0, 0, 0).Width(max(width, 260))
+		menuPanel(panel, pal).Margin(gap, 0, 0, 0).Width(max(width, 260))
 		q := strings.ToLower(strings.TrimSpace(m.query))
 		var shown []string
 		exact := false
@@ -207,7 +215,9 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 			}
 		}
 		var in ui.Element
-		frame := ui.Row(c.Key("search")).Margin(0, 0, menuPad, 0).Cursor(ui.CursorText)
+		// Inset past the items, so that its focus glow keeps clear of
+		// the menu's edge.
+		frame := ui.Row(c.Key("search")).Margin(inset, inset, menuPad+inset, inset).Cursor(ui.CursorText)
 		frame.Children(func() {
 			ui.Icon(c, searchIcon).Size(12, 12).TextColor(pal.textFaint).Shrink(0)
 			in = ui.TextInputBase(c.Key("q"), &m.query).AutoFocus().Grow(1).MinWidth(0).FontSize(13).
@@ -224,7 +234,7 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		}
 		reveal := m.reveal
 		m.reveal = false
-		ui.Scroll(c.Key("items")).MaxHeight(300).Children(func() {
+		ui.Scroll(c.Key("items")).MaxHeight(max(listH, menuItemH)).Children(func() {
 			for i, o := range shown {
 				row := ui.Row(c.Key(o)).Label(labels[i])
 				if row.Hovered() && m.hovered != o {

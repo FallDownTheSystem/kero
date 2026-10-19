@@ -435,3 +435,37 @@ func TestPopupMenuStaysInWindow(t *testing.T) {
 		tt.Frame()
 	}
 }
+
+// The font menu stays in the window, however little room the window has
+// below its button.
+func TestSearchMenuStaysInWindow(t *testing.T) {
+	for _, h := range []int{900, 420} {
+		a := testApp(t)
+		a.ss.page = "terminal"
+		tt := ui.NewTester(a.settingsView, 820, h)
+		tt.Frame()
+		if err := tt.Click("JetBrains Mono Nerd Font"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		shot(t, tt, fmt.Sprintf("search-menu-%d", h))
+		for _, txt := range []string{"Search", "System"} {
+			r, ok := tt.Find(txt)
+			if !ok || r.Y < 0 || r.Y+r.H > float32(h) {
+				t.Errorf("h %d: %s at %v, out of the window", h, txt, r)
+			}
+		}
+		// The menu's bottom: the last item shown is inside the window.
+		var low float32
+		for _, f := range fontChoices {
+			if r, ok := tt.Find(f); ok && r.Y > low {
+				low = r.Y + r.H
+			}
+		}
+		if low > float32(h) {
+			t.Errorf("h %d: the menu runs to %g, past the window", h, low)
+		}
+	}
+}
