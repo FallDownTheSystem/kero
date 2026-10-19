@@ -130,3 +130,40 @@ func TestSegmentedShots(t *testing.T) {
 		shot(t, tt, name)
 	}
 }
+
+// The pop-up button with its menu open, and a focused field, light and
+// dark ($KERO_SHOTS).
+func TestControlShots(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		a := testApp(t)
+		a.ss.page = "shell"
+		tt := ui.NewTester(a.settingsView, 820, 520)
+		tt.SetDark(dark)
+		tt.Frame()
+		tt.Advance(time.Second)
+		if err := tt.Click("4 MB"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		if !tt.HasText("64 MB") {
+			t.Fatalf("the scrollback menu did not open; texts %q", tt.Texts())
+		}
+		name := map[bool]string{false: "light", true: "dark"}[dark]
+		shot(t, tt, "controls-menu-"+name)
+		tt.Key(0, ui.KeyDown)
+		tt.Key(0, ui.KeyEnter)
+		tt.Frame()
+		if a.set.Scrollback != 16 {
+			t.Errorf("chose scrollback %d, want 16", a.set.Scrollback)
+		}
+		if err := tt.Click("NAME=value"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		shot(t, tt, "controls-field-"+name)
+	}
+}

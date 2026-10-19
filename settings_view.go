@@ -55,6 +55,7 @@ type settingsState struct {
 	service      string // kerod, as last asked
 	notice       string // a line under the keyboard page, as of a conflict
 	toast        string
+	combo        map[string]*string // the text of combo fields, by key
 }
 
 // openSettings shows the Settings window, on a page.
@@ -378,16 +379,20 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			if !slices.Contains(opts, family) {
 				opts = append([]string{family}, opts...)
 			}
-			ui.Combobox(c.Key("font"), &family, opts).Width(200).Label("Font").OnChange(func() {
-				if family == "System" {
-					family = ""
+			a.comboField(c, "font", family, opts, 200, pal, func(v string) {
+				if v == "System" {
+					v = ""
 				}
-				a.set.FontFamily = family
+				a.set.FontFamily = v
 			})
 		})
 		settingRow(c, pal, "Size", "⌘= and ⌘- change it too.", func() {
-			v := float64(s.FontSize)
-			ui.NumberInput(c.Key("size"), &v, 8, 36, 1).Width(132).OnChange(func() { a.set.FontSize = float32(v) })
+			sizes := []float32{10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28}
+			if !slices.Contains(sizes, s.FontSize) {
+				sizes = append(sizes, s.FontSize)
+				slices.Sort(sizes)
+			}
+			popup(c, "size", &s.FontSize, sizes, func(v float32) string { return strconv.FormatFloat(float64(v), 'f', -1, 32) + " pt" }, 90, pal)
 		})
 		settingRow(c, pal, "Line height", "", func() {
 			v := float64(s.LineHeight)
@@ -395,10 +400,9 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			ui.Textf(c, "%.2f×", s.LineHeight).FontSize(12.5).TextColor(pal.textMuted).Width(40).FontFeatures("tnum")
 		})
 		settingRow(c, pal, "Weight", "", func() {
-			names := []string{"Light", "Regular", "Medium", "Semibold"}
-			weights := []int{300, 400, 500, 600}
-			cur := names[max(slices.Index(weights, s.FontWeight), 0)]
-			ui.Select(c.Key("weight"), &cur, names).Width(140).OnChange(func() { a.set.FontWeight = weights[slices.Index(names, cur)] })
+			popup(c, "weight", &s.FontWeight, []int{300, 400, 500, 600}, func(w int) string {
+				return map[int]string{300: "Light", 400: "Regular", 500: "Medium", 600: "Semibold"}[w]
+			}, 140, pal)
 		})
 		settingRow(c, pal, "Ligatures", "Join characters as the font draws them, as => and !=.", func() {
 			toggle(c.Key("liga"), &s.Ligatures, pal)
@@ -410,10 +414,10 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 	themes := append([]string{"kero"}, terminal.GhosttyThemes()...)
 	settingsGroup(c, pal, "Colors", "Ghostty’s themes, and your own in ~/.config/ghostty/themes.", func() {
 		settingRow(c, pal, "Light windows", "", func() {
-			ui.Combobox(c.Key("light"), &s.LightTheme, themes).Width(220).Label("Light theme")
+			a.comboField(c, "light", s.LightTheme, themes, 220, pal, func(v string) { a.set.LightTheme = v })
 		})
 		settingRow(c, pal, "Dark windows", "", func() {
-			ui.Combobox(c.Key("dark"), &s.DarkTheme, themes).Width(220).Label("Dark theme")
+			a.comboField(c, "dark", s.DarkTheme, themes, 220, pal, func(v string) { a.set.DarkTheme = v })
 		})
 	})
 	settingsGroup(c, pal, "Cursor", "", func() {
@@ -430,10 +434,9 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			toggle(c.Key("cos"), &s.CopyOnSelect, pal)
 		})
 		settingRow(c, pal, "Right click", "", func() {
-			ids := []string{"menu", "paste", "copyOrPaste"}
-			names := []string{"Shows a menu", "Pastes", "Copies, or pastes"}
-			cur := names[max(slices.Index(ids, s.RightClick), 0)]
-			ui.Select(c.Key("rc"), &cur, names).Width(170).OnChange(func() { a.set.RightClick = ids[slices.Index(names, cur)] })
+			popup(c, "rc", &s.RightClick, []string{"menu", "paste", "copyOrPaste"}, func(id string) string {
+				return map[string]string{"menu": "Shows a menu", "paste": "Pastes", "copyOrPaste": "Copies, or pastes"}[id]
+			}, 170, pal)
 		})
 		settingRow(c, pal, "Programs reading the clipboard", "As with OSC 52: agents asking for what you copied.", func() {
 			segmented(c, "clip", &s.Clipboard, []string{"ask", "allow", "deny"}, []string{"Ask", "Allow", "Deny"})
@@ -484,7 +487,7 @@ func (a *App) shellPage(c *ui.Context, pal *palette) {
 			if !a.ss.shellEditing {
 				a.ss.shellDraft = s.Shell
 			}
-			in := ui.TextInput(c.Key("shell"), &a.ss.shellDraft).Placeholder(proto.ShortDir(login)).Width(220).Label("Shell")
+			in := textField(c, "shell", &a.ss.shellDraft, proto.ShortDir(login), 220, pal)
 			a.ss.shellEditing = in.Focused()
 			// Kept as it is submitted, or as the field loses the focus.
 			in.OnSubmit(func() { a.set.Shell = strings.TrimSpace(a.ss.shellDraft) })
@@ -494,15 +497,15 @@ func (a *App) shellPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, "Scrollback", "How much output each pane keeps, also while no window shows it.", func() {
 			sizes := []int{0, 1, 4, 16, 64}
-			names := []string{"None", "1 MB", "4 MB", "16 MB", "64 MB"}
-			i := slices.Index(sizes, s.Scrollback)
-			if i < 0 {
-				names = append(names, strconv.Itoa(s.Scrollback)+" MB")
+			if !slices.Contains(sizes, s.Scrollback) {
 				sizes = append(sizes, s.Scrollback)
-				i = len(sizes) - 1
 			}
-			cur := names[i]
-			ui.Select(c.Key("sb"), &cur, names).Width(130).OnChange(func() { a.set.Scrollback = sizes[slices.Index(names, cur)] })
+			popup(c, "sb", &s.Scrollback, sizes, func(mb int) string {
+				if mb == 0 {
+					return "None"
+				}
+				return strconv.Itoa(mb) + " MB"
+			}, 130, pal)
 		})
 	})
 	settingsGroup(c, pal, "Environment", "Added to every pane’s, over what kero sets (TERM, KERO_SESSION…).", func() {
@@ -524,7 +527,7 @@ func (a *App) shellPage(c *ui.Context, pal *palette) {
 					a.ss.envDraft = ""
 				}
 			}
-			ui.TextInput(c.Key("env-new"), &a.ss.envDraft).Placeholder("NAME=value").Grow(1).Font("monospace").Label("New variable").OnSubmit(addEnv)
+			textField(c, "env-new", &a.ss.envDraft, "NAME=value", 0, pal).Font("monospace").OnSubmit(addEnv)
 			if button(c, "env-add", "Add", "", false, pal) {
 				addEnv()
 			}
@@ -680,7 +683,7 @@ func (a *App) toastIn(c *ui.Context, msg string) { c.Toast(msg) }
 
 func (a *App) keyboardPage(c *ui.Context, pal *palette) {
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-		ui.SearchField(c.Key("kb-search"), &a.ss.filter).Grow(1).Placeholder("Search actions or shortcuts")
+		textField(c, "kb-search", &a.ss.filter, "Search actions or shortcuts", 0, pal)
 		if len(a.set.Shortcuts) > 0 && button(c, "kb-reset", "Restore Defaults", "", false, pal) {
 			a.set.Shortcuts = nil
 			a.ss.notice = ""
