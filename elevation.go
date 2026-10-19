@@ -15,7 +15,7 @@ import (
 // selected row, buttons.
 func raised(e ui.Element, pal *palette) ui.Element {
 	if pal.dark {
-		return e.Border(1, pal.edge).Shadow(0, 1, 3, 0, pal.cardShadow)
+		return darkShadow(litEdge(e, pal))
 	}
 	return e.Shadow(0, 1, 2, 0, pal.cardShadow).Shadow(0, 1, 6, 0, pal.cardShadow2)
 }
@@ -23,9 +23,23 @@ func raised(e ui.Element, pal *palette) ui.Element {
 // floating lifts a surface above the window: the palette, dialogs.
 func floating(e ui.Element, pal *palette) ui.Element {
 	if pal.dark {
-		e.Border(1, pal.edgeHigh)
+		return darkShadow(litEdge(e, pal)).Shadow(0, 16, 40, 0, pal.floatShadow)
 	}
 	return e.Shadow(0, 1, 3, 0, pal.cardShadow).Shadow(0, 16, 40, 0, pal.floatShadow)
+}
+
+// litEdge draws a dark surface's edge as Rex's docs draw their code
+// blocks: a 1px border in the text's color, 18% at the top fading
+// evenly to 6% at the bottom, as if lit from above.
+func litEdge(e ui.Element, pal *palette) ui.Element {
+	return e.Border(1, pal.text.Alpha(0.12)).BorderLinearGradient(ui.LinearGradient{
+		Angle: 180, From: pal.text.Alpha(0.18), To: pal.text.Alpha(0.06),
+	})
+}
+
+// darkShadow is Rex's surface shadow in the dark: three tight layers.
+func darkShadow(e ui.Element) ui.Element {
+	return e.Shadow(0, 1, 1, 0, ui.RGBA(0, 0, 0, 0.2)).Shadow(0, 2, 2, -1, ui.RGBA(0, 0, 0, 0.2)).Shadow(0, 4, 6, -3, ui.RGBA(0, 0, 0, 0.24))
 }
 
 // face styles a control's face: see palette.control.
@@ -34,7 +48,7 @@ func face(e ui.Element, pal *palette, bg ui.Color) ui.Element {
 	if pal.controlShadow {
 		return e.Shadow(0, 0.5, 1.5, 0, ui.RGBA(0, 0, 0, 0.13)).Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.05))
 	}
-	return e.Border(1, pal.edgeHigh).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.25))
+	return darkShadow(litEdge(e, pal))
 }
 
 // button is kero's button: a raised surface, or the accent's for the
