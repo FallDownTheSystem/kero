@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -669,32 +670,49 @@ func (a *App) apply(s settings.Settings, save bool) {
 }
 
 // watchConfig applies the configuration as the user saves it in an
-// editor, and tells what it got wrong. Load reads the file again only
-// when it changed, so a look a second costs a stat.
+// editor, and tells what it got wrong. The system hints at changes in the
+// file's directory (FSEvents on macOS), where an editor's save, which
+// replaces the file, shows too: a hint is all it takes, as Load reads the
+// file again only when its modification time changed, so the watch keeps
+// no snapshot and stats nothing. The app's own saves come back as changes
+// already applied, which change nothing.
 func (a *App) watchConfig() {
-	prev := settings.Load()
-	prevProblems := strings.Join(settings.Problems(), "\n")
-	for range time.Tick(time.Second) {
-		cur := settings.Load()
-		problems := settings.Problems()
-		joined := strings.Join(problems, "\n")
-		if reflect.DeepEqual(cur, prev) && joined == prevProblems {
-			continue
+	dir := filepath.Dir(settings.Path())
+	for {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return
 		}
-		prev, prevProblems = cur, joined
-		a.update(func() {
-			a.ss.problems = problems
-			if !reflect.DeepEqual(cur, a.applied) {
-				a.apply(cur, false)
+		w, err := mygo.WatchFiles(context.Background(), dir, mygo.FileWatchOptions{HintsOnly: true})
+		if err != nil {
+			return
+		}
+		for {
+			if _, err := w.Next(context.Background()); err != nil {
+				break // the directory went: watch it again, made anew
 			}
-			if len(problems) > 0 {
-				a.toast(fmt.Sprintf("Your config has %d problem(s): see Settings › Advanced", len(problems)))
-			}
-			if a.setWin != nil {
-				a.setWin.Invalidate()
-			}
-		})
+			a.reloadConfig()
+		}
+		w.Close()
 	}
+}
+
+// reloadConfig applies the configuration as the file now has it.
+func (a *App) reloadConfig() {
+	cur := settings.Load()
+	problems := settings.Problems()
+	a.update(func() {
+		changed := strings.Join(problems, "\n") != strings.Join(a.ss.problems, "\n")
+		a.ss.problems = problems
+		if !reflect.DeepEqual(cur, a.applied) {
+			a.apply(cur, false)
+		}
+		if changed && len(problems) > 0 {
+			a.toast(fmt.Sprintf("Your config has %d problem(s): see Settings › Advanced", len(problems)))
+		}
+		if a.setWin != nil {
+			a.setWin.Invalidate()
+		}
+	})
 }
 
 func vibrancyFor(s settings.Settings) mygo.Vibrancy {
