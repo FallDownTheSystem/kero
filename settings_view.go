@@ -59,7 +59,7 @@ type settingsState struct {
 	service      string // kerod, as last asked
 	notice       string // a line under the keyboard page, as of a conflict
 	toast        string
-	combo        map[string]*string         // the text of combo fields, by key
+	menus        map[string]*searchMenu     // the search menus', by key
 	problems     []string                   // what the configuration file got wrong
 	scrolls      map[string]*ui.ScrollState // each page's, for its scroll edge
 }
@@ -508,7 +508,7 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			if !slices.Contains(opts, family) {
 				opts = append([]string{family}, opts...)
 			}
-			a.comboField(c, "font", family, opts, 220, pal, func(v string) {
+			a.searchPopup(c, "font", family, opts, 240, "Use “%s”", pal, func(v string) {
 				switch v {
 				case "JetBrains Mono Nerd Font":
 					v = ""
@@ -546,10 +546,10 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 	themes := append([]string{"kero"}, terminal.GhosttyThemes()...)
 	settingsGroup(c, pal, "Colors", "Ghostty’s themes, and your own in ~/.config/ghostty/themes.", func() {
 		settingRow(c, pal, "Light windows", "", func() {
-			a.comboField(c, "light", s.LightTheme, themes, 220, pal, func(v string) { a.set.LightTheme = v })
+			a.searchPopup(c, "light", s.LightTheme, themes, 240, "", pal, func(v string) { a.set.LightTheme = v })
 		})
 		settingRow(c, pal, "Dark windows", "", func() {
-			a.comboField(c, "dark", s.DarkTheme, themes, 220, pal, func(v string) { a.set.DarkTheme = v })
+			a.searchPopup(c, "dark", s.DarkTheme, themes, 240, "", pal, func(v string) { a.set.DarkTheme = v })
 		})
 	})
 	settingsGroup(c, pal, "Cursor", "", func() {

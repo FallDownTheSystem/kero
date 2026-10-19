@@ -1,41 +1,77 @@
 package main
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 )
 
-// kero's form controls, as macOS 27 draws its own: a pop-up button, a
-// rounded bezel with the up and down chevrons, opening a menu whose
-// current item has a check; a text field, rounded, with a faint stroke
-// inside and the accent's glow around it while it has the focus; and a
-// combo field, a text field with a menu that its text filters.
+// kero's form controls, as macOS 27 draws its own: a pop-up button, its
+// choice beside the up and down chevrons in a soft disc, which the whole
+// button takes on as the pointer comes, opening its menu over itself with
+// the current item, checked, on it; a search menu, the same button with a
+// search field atop its menu, for long lists; and a text field, rounded,
+// with a faint stroke inside and the accent's glow around it while it has
+// the focus.
 
 var (
-	updownIcon = glyph("f7-chevron-up-chevron-down")
-	checkIcon  = glyph("f7-checkmark-alt")
+	updownIcon = glyph("lucide-chevrons-up-down")
+	checkIcon  = glyph("lucide-check")
 )
 
-const controlH = 24 // the height of macOS's regular controls
+const (
+	controlH = 24 // the height of macOS's regular controls
+	popupH   = 28 // a pop-up button's, its disc 22
+	// A menu's padding, its items' height, and where their labels start,
+	// past the check.
+	menuPad, menuItemH, menuTextX = 5, 24, 22
+)
+
+// popupFace draws a pop-up button on trig: its text, and the chevrons in
+// a disc, which the button's own tint takes the place of as the pointer
+// comes, deepening while its menu is open.
+func popupFace(c *ui.Context, trig ui.Element, text string, open bool, pal *palette) {
+	trig.Height(popupH).Padding(0, 3, 0, 10).Gap(6).Radius(popupH / 2).AlignItems(ui.Center).Cursor(ui.CursorDefault)
+	tint := pal.text.Alpha(0.065)
+	if pal.dark {
+		tint = ui.RGBA(255, 255, 255, 0.09)
+	}
+	hover := trig.Hovered() || open
+	bg, disc := ui.Transparent, tint
+	switch {
+	case open || trig.Pressed():
+		bg, disc = tint.Mix(pal.text, 0.06), ui.Transparent
+	case hover:
+		bg, disc = tint, ui.Transparent
+	}
+	anim := ui.Animation{Duration: 120 * time.Millisecond}
+	trig.Background(trig.AnimateColor("bg", bg, anim))
+	trig.Children(func() {
+		ui.Text(c, text).FontSize(13).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+		d := ui.Box(c.Key("disc")).Size(22, 22).Radius(11).Center().Shrink(0)
+		d.Background(d.AnimateColor("bg", disc, anim)).Children(func() {
+			ui.Icon(c, updownIcon).Size(16, 16).TextColor(pal.text.Alpha(0.85))
+		})
+	})
+}
 
 // popup chooses *value among options, labeled by label, as a pop-up
-// button. It binds *value itself: the choice lands in it.
+// button no wider than width. It binds *value itself: the choice lands
+// in it.
 func popup[T comparable](c *ui.Context, key string, value *T, options []T, label func(T) string, width float32, pal *palette) ui.Element {
 	sel := ui.SelectBase(c.Key(key), value)
-	trig := sel.Trigger.Height(controlH).Width(width).Padding(0, 6, 0, 10).Gap(6).Radius(7).AlignItems(ui.Center)
-	bg := pal.control
-	if trig.Hovered() || sel.Open() {
-		bg = pal.controlHover
-	}
-	face(trig, pal, bg)
-	trig.Children(func() {
-		ui.Text(c, label(*value)).FontSize(13).TextColor(pal.text).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
-		ui.Icon(c, updownIcon).Size(9, 11).TextColor(pal.textMuted)
-	})
+	trig := sel.Trigger.MaxWidth(width)
+	popupFace(c, trig, label(*value), sel.Open(), pal)
+	at := max(slices.Index(options, *value), 0)
 	sel.Popup(func(panel ui.Element) {
-		menuPanel(panel, pal).MinWidth(width)
+		// Over the button, the current item's label on the button's, as
+		// macOS opens a pop-up button's menu.
+		menuPanel(panel, pal).AttachTo(trig, ui.AnchorTopLeft, ui.AnchorTopLeft).
+			Top(-(menuPad + float32(at)*menuItemH + (menuItemH-popupH)/2)).
+			Left(-(menuPad + menuTextX - 10))
 		for _, o := range options {
 			menuItem(c, sel.Item(o), label(o), o == *value, pal)
 		}
@@ -45,24 +81,120 @@ func popup[T comparable](c *ui.Context, key string, value *T, options []T, label
 
 // menuPanel styles a menu: rounded, lifted off the window.
 func menuPanel(panel ui.Element, pal *palette) ui.Element {
-	return floating(panel.Margin(4, 0, 0, 0).Padding(5).Radius(11).Background(pal.popover), pal)
+	return floating(panel.Padding(menuPad).Radius(13).Background(pal.popover), pal)
 }
 
 // menuItem styles an item of a menu: a check by the current one, and the
 // accent behind the one the pointer or the arrows are on.
 func menuItem(c *ui.Context, item ui.Element, label string, current bool, pal *palette) {
-	item.Height(24).Padding(0, 10, 0, 6).Gap(5).Radius(6).AlignItems(ui.Center)
+	menuRow(c, item, label, current, item.Highlighted(), pal)
+}
+
+func menuRow(c *ui.Context, item ui.Element, label string, current, highlighted bool, pal *palette) {
+	item.Height(menuItemH).Padding(0, 12, 0, 6).Gap(5).Radius(7).AlignItems(ui.Center)
 	fg := pal.text
-	if item.Highlighted() {
+	if highlighted {
 		item.Background(pal.accent)
 		fg = ui.Hex("#ffffff")
 	}
 	item.TextColor(fg).Children(func() {
-		mark := ui.Icon(c, checkIcon).Size(11, 11)
+		mark := ui.Icon(c, checkIcon).Size(12, 12).Shrink(0)
 		if !current {
 			mark.Opacity(0)
 		}
-		ui.Text(c, label).FontSize(13).SingleLine()
+		ui.Text(c, label).FontSize(13).SingleLine().Ellipsis("…").MinWidth(0)
+	})
+}
+
+// searchMenu is a search menu's state: open, what is typed, and the item
+// the arrows or the pointer are on.
+type searchMenu struct {
+	open    bool
+	query   string
+	hi      int
+	hovered string // the item the pointer came to last
+	reveal  bool   // the highlighted item scrolls into view, once
+}
+
+// searchPopup chooses value among options as a pop-up button, whose menu
+// opens below it with a search field atop, for lists too long to scroll
+// through: typing filters them, the arrows move, Return chooses and
+// Escape closes. With custom set, a query no option is offers itself, as
+// custom labels it: "Use “%s”". choose gets the choice.
+func (a *App) searchPopup(c *ui.Context, key, value string, options []string, width float32, custom string, pal *palette, choose func(string)) {
+	if a.ss.menus == nil {
+		a.ss.menus = map[string]*searchMenu{}
+	}
+	m := a.ss.menus[key]
+	if m == nil {
+		m = &searchMenu{}
+		a.ss.menus[key] = m
+	}
+	trig := ui.ButtonBase(c.Key(key)).MaxWidth(width).Label(value)
+	if trig.Clicked() {
+		m.open = !m.open
+		m.query, m.hovered, m.reveal = "", "", true
+		m.hi = max(slices.Index(options, value), 0)
+	}
+	popupFace(c, trig, value, m.open, pal)
+	ui.PopoverBase(c.Key(key+"-menu"), trig, &m.open, func(panel ui.Element) {
+		menuPanel(panel, pal).Margin(4, 0, 0, 0).Width(max(width, 260))
+		q := strings.ToLower(strings.TrimSpace(m.query))
+		var shown []string
+		exact := false
+		for _, o := range options {
+			if q == "" || strings.Contains(strings.ToLower(o), q) {
+				shown = append(shown, o)
+			}
+			exact = exact || strings.ToLower(o) == q
+		}
+		labels := slices.Clone(shown)
+		if custom != "" && q != "" && !exact {
+			shown = append(shown, strings.TrimSpace(m.query))
+			labels = append(labels, fmt.Sprintf(custom, strings.TrimSpace(m.query)))
+		}
+		m.hi = min(max(m.hi, 0), max(len(shown)-1, 0))
+		pick := func(i int) {
+			if i >= 0 && i < len(shown) {
+				m.open = false
+				if shown[i] != value {
+					choose(shown[i])
+				}
+			}
+		}
+		var in ui.Element
+		frame := ui.Row(c.Key("search")).Margin(0, 0, menuPad, 0).Cursor(ui.CursorText)
+		frame.Children(func() {
+			ui.Icon(c, searchIcon).Size(12, 12).TextColor(pal.textFaint).Shrink(0)
+			in = ui.TextInputBase(c.Key("q"), &m.query).AutoFocus().Grow(1).MinWidth(0).FontSize(13).
+				Placeholder("Search").Label("Search")
+		})
+		field(c, frame, in.Focused(), pal)
+		in.OnChange(func() { m.hi, m.reveal = 0, true })
+		in.OnShortcut(0, ui.KeyDown, func() { m.hi, m.reveal = min(m.hi+1, len(shown)-1), true })
+		in.OnShortcut(0, ui.KeyUp, func() { m.hi, m.reveal = max(m.hi-1, 0), true })
+		in.OnSubmit(func() { pick(m.hi) })
+		if len(shown) == 0 {
+			ui.Text(c, "No Results").FontSize(13).TextColor(pal.textFaint).Padding(6, 12)
+			return
+		}
+		reveal := m.reveal
+		m.reveal = false
+		ui.Scroll(c.Key("items")).MaxHeight(300).Children(func() {
+			for i, o := range shown {
+				row := ui.Row(c.Key(o)).Label(labels[i])
+				if row.Hovered() && m.hovered != o {
+					m.hovered, m.hi = o, i
+				}
+				if row.Clicked() {
+					pick(i)
+				}
+				menuRow(c, row, labels[i], o == value, i == m.hi, pal)
+				if reveal && i == m.hi {
+					row.ScrollIntoView()
+				}
+			}
+		})
 	})
 }
 
@@ -97,48 +229,6 @@ func textField(c *ui.Context, key string, value *string, placeholder string, wid
 	})
 	field(c, frame, in.Focused(), pal)
 	return in
-}
-
-// comboField chooses value among options, which typing in its field
-// filters, calling choose with the choice.
-func (a *App) comboField(c *ui.Context, key, value string, options []string, width float32, pal *palette, choose func(string)) {
-	if a.ss.combo == nil {
-		a.ss.combo = map[string]*string{}
-	}
-	text := a.ss.combo[key]
-	if text == nil {
-		text = new(string)
-		a.ss.combo[key] = text
-	}
-	cb := ui.ComboboxBase(c.Key(key), text)
-	if !cb.Open() && !cb.Input.Focused() {
-		*text = value
-	}
-	cb.Input.Width(width).FontSize(13)
-	field(c, cb.Input, cb.Input.Focused() || cb.Open(), pal).Padding(0, 26, 0, 8)
-	muted := pal.textMuted
-	cb.Input.DrawOver(func(p *ui.Painter, r ui.Rect) {
-		p.Icon(updownIcon, ui.Rect{X: r.X + r.W - 18, Y: r.Y + (r.H-11)/2, W: 9, H: 11}, muted)
-	})
-	if v, ok := cb.Chosen(); ok && v != value {
-		choose(v)
-	}
-	cb.Popup(func(panel ui.Element) {
-		menuPanel(panel, pal).MinWidth(width)
-		q := strings.ToLower(strings.TrimSpace(*text))
-		ui.Scroll(c.Key("items")).MaxHeight(280).Children(func() {
-			n := 0
-			for _, o := range options {
-				if cb.Filtering() && q != "" && !strings.Contains(strings.ToLower(o), q) {
-					continue
-				}
-				if n++; n > 300 {
-					break
-				}
-				menuItem(c, cb.Item(o), o, o == value, pal)
-			}
-		})
-	})
 }
 
 // slider sets *value between lo and hi, as macOS's slider: a thin track,

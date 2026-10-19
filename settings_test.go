@@ -222,8 +222,8 @@ func TestBundledFont(t *testing.T) {
 	a.ss.page = "terminal"
 	tt := ui.NewTester(a.settingsView, 820, 320)
 	tt.Frame()
-	if text := a.ss.combo["font"]; text == nil || *text != "JetBrains Mono Nerd Font" {
-		t.Errorf("the picker does not show the bundled font: %v", text)
+	if !tt.HasText("JetBrains Mono Nerd Font") {
+		t.Errorf("the picker does not show the bundled font; texts %q", tt.Texts())
 	}
 	shot(t, tt, "font-preview")
 }
@@ -310,5 +310,81 @@ func TestSettingsSearch(t *testing.T) {
 	tt.Frame()
 	if a.ss.query != "" || !tt.HasText("General") {
 		t.Errorf("Escape: query %q", a.ss.query)
+	}
+}
+
+// Pop-up buttons open their menu over themselves; the font and theme
+// pickers search theirs ($KERO_SHOTS).
+func TestPopupButtons(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		name := map[bool]string{false: "light", true: "dark"}[dark]
+		a := testApp(t)
+		a.ss.page = "terminal"
+		tt := ui.NewTester(a.settingsView, 820, 900)
+		tt.SetDark(dark)
+		tt.Frame()
+		tt.Advance(time.Second)
+		shot(t, tt, "popup-rest-"+name)
+		r, ok := tt.Find("Regular")
+		if !ok {
+			t.Fatalf("no weight button; texts %q", tt.Texts())
+		}
+		tt.Move(r.X+r.W/2, r.Y+r.H/2)
+		tt.Advance(time.Second)
+		tt.Frame()
+		shot(t, tt, "popup-hover-"+name)
+		tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		if !tt.HasText("Semibold") {
+			t.Fatalf("the weight menu did not open; texts %q", tt.Texts())
+		}
+		// The current item lies on the button.
+		if got, ok := tt.Find("Medium"); !ok || got.Y > r.Y+r.H+menuItemH || got.Y < r.Y-r.H {
+			t.Errorf("Medium at %v, the button at %v: the menu is not over it", got, r)
+		}
+		shot(t, tt, "popup-open-"+name)
+		tt.Key(0, ui.KeyDown)
+		tt.Key(0, ui.KeyEnter)
+		tt.Frame()
+		if a.set.FontWeight != 500 {
+			t.Errorf("chose weight %d, want 500", a.set.FontWeight)
+		}
+
+		// The theme picker: typing filters, Return chooses.
+		if err := tt.Click("kero"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		tt.Type("catppuccin mocha")
+		tt.Frame()
+		shot(t, tt, "popup-search-"+name)
+		tt.Key(0, ui.KeyEnter)
+		tt.Frame()
+		if a.set.LightTheme != "Catppuccin Mocha" {
+			t.Errorf("light theme %q, want Catppuccin Mocha", a.set.LightTheme)
+		}
+		if a.ss.menus["light"].open {
+			t.Error("the theme menu stayed open")
+		}
+
+		// The font picker takes a font it does not list.
+		if err := tt.Click("JetBrains Mono Nerd Font"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Type("Iosevka Term, Symbols Nerd Font")
+		tt.Frame()
+		if !tt.HasText("Use “Iosevka Term, Symbols Nerd Font”") {
+			t.Errorf("no custom font offered; texts %q", tt.Texts())
+		}
+		tt.Key(0, ui.KeyEnter)
+		tt.Frame()
+		if a.set.FontFamily != "Iosevka Term, Symbols Nerd Font" {
+			t.Errorf("font %q", a.set.FontFamily)
+		}
 	}
 }
