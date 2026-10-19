@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
@@ -175,29 +176,35 @@ func (a *App) settingsView(c *ui.Context) {
 						page = p
 					}
 				}
-				ui.Row(c).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 24).DragWindow().Children(func() {
-					ui.Text(c, page.title).FontSize(15).FontWeight(650).TextColor(pal.text)
-				})
-				ui.Scroll(c.Key("page-"+page.id)).Grow(1).MinHeight(0).Padding(4, 24, 28, 24).Children(func() {
-					ui.Column(c).Gap(22).MaxWidth(620).Children(func() {
-						switch page.id {
-						case "general":
-							a.generalPage(c, pal)
-						case "appearance":
-							a.appearancePage(c, pal)
-						case "terminal":
-							a.terminalPage(c, pal)
-						case "shell":
-							a.shellPage(c, pal)
-						case "notifications":
-							a.notificationsPage(c, pal)
-						case "keyboard":
-							a.keyboardPage(c, pal)
-						case "agents":
-							a.agentsPage(c, pal)
-						case "advanced":
-							a.advancedPage(c, pal)
-						}
+				// The page scrolls under its header, which macOS 27's hard
+				// scroll edge frosts it under, as System Settings does.
+				ui.Box(c.Key("page")).Grow(1).MinHeight(0).Children(func() {
+					ui.Scroll(c.Key("page-"+page.id)).Fill().Padding(headerH+4, 24, 28, 24).ScrollbarInsets(headerH, 0, 0).Children(func() {
+						ui.Column(c).Gap(22).MaxWidth(620).Children(func() {
+							switch page.id {
+							case "general":
+								a.generalPage(c, pal)
+							case "appearance":
+								a.appearancePage(c, pal)
+							case "terminal":
+								a.terminalPage(c, pal)
+							case "shell":
+								a.shellPage(c, pal)
+							case "notifications":
+								a.notificationsPage(c, pal)
+							case "keyboard":
+								a.keyboardPage(c, pal)
+							case "agents":
+								a.agentsPage(c, pal)
+							case "advanced":
+								a.advancedPage(c, pal)
+							}
+						})
+					})
+					ui.Box(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).PassThrough().
+						Material(glass.ScrollEdge{Hard: true, Background: pal.card})
+					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).AlignItems(ui.Center).Padding(0, 24).DragWindow().Children(func() {
+						ui.Text(c, page.title).FontSize(15).FontWeight(650).TextColor(pal.text)
 					})
 				})
 			})

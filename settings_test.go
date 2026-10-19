@@ -227,3 +227,20 @@ func TestBundledFont(t *testing.T) {
 	}
 	shot(t, tt, "font-preview")
 }
+
+// A page scrolled under its header frosts there ($KERO_SHOTS).
+func TestScrollEdgeShots(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		a := testApp(t)
+		a.ss.page = "keyboard"
+		tt := ui.NewTester(a.settingsView, 820, 520)
+		tt.SetDark(dark)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Scroll(500, 300, 0, 130)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		shot(t, tt, "scroll-edge-"+map[bool]string{false: "light", true: "dark"}[dark])
+	}
+}
