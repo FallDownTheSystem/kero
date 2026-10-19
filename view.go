@@ -148,6 +148,54 @@ func iconButton(c *ui.Context, key string, svg *ui.SVG, label string, pal *palet
 	}
 }
 
+// tipsAt are where pointerTooltip's tips show, by key: where the pointer
+// rested as each came, which they keep while they show.
+var tipsAt = map[string]ui.Point{}
+
+// pointerTooltip shows s as el's tooltip, as Element.Tooltip does, but
+// where macOS shows its tooltips: below the pointer where it came to rest,
+// clear of the arrow, rather than centered above el, which a long row
+// puts far from where the user looks.
+func pointerTooltip(c *ui.Context, el ui.Element, key, s string) {
+	el.Description(s)
+	const below = 18 // the arrow's height, from its tip
+	px, py, over := el.PointerPosition()
+	at, showing := tipsAt[key]
+	if !showing {
+		b := el.Bounds()
+		at = ui.Point{X: b.X + px, Y: b.Y + py + below}
+	}
+	var spot ui.Element
+	if over {
+		ui.Overlay(c, func() {
+			spot = ui.Box(c.Key(key+"-at")).Absolute().Left(at.X).Top(at.Y).Size(0, 0).PassThrough()
+		})
+	}
+	shown := false
+	ui.TooltipBase(c, el, func(tip ui.Element) {
+		shown = true
+		th := c.Theme()
+		fill, text := th.Inverse, th.InverseText
+		if fill == ui.Transparent {
+			fill = th.Text
+		}
+		if text == ui.Transparent {
+			text = th.Background
+		}
+		tip.MaxWidth(th.Space(80)).Padding(th.Space(1.25), th.Space(2)).Radius(th.Space(1.25)).
+			Background(fill).TextColor(text).FontSize(th.FontSize-1).Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, 0.2))
+		tip.Children(func() { ui.Text(c, s) })
+		if over {
+			tip.AttachTo(spot, ui.AnchorTopLeft, ui.AnchorTopLeft)
+		}
+	})
+	if shown {
+		tipsAt[key] = at
+	} else {
+		delete(tipsAt, key)
+	}
+}
+
 func kbd(c *ui.Context, pal *palette, keys string) {
 	ui.Text(c, keys).FontSize(11).TextColor(pal.textMuted).Padding(1, 5).Radius(4).
 		Background(pal.kbd).SingleLine()
@@ -195,7 +243,7 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 	if hdr.Clicked() {
 		a.toggleProject(id)
 	}
-	hdr.Tooltip(proto.ShortDir(g.project.Dir))
+	pointerTooltip(c, hdr, "tip-project-"+id, proto.ShortDir(g.project.Dir))
 	hdr.ContextMenu(func(m *ui.Menu) {
 		if m.Item("New Session").Chosen() {
 			a.newSession(id)
@@ -288,7 +336,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	if s.Message != "" {
 		tip = s.Message + "\n" + tip
 	}
-	row.Tooltip(tip)
+	pointerTooltip(c, row, "tip-"+s.ID, tip)
 	row.ContextMenu(func(m *ui.Menu) { a.sessionMenu(m, s) })
 	row.Children(func() {
 		if a.renaming == s.ID {

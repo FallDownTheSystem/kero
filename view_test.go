@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -226,5 +227,42 @@ func TestSidebarFooter(t *testing.T) {
 		if a.selected != want {
 			t.Errorf("%q went to %s, want %s", label, a.selected, want)
 		}
+	}
+}
+
+// A session's tooltip shows below the pointer where it rested, as macOS
+// shows tooltips, not centered over the row ($KERO_SHOTS).
+func TestSessionTooltipAtPointer(t *testing.T) {
+	for _, dx := range []float32{20, 160} {
+		a := testApp(t)
+		a.st.Sessions[0].Process = "claude"
+		a.st.Sessions[0].Dir = "/Users/someone/dev/kero"
+		tt := ui.NewTester(a.view, 1100, 700)
+		tt.Frame()
+		r, ok := tt.Find("1") // the project header's count, above the row
+		if !ok {
+			t.Fatal("no project header")
+		}
+		x, y := 12+dx, r.Y+r.H/2+34 // the session row's middle
+		tt.Move(x, y)
+		tt.Advance(2 * time.Second)
+		tt.Frame()
+		var tip ui.Rect
+		found := false
+		for _, txt := range tt.Texts() {
+			if strings.HasPrefix(txt, "claude · ") {
+				tip, found = tt.Find(txt)
+			}
+		}
+		if !found {
+			t.Fatalf("dx %g: no tooltip; texts %q", dx, tt.Texts())
+		}
+		if d := tip.X - x; d < 0 || d > 16 {
+			t.Errorf("dx %g: tooltip text at x %g, the pointer at %g", dx, tip.X, x)
+		}
+		if d := tip.Y - y; d < 12 || d > 36 {
+			t.Errorf("dx %g: tooltip text at y %g, the pointer at %g", dx, tip.Y, y)
+		}
+		shot(t, tt, fmt.Sprintf("session-tooltip-%g", dx))
 	}
 }
