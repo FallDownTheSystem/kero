@@ -396,7 +396,7 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, "Line height", "", func() {
 			v := float64(s.LineHeight)
-			ui.Slider(c.Key("lh"), &v, 1, 2).Width(160).OnChange(func() { a.set.LineHeight = float32(int(v*100+0.5)) / 100 })
+			slider(c, "lh", &v, 1, 2, 160, pal).OnChange(func() { a.set.LineHeight = float32(int(v*100+0.5)) / 100 })
 			ui.Textf(c, "%.2f×", s.LineHeight).FontSize(12.5).TextColor(pal.textMuted).Width(40).FontFeatures("tnum")
 		})
 		settingRow(c, pal, "Weight", "", func() {

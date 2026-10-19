@@ -167,3 +167,28 @@ func TestControlShots(t *testing.T) {
 		shot(t, tt, "controls-field-"+name)
 	}
 }
+
+// The line height slider: a click on its track sets it ($KERO_SHOTS).
+func TestSlider(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		a := testApp(t)
+		a.ss.page = "terminal"
+		tt := ui.NewTester(a.settingsView, 820, 640)
+		tt.SetDark(dark)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		shot(t, tt, "slider-"+map[bool]string{false: "light", true: "dark"}[dark])
+		label, ok := tt.Find("1.22×")
+		if !ok {
+			t.Fatalf("no line height; texts %q", tt.Texts())
+		}
+		// The slider ends 8 DIPs left of its label: near its end, 2×.
+		tt.ClickAt(label.X-16, label.Y+label.H/2)
+		tt.Frame()
+		tt.Frame()
+		if a.set.LineHeight < 1.85 {
+			t.Errorf("line height %v after a click near the slider's end", a.set.LineHeight)
+		}
+	}
+}

@@ -140,3 +140,41 @@ func (a *App) comboField(c *ui.Context, key, value string, options []string, wid
 		})
 	})
 }
+
+// slider sets *value between lo and hi, as macOS's slider: a thin track,
+// the accent's up to a white knob, which the pointer and the arrows move.
+// The knob's half width pads the track, so that the value spans the
+// knob's travel.
+func slider(c *ui.Context, key string, value *float64, lo, hi float64, width float32, pal *palette) ui.Element {
+	const knobW, knobH, trackH = 20, 14, 4
+	s := ui.SliderBase(c.Key(key), value, lo, hi).Width(width).Height(controlH).Padding(0, knobW/2)
+	track := pal.text.Alpha(0.14)
+	if pal.dark {
+		track = ui.RGBA(255, 255, 255, 0.18)
+	}
+	f := float32(0)
+	if hi > lo {
+		f = float32((*value - lo) / (hi - lo))
+	}
+	f = min(max(f, 0), 1)
+	accent, dark, pressed := pal.accent, pal.dark, s.Pressed()
+	s.Draw(func(p *ui.Painter, r ui.Rect) {
+		x0, x1 := r.X+knobW/2, r.X+r.W-knobW/2
+		cy := r.Y + r.H/2
+		x := x0 + (x1-x0)*f
+		p.Fill(ui.Rect{X: x0 - trackH/2, Y: cy - trackH/2, W: x1 - x0 + trackH, H: trackH}, track, trackH/2)
+		p.Fill(ui.Rect{X: x0 - trackH/2, Y: cy - trackH/2, W: x - x0 + trackH, H: trackH}, accent, trackH/2)
+		knob := ui.Rect{X: x - knobW/2, Y: cy - knobH/2, W: knobW, H: knobH}
+		p.Shadow(knob, knobH/2, 0, 0.5, 2, 0, ui.RGBA(0, 0, 0, 0.3))
+		p.Shadow(knob, knobH/2, 0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.08))
+		face := ui.Hex("#ffffff")
+		if pressed {
+			face = ui.Hex("#f2f2f4")
+		}
+		if dark {
+			face = ui.Hex("#e8e8ec")
+		}
+		p.Fill(knob, face, knobH/2)
+	})
+	return s
+}
