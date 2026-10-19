@@ -469,3 +469,48 @@ func TestSearchMenuStaysInWindow(t *testing.T) {
 		}
 	}
 }
+
+// Moving the pointer along a search menu highlights one item at a time,
+// on the line between two items too.
+func TestSearchMenuOneHighlight(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "terminal"
+	tt := ui.NewTester(a.settingsView, 820, 900)
+	tt.Frame()
+	if err := tt.Click("JetBrains Mono Nerd Font"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	for _, f := range []string{"Monaco", "JetBrains Mono", "Fira Code", "Cascadia Code", "SF Mono"} {
+		r, ok := tt.Find(f)
+		if !ok {
+			t.Fatalf("no %s; texts %q", f, tt.Texts())
+		}
+		// On the line between f and the item above it, which both rows
+		// take for theirs.
+		tt.Move(r.X+r.W/2, r.Y-(menuItemH-r.H)/2)
+		for range 3 {
+			tt.Frame()
+		}
+		if tt.FramePending() {
+			t.Errorf("pointer by %s: the menu keeps building", f)
+		}
+		// One accent row: count the accent's pixels down the menu's left.
+		lit, in := 0, false
+		img := tt.Image()
+		x := int(r.X) - 8
+		for y := 0; y < img.Bounds().Dy(); y++ {
+			cr, cg, cb, _ := img.At(x, y).RGBA()
+			acc := cb>>8 > 200 && cr>>8 < 140 && cg>>8 < 160
+			if acc && !in {
+				lit++
+			}
+			in = acc
+		}
+		if lit != 1 {
+			t.Errorf("pointer on %s: %d rows lit", f, lit)
+		}
+	}
+}

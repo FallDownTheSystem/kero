@@ -234,11 +234,15 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		}
 		reveal := m.reveal
 		m.reveal = false
+		// The pointer coming to an item moves the highlight once the items
+		// are built, and the menu builds again: moved as a row learns it,
+		// the rows built before it would keep the old one lit too.
+		moved := -1
 		ui.Scroll(c.Key("items")).MaxHeight(max(listH, menuItemH)).Children(func() {
 			for i, o := range shown {
 				row := ui.Row(c.Key(o)).Label(labels[i])
 				if row.Hovered() && m.hovered != o {
-					m.hovered, m.hi = o, i
+					moved = i
 				}
 				if row.Clicked() {
 					pick(i)
@@ -249,6 +253,10 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 				}
 			}
 		})
+		if moved >= 0 {
+			m.hovered, m.hi = shown[moved], moved
+			c.After(0)
+		}
 	})
 }
 
