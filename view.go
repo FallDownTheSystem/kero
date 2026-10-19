@@ -270,7 +270,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	switch {
 	case selected:
 		bg = pal.rowSelected
-		raised(row, pal) // as the cards: a soft shadow, a lit edge in the dark
+		chosen(row, pal)
 	case hovered:
 		bg = pal.rowHover
 	}

@@ -312,7 +312,7 @@ func (a *App) settingsNav(c *ui.Context, pal *palette, p settingsPage) {
 	switch {
 	case sel:
 		bg = pal.rowSelected
-		raised(item, pal)
+		chosen(item, pal)
 	case item.Hovered():
 		bg = pal.rowHover
 	}

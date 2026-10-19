@@ -20,6 +20,16 @@ func raised(e ui.Element, pal *palette) ui.Element {
 	return e.Shadow(0, 1, 2, 0, pal.cardShadow).Shadow(0, 1, 6, 0, pal.cardShadow2)
 }
 
+// chosen lifts the chosen row of a list, the sidebars', a hair: an even
+// ring a shade darker than what is under it, and a faint shadow close
+// under it, as Rex's rows, lighter than a card's. In the dark, as raised.
+func chosen(e ui.Element, pal *palette) ui.Element {
+	if pal.dark {
+		return raised(e, pal)
+	}
+	return e.Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.06)).Shadow(0, 0.5, 2, 0, ui.RGBA(0, 0, 0, 0.05))
+}
+
 // floating lifts a surface above the window: the palette, dialogs.
 func floating(e ui.Element, pal *palette) ui.Element {
 	if pal.dark {
