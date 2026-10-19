@@ -59,6 +59,7 @@ func runApp() {
 		return
 	}
 	a := newApp()
+	mygo.Theme.SetSource(mygo.ThemeSource(a.set.Appearance))
 	mygo.App.SetMenu(a.menu())
 	mygo.App.OnSecondInstance(func([]string, string) {
 		if a.win != nil {
@@ -95,7 +96,7 @@ func runApp() {
 			// above the position: centered on barMid, as the sidebar's
 			// buttons and the panes' headers are.
 			TrafficLightPosition: &mygo.Point{X: 18, Y: barMid - 7},
-			Vibrancy:             mygo.VibrancySidebar,
+			Vibrancy:             vibrancyFor(a.set),
 			Content:              ui.View(a.view),
 		})
 		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.reportView() }) })
@@ -105,73 +106,6 @@ func runApp() {
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-// do runs an action of the app from a menu, on the main thread.
-func (a *App) do(fn func()) func(*mygo.MenuItem, *mygo.Window) {
-	return func(*mygo.MenuItem, *mygo.Window) { a.update(fn) }
-}
-
-func (a *App) menu() *mygo.Menu {
-	return mygo.NewMenu([]*mygo.MenuItem{
-		{Role: mygo.RoleAppMenu, Submenu: []*mygo.MenuItem{
-			{Role: mygo.RoleAbout},
-			mygo.Separator(),
-			{Label: "Install Command Line Tool…", Click: a.do(a.installCLI)},
-			mygo.Separator(),
-			{Role: mygo.RoleHide},
-			{Role: mygo.RoleHideOthers},
-			{Role: mygo.RoleUnhide},
-			mygo.Separator(),
-			{Label: "Quit kero", Accelerator: "CmdOrCtrl+Q", ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
-			{Label: "Quit and End All Sessions…", Accelerator: "CmdOrCtrl+Alt+Q", Click: a.do(a.quitAndEnd)},
-		}},
-		{Label: "Session", Submenu: []*mygo.MenuItem{
-			{Label: "New Session", Accelerator: "CmdOrCtrl+T", Click: a.do(func() { a.newSession("") })},
-			{Label: "New Session in Home", Accelerator: "CmdOrCtrl+Shift+T", Click: a.do(func() { a.newSessionIn(proto.Home()) })},
-			{Label: "Open Project…", Accelerator: "CmdOrCtrl+O", Click: a.do(a.openProject)},
-			mygo.Separator(),
-			{Label: "Go to Session…", Accelerator: "CmdOrCtrl+P", Click: a.do(a.openPalette)},
-			{Label: "Jump to Session Needing You", Accelerator: "CmdOrCtrl+J", Click: a.do(a.jumpToAttention)},
-			{Label: "Next Session", Accelerator: "CmdOrCtrl+Shift+]", Click: a.do(func() { a.selectOffset(1) })},
-			{Label: "Previous Session", Accelerator: "CmdOrCtrl+Shift+[", Click: a.do(func() { a.selectOffset(-1) })},
-			mygo.Separator(),
-			{Label: "Rename Session", Accelerator: "CmdOrCtrl+R", Click: a.do(func() { a.startRename(a.selected) })},
-			{Label: "Restart Pane", Accelerator: "CmdOrCtrl+Shift+R", Click: a.do(func() {
-				if s := a.session(a.selected); s != nil {
-					a.restartSession(a.focusOf(s))
-				}
-			})},
-			mygo.Separator(),
-			{Label: "Close", Accelerator: "CmdOrCtrl+W", Click: a.do(a.closeFocused)},
-			{Label: "Close Session", Accelerator: "CmdOrCtrl+Shift+W", Click: a.do(func() { a.closeSession(a.selected, true) })},
-		}},
-		{Label: "Pane", Submenu: []*mygo.MenuItem{
-			{Label: "Split Right", Accelerator: "CmdOrCtrl+D", Click: a.do(func() { a.splitPane(a.session(a.selected), "", "right") })},
-			{Label: "Split Down", Accelerator: "CmdOrCtrl+Shift+D", Click: a.do(func() { a.splitPane(a.session(a.selected), "", "down") })},
-			mygo.Separator(),
-			{Label: "Zoom Pane", Accelerator: "CmdOrCtrl+Shift+Enter", Click: a.do(func() { a.zoomPane(a.session(a.selected), "") })},
-			mygo.Separator(),
-			{Label: "Next Pane", Accelerator: "CmdOrCtrl+]", Click: a.do(func() { a.cyclePane(1) })},
-			{Label: "Previous Pane", Accelerator: "CmdOrCtrl+[", Click: a.do(func() { a.cyclePane(-1) })},
-			{Label: "Pane Left", Accelerator: "CmdOrCtrl+Alt+Left", Click: a.do(func() { a.focusDirection("left") })},
-			{Label: "Pane Right", Accelerator: "CmdOrCtrl+Alt+Right", Click: a.do(func() { a.focusDirection("right") })},
-			{Label: "Pane Above", Accelerator: "CmdOrCtrl+Alt+Up", Click: a.do(func() { a.focusDirection("up") })},
-			{Label: "Pane Below", Accelerator: "CmdOrCtrl+Alt+Down", Click: a.do(func() { a.focusDirection("down") })},
-		}},
-		{Role: mygo.RoleEditMenu},
-		{Label: "View", Submenu: []*mygo.MenuItem{
-			{Label: "Toggle Sidebar", Accelerator: "CmdOrCtrl+B", Click: a.do(a.toggleSidebar)},
-			mygo.Separator(),
-			{Label: "Bigger", Accelerator: "CmdOrCtrl+=", Click: a.do(func() { a.zoom(1, false) })},
-			{Label: "Smaller", Accelerator: "CmdOrCtrl+-", Click: a.do(func() { a.zoom(-1, false) })},
-			{Label: "Actual Size", Accelerator: "CmdOrCtrl+0", Click: a.do(func() { a.zoom(0, true) })},
-			mygo.Separator(),
-			{Role: mygo.RoleToggleFullScreen},
-			{Role: mygo.RoleToggleDevTools},
-		}},
-		{Role: mygo.RoleWindowMenu},
-	})
 }
 
 // newSessionIn starts a session in a directory, in its project.

@@ -14,12 +14,10 @@ import (
 	"github.com/egoist/mygo/plugins/terminal"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 const (
-	// scrollback is how much output the daemon keeps per session, which a
-	// client gets as it attaches.
-	scrollback = 4 << 20
 	// echoWindow: output this soon after input is the program answering
 	// the keys (echo, a redraw), not work of its own.
 	echoWindow = 350 * time.Millisecond
@@ -101,9 +99,13 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 	if s.info.Cols <= 0 || s.info.Rows <= 0 {
 		s.info.Cols, s.info.Rows = 120, 36
 	}
+	sb := settings.Load().Scrollback << 20
+	if sb == 0 {
+		sb = -1 // none
+	}
 	term, err := terminal.New(terminal.Options{
 		Conn:       &headless{s: s, closed: make(chan struct{})},
-		Scrollback: scrollback,
+		Scrollback: sb,
 		OnTitle:    s.onTitle,
 		OnBell:     s.onBell,
 		OnNotify:   s.onNotify,

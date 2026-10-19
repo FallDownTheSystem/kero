@@ -13,9 +13,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -24,6 +22,8 @@ import (
 	"time"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
+	"kero/internal/shell"
 )
 
 // Daemon is kerod's state.
@@ -322,58 +322,26 @@ func (d *Daemon) environment(sid, pid string, extra []string) []string {
 		path = "/usr/bin:/bin:/usr/sbin:/sbin"
 	}
 	set("PATH=" + path + ":" + filepath.Join(d.dir, "bin"))
+	for _, kv := range settings.Load().Env {
+		if strings.Contains(kv, "=") {
+			set(kv)
+		}
+	}
 	for _, kv := range extra {
 		set(kv)
 	}
 	return env
 }
 
-var (
-	shellOnce sync.Once
-	shellPath string
-)
-
-// userShell returns the user's login shell, as terminal apps take it:
-// the account's (dscl on macOS, /etc/passwd elsewhere), whatever $SHELL
-// the daemon inherited from whoever started it, else $SHELL, else zsh.
+// userShell returns the shell of new panes: the one Settings names, else
+// the user's login shell.
 func userShell() string {
-	shellOnce.Do(func() {
-		shellPath = accountShell()
-		if shellPath == "" {
-			shellPath = os.Getenv("SHELL")
-		}
-		if shellPath == "" {
-			shellPath = "/bin/zsh"
-		}
-	})
-	return shellPath
-}
-
-func accountShell() string {
-	u, err := user.Current()
-	if err != nil {
-		return ""
-	}
-	valid := func(sh string) string {
-		if st, err := os.Stat(sh); err == nil && !st.IsDir() && st.Mode()&0o111 != 0 {
-			return sh
-		}
-		return ""
-	}
-	if out, err := exec.Command("/usr/bin/dscl", ".", "-read", "/Users/"+u.Username, "UserShell").Output(); err == nil {
-		if _, sh, ok := strings.Cut(strings.TrimSpace(string(out)), ": "); ok {
-			return valid(strings.TrimSpace(sh))
+	if sh := settings.Load().Shell; sh != "" {
+		if st, err := os.Stat(expandHome(sh)); err == nil && !st.IsDir() {
+			return expandHome(sh)
 		}
 	}
-	if b, err := os.ReadFile("/etc/passwd"); err == nil {
-		for _, line := range strings.Split(string(b), "\n") {
-			f := strings.Split(line, ":")
-			if len(f) >= 7 && f[0] == u.Username {
-				return valid(f[6])
-			}
-		}
-	}
-	return ""
+	return shell.Login()
 }
 
 // shellQuote quotes an argument for a shell's command line.

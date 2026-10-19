@@ -138,3 +138,49 @@ func skillDirs(agent string) map[string]string {
 	}
 	return all
 }
+
+// SkillState is where a skill for agents is, and whether it is current.
+type SkillState struct {
+	Agent string // "claude", or "agents" (Codex, OpenCode, Pi…)
+	Dir   string
+	State string // "current", "outdated" or "missing"
+}
+
+// SkillStates returns the state of kero's skill for each kind of agent.
+func SkillStates() []SkillState {
+	var out []SkillState
+	for _, agent := range []string{"claude", "agents"} {
+		dir := skillDirs(agent)[agent]
+		st := "current"
+		b, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+		switch {
+		case err != nil:
+			st = "missing"
+		case string(b) != skillGuide:
+			st = "outdated"
+		}
+		out = append(out, SkillState{Agent: agent, Dir: dir, State: st})
+	}
+	return out
+}
+
+// InstallSkill installs, or updates, kero's skill for a kind of agent.
+func InstallSkill(agent string) error {
+	dir := skillDirs(agent)[agent]
+	if dir == "" {
+		return fmt.Errorf("no agent %q", agent)
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillGuide), 0o644)
+}
+
+// RemoveSkill removes kero's skill for a kind of agent.
+func RemoveSkill(agent string) error {
+	dir := skillDirs(agent)[agent]
+	if dir == "" {
+		return fmt.Errorf("no agent %q", agent)
+	}
+	return os.RemoveAll(dir)
+}

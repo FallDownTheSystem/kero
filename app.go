@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,8 +17,10 @@ import (
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/actions"
 	"kero/internal/client"
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 // connState is how the app stands with kerod.
@@ -70,6 +73,10 @@ type App struct {
 	loaded  bool // a state came
 
 	prefs       prefs
+	set         settings.Settings // the user's settings: Settings' controls edit it
+	applied     settings.Settings // set, as last applied and saved
+	setWin      *mygo.Window      // the Settings window, while open
+	ss          settingsState
 	selected    string
 	terms       map[string]*termEntry
 	lru         []string
@@ -121,6 +128,8 @@ func newApp() *App {
 	a := &App{terms: map[string]*termEntry{}, statuses: map[string]proto.Status{}, active: true, focused: true,
 		refs: map[string]*ui.Handle{}, focus: map[string]string{}, arrived: map[string]bool{}}
 	a.loadPrefs()
+	a.set = settings.Load()
+	a.applied = a.set.Clone()
 	a.selected = a.prefs.Selected
 	return a
 }
@@ -219,11 +228,21 @@ func (a *App) event(cl *client.Client, m proto.Message) {
 			a.setState(*m.State)
 		}
 	case "select":
+		if !a.set.RemoteControl {
+			return
+		}
 		a.selectSession(m.Select)
 		if a.win != nil {
 			a.win.Show()
 			a.win.Focus()
 			mygo.App.Focus()
+		}
+	case "action":
+		if !a.set.RemoteControl {
+			return
+		}
+		if act, ok := actions.Find(m.Action); ok && act.Remote {
+			a.run(act.ID, m.Args)
 		}
 	}
 }
@@ -273,21 +292,32 @@ func (a *App) notify(first bool) {
 		}
 		var title, body string
 		switch {
-		case s.Status == proto.Waiting:
+		case s.Status == proto.Waiting && a.set.NotifyWaiting:
 			title, body = s.DisplayName()+" needs you", s.Message
 			if body == "" {
 				body = "Waiting for your answer"
 			}
-		case s.Status == proto.Idle && prev == proto.Working && s.Unread && s.Agent != "":
-			title, body = s.DisplayName()+" is done", fmt.Sprintf("%s finished in %s", s.Agent, proto.ShortDir(s.Dir))
+		case s.Status == proto.Failed && a.set.NotifyFailed:
+			title, body = s.DisplayName()+" failed", s.Message
+			if body == "" {
+				body = s.PaneName() + " stopped with an error"
+			}
+		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
+			title, body = s.DisplayName()+" is done", s.Message
+			if body == "" {
+				body = fmt.Sprintf("%s finished in %s", s.Agent, proto.ShortDir(s.Dir))
+			}
 		default:
 			continue
+		}
+		if a.set.BounceDock && (s.Status == proto.Waiting || s.Status == proto.Failed) {
+			mygo.App.Dock.Bounce(false)
 		}
 		if !mygo.NotificationsSupported() {
 			continue
 		}
 		id := s.ID
-		n := mygo.NewNotification(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body})
+		n := mygo.NewNotification(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body, Silent: !a.set.NotifySound})
 		n.OnClick(func() {
 			a.update(func() {
 				a.selectSession(id)
@@ -302,6 +332,9 @@ func (a *App) notify(first bool) {
 		if a.session(id) == nil {
 			delete(a.statuses, id)
 		}
+	}
+	if !a.set.DockBadge {
+		waiting = 0
 	}
 	mygo.App.SetBadgeCount(waiting)
 }
@@ -501,16 +534,41 @@ func (a *App) ensureTerm(id string) {
 }
 
 func (a *App) termFont() terminal.Font {
-	return terminal.Font{Size: a.prefs.FontSize, LineHeight: 1.22}
+	f := terminal.Font{Family: a.set.FontFamily, Size: a.set.FontSize, Weight: a.set.FontWeight,
+		LineHeight: a.set.LineHeight, Thicken: a.set.Thicken}
+	if !a.set.Ligatures {
+		f.Features = []string{"-calt", "-liga", "-dlig"}
+	}
+	return f
+}
+
+// termThemes returns the terminal's colors in light and dark windows:
+// kero's, on the card's color, or a Ghostty theme of the user's choice.
+func (a *App) termThemes() (light, dark *terminal.Theme) {
+	pick := func(name string, def *terminal.Theme) *terminal.Theme {
+		if name == "" || name == "kero" {
+			return def
+		}
+		if t, err := terminal.GhosttyTheme(name); err == nil {
+			return t
+		}
+		return def
+	}
+	return pick(a.set.LightTheme, lightTermTheme), pick(a.set.DarkTheme, darkTermTheme)
 }
 
 func (a *App) termOptions(id string, conn *gated) terminal.Options {
-	return terminal.Options{
+	light, dark := a.termThemes()
+	o := terminal.Options{
 		Conn:          conn,
 		Font:          a.termFont(),
-		Theme:         lightTermTheme,
-		DarkTheme:     darkTermTheme,
-		ClipboardRead: terminal.ClipboardAsk,
+		Theme:         light,
+		DarkTheme:     dark,
+		Cursor:        map[string]terminal.CursorStyle{"block": terminal.CursorBlock, "bar": terminal.CursorBar, "underline": terminal.CursorUnderline}[a.set.Cursor],
+		NoBlink:       !a.set.CursorBlink,
+		OptionAsAlt:   a.set.OptionAsAlt,
+		ClipboardRead: map[string]terminal.ClipboardAccess{"ask": terminal.ClipboardAsk, "allow": terminal.ClipboardAllow, "deny": terminal.ClipboardDeny}[a.set.Clipboard],
+		RightClick:    map[string]terminal.RightClickAction{"menu": terminal.RightClickContextMenu, "paste": terminal.RightClickPaste, "copyOrPaste": terminal.RightClickCopyOrPaste}[a.set.RightClick],
 		// The pane's card shows under it, dimmed when the user is in
 		// another pane.
 		Transparent: true,
@@ -521,24 +579,88 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
 	}
+	if a.set.CopyOnSelect {
+		o.CopyOnSelect = terminal.CopyOnSelectClipboard
+	}
+	return o
 }
 
+// zoom makes every terminal's text bigger or smaller, which Settings
+// remembers as the font's size.
 func (a *App) zoom(steps int, reset bool) {
-	size := a.prefs.FontSize + float32(steps)
+	s := a.set
+	s.FontSize = min(max(s.FontSize+float32(steps), 8), 36)
 	if reset {
-		size = defaultFont
+		s.FontSize = settings.Default().FontSize
 	}
-	size = min(max(size, 8), 32)
-	if size == a.prefs.FontSize {
-		return
+	if s.FontSize != a.set.FontSize {
+		a.applySettings(s)
 	}
-	a.prefs.FontSize = size
-	for _, e := range a.terms {
-		if e.term != nil {
+}
+
+// applySettings makes settings the app's, saving them: the terminals take
+// what changed at once, and are attached again for what only a new
+// terminal takes.
+func (a *App) applySettings(s settings.Settings) {
+	old := a.applied
+	a.set, a.applied = s, s.Clone()
+	if err := settings.Save(s); err != nil {
+		a.toast("Couldn’t save the settings: " + err.Error())
+	}
+	font := old.FontFamily != s.FontFamily || old.FontSize != s.FontSize || old.FontWeight != s.FontWeight ||
+		old.LineHeight != s.LineHeight || old.Ligatures != s.Ligatures || old.Thicken != s.Thicken
+	themes := old.LightTheme != s.LightTheme || old.DarkTheme != s.DarkTheme
+	anew := old.Cursor != s.Cursor || old.CursorBlink != s.CursorBlink || old.OptionAsAlt != s.OptionAsAlt ||
+		old.Clipboard != s.Clipboard || old.RightClick != s.RightClick
+	light, dark := a.termThemes()
+	for id, e := range a.terms {
+		if e.term == nil {
+			continue
+		}
+		if anew {
+			a.dropTerm(id) // attached again as it shows
+			continue
+		}
+		if font {
 			e.term.SetFont(a.termFont())
 		}
+		if themes {
+			e.term.SetTheme(light, dark)
+		}
+		if old.CopyOnSelect != s.CopyOnSelect {
+			mode := terminal.CopyOnSelectNone
+			if s.CopyOnSelect {
+				mode = terminal.CopyOnSelectClipboard
+			}
+			e.term.SetCopyOnSelect(mode)
+		}
 	}
-	a.savePrefs()
+	if old.Appearance != s.Appearance && a.win != nil {
+		// Only in the running app: before it runs, the call waits for it.
+		mygo.Theme.SetSource(mygo.ThemeSource(s.Appearance))
+	}
+	if old.Vibrancy != s.Vibrancy && a.win != nil {
+		a.win.SetVibrancy(vibrancyFor(s))
+	}
+	if !maps.Equal(old.Shortcuts, s.Shortcuts) {
+		mygo.App.SetMenu(a.menu())
+	}
+	if old.DockBadge != s.DockBadge {
+		a.notify(true)
+	}
+	if a.win != nil {
+		a.win.Invalidate()
+	}
+	if a.setWin != nil {
+		a.setWin.Invalidate()
+	}
+}
+
+func vibrancyFor(s settings.Settings) mygo.Vibrancy {
+	if s.Vibrancy {
+		return mygo.VibrancySidebar
+	}
+	return mygo.VibrancyNone
 }
 
 var lineSuffix = regexp.MustCompile(`(:\d+){1,2}$`)
@@ -597,9 +719,15 @@ func (a *App) newSession(projectID string) {
 	p := proto.CreateParams{Project: projectID}
 	if cur := a.session(a.selected); cur != nil {
 		if projectID == "" || cur.Project == projectID {
-			p.Project, p.Dir, p.After = cur.Project, cur.Dir, cur.ID
+			p.Project, p.After = cur.Project, cur.ID
+			if a.set.NewSessionDir == "current" {
+				p.Dir = cur.FocusPane().Dir
+			}
 		}
 		p.Cols, p.Rows = cur.Cols, cur.Rows
+	}
+	if a.set.NewSessionDir == "home" {
+		p.Dir = proto.Home()
 	}
 	if p.Project == "" && len(a.st.Projects) == 0 {
 		p.Dir = proto.Home()
@@ -677,7 +805,7 @@ func (a *App) closeSession(id string, ask bool) {
 	if s == nil {
 		return
 	}
-	if ask && busy(s) {
+	if ask && a.set.ConfirmClose && busy(s) {
 		name := s.DisplayName()
 		a.confirm = &confirmation{
 			open:    true,

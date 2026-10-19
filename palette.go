@@ -7,6 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/actions"
+
 	"kero/internal/proto"
 )
 
@@ -50,24 +52,17 @@ func (a *App) paletteItems() []paletteItem {
 				run: func() { delete(a.prefs.Collapsed, s.Project); a.selectSession(id) }})
 		}
 	}
-	cmds := []paletteItem{
-		{title: "New Session", keys: "⌘T", run: func() { a.newSession("") }},
-		{title: "Open Project…", keys: "⌘O", run: a.openProject},
-		{title: "Jump to Session Needing You", keys: "⌘J", run: a.jumpToAttention},
-		{title: "Rename Session", keys: "⌘R", run: func() { a.startRename(a.selected) }},
-		{title: "Split Right", keys: "⌘D", run: func() { a.splitPane(a.session(a.selected), "", "right") }},
-		{title: "Split Down", keys: "⇧⌘D", run: func() { a.splitPane(a.session(a.selected), "", "down") }},
-		{title: "Zoom Pane", keys: "⇧⌘↩", run: func() { a.zoomPane(a.session(a.selected), "") }},
-		{title: "Close Pane", keys: "⌘W", run: a.closeFocused},
-		{title: "Close Session", keys: "⇧⌘W", run: func() { a.closeSession(a.selected, true) }},
-		{title: "Toggle Sidebar", keys: "⌘B", run: a.toggleSidebar},
-		{title: "Bigger Text", keys: "⌘=", run: func() { a.zoom(1, false) }},
-		{title: "Smaller Text", keys: "⌘-", run: func() { a.zoom(-1, false) }},
-		{title: "Actual Size", keys: "⌘0", run: func() { a.zoom(0, true) }},
-		{title: "Install Command Line Tool…", run: a.installCLI},
-		{title: "Restart Background Service", detail: "Sessions start again where they were", run: a.restartDaemon},
-		{title: "Quit and End All Sessions", keys: "⌥⌘Q", run: a.quitAndEnd},
+	var cmds []paletteItem
+	for _, act := range actions.All {
+		id := act.ID
+		cmds = append(cmds, paletteItem{title: strings.TrimSuffix(act.Title, "…"), keys: actions.Glyphs(actions.Keys(act, a.set.Shortcuts)),
+			run: func() { a.run(id, nil) }})
 	}
+	for _, page := range settingsPages {
+		id := page.id
+		cmds = append(cmds, paletteItem{title: "Settings: " + page.title, run: func() { a.openSettings(id) }})
+	}
+	cmds = append(cmds, paletteItem{title: "Restart Background Service", detail: "Sessions start again where they were", run: a.restartDaemon})
 	for _, p := range a.st.Projects {
 		id := p.ID
 		cmds = append(cmds, paletteItem{title: "New Session in " + p.Name, detail: proto.ShortDir(p.Dir), run: func() { a.newSession(id) }})

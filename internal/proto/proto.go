@@ -60,6 +60,10 @@ type Message struct {
 	State *State `json:"state,omitempty"`
 	// Select asks the app to show a session ("kero focus").
 	Select string `json:"select,omitempty"`
+	// Action asks the app to run one of its actions ("kero do"), with
+	// Args, when the user allows Remote Control.
+	Action string            `json:"action,omitempty"`
+	Args   map[string]string `json:"args,omitempty"`
 }
 
 // Status is what a session is doing, as the sidebar shows it.
@@ -440,6 +444,10 @@ type (
 	}
 	ViewParams struct {
 		ID string `json:"id"` // "" when no window shows a session
+	}
+	DoParams struct {
+		Action string            `json:"action"`
+		Args   map[string]string `json:"args,omitempty"`
 	}
 	FocusParams struct {
 		Session string `json:"session"`

@@ -65,10 +65,7 @@ func b2f(b bool) float32 {
 
 func (a *App) view(c *ui.Context) {
 	pal := paletteFor(c)
-	t := *c.Theme()
-	t.Accent = pal.accent
-	t.Selection = pal.accent.Alpha(0.25)
-	c.SetTheme(&t)
+	c.SetTheme(borderless(c, pal))
 
 	if a.pendingToast != "" {
 		c.Toast(a.pendingToast)
@@ -78,7 +75,7 @@ func (a *App) view(c *ui.Context) {
 
 	bar := c.TitleBar()
 	row := ui.Row(c).Fill().AlignItems(ui.Stretch)
-	backdrop(c, pal, row)
+	backdrop(c, pal, row, a.set)
 	// A curve, not a spring: a spring's long tail crawls under a pixel a
 	// frame, which whole pixels turn into hops and holds, a shake as it
 	// settles. This one lands in about 13 frames, moving in every one.
@@ -398,6 +395,7 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 			Tooltip("Sessions run in kerod, in the background: they keep running when you quit kero.")
 		ui.Spacer(c)
 		iconButton(c, "open-project", folderIcon, "Open Project… (⌘O)", pal, a.openProject)
+		iconButton(c, "settings", gearIcon, "Settings (⌘,)", pal, func() { a.openSettings("") })
 		iconButton(c, "palette", searchIcon, "Go to Session… (⌘P)", pal, a.openPalette)
 	})
 }

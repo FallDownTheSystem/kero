@@ -235,6 +235,19 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		d.changed()
 		return n > 0, nil
 
+	case "do":
+		var p proto.DoParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		for sub := range d.subs {
+			sub.event(proto.Message{Event: "action", Action: p.Action, Args: p.Args})
+		}
+		n := len(d.subs)
+		d.mu.Unlock()
+		return n > 0, nil
+
 	case "notify":
 		var p proto.NotifyParams
 		if err := decode(&p); err != nil {

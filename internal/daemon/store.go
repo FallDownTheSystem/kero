@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 // The daemon keeps its projects and sessions in state.json, and each
@@ -119,6 +120,11 @@ func (d *Daemon) restore() {
 	}
 	var st savedState
 	if json.Unmarshal(data, &st) != nil {
+		return
+	}
+	if !settings.Load().RestoreSessions {
+		// The projects stay; the sessions of the last daemon do not.
+		d.projects = st.Projects
 		return
 	}
 	d.projects = st.Projects

@@ -15,6 +15,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"kero/internal/actions"
 	"kero/internal/client"
 	"kero/internal/proto"
 )
@@ -56,6 +57,9 @@ Usage:
   kero report <state> [message] [--kind k] [--progress n] [--app a] [--id i]
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear
+  kero do <action> [key=value…]  run an action of the app, as its menus do
+                                (needs Remote Control, in Settings › Agents)
+  kero actions                  list the actions kero do runs
   kero projects [--json]
   kero skill setup|show|remove  teach coding agents to use kero
   kero daemon status|stop|restart
@@ -71,7 +75,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "status",
-	"rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "daemon",
+	"rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "daemon", "do", "actions",
 	"help", "--help", "-h", "version", "--version"}
 
 // Errors of exit statuses other than 1.
@@ -158,6 +162,15 @@ func run(args []string) error {
 		return daemonCmd(args)
 	case "report":
 		return report(args)
+	case "actions":
+		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+		fmt.Fprintln(w, "ACTION\tKEYS\tWHAT")
+		for _, a := range actions.All {
+			if a.Remote {
+				fmt.Fprintf(w, "%s\t%s\t%s\n", a.ID, actions.Glyphs(a.Keys), strings.TrimSuffix(a.Title, "…"))
+			}
+		}
+		return w.Flush()
 	case "skill":
 		return skillCmd(args)
 	}
@@ -453,6 +466,31 @@ func run(args []string) error {
 			return c.Call("pane.close", proto.IDParams{ID: t.pane}, nil)
 		}
 		return c.Call("close", proto.IDParams{ID: t.s.ID}, nil)
+
+	case "do":
+		if len(args) < 1 {
+			return usageErr("kero do <action> [key=value…] (see kero actions)")
+		}
+		a, ok := actions.Find(args[0])
+		if !ok || !a.Remote {
+			return fmt.Errorf("%w: no action %q (see kero actions)", errNotFound, args[0])
+		}
+		kv := map[string]string{}
+		for _, arg := range args[1:] {
+			k, v, ok := strings.Cut(arg, "=")
+			if !ok {
+				return usageErr("%q is not key=value", arg)
+			}
+			kv[k] = v
+		}
+		var delivered bool
+		if err := c.Call("do", proto.DoParams{Action: a.ID, Args: kv}, &delivered); err != nil {
+			return err
+		}
+		if !delivered {
+			return errors.New("the app is not open")
+		}
+		return nil
 
 	case "notify":
 		f, err := parse(args, map[string]string{"session": "target", "s": "target", "title": "title"}, nil)

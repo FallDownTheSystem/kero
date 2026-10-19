@@ -12,15 +12,6 @@ import (
 
 const paneGap = 8 // between panes, where the divider is
 
-var (
-	splitRightIcon = icon(`<rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.25"/><path d="M8 2.75v10.5"/>`)
-	splitDownIcon  = icon(`<rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.25"/><path d="M1.75 8h12.5"/>`)
-	zoomIcon       = icon(`<path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5L9 7M2.5 13.5L7 9"/>`)
-	unzoomIcon     = icon(`<path d="M13 7H9V3M3 9h4v4M9 7l4.5-4.5M7 9l-4.5 4.5"/>`)
-	closeIcon      = icon(`<path d="M4 4l8 8M12 4l-8 8"/>`)
-	swapIcon       = icon(`<path d="M3 5.5h9.5M10 3l2.5 2.5L10 8M13 10.5H3.5M6 8l-2.5 2.5L6 13"/>`)
-)
-
 // paneRef returns the handle a pane's terminal binds, which its focus
 // follows.
 func (a *App) paneRef(id string) *ui.Handle {
@@ -195,6 +186,11 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 	card.Children(func() {
 		dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, multi, focused, hovered)
 		a.paneTerminal(c, pal, s, p)
+		if multi {
+			// The panes the user is not in fade, text and all.
+			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
+			v.Opacity(v.Animate("on", b2f(!focused), 160*time.Millisecond))
+		}
 		if zone != zoneNone {
 			a.dropPreview(c, pal, p.ID, zone)
 		}
@@ -560,7 +556,7 @@ func (a *App) closePane(s *proto.Session, pane string, ask bool) {
 	if p == nil {
 		return
 	}
-	if ask && p.Status != proto.Exited && p.Process != "" {
+	if ask && a.set.ConfirmClose && p.Status != proto.Exited && p.Process != "" {
 		sid := s.ID
 		a.confirm = &confirmation{
 			open:    true,
