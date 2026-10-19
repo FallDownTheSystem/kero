@@ -534,7 +534,7 @@ func (a *App) ensureTerm(id string) {
 }
 
 func (a *App) termFont() terminal.Font {
-	f := terminal.Font{Family: a.set.FontFamily, Size: a.set.FontSize, Weight: a.set.FontWeight,
+	f := terminal.Font{Family: a.termFamily(), Size: a.set.FontSize, Weight: a.set.FontWeight,
 		LineHeight: a.set.LineHeight, Thicken: a.set.Thicken}
 	if !a.set.Ligatures {
 		f.Features = []string{"-calt", "-liga", "-dlig"}

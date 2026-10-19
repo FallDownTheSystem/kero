@@ -59,6 +59,7 @@ func runApp() {
 		return
 	}
 	a := newApp()
+	loadFonts()
 	mygo.Theme.SetSource(mygo.ThemeSource(a.set.Appearance))
 	mygo.App.SetMenu(a.menu())
 	mygo.App.OnSecondInstance(func([]string, string) {

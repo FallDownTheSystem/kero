@@ -28,7 +28,7 @@ type Settings struct {
 	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
 
 	// Terminal
-	FontFamily   string  `json:"fontFamily"` // "" the system's monospaced font
+	FontFamily   string  `json:"fontFamily"` // "" the font kero carries; "monospace" the system's
 	FontSize     float32 `json:"fontSize"`
 	LineHeight   float32 `json:"lineHeight"`
 	FontWeight   int     `json:"fontWeight"`

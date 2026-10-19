@@ -202,3 +202,28 @@ func TestSlider(t *testing.T) {
 		tt.Frame()
 	}
 }
+
+// kero's font registers from the source tree, and the terminals take it
+// by default ($KERO_SHOTS shows the preview in it).
+func TestBundledFont(t *testing.T) {
+	loadFonts()
+	if !fontsLoaded {
+		t.Fatal("the bundled fonts did not register")
+	}
+	a := testApp(t)
+	if got := a.termFont().Family; got != bundledFont {
+		t.Errorf("default terminal font %q, want %q", got, bundledFont)
+	}
+	a.set.FontFamily = "monospace"
+	if got := a.termFont().Family; got != "monospace" {
+		t.Errorf("System picked, terminal font %q", got)
+	}
+	a.set.FontFamily = ""
+	a.ss.page = "terminal"
+	tt := ui.NewTester(a.settingsView, 820, 320)
+	tt.Frame()
+	if text := a.ss.combo["font"]; text == nil || *text != "JetBrains Mono Nerd Font" {
+		t.Errorf("the picker does not show the bundled font: %v", text)
+	}
+	shot(t, tt, "font-preview")
+}

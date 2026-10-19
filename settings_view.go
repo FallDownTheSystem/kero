@@ -363,25 +363,35 @@ func (a *App) backgroundTile(c *ui.Context, pal *palette, id, name string) {
 	})
 }
 
-var fontChoices = []string{"System", "SF Mono", "Menlo", "Monaco", "JetBrains Mono", "Fira Code", "Cascadia Code",
+// fontChoices are the fonts the picker offers: kero's own first, then
+// the system's, then common coding fonts the user may have installed.
+var fontChoices = []string{"JetBrains Mono Nerd Font", "System", "SF Mono", "Menlo", "Monaco", "JetBrains Mono", "Fira Code", "Cascadia Code",
 	"Iosevka", "Berkeley Mono", "Geist Mono", "IBM Plex Mono", "Source Code Pro", "Hack", "Maple Mono"}
 
 func (a *App) terminalPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	a.terminalPreview(c, pal)
 	settingsGroup(c, pal, "Text", "", func() {
-		settingRow(c, pal, "Font", "Any installed monospaced font; names separated by commas are tried in order.", func() {
+		settingRow(c, pal, "Font", "JetBrains Mono with Nerd Fonts’ icons comes with kero. Any installed monospaced font works; names separated by commas are tried in order.", func() {
+			// The picker's names for the settings' values: "" is kero's
+			// font, "monospace" the system's.
 			family := s.FontFamily
-			if family == "" {
+			switch family {
+			case "":
+				family = "JetBrains Mono Nerd Font"
+			case "monospace":
 				family = "System"
 			}
 			opts := fontChoices
 			if !slices.Contains(opts, family) {
 				opts = append([]string{family}, opts...)
 			}
-			a.comboField(c, "font", family, opts, 200, pal, func(v string) {
-				if v == "System" {
+			a.comboField(c, "font", family, opts, 220, pal, func(v string) {
+				switch v {
+				case "JetBrains Mono Nerd Font":
 					v = ""
+				case "System":
+					v = "monospace"
 				}
 				a.set.FontFamily = v
 			})
@@ -452,10 +462,7 @@ func (a *App) terminalPreview(c *ui.Context, pal *palette) {
 	if pal.dark {
 		th = dark
 	}
-	font := a.set.FontFamily
-	if font == "" {
-		font = "monospace"
-	}
+	font := a.termFamily()
 	features := ""
 	if !a.set.Ligatures {
 		features = "-calt,-liga"
@@ -468,7 +475,9 @@ func (a *App) terminalPreview(c *ui.Context, pal *palette) {
 	}
 	box := raised(ui.Column(c).Radius(12).Padding(16, 18).Gap(0).Background(th.Background), pal)
 	box.Children(func() {
-		line(ui.Span{Text: "~/dev/kero ", Color: th.Palette[4]}, ui.Span{Text: "main ", Color: th.Palette[5]}, ui.Span{Text: "❯ ", Color: th.Palette[2]}, ui.Span{Text: "git status", Color: th.Foreground})
+		// Nerd Fonts' folder and branch icons: fonts without them show
+		// boxes, which is worth knowing before picking one.
+		line(ui.Span{Text: "\uf07b ~/dev/kero ", Color: th.Palette[4]}, ui.Span{Text: "\ue0a0 main ", Color: th.Palette[5]}, ui.Span{Text: "❯ ", Color: th.Palette[2]}, ui.Span{Text: "git status", Color: th.Foreground})
 		line(ui.Span{Text: "modified:   ", Color: th.Foreground}, ui.Span{Text: "settings_view.go", Color: th.Palette[1]})
 		line(ui.Span{Text: "func ", Color: th.Palette[5]}, ui.Span{Text: "main", Color: th.Palette[4]}, ui.Span{Text: "() { x := a != b && c >= d => ok }", Color: th.Foreground})
 		ui.Row(c).Gap(4).Margin(10, 0, 0, 0).Children(func() {
