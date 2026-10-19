@@ -136,7 +136,7 @@ func (s *pane) start(command []string, env []string) error {
 	}
 	proc, err := startPTY(ptyOptions{
 		Path: shell, Args: args, Dir: dir,
-		Env:  s.d.environment(s.sid, s.info.ID, env),
+		Env:  s.d.environment(s.sid, s.info.ID, shell, env),
 		Cols: s.info.Cols, Rows: s.info.Rows,
 	})
 	if err != nil {

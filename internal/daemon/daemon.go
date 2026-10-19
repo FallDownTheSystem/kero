@@ -282,13 +282,17 @@ func repoRoot(dir string) string {
 }
 
 // environment returns the environment of a session's shell.
-func (d *Daemon) environment(sid, pid string, extra []string) []string {
+// ghosttyVersion is the version of Ghostty the terminal emulator, the
+// terminal plugin's libghostty-vt, is built from (its build.zig.zon).
+const ghosttyVersion = "1.3.2-dev"
+
+func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	env := make([]string, 0, len(os.Environ())+8)
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
 		switch {
 		case k == "CLAUDECODE", k == "TERM_PROGRAM", k == "TERM_PROGRAM_VERSION", k == "TERM_SESSION_ID",
-			k == "ITERM_SESSION_ID", k == "WINDOWID", k == "KITTY_WINDOW_ID",
+			k == "ITERM_SESSION_ID", k == "WINDOWID", k == "KITTY_WINDOW_ID", k == "LC_TERMINAL", k == "LC_TERMINAL_VERSION",
 			k == "KERO_SESSION", k == "KERO_PANE", k == "MYGO_GHOSTTY_VT", k == "TMUX", k == "TMUX_PANE",
 			strings.HasPrefix(k, "CLAUDE_CODE_"), strings.HasPrefix(k, "GHOSTTY_"),
 			strings.HasPrefix(k, "VSCODE_"), strings.HasPrefix(k, "__CF"), k == "XPC_SERVICE_NAME":
@@ -308,8 +312,15 @@ func (d *Daemon) environment(sid, pid string, extra []string) []string {
 	}
 	set("TERM=xterm-256color")
 	set("COLORTERM=truecolor")
-	set("TERM_PROGRAM=kero")
-	set(fmt.Sprintf("TERM_PROGRAM_VERSION=%d", proto.Version))
+	// kero's emulator is Ghostty's: programs that know Ghostty, as coding
+	// agents for their notifications and keyboard, take it for one.
+	// LC_TERMINAL names kero, as iTerm2 names itself there.
+	set("TERM_PROGRAM=ghostty")
+	set("TERM_PROGRAM_VERSION=" + ghosttyVersion)
+	set("LC_TERMINAL=kero")
+	set(fmt.Sprintf("LC_TERMINAL_VERSION=%d", proto.Version))
+	// The shell the pane runs, not the one whoever started kerod had.
+	set("SHELL=" + shell)
 	set("KERO_SESSION=" + sid)
 	set("KERO_PANE=" + pid)
 	set("KERO_SOCKET=" + proto.SocketPath())
