@@ -77,9 +77,25 @@ func (a *App) item(id string) *mygo.MenuItem {
 	act, _ := actions.Find(id)
 	return &mygo.MenuItem{
 		Label:       act.Title,
-		Accelerator: actions.Keys(act, a.set.Shortcuts),
-		Click:       func(*mygo.MenuItem, *mygo.Window) { a.update(func() { a.run(id, nil) }) },
+		Accelerator: a.accelerator(act),
+		Click: func(*mygo.MenuItem, *mygo.Window) {
+			// Closing is the window's in front: Settings closes itself.
+			if (id == "pane.close" || id == "session.close") && a.setWin != nil && mygo.FocusedWindow() == a.setWin {
+				a.setWin.Close()
+				return
+			}
+			a.update(func() { a.run(id, nil) })
+		},
 	}
+}
+
+// accelerator is an action's shortcut in the menus: none while the user
+// types a new one in Settings.
+func (a *App) accelerator(act actions.Action) string {
+	if a.ss.recording != "" {
+		return ""
+	}
+	return actions.Keys(act, a.set.Shortcuts)
 }
 
 // items returns the items of a menu's actions, in their order, with

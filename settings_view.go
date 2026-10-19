@@ -83,7 +83,10 @@ func (a *App) openSettings(page string) {
 		Vibrancy:             vibrancyFor(a.set),
 		Content:              ui.View(a.settingsView),
 	})
-	a.setWin.OnClosed(func() { a.setWin = nil })
+	a.setWin.OnClosed(func() {
+		a.setWin = nil
+		a.setRecording("") // the menus take their shortcuts back
+	})
 }
 
 func (a *App) refreshAgents() {
@@ -184,9 +187,6 @@ func (a *App) settingsView(c *ui.Context) {
 			})
 		})
 	})
-	if c.Shortcut(ui.Super, ui.KeyW) && a.setWin != nil && a.ss.recording == "" {
-		a.setWin.Close()
-	}
 	// The controls edit a.set: what changed applies, and saves.
 	if !reflect.DeepEqual(a.set, a.applied) {
 		a.applySettings(a.set)
@@ -209,7 +209,8 @@ func (a *App) settingsNav(c *ui.Context, pal *palette, p settingsPage) {
 	}
 	item.Background(item.AnimateColor("bg", bg, ui.Animation{Duration: 110 * time.Millisecond}))
 	if item.Pressed() && !sel {
-		a.ss.page, a.ss.recording = p.id, ""
+		a.ss.page = p.id
+		a.setRecording("")
 	}
 	item.Children(func() {
 		ic := ui.Icon(c, p.icon).Size(15, 15).TextColor(pal.textMuted)
@@ -743,7 +744,7 @@ func (a *App) shortcutRow(c *ui.Context, pal *palette, act actions.Action) {
 		}
 		face(chip, pal, bg)
 		if chip.Clicked() && !recording {
-			a.ss.recording = act.ID
+			a.setRecording(act.ID)
 			a.ss.recordRef.Focus()
 		}
 		if recording {
@@ -771,15 +772,29 @@ func (a *App) shortcutRow(c *ui.Context, pal *palette, act actions.Action) {
 	})
 }
 
+// setRecording starts or ends typing a shortcut. While one is typed, the
+// menus give up their key equivalents, which macOS gives keys to first:
+// else typing one bound already, as ⌘D, would split a pane, not record.
+func (a *App) setRecording(id string) {
+	if a.ss.recording == id {
+		return
+	}
+	was := a.ss.recording != ""
+	a.ss.recording = id
+	if was != (id != "") && a.win != nil {
+		mygo.App.SetMenu(a.menu())
+	}
+}
+
 // recordKey takes a key typed for a shortcut, reporting whether it took it.
 func (a *App) recordKey(act actions.Action, mods ui.Modifiers, key ui.Key) bool {
 	switch {
 	case key == ui.KeyEscape && mods == 0:
-		a.ss.recording = ""
+		a.setRecording("")
 		return true
 	case (key == ui.KeyBackspace || key == ui.KeyDelete) && mods == 0:
 		a.setShortcut(act.ID, "")
-		a.ss.recording = ""
+		a.setRecording("")
 		return true
 	}
 	name, ok := keyNames[key]
@@ -805,7 +820,7 @@ func (a *App) recordKey(act actions.Action, mods ui.Modifiers, key ui.Key) bool 
 	}
 	accel := strings.Join(append(parts, name), "+")
 	a.setShortcut(act.ID, accel)
-	a.ss.recording = ""
+	a.setRecording("")
 	return true
 }
 
