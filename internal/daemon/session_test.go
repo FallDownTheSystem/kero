@@ -137,3 +137,25 @@ func TestWorkingHeldBeforeIdle(t *testing.T) {
 		t.Fatalf("after %s: %s", idleHold, st)
 	}
 }
+
+// A restore resumes Claude Code's and Codex's sessions, and nothing a
+// state file could slip in.
+func TestResumeCommand(t *testing.T) {
+	for _, c := range []struct {
+		agent, id, want string
+	}{
+		{"claude", "13b997c3-f8b3-4b3e-bb8a-ca1b5d1b9787", "claude --resume 13b997c3-f8b3-4b3e-bb8a-ca1b5d1b9787"},
+		{"codex", "019a2b3c-4d5e", "codex resume 019a2b3c-4d5e"},
+		{"claude", "x; rm -rf ~", ""},
+		{"claude", "", ""},
+		{"vim", "abc", ""},
+	} {
+		got := strings.Join(resumeCommand(&proto.AgentSession{Agent: c.agent, ID: c.id}), " ")
+		if got != c.want {
+			t.Errorf("%s %q: got %q, want %q", c.agent, c.id, got, c.want)
+		}
+	}
+	if resumeCommand(nil) != nil {
+		t.Error("resumed nothing")
+	}
+}

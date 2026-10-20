@@ -157,12 +157,22 @@ type Pane struct {
 	// CommandExit is the exit status of the command the pane started
 	// with, once it ended and the pane went on with its shell.
 	CommandExit *int `json:"commandExit,omitempty"`
+	// AgentSession is the coding agent's own session, as its hook told
+	// (kero hook), while the agent runs: what a restore resumes.
+	AgentSession *AgentSession `json:"agentSession,omitempty"`
 	// Restored: the daemon restarted (as after a reboot) and this pane's
 	// shell was started again in its directory, under its old scrollback.
 	Restored bool `json:"restored,omitempty"`
 	Cols     int  `json:"cols"`
 	Rows     int  `json:"rows"`
 	PID      int  `json:"pid,omitempty"`
+}
+
+// AgentSession is a coding agent's session: Claude Code's or Codex's,
+// by its id.
+type AgentSession struct {
+	Agent string `json:"agent"` // "claude" or "codex"
+	ID    string `json:"id"`
 }
 
 // Session is a row of the sidebar: one task, with its terminals, its
@@ -527,6 +537,12 @@ type (
 		// end (CommandExit), or for its shell to.
 		Exit    bool  `json:"exit,omitempty"`
 		Timeout int64 `json:"timeout,omitempty"` // ms; 0 waits as long as it takes
+	}
+	// AgentSessionParams tell a pane's agent's session (kero hook).
+	AgentSessionParams struct {
+		ID      string `json:"id"` // the pane
+		Agent   string `json:"agent"`
+		Session string `json:"session"`
 	}
 	ProjectParams struct {
 		ID   string `json:"id,omitempty"`

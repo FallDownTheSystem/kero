@@ -44,6 +44,7 @@ kero config check             # report unknown keys and bad values
 | `new-session-directory` | `current` | Where a new session starts: `current`, `project` or `home`    |
 | `confirm-close`         | `true`    | Ask before closing a pane that a program is running in        |
 | `restore-sessions`      | `true`    | Start sessions again after kerod restarts, as after a reboot  |
+| `resume-agents`         | `true`    | As sessions start again, resume the conversation of the Claude Code or Codex each pane ran |
 
 ## Appearance
 

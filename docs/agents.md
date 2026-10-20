@@ -13,17 +13,25 @@ Agents running in Kero can use the `kero` command like you do: start a dev serve
 kero skill setup
 ```
 
-This installs a `kero` skill that teaches agents the CLI:
+This installs two things:
 
-- Claude Code reads it from `~/.claude/skills/kero`
-- Codex, OpenCode and other agents read it from `~/.agents/skills/kero`
+- A **skill** that teaches agents the CLI. Claude Code reads it from `~/.claude/skills/kero`; Codex, OpenCode and other agents from `~/.agents/skills/kero`.
+- A **hook** that runs as Claude Code or Codex starts a session. It tells the agent which Kero session and pane it's in, so it doesn't spend time finding out, and has it name an unnamed session after its task, such as `fix-login-redirect`, so you don't have to. It also tells Kero the agent's own session, so that after kerod restarts, as after a reboot, the agent [picks up its conversation](./sessions.md#kerod). Kero adds it to `~/.claude/settings.json` and `~/.codex/hooks.json` (or under `CLAUDE_CONFIG_DIR` and `CODEX_HOME`) and leaves the rest of each file as it was.
 
-Pass `--agent claude` or `--agent codex` to install for one agent only. The skill comes from your Kero binary, so run `kero skill setup` again after updating Kero. `kero skill status` tells you whether an installed skill is current.
+Pass `--agent claude` or `--agent codex` to set up one agent only. The skill comes from your Kero binary, so run `kero skill setup` again after updating Kero. `kero skill status` tells you whether each part is current.
 
 ```sh
+kero skill status    # what's installed, and whether it's current
 kero skill show      # print the skill
-kero skill remove    # uninstall it
+kero skill remove    # uninstall the skill and the hooks
 ```
+
+The hook works only in agent sessions started after setup, and agents may ask first:
+
+- **Claude Code** runs hooks only in folders you trust.
+- **Codex** asks you to approve a new hook: approve Kero's with `/hooks`.
+
+Outside Kero, the hook does nothing.
 
 ## What agents can do
 

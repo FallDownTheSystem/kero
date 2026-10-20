@@ -459,6 +459,11 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, "Restore sessions after a restart", "If the background service stops, as when the Mac restarts, sessions start again in their folders, under their history.", func() {
 			toggle(c.Key("restore"), &s.RestoreSessions, pal)
 		})
+		if s.RestoreSessions {
+			settingRow(c, pal, "Resume agents", "Claude Code and Codex pick up their conversation where it was, once Kero’s skill is set up for them in Agents.", func() {
+				toggle(c.Key("resume"), &s.ResumeAgents, pal)
+			})
+		}
 	})
 	settingsGroup(c, pal, "Startup", "", func() {
 		settingRow(c, pal, "Open Kero at login", "", func() {
@@ -793,7 +798,7 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			}
 		})
 	})
-	settingsGroup(c, pal, "Skills for agents", "Teaches agents to start sessions and panes, drive them, wait for them and report their status.", func() {
+	settingsGroup(c, pal, "Skills for agents", "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells Claude Code and Codex, as they start, which session they’re in.", func() {
 		for _, st := range cli.SkillStates() {
 			name := map[string]string{"claude": "Claude Code", "agents": "Codex, OpenCode, Pi"}[st.Agent]
 			detail := map[string]string{"current": "Installed", "outdated": "Installed, from an older Kero", "missing": "Not installed"}[st.State] + " · " + proto.ShortDir(st.Dir)

@@ -21,6 +21,7 @@ type Settings struct {
 	NewSessionDir   string `json:"newSessionDir"`   // "current", "project" or "home"
 	ConfirmClose    bool   `json:"confirmClose"`    // before closing a pane a program runs in
 	RestoreSessions bool   `json:"restoreSessions"` // after kerod restarts, as after a reboot
+	ResumeAgents    bool   `json:"resumeAgents"`    // as it restores sessions: the agents' own
 	QuitConfirm     bool   `json:"quitConfirm"`     // tell, the first time, that quitting keeps sessions
 
 	// Appearance
@@ -70,6 +71,7 @@ func Default() Settings {
 		NewSessionDir:   "current",
 		ConfirmClose:    true,
 		RestoreSessions: true,
+		ResumeAgents:    true,
 		QuitConfirm:     true,
 		Appearance:      "system",
 		Background:      "rex",

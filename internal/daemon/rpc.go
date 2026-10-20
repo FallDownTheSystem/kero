@@ -273,6 +273,25 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.wait(c, pn, p)
 
+	case "pane.agentSession":
+		var p proto.AgentSessionParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		as := &proto.AgentSession{Agent: p.Agent, ID: p.Session}
+		if resumeCommand(as) == nil {
+			return nil, fmt.Errorf("no agent session %q of %q", p.Session, p.Agent)
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		pn.mu.Lock()
+		pn.info.AgentSession = as
+		pn.mu.Unlock()
+		d.changed()
+		return nil, nil
+
 	case "project.create":
 		var p proto.ProjectParams
 		if err := decode(&p); err != nil {

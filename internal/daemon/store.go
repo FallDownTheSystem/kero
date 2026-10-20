@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"kero/internal/proto"
@@ -36,7 +37,9 @@ type savedPane struct {
 	ID      string   `json:"id"`
 	Dir     string   `json:"dir,omitempty"`
 	Command []string `json:"command,omitempty"`
-	Created int64    `json:"created"`
+	// Agent is the agent's session that ran in it, to resume.
+	Agent   *proto.AgentSession `json:"agent,omitempty"`
+	Created int64               `json:"created"`
 	Cols    int      `json:"cols"`
 	Rows    int      `json:"rows"`
 }
@@ -70,7 +73,7 @@ func (d *Daemon) saveState() {
 		for _, p := range s.panes {
 			p.mu.Lock()
 			ss.Panes = append(ss.Panes, savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command,
-				Created: p.info.Created, Cols: p.info.Cols, Rows: p.info.Rows})
+				Agent: p.info.AgentSession, Created: p.info.Created, Cols: p.info.Cols, Rows: p.info.Rows})
 			p.mu.Unlock()
 		}
 		st.Sessions = append(st.Sessions, ss)
@@ -117,7 +120,8 @@ func (d *Daemon) restore() {
 	if json.Unmarshal(data, &st) != nil {
 		return
 	}
-	if !settings.Load().RestoreSessions {
+	set := settings.Load()
+	if !set.RestoreSessions {
 		// The projects stay; the sessions of the last daemon do not.
 		d.projects = st.Projects
 		return
@@ -127,6 +131,9 @@ func (d *Daemon) restore() {
 	for _, ss := range st.Sessions {
 		s := &session{id: ss.ID, project: ss.Project, name: ss.Name, created: ss.Created, restored: true, focus: ss.Focus}
 		for _, sp := range ss.Panes {
+			if !set.ResumeAgents {
+				sp.Agent = nil
+			}
 			if p := d.restorePane(s.id, sp, when); p != nil {
 				s.panes = append(s.panes, p)
 				d.panes[p.info.ID] = p
@@ -151,12 +158,12 @@ func (d *Daemon) restore() {
 }
 
 // restorePane starts a pane of the last daemon again, under its
-// scrollback, in its directory.
+// scrollback, in its directory, with the agent it ran resumed.
 func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 	now := time.Now().UnixMilli()
 	p, err := newPane(d, sid, proto.Pane{
 		ID: sp.ID, Dir: sp.Dir, Command: sp.Command, Status: proto.Idle, Since: now,
-		Created: sp.Created, Cols: sp.Cols, Rows: sp.Rows, Restored: true,
+		Created: sp.Created, Cols: sp.Cols, Rows: sp.Rows, Restored: true, AgentSession: sp.Agent,
 	})
 	if err != nil {
 		d.log.Printf("restoring %s: %v", sp.ID, err)
@@ -170,9 +177,9 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 		p.term.Feed(h)
 		p.term.Feed([]byte("\x1b[2m── restored · session ended " + when + " ──\x1b[0m\r\n"))
 	}
-	// The shell alone: what ran in it, as an agent, may not want to run
-	// again unasked.
-	if err := p.start(nil, nil); err != nil {
+	// The shell alone: what ran in it may not want to run again unasked.
+	// But an agent's conversation, which only waits for the user.
+	if err := p.start(resumeCommand(sp.Agent), nil); err != nil {
 		d.log.Printf("restoring %s: %v", sp.ID, err)
 		p.term.Close()
 		return nil
@@ -180,3 +187,20 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 	p.dirty = true
 	return p
 }
+
+// resumeCommand is the command that resumes an agent's session, nil for
+// none.
+func resumeCommand(a *proto.AgentSession) []string {
+	if a == nil || !agentSessionRe.MatchString(a.ID) {
+		return nil
+	}
+	switch a.Agent {
+	case "claude":
+		return []string{"claude", "--resume", a.ID}
+	case "codex":
+		return []string{"codex", "resume", a.ID}
+	}
+	return nil
+}
+
+var agentSessionRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)

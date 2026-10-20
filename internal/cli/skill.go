@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"kero/internal/proto"
@@ -79,48 +80,98 @@ func skillCmd(args []string) error {
 	if len(f.pos) > 0 {
 		sub = f.pos[0]
 	}
-	dirs := skillDirs(f.vals["agent"])
+	agent := strings.ToLower(f.vals["agent"])
+	dirs, hooks := skillDirs(agent), hooksFor(agent)
 	switch sub {
 	case "show":
 		fmt.Print(skillGuide)
 		return nil
 	case "status":
-		for name, dir := range dirs {
-			b, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
-			state := "current"
-			switch {
-			case err != nil:
-				state = "missing"
-			case string(b) != skillGuide:
-				state = "outdated"
-			}
-			fmt.Printf("%-8s %-9s %s\n", name, state, proto.ShortDir(dir))
+		for _, name := range sortedKeys(dirs) {
+			fmt.Printf("%-8s skill  %-9s %s\n", name, skillState(dirs[name]), proto.ShortDir(dirs[name]))
+		}
+		for _, h := range hooks {
+			fmt.Printf("%-8s hook   %-9s %s\n", h.agent, h.state(), proto.ShortDir(h.file))
 		}
 		return nil
 	case "setup", "remove":
-		for name, dir := range dirs {
-			if f.set["dry"] {
+		for _, name := range sortedKeys(dirs) {
+			dir := dirs[name]
+			switch {
+			case f.set["dry"]:
 				fmt.Printf("would %s %s (%s)\n", sub, proto.ShortDir(dir), name)
-				continue
-			}
-			if sub == "remove" {
+			case sub == "remove":
 				if err := os.RemoveAll(dir); err != nil {
 					return err
 				}
 				fmt.Printf("removed %s\n", proto.ShortDir(dir))
-				continue
+			default:
+				if err := writeSkill(dir); err != nil {
+					return err
+				}
+				fmt.Printf("installed %s (%s)\n", proto.ShortDir(dir), name)
 			}
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return err
+		}
+		for _, h := range hooks {
+			switch {
+			case f.set["dry"]:
+				fmt.Printf("would %s the hook in %s (%s)\n", sub, proto.ShortDir(h.file), h.agent)
+			case sub == "remove":
+				if err := h.remove(); err != nil {
+					return err
+				}
+				fmt.Printf("removed the hook from %s\n", proto.ShortDir(h.file))
+			default:
+				if err := h.install(); err != nil {
+					return err
+				}
+				fmt.Printf("installed the hook in %s (%s)\n", proto.ShortDir(h.file), h.agent)
 			}
-			if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillGuide), 0o644); err != nil {
-				return err
-			}
-			fmt.Printf("installed %s (%s)\n", proto.ShortDir(dir), name)
+		}
+		if sub == "setup" && !f.set["dry"] && len(hooks) > 0 {
+			fmt.Println("\nAgents started from now on in Kero learn which session they're in." +
+				"\nClaude Code runs hooks only in folders you trust; Codex asks you to approve a new hook with /hooks.")
 		}
 		return nil
 	}
-	return usageErr("kero skill setup|show|status|remove [--agent claude|agents] [--dry-run]")
+	return usageErr("kero skill setup|show|status|remove [--agent claude|codex|agents] [--dry-run]")
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func skillState(dir string) string {
+	b, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+	switch {
+	case err != nil:
+		return "missing"
+	case string(b) != skillGuide:
+		return "outdated"
+	}
+	return "current"
+}
+
+func writeSkill(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillGuide), 0o644)
+}
+
+// hooksFor returns the hooks that go with an --agent: Codex's with the
+// shared skill of Codex, OpenCode and Pi.
+func hooksFor(agent string) []agentHook {
+	switch agent {
+	case "", "claude", "codex", "agents":
+		return agentHooks(agent)
+	}
+	return nil
 }
 
 // skillDirs returns where agents read skills: Claude Code's, and the
@@ -146,48 +197,64 @@ func skillDirs(agent string) map[string]string {
 	return all
 }
 
-// SkillState is where a skill for agents is, and whether it is current.
+// SkillState is where a skill for agents is, and whether it is current,
+// with the hooks that go with it.
 type SkillState struct {
 	Agent string // "claude", or "agents" (Codex, OpenCode, Pi…)
 	Dir   string
-	State string // "current", "outdated" or "missing"
+	State string // "current", "outdated" (or partly installed) or "missing"
 }
 
-// SkillStates returns the state of kero's skill for each kind of agent.
+// SkillStates returns the state of kero's skill and hooks for each kind
+// of agent.
 func SkillStates() []SkillState {
 	var out []SkillState
 	for _, agent := range []string{"claude", "agents"} {
 		dir := skillDirs(agent)[agent]
-		st := "current"
-		b, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+		states := []string{skillState(dir)}
+		for _, h := range hooksFor(agent) {
+			states = append(states, h.state())
+		}
+		st := "outdated"
 		switch {
-		case err != nil:
+		case !slices.ContainsFunc(states, func(s string) bool { return s != "current" }):
+			st = "current"
+		case !slices.ContainsFunc(states, func(s string) bool { return s != "missing" }):
 			st = "missing"
-		case string(b) != skillGuide:
-			st = "outdated"
 		}
 		out = append(out, SkillState{Agent: agent, Dir: dir, State: st})
 	}
 	return out
 }
 
-// InstallSkill installs, or updates, kero's skill for a kind of agent.
+// InstallSkill installs, or updates, kero's skill and hooks for a kind of
+// agent.
 func InstallSkill(agent string) error {
 	dir := skillDirs(agent)[agent]
 	if dir == "" {
 		return fmt.Errorf("no agent %q", agent)
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := writeSkill(dir); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillGuide), 0o644)
+	for _, h := range hooksFor(agent) {
+		if err := h.install(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-// RemoveSkill removes kero's skill for a kind of agent.
+// RemoveSkill removes kero's skill and hooks for a kind of agent.
 func RemoveSkill(agent string) error {
 	dir := skillDirs(agent)[agent]
 	if dir == "" {
 		return fmt.Errorf("no agent %q", agent)
+	}
+	for _, h := range hooksFor(agent) {
+		if err := h.remove(); err != nil {
+			return err
+		}
 	}
 	return os.RemoveAll(dir)
 }

@@ -280,8 +280,13 @@ func (s *pane) tick(now time.Time) bool {
 		}
 	}
 	if proc == "" && s.info.Process != "" {
-		// The program ended: its live reports go with it.
+		// The program ended: its live reports go with it, and an agent's
+		// session is no more to resume.
 		s.dropLive()
+		if s.info.AgentSession != nil {
+			s.info.AgentSession = nil
+			s.d.save()
+		}
 	}
 	if proc != s.info.Process || agent != s.info.Agent {
 		s.info.Process, s.info.Agent = proc, agent
