@@ -380,7 +380,11 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			if !multi && name.DoubleClicked() {
 				a.startRename(s.ID)
 			}
-			ui.Text(c, proto.ShortDir(p.Dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
+			// The home directory names itself "~", which the title may
+			// already say.
+			if dir := proto.ShortDir(p.Dir); dir != title {
+				ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
+			}
 		})
 		// The header's empty stretch moves the window, as a title bar
 		// does, and zooms it on a double click: the header around it
