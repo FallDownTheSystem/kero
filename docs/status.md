@@ -31,6 +31,8 @@ Kero notifies you when you're looking elsewhere and:
 - an agent finishes (`notify-on-done`)
 - a program reports that it failed (`notify-on-error`)
 
+A program's own desktop notifications show as they would in any terminal, and leave its status alone.
+
 The Dock icon shows how many sessions need you (`dock-badge`) and can bounce once when one starts to (`dock-bounce`). See [Configuration](./configuration.md).
 
 ## Reporting status from a program

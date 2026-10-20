@@ -251,6 +251,19 @@ func (a *App) event(cl *client.Client, m proto.Message) {
 		if act, ok := actions.Find(m.Action); ok && act.Remote {
 			a.run(act.ID, m.Args)
 		}
+	case "notice":
+		// A program's own notification, as a terminal shows it: not
+		// while the user looks at its session.
+		n := m.Notice
+		s := a.session(n.Session)
+		if s == nil || n.Session == a.selected && a.active {
+			return
+		}
+		title := n.Title
+		if title == "" {
+			title = s.DisplayName()
+		}
+		a.showNotification(n.Session, title, n.Body)
 	}
 }
 
@@ -281,6 +294,24 @@ func (a *App) setState(st proto.State) {
 	}
 	a.notify(first)
 	a.updateTitle()
+}
+
+// showNotification shows a notification about a session, which a click
+// on it selects.
+func (a *App) showNotification(id, title, body string) {
+	if !mygo.NotificationsSupported() {
+		return
+	}
+	n := mygo.NewNotification(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body, Silent: !a.set.NotifySound})
+	n.OnClick(func() {
+		a.update(func() {
+			a.selectSession(id)
+			a.win.Show()
+			a.win.Focus()
+		})
+		n.Close()
+	})
+	go n.Show()
 }
 
 // notify tells about sessions that came to need the user, or finished,
@@ -320,20 +351,7 @@ func (a *App) notify(first bool) {
 		if a.set.BounceDock && (s.Status == proto.Waiting || s.Status == proto.Failed) {
 			mygo.App.Dock.Bounce(false)
 		}
-		if !mygo.NotificationsSupported() {
-			continue
-		}
-		id := s.ID
-		n := mygo.NewNotification(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body, Silent: !a.set.NotifySound})
-		n.OnClick(func() {
-			a.update(func() {
-				a.selectSession(id)
-				a.win.Show()
-				a.win.Focus()
-			})
-			n.Close()
-		})
-		go n.Show()
+		a.showNotification(s.ID, title, body)
 	}
 	for id := range a.statuses {
 		if a.session(id) == nil {

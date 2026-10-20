@@ -62,7 +62,7 @@ type Message struct {
 	Result any    `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 
-	Event string `json:"event,omitempty"` // "state", "select"
+	Event string `json:"event,omitempty"` // "state", "select", "action", "notice"
 	State *State `json:"state,omitempty"`
 	// Select asks the app to show a session ("kero focus").
 	Select string `json:"select,omitempty"`
@@ -70,6 +70,15 @@ type Message struct {
 	// Args, when the user allows Remote Control.
 	Action string            `json:"action,omitempty"`
 	Args   map[string]string `json:"args,omitempty"`
+	// Notice is a program's desktop notification, to show as it is.
+	Notice *Notice `json:"notice,omitempty"`
+}
+
+// Notice is a desktop notification a program in a session sent.
+type Notice struct {
+	Session string `json:"session"`
+	Title   string `json:"title,omitempty"`
+	Body    string `json:"body"`
 }
 
 // Status is what a session is doing, as the sidebar shows it.

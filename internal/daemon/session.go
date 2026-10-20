@@ -31,7 +31,7 @@ type pane struct {
 
 	// mu guards the fields below, and orders the output the emulator and
 	// the clients get with clients attaching. The emulator's callbacks
-	// (OnTitle, OnBell, OnNotify) run within Feed, with mu held.
+	// (OnTitle, OnNotify) run within Feed, with mu held.
 	mu       sync.Mutex
 	info     proto.Pane
 	proc     *ptyProc
@@ -112,7 +112,6 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 		// terminals answer them, asking the user as they would.
 		ClipboardRead: terminal.ClipboardForward,
 		OnTitle:       s.onTitle,
-		OnBell:        s.onBell,
 		OnNotify:      s.onNotify,
 	})
 	if err != nil {
@@ -204,15 +203,34 @@ func (s *pane) onTitle(title string) {
 	}
 }
 
-func (s *pane) onBell() {
-	// A shell's bell is a failed completion, not a question.
-	if s.fgPGID == 0 || s.fgPGID == s.shellPID {
+// onNotify takes a program's desktop notification (OSC 9, 777, 99),
+// which tells nothing of its status: a program that needs the user says
+// so with "kero report blocked" or "kero notify". An agent's screen tells
+// whether it waits, and its notification only words the wait, as Claude
+// Code's "needs your permission"; its "waiting for your input", a while
+// after a turn, is dropped. Any other program's goes on to the app as it
+// is. s.mu is held.
+func (s *pane) onNotify(title, body string) {
+	title, body = strings.TrimSpace(title), strings.TrimSpace(body)
+	if body == "" {
+		title, body = "", title
+	}
+	if body == "" {
 		return
 	}
-	s.needsUser("")
+	if detect.Known(s.info.Agent) {
+		if s.info.Status == proto.Waiting {
+			s.info.Message = body
+			s.d.changed()
+		}
+		return
+	}
+	go s.d.notice(proto.Notice{Session: s.sid, Title: title, Body: body})
 }
 
-func (s *pane) onNotify(title, body string) {
+// flag marks the pane as needing the user, as "kero notify" asks; s.mu
+// is held.
+func (s *pane) flag(title, body string) {
 	msg := strings.TrimSpace(body)
 	if msg == "" {
 		msg = strings.TrimSpace(title)

@@ -168,6 +168,15 @@ func (d *Daemon) save() {
 	}
 }
 
+// notice passes a program's desktop notification on to the app.
+func (d *Daemon) notice(n proto.Notice) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for c := range d.subs {
+		c.event(proto.Message{Event: "notice", Notice: &n})
+	}
+}
+
 func (d *Daemon) broadcastLoop() {
 	for range d.changeCh {
 		// Coalesce a burst of changes into one message.

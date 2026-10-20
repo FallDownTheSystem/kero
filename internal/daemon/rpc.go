@@ -258,7 +258,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		pn.mu.Lock()
-		pn.onNotify(p.Title, p.Body)
+		pn.flag(p.Title, p.Body)
 		pn.mu.Unlock()
 		return true, nil
 

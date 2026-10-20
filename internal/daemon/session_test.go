@@ -97,6 +97,58 @@ func TestClaudeRedrawIsNoWork(t *testing.T) {
 	}
 }
 
+// Claude Code at its prompt for a while notifies "waiting for your
+// input": its screen, at the prompt, tells it is idle, not waiting. Its
+// notification at a permission dialog words the wait. "kero notify" from
+// it needs the user all the same.
+func TestAgentNotifyFollowsScreen(t *testing.T) {
+	s := testPane(t)
+	s.info.Agent = "claude"
+	now := time.Now()
+	s.show(claudeScreen(t, "idle"))
+	if st := s.status(now); st != proto.Idle {
+		t.Fatalf("at the prompt: %s", st)
+	}
+	s.output([]byte("\x1b]9;Claude is waiting for your input\x07"))
+	if st := s.status(now); st != proto.Idle {
+		t.Fatalf("notified at the prompt: %s", st)
+	}
+	s.output([]byte("\x07"))
+	if st := s.status(now); st != proto.Idle {
+		t.Fatalf("bell at the prompt: %s", st)
+	}
+	s.show(claudeScreen(t, "blocked"))
+	if st := s.status(now); st != proto.Waiting {
+		t.Fatalf("asking to run a command: %s", st)
+	}
+	s.output([]byte("\x1b]9;Claude needs your permission to use Bash\x07"))
+	if st := s.status(now); st != proto.Waiting || s.info.Message != "Claude needs your permission to use Bash" {
+		t.Fatalf("notified while asking: %s %q", st, s.info.Message)
+	}
+	s.show(claudeScreen(t, "idle"))
+	if st := s.status(now); st != proto.Idle {
+		t.Fatalf("back at the prompt: %s", st)
+	}
+	s.mu.Lock()
+	s.flag("", "Need your API key to continue")
+	s.mu.Unlock()
+	if st := s.status(now); st != proto.Waiting || s.info.Message != "Need your API key to continue" {
+		t.Fatalf("kero notify: %s %q", st, s.info.Message)
+	}
+}
+
+// A program's bell and notification tell nothing of its status: vim
+// beeps at a wrong key, a build notifies it is done.
+func TestProgramNotifyIsNoWait(t *testing.T) {
+	s := testPane(t)
+	s.fgPGID, s.shellPID = 2, 1
+	now := time.Now()
+	s.output([]byte("\x07\x1b]9;Build finished\x07\x1b]777;notify;make;Build finished\x07"))
+	if st := s.status(now); st != proto.Idle {
+		t.Fatalf("after a bell and notifications: %s", st)
+	}
+}
+
 // A program that is no agent works while its title turns as a spinner:
 // a clock it draws, however long it ticks, is not work.
 func TestProgramWorksByTitle(t *testing.T) {
