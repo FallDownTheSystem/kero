@@ -20,8 +20,10 @@ import (
 	"github.com/egoist/mygo"
 )
 
-// Version changes whenever the protocol does: a client refuses a daemon of
-// another version, which it offers to restart.
+// Version changes whenever the protocol changes in a way the other side
+// can't ignore: a client refuses a daemon of another version, which it
+// offers to restart. A new optional field, which the other side leaves
+// out or skips, doesn't change it.
 const Version = 3
 
 // Hello opens a connection.
