@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1
+
+- Kero speaks Simplified Chinese; pick the language in Settings.
+- Rename a project from its menu in the sidebar.
+- `kero skill setup` hooks Claude Code, Codex, Pi and OpenCode into Kero as
+  they start: an agent learns its session and pane, names an unnamed session
+  after its task, and resumes when kerod restarts.
+- `kero new|split --wait` and `kero wait --exit` exit with the command's
+  status.
+- When kerod runs another version of Kero, a Restart Service chip offers to
+  restart it. Settings shows updates on its General page.
+- A home directory pane shows `~` once in its header.
+
 ## 2.0.0
 
 Kero, rewritten from the ground up: sessions grouped by project in a sidebar
