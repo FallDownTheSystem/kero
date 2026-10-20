@@ -22,6 +22,9 @@ export default function SiteHeader(props: { path: string }) {
           <Link href="/docs/agents" class="hide-sm" classList={{ 'is-active': props.path === '/docs/agents' }}>
             Agents
           </Link>
+          <Link href="/download" classList={{ 'is-active': props.path === '/download' }}>
+            Download
+          </Link>
         </nav>
         <div class="site-header__end">
           <a class="icon-link" href={GITHUB_URL} aria-label="Kero on GitHub">

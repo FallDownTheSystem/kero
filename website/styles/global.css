@@ -59,8 +59,9 @@
   color-scheme: dark;
 }
 
-/* The landing page is dark, with one light band, as void.cloud's is. */
-.site--home {
+/* The landing and download pages are dark, the landing page with one
+   light band, as void.cloud's is. */
+.site--dark {
   --bg: #111310;
   --bg-soft: #161915;
   --surface: #191c17;
@@ -73,7 +74,7 @@
   color-scheme: dark;
 }
 
-.site--home .light {
+.site--dark .light {
   --bg: #ffffff;
   --bg-soft: #f4f5f1;
   --surface: #f7f8f4;
@@ -1333,6 +1334,145 @@ button {
 
 .cta .actions {
   margin-top: 10px;
+}
+
+/* ---------- Download ---------- */
+
+.download-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 96px 24px 88px;
+  text-align: center;
+  background: radial-gradient(ellipse 50% 70% at 50% 0%, rgba(195, 236, 116, 0.1), transparent 70%);
+}
+
+.download-head__version {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.download-head__version a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s;
+}
+
+.download-head__version a:hover {
+  color: var(--text);
+}
+
+.platforms {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--stroke);
+}
+
+.platform {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 48px 40px 56px;
+}
+
+.platform + .platform {
+  border-left: 1px solid var(--stroke);
+}
+
+.platform.is-yours {
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(195, 236, 116, 0.07), transparent 70%);
+}
+
+.platform__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.platform__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.platform__icon {
+  color: var(--text-2);
+}
+
+.platform.is-yours .platform__icon {
+  color: var(--brand);
+}
+
+.platform__badge {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.platform p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+.platform__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.platform__kind {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.platform__script {
+  margin: 4px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #0d0f0c;
+  color: #eef2e8;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.download .cta code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+@media (max-width: 1080px) {
+  .platforms {
+    grid-template-columns: 1fr;
+  }
+  .platform {
+    padding: 40px 24px;
+  }
+  .platform + .platform {
+    border-left: 0;
+    border-top: 1px solid var(--stroke);
+  }
 }
 
 /* ---------- Footer ---------- */

@@ -5,7 +5,6 @@ import AppWindow from '../components/AppWindow';
 import CliShowcase from '../components/CliShowcase';
 import ParticleMorph from '../components/ParticleMorph';
 import { ArrowUpRightIcon, BellIcon, BotIcon, LayersIcon, TerminalIcon } from '../components/Icons';
-import { GITHUB_URL } from '../components/SiteHeader';
 
 const features = [
   {
@@ -62,11 +61,8 @@ export default function HomePage() {
             <Link href="/docs/quick-start" class="button button--primary">
               Get Started
             </Link>
-            <a href={GITHUB_URL} class="button">
-              View on GitHub
-            </a>
-            <Link href="/docs" class="button">
-              Read the Docs
+            <Link href="/download" class="button">
+              Download
             </Link>
           </div>
         </div>

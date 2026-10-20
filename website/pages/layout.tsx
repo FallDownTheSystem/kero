@@ -13,7 +13,7 @@ export default function Layout(props: { children?: JSX.Element }) {
   const router = useRouter();
   const path = () => router.path.replace(/\/$/, '') || '/';
   return (
-    <div class="site" classList={{ 'site--home': path() === '/' }}>
+    <div class="site" classList={{ 'site--dark': path() === '/' || path() === '/download' }}>
       <SiteHeader path={path()} />
       {props.children}
       <SiteFooter />
