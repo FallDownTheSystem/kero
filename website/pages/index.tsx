@@ -78,11 +78,6 @@ export default function HomePage() {
 
       {/* The app */}
       <section class="wrapper section-head">
-        <p class="eyebrow eyebrow--brand">
-          <span>Kero</span>
-          <span class="eyebrow__sep" />
-          <span>app</span>
-        </p>
         <h2 class="title">Every Agent, One Window</h2>
         <p class="lead lead--center">
           An agent reviews your change, lazygit shows the diff, and the program runs beside them. The sidebar
@@ -103,11 +98,6 @@ export default function HomePage() {
 
       {/* CLI */}
       <section class="wrapper section-head">
-        <p class="eyebrow eyebrow--brand">
-          <span>Kero</span>
-          <span class="eyebrow__sep" />
-          <span>cli</span>
-        </p>
         <h2 class="title">Drive It From the Shell</h2>
         <p class="lead lead--center">
           Start sessions, split panes, type into them, wait for them and read their screens, from your shell or
@@ -123,11 +113,6 @@ export default function HomePage() {
       {/* Features, on light */}
       <div class="light">
         <section class="wrapper section-head">
-          <p class="eyebrow eyebrow--brand">
-            <span>Kero</span>
-            <span class="eyebrow__sep" />
-            <span>features</span>
-          </p>
           <h2 class="title">Built for Many Agents at Once</h2>
           <p class="lead lead--center">
             One window for every task in flight, and a clear answer to the only question that matters: who needs
