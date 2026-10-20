@@ -43,10 +43,12 @@ const (
 // What a FrameClear clears.
 const (
 	// ClearScreen: the scrollback and the screen above the cursor's line,
-	// which moves to the top, as ⌘K does (terminal.ClearScreen).
+	// which moves to the top, as ⌘K and the context menu's Clear do
+	// (terminal.ClearScreen).
 	ClearScreen byte = 's'
-	// ClearScrollback: the scrollback, as the context menu's Clear
-	// Scrollback does (terminal.ClearScrollback).
+	// ClearScrollback: the scrollback (terminal.ClearScrollback), which
+	// older apps' context menu asked with Clear Scrollback; kerod still
+	// clears it for them.
 	ClearScrollback byte = 'b'
 )
 

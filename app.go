@@ -621,15 +621,11 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 			a.zoom(z.Steps, z.Reset)
 			return true
 		},
-		// ⌘K and Clear Scrollback clear kerod's terminal, the session's:
-		// cleared here alone, kerod's next frames, drawn from a screen
-		// still full, would put rows back wrong.
-		OnClear: func(c terminal.Clear) bool {
-			what := proto.ClearScreen
-			if c == terminal.ClearScrollback {
-				what = proto.ClearScrollback
-			}
-			conn.Clear(what)
+		// ⌘K and the context menu's Clear clear kerod's terminal, the
+		// session's: cleared here alone, kerod's next frames, drawn from a
+		// screen still full, would put rows back wrong.
+		OnClear: func(terminal.Clear) bool {
+			conn.Clear(proto.ClearScreen)
 			return true
 		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
