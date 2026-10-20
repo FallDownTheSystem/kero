@@ -450,6 +450,9 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 		ui.Spacer(c)
 		switch a.conn {
 		case connReady:
+			if a.daemonStale() {
+				a.restartChip(c, pal)
+			}
 			waiting := func(s *proto.Session) bool { return s.Status == proto.Waiting }
 			working := func(s *proto.Session) bool { return s.Status == proto.Working }
 			done := func(s *proto.Session) bool { return s.Status == proto.Idle && s.Unread }
@@ -496,6 +499,23 @@ func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bo
 			jump = func() { a.jumpTo(is) }
 		}
 		jump()
+	}
+}
+
+// restartChip offers to restart kerod into this version of Kero, while it
+// runs another.
+func (a *App) restartChip(c *ui.Context, pal *palette) {
+	b := ui.ButtonBase(c.Key("chip-restart")).Height(24).Padding(0, 8, 0, 8).Gap(6).Radius(12).AlignItems(ui.Center).
+		Label("Restart Service").Tooltip("Kero was updated: restart the background service to run the new version")
+	if b.Hovered() {
+		b.Background(pal.rowHover)
+	}
+	b.Children(func() {
+		ui.Box(c).Size(6, 6).Radius(3).Background(pal.attention)
+		ui.Text(c, "Restart Service").FontSize(12).FontWeight(500).TextColor(pal.attention).SingleLine()
+	})
+	if b.Clicked() {
+		a.offerRestart()
 	}
 }
 

@@ -34,10 +34,13 @@ type Hello struct {
 
 // Welcome answers a Hello.
 type Welcome struct {
-	Version int    `json:"version"`
-	PID     int    `json:"pid"`
-	Started int64  `json:"started"` // unix ms
-	Error   string `json:"error,omitempty"`
+	Version int   `json:"version"`
+	PID     int   `json:"pid"`
+	Started int64 `json:"started"` // unix ms
+	// App is the version of Kero that kerod runs (App.Version): after an
+	// update it is the version before, until kerod restarts.
+	App   string `json:"app,omitempty"`
+	Error string `json:"error,omitempty"`
 	// Attach only: the size of the snapshot that follows.
 	Cols int `json:"cols,omitempty"`
 	Rows int `json:"rows,omitempty"`

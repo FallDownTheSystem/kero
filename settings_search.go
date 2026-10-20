@@ -21,6 +21,9 @@ var settingsIndex = []searchEntry{
 	{"general", "Ask before closing a running program", "confirm-close quit kill"},
 	{"general", "Restore sessions after a restart", "restore-sessions reboot persist"},
 	{"general", "Open Kero at login", "startup launch login items"},
+	{"general", "Version", "updates check for updates software update about"},
+	{"general", "Check for updates automatically", "updates automatic background daily"},
+	{"general", "Download and install updates automatically", "updates automatic install download"},
 
 	{"appearance", "Appearance", "window-theme dark light mode system"},
 	{"appearance", "Translucent window", "window-translucent vibrancy blur material transparency"},

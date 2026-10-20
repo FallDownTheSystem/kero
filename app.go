@@ -67,12 +67,13 @@ type termEntry struct {
 type App struct {
 	win *mygo.Window
 
-	cl      *client.Client
-	conn    connState
-	connErr string
-	retries int
-	st      proto.State
-	loaded  bool // a state came
+	cl        *client.Client
+	conn      connState
+	connErr   string
+	daemonApp string // the version of Kero that kerod runs
+	retries   int
+	st        proto.State
+	loaded    bool // a state came
 
 	prefs       prefs
 	set         settings.Settings // the user's settings: Settings' controls edit it
@@ -195,6 +196,7 @@ func (a *App) connect() {
 				return
 			}
 			a.cl, a.conn, a.connErr, a.retries = cl, connReady, "", 0
+			a.daemonApp = cl.Welcome.App
 			cl.OnEvent(func(m proto.Message) { a.update(func() { a.event(cl, m) }) })
 			cl.Go("subscribe", nil, nil)
 			a.viewSent = nil
@@ -682,7 +684,7 @@ func (a *App) apply(s settings.Settings, save bool) {
 	if old.Vibrancy != s.Vibrancy && a.win != nil {
 		a.win.SetVibrancy(vibrancyFor(s))
 	}
-	if !maps.Equal(old.Shortcuts, s.Shortcuts) {
+	if !maps.Equal(old.Shortcuts, s.Shortcuts) && a.win != nil {
 		mygo.App.SetMenu(a.menu())
 	}
 	if old.DockBadge != s.DockBadge {
@@ -1035,6 +1037,45 @@ func (a *App) quitAndEnd() {
 				mygo.App.Quit()
 			}()
 		},
+	}
+}
+
+// daemonStale reports whether kerod runs another version of Kero than
+// this one, as after an update: it speaks the protocol, but runs the code
+// of before until it restarts.
+func (a *App) daemonStale() bool {
+	return a.conn == connReady && a.daemonApp != mygo.App.Version()
+}
+
+// offerRestart restarts kerod into this version of Kero, asking first
+// while programs run in sessions, as the restart ends them.
+func (a *App) offerRestart() {
+	n := 0
+	for i := range a.st.Sessions {
+		if busy(&a.st.Sessions[i]) {
+			n++
+		}
+	}
+	if n == 0 {
+		a.restartDaemon()
+		return
+	}
+	was := "an earlier version"
+	if a.daemonApp != "" {
+		was = a.daemonApp
+	}
+	running := "A program is running in 1 session"
+	if n > 1 {
+		running = fmt.Sprintf("Programs are running in %d sessions", n)
+	}
+	a.confirm = &confirmation{
+		open:  true,
+		title: "Restart the background service?",
+		detail: fmt.Sprintf("The service that runs your sessions is still Kero %s, and this is Kero %s. %s: restarting ends them, and sessions start again where they were, with their history.",
+			was, mygo.App.Version(), running),
+		action:  "Restart Service",
+		destroy: true,
+		run:     a.restartDaemon,
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
@@ -264,5 +265,28 @@ func TestSessionTooltipAtPointer(t *testing.T) {
 			t.Errorf("dx %g: tooltip text at y %g, the pointer at %g", dx, tip.Y, y)
 		}
 		shot(t, tt, fmt.Sprintf("session-tooltip-%g", dx))
+	}
+}
+
+// A kerod of another version of Kero gets a chip to restart it, which asks
+// first while a program runs, as the restart ends it.
+func TestRestartStaleDaemon(t *testing.T) {
+	a := testApp(t)
+	a.conn, a.daemonApp = connReady, "1.9.0"
+	a.st.Sessions[0].Process = "claude"
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	if err := tt.Click("Restart Service"); err != nil {
+		t.Fatalf("no chip to restart kerod: %v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if a.confirm == nil || !strings.Contains(a.confirm.detail, "Kero 1.9.0") {
+		t.Fatalf("no question before the restart: %+v", a.confirm)
+	}
+
+	a.confirm, a.daemonApp = nil, mygo.App.Version()
+	tt.Frame()
+	if tt.HasText("Restart Service") {
+		t.Error("a chip to restart a kerod of this version")
 	}
 }

@@ -23,6 +23,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/egoist/mygo"
+
 	"kero/internal/clilink"
 	"kero/internal/proto"
 	"kero/internal/settings"
@@ -462,7 +464,7 @@ func (d *Daemon) serve(conn net.Conn) {
 	if err := json.Unmarshal(line, &hello); err != nil {
 		return
 	}
-	welcome := proto.Welcome{Version: proto.Version, PID: os.Getpid(), Started: d.started.UnixMilli()}
+	welcome := proto.Welcome{Version: proto.Version, PID: os.Getpid(), Started: d.started.UnixMilli(), App: mygo.App.Version()}
 	if hello.Version != proto.Version {
 		welcome.Error = fmt.Sprintf("kerod speaks protocol %d, the client %d", proto.Version, hello.Version)
 		json.NewEncoder(conn).Encode(welcome)

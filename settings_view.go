@@ -14,6 +14,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/plugins/terminal"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
@@ -55,6 +56,7 @@ type settingsState struct {
 	shellDraft   string
 	shellEditing bool
 	loginOpen    bool // open at login, as the system says
+	updates      updatePrefs
 	cliPath      string
 	service      string // kerod, as last asked
 	notice       string // a line under the keyboard page, as of a conflict
@@ -78,6 +80,13 @@ func (a *App) openSettings(page string) {
 		return
 	}
 	a.ss.loginOpen = mygo.App.OpenAtLogin()
+	a.refreshUpdates()
+	offUpdates := updater.OnChange(func() {
+		a.refreshUpdates()
+		if a.setWin != nil {
+			a.setWin.Invalidate()
+		}
+	})
 	a.ss.draft = map[string]string{}
 	a.refreshAgents()
 	a.refreshService()
@@ -88,10 +97,29 @@ func (a *App) openSettings(page string) {
 		Content:  ui.View(a.settingsView),
 	}))
 	a.setWin.OnClosed(func() {
+		offUpdates()
 		a.setWin = nil
 		a.setRecording("") // the menus take their shortcuts back
 		a.ss.query = ""
 	})
+}
+
+// updatePrefs are the updater's, as last read: the page reads these, not
+// the updater, which needs the running app.
+type updatePrefs struct {
+	enabled     bool // this copy of Kero can update itself
+	automatic   bool // checks in the background
+	download    bool // and installs what it finds without asking
+	lastChecked time.Time
+}
+
+func (a *App) refreshUpdates() {
+	a.ss.updates = updatePrefs{
+		enabled:     mygo.Updater.Enabled(),
+		automatic:   updater.AutomaticChecks(),
+		download:    updater.AutomaticDownloads(),
+		lastChecked: updater.LastCheck(),
+	}
 }
 
 func (a *App) refreshAgents() {
@@ -111,6 +139,9 @@ func (a *App) refreshService() {
 			}
 			up := time.Since(time.UnixMilli(c.Welcome.Started)).Round(time.Minute)
 			line = fmt.Sprintf("Running (pid %d) for %s · %d sessions, %d panes", c.Welcome.PID, durationWords(up), len(st.Sessions), panes)
+			if c.Welcome.App != mygo.App.Version() {
+				line += " · still an earlier Kero: restart it to update"
+			}
 			c.Close()
 		}
 		a.update(func() {
@@ -347,6 +378,7 @@ func settingsGroup(c *ui.Context, pal *palette, title, note string, fn func()) {
 			groupTitle(c, pal, title)
 		}
 		if fn != nil { // a group of a note alone has no panel
+			groupRows = 0
 			ui.Column(c).Radius(12).Background(pal.chip).Padding(4, 16).Children(fn)
 		}
 		if note != "" {
@@ -355,8 +387,15 @@ func settingsGroup(c *ui.Context, pal *palette, title, note string, fn func()) {
 	})
 }
 
+// groupRows counts the rows of the group being built, so that a divider
+// goes between them, as in macOS's Settings.
+var groupRows int
+
 // setting is a row of a group: a label, what it does, and its control.
 func settingRow(c *ui.Context, pal *palette, label, detail string, control func()) {
+	if groupRows++; groupRows > 1 {
+		ui.Box(c).Height(1).Shrink(0).Background(pal.text.Alpha(0.07))
+	}
 	row := ui.Row(c.Key("row-"+label)).Padding(11, 0).Gap(16).AlignItems(ui.Center)
 	row.Children(func() {
 		searchHighlight(c, row, label, pal, 10, -2)
@@ -429,6 +468,33 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 					a.ss.toast = "Couldn’t change it: " + err.Error()
 				}
 			})
+		})
+	})
+	a.updatesGroup(c, pal)
+}
+
+func (a *App) updatesGroup(c *ui.Context, pal *palette) {
+	u := &a.ss.updates
+	version := "Kero " + mygo.App.Version()
+	switch {
+	case !u.enabled:
+		version += " · this copy can’t update itself"
+	case u.lastChecked.IsZero():
+		version += " · not checked yet"
+	default:
+		version += " · last checked " + durationWords(time.Since(u.lastChecked)) + " ago"
+	}
+	settingsGroup(c, pal, "Updates", "", func() {
+		settingRow(c, pal, "Version", version, func() {
+			if button(c, "check-updates", "Check for Updates", "", false, pal) {
+				updater.CheckForUpdates()
+			}
+		})
+		settingRow(c, pal, "Check for updates automatically", "Once a day, while Kero is open.", func() {
+			toggle(c.Key("auto-check"), &u.automatic, pal).OnChange(func() { updater.SetAutomaticChecks(u.automatic) })
+		})
+		settingRow(c, pal, "Download and install updates automatically", "They take effect the next time Kero opens.", func() {
+			toggle(c.Key("auto-download"), &u.download, pal).OnChange(func() { updater.SetAutomaticDownloads(u.download) })
 		})
 	})
 }
