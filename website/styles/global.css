@@ -1297,6 +1297,28 @@ button {
   padding-top: 0.6em;
 }
 
+/* Phones: just two panes, Claude Code beside the snake, so the window is
+   drawn narrower and its text reads larger. */
+@media (max-width: 640px) {
+  .kw {
+    grid-template-columns: minmax(0, 1fr);
+    width: 54em;
+    height: 36em;
+    font-size: calc(100cqw / 54);
+  }
+  .kw-side,
+  .kw-pane--git {
+    display: none;
+  }
+  .kw-main {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    padding-left: 0.5em;
+  }
+  .kw-col {
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
 /* ---------- Section heads ---------- */
 
 .section-head {
