@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.7
+
+- A split pane's title leads with its program's logo: Claude Code's,
+  Codex's and other agents', Node.js's for a script node runs, as vite,
+  and those of bun, deno, python, vim, git and docker; a shell's is a
+  bolder terminal icon.
+- A split pane shows its status once, by its title, not again in the
+  chip beside it.
+- An unnamed session takes its name from the program in the pane you're
+  in, else in the one that most needs you; `session-name` chooses
+  between these and the first pane's folder.
+- Clear Scrollback in a pane's context menu clears as Cmd+K does, the
+  screen too, and works on a full-screen program's.
+
 ## 2.0.6
 
 - Images programs show appear in their panes, as grok's preview of a
