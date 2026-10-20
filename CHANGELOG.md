@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.3
+
+- An agent sitting at its prompt no longer shows as needing you, as Claude
+  Code did a while after answering. A bell or a program's desktop
+  notification leaves its status alone; programs' notifications show as
+  they are.
+
 ## 2.0.2
 
 - Installing the command line tool on macOS asks for an administrator's
