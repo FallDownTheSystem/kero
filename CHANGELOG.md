@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.5
+
+- Find in a pane's scrollback with Cmd+F (Ctrl+F on Windows).
+- Text stays readable on a light background: colors meant for a dark one,
+  as Claude Code's near-white grays, get enough contrast with it. The new
+  `minimum-contrast` setting sets how much, as in Ghostty.
+- Command-hovering a link in a terminal underlines it.
+- A pane shows where its agent works: the worktree Claude Code went into,
+  rather than the folder its shell started in. Links, Copy Directory and
+  Reveal follow it.
+- Codex sessions are told to the pane that runs them, for resuming after
+  kerod restarts, rather than to the pane that first started Codex's
+  background service.
+
 ## 2.0.4
 
 - Terminals show the cursor chosen in Settings, its shape and whether it
