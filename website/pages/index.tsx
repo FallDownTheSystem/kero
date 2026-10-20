@@ -1,6 +1,7 @@
 import { For } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { Link } from '@void/solid';
+import AppWindow from '../components/AppWindow';
 import CliShowcase from '../components/CliShowcase';
 import ParticleMorph from '../components/ParticleMorph';
 import { ArrowUpRightIcon, BellIcon, BotIcon, LayersIcon, TerminalIcon } from '../components/Icons';
@@ -75,6 +76,29 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* The app */}
+      <section class="wrapper section-head">
+        <p class="eyebrow eyebrow--brand">
+          <span>Kero</span>
+          <span class="eyebrow__sep" />
+          <span>app</span>
+        </p>
+        <h2 class="title">Every Agent, One Window</h2>
+        <p class="lead lead--center">
+          An agent reviews your change, lazygit shows the diff, and the program runs beside them. The sidebar
+          tells you which session needs you.
+        </p>
+      </section>
+      <section class="wrapper showcase">
+        <div class="stage">
+          <div class="glass">
+            <div class="stage__frame">
+              <AppWindow />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="wrapper ticks" aria-hidden="true" />
 
       {/* CLI */}
@@ -102,7 +126,7 @@ export default function HomePage() {
           <p class="eyebrow eyebrow--brand">
             <span>Kero</span>
             <span class="eyebrow__sep" />
-            <span>app</span>
+            <span>features</span>
           </p>
           <h2 class="title">Built for Many Agents at Once</h2>
           <p class="lead lead--center">

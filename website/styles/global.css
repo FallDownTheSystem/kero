@@ -542,6 +542,561 @@ button {
   }
 }
 
+/* ---------- App showcase ---------- */
+
+.showcase {
+  display: grid;
+  place-items: center;
+  padding: 8px 48px 120px;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+}
+
+/* Something for the glass to bend: a faint glow behind the frame. */
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: 8% 10%;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side at 30% 40%, rgba(195, 236, 116, 0.28), transparent),
+    radial-gradient(closest-side at 75% 60%, rgba(255, 140, 190, 0.22), transparent);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* A liquid glass bezel: frosted, a specular edge along the top left and
+   a fainter one at the bottom right, and a bright rim where it meets the
+   window. */
+.glass {
+  --pad: clamp(6px, 1.05vw, 14px);
+  position: relative;
+  padding: var(--pad);
+  border-radius: calc(var(--pad) + clamp(6px, 1.2vw, 14px));
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(255, 255, 255, 0.07) 30%,
+    rgba(255, 255, 255, 0.03) 60%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 40px 100px -30px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/* The specular ring, brightest at the top left. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 200deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.95) 55deg,
+    rgba(255, 255, 255, 0.15) 110deg,
+    rgba(255, 255, 255, 0.05) 180deg,
+    rgba(255, 255, 255, 0.5) 245deg,
+    rgba(255, 255, 255, 0.05) 320deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* A faint sheen along the top of the bezel. */
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 40%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
+  pointer-events: none;
+}
+
+.stage__frame {
+  position: relative;
+  z-index: 1;
+  container-type: inline-size;
+}
+
+@media (max-width: 640px) {
+  .showcase {
+    padding: 8px 12px 64px;
+  }
+}
+
+/* ---------- The window, drawn at 1200px and scaled: 1em = 16px ---------- */
+
+.kw {
+  --ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter Variable', system-ui, sans-serif;
+  --mono: 'JetBrains Mono Variable', ui-monospace, Menlo, monospace;
+  --ink: #26232b;
+  --muted: #8e8996;
+  --amber: #c98a1b;
+  display: grid;
+  grid-template-columns: 15.5em minmax(0, 1fr);
+  width: 75em;
+  height: 47.5em;
+  font-size: calc(100cqw / 75);
+  font-family: var(--ui);
+  color: var(--ink);
+  line-height: 1.35;
+  text-align: left;
+  border-radius: 0.875em;
+  overflow: hidden;
+  background: linear-gradient(172deg, #e9dcf5 0%, #f1ddef 30%, #f5e7dc 70%, #f7f0d4 100%);
+  /* macOS's window shadow: a hairline, a tight contact shadow and a wide
+     soft one. */
+  box-shadow:
+    0 0 0 0.06em rgba(255, 255, 255, 0.75),
+    0 0 0 0.12em rgba(0, 0, 0, 0.18),
+    0 0.3em 1em rgba(0, 0, 0, 0.3);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.kw-side {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75em 0.625em 0.7em;
+}
+
+.kw-side__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 1.75em;
+  padding: 0 0.25em 0 0.45em;
+  margin-bottom: 1.1em;
+}
+
+.kw-lights {
+  display: flex;
+  gap: 0.5em;
+}
+
+.kw-lights i {
+  width: 0.78em;
+  height: 0.78em;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: inset 0 0 0 0.04em rgba(0, 0, 0, 0.12);
+}
+
+.kw-lights i:nth-child(2) {
+  background: #febc2e;
+}
+
+.kw-lights i:nth-child(3) {
+  background: #28c840;
+}
+
+.kw-side__tools {
+  display: flex;
+  gap: 0.9em;
+  color: #6f6a77;
+}
+
+.kw-icon {
+  display: inline-flex;
+  flex: none;
+  line-height: 0;
+}
+
+.kw-project + .kw-project {
+  margin-top: 1.25em;
+}
+
+.kw-project__head {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 0.4em;
+  padding: 0 0.7em;
+  font-size: 0.8125em;
+  font-weight: 600;
+  color: #77727f;
+}
+
+.kw-count {
+  margin-left: 0.25em;
+  font-weight: 400;
+  color: #a19cab;
+}
+
+.kw-attention {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.kw-session {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  height: 2.15em;
+  padding: 0 0.7em;
+  border-radius: 0.55em;
+  font-size: 0.875em;
+}
+
+.kw-session.is-selected {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0.06em 0.25em rgba(60, 30, 60, 0.08);
+}
+
+.kw-session.is-bold .kw-session__name {
+  font-weight: 650;
+}
+
+.kw-session__name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kw-session__when {
+  font-size: 0.9em;
+  color: #a19cab;
+}
+
+.kw-status {
+  flex: none;
+  overflow: visible;
+}
+
+.kw-status__arc {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kw-spin 1s linear infinite;
+}
+
+.kw-status__pulse {
+  animation: kw-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes kw-spin {
+  from {
+    transform: rotate(-90deg);
+  }
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+@keyframes kw-pulse {
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.kw-side__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding: 0 0.3em 0 0.6em;
+}
+
+.kw-tally {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 0.8em;
+  color: #77727f;
+}
+
+.kw-tally .kw-status {
+  margin-left: 0.5em;
+}
+
+.kw-tally .kw-status:first-child {
+  margin-left: 0;
+}
+
+.kw-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 0.5em;
+  padding: 0.5em 0.5em 0.5em 0;
+  min-height: 0;
+}
+
+.kw-col {
+  display: grid;
+  grid-template-rows: minmax(0, 1.28fr) minmax(0, 1fr);
+  gap: 0.5em;
+  min-height: 0;
+}
+
+.kw-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 0.75em;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 0.05em 0.15em rgba(60, 30, 60, 0.06),
+    0 0.3em 1em rgba(60, 30, 60, 0.05);
+  overflow: hidden;
+}
+
+.kw-pane:not(.is-focused) {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.kw-pane__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  height: 2.3em;
+  padding: 0 0.6em 0 0.85em;
+  flex: none;
+  color: #8e8996;
+}
+
+.kw-pane__title {
+  font-size: 0.8125em;
+  font-weight: 650;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.kw-pane:not(.is-focused) .kw-pane__title {
+  color: #57525e;
+}
+
+.kw-pane__dir {
+  font-size: 0.78em;
+  color: #a19cab;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kw-pane__end {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-left: auto;
+  color: #77727f;
+}
+
+.kw-pill {
+  padding: 0.15em 0.6em;
+  border-radius: 99em;
+  background: rgba(40, 20, 50, 0.06);
+  font-size: 0.72em;
+  color: #6f6a77;
+}
+
+.kw-term {
+  flex: 1;
+  min-height: 0;
+  padding: 0.35em 0.95em 0.6em;
+  font-family: var(--mono);
+  font-size: 0.74em;
+  line-height: 1.56;
+  color: #2a2730;
+  overflow: hidden;
+  font-feature-settings: 'calt' 0;
+}
+
+.kw-term pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre;
+}
+
+.kw-term b {
+  font-weight: 700;
+}
+
+.c-dim {
+  color: #8f8a97;
+}
+.c-blue {
+  color: #3b6fd8;
+}
+.c-orange {
+  color: #c4571f;
+}
+.c-purple {
+  color: #8a63d2;
+}
+.c-amber {
+  color: #b9820f;
+}
+.c-red {
+  color: #cf4b4b;
+}
+.c-green {
+  color: #3f9256;
+}
+.c-cyan {
+  color: #3d8fa6;
+}
+.c-magenta {
+  color: #b14fb8;
+}
+
+.kw-rule {
+  display: block;
+  height: 0;
+  margin: 0.4em 0;
+  border-top: 0.07em solid #c9c5ce;
+}
+
+.kw-caret {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  border: 0.07em solid #6f6a77;
+}
+
+/* lazygit */
+
+.lg {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0 0.7em;
+  height: 100%;
+}
+
+.lg-left,
+.lg-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.15em;
+}
+
+.lg-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5em 0.5em 0.45em;
+  margin-top: 0.95em;
+  border: 0.08em solid #9a95a3;
+  min-height: 0;
+}
+
+.lg-box__body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lg-box.is-active {
+  border-color: #3f9256;
+}
+
+.lg-box__label {
+  position: absolute;
+  top: -0.82em;
+  line-height: 1.5;
+  left: 0.4em;
+  padding: 0 0.15em;
+  background: #fff;
+}
+
+.lg-box.is-active .lg-box__label,
+.lg-box.is-active .lg-box__foot {
+  color: #3f9256;
+  font-weight: 700;
+}
+
+.lg-box__foot {
+  position: absolute;
+  right: 0.4em;
+  bottom: -0.82em;
+  line-height: 1.5;
+  padding: 0 0.15em;
+  background: #fff;
+}
+
+.lg-grow {
+  flex: 1;
+}
+
+.lg-log {
+  flex: none;
+}
+
+.lg-left .lg-fold:first-child {
+  margin-top: 0.2em;
+}
+
+.lg-left .lg-box + .lg-fold {
+  margin-top: 0.75em;
+}
+
+.lg-row {
+  white-space: pre;
+}
+
+.lg-row.is-selected {
+  margin: 0 -0.5em;
+  padding: 0 0.5em;
+  background: #6f80e0;
+  color: #fff;
+  font-weight: 700;
+}
+
+.lg-fold {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  white-space: nowrap;
+}
+
+.lg-fold i {
+  flex: 1;
+  height: 0;
+  border-top: 0.08em solid #9a95a3;
+}
+
+.lg-fold span:first-child::before {
+  content: '─';
+  margin-right: 0.1em;
+  color: #9a95a3;
+}
+
+.lg-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.3em;
+  white-space: nowrap;
+}
+
+.lg-bar u {
+  text-underline-offset: 0.2em;
+}
+
+/* The snake pane */
+
+.kw-pane--snake .kw-term {
+  padding-top: 0.6em;
+}
+
 /* ---------- Section heads ---------- */
 
 .section-head {
