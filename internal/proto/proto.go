@@ -16,6 +16,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/egoist/mygo"
 )
 
 // Version changes whenever the protocol does: a client refuses a daemon of
@@ -393,10 +395,20 @@ func Home() string {
 	return h
 }
 
+// Name names kero's directories: "kero", or "kero-dev" for a development
+// build, so that it runs a daemon, sessions and settings of its own beside
+// the installed Kero.
+func Name() string {
+	if mygo.IsDev() {
+		return "kero-dev"
+	}
+	return "kero"
+}
+
 // Dir returns kero's directory: $KERO_HOME, else
 // ~/Library/Application Support/kero (~/.config/kero on Linux,
-// %AppData%\kero on Windows). The app, the daemon and the CLI share it,
-// whatever build they are.
+// %AppData%\kero on Windows), of Name. The app, the daemon and the CLI of
+// a build share it.
 func Dir() string {
 	if d := os.Getenv("KERO_HOME"); d != "" {
 		return d
@@ -405,7 +417,7 @@ func Dir() string {
 	if err != nil {
 		base = filepath.Join(Home(), ".config")
 	}
-	return filepath.Join(base, "kero")
+	return filepath.Join(base, Name())
 }
 
 // SocketPath returns the daemon's socket: $KERO_SOCKET, else kerod.sock in

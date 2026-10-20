@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"kero/internal/actions"
+	"kero/internal/proto"
 )
 
 // kero's configuration is a file of lines `key = value`, as Ghostty's:
@@ -18,7 +19,8 @@ import (
 // Settings window edits it in place, keeping its comments and order.
 
 // ConfigPath returns the configuration file: $KERO_CONFIG, else
-// $XDG_CONFIG_HOME/kero/config, else ~/.config/kero/config.
+// $XDG_CONFIG_HOME/kero/config, else ~/.config/kero/config; kero-dev in
+// place of kero for a development build (proto.Name).
 func ConfigPath() string {
 	if p := os.Getenv("KERO_CONFIG"); p != "" {
 		return p
@@ -28,7 +30,7 @@ func ConfigPath() string {
 		home, _ := os.UserHomeDir()
 		base = filepath.Join(home, ".config")
 	}
-	return filepath.Join(base, "kero", "config")
+	return filepath.Join(base, proto.Name(), "config")
 }
 
 // key is a key of the configuration: how it reads and writes a setting.
