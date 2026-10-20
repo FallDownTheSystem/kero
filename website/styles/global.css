@@ -476,15 +476,18 @@ button {
   filter: blur(24px);
 }
 
+/* The animation shows beside the copy, never under it: where they would
+   stack, the copy is alone. The animation only runs while it shows. */
 @media (max-width: 960px) {
   .hero {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
   .hero__copy {
     padding: 56px 24px 40px;
   }
   .hero__art {
-    min-height: 380px;
+    display: none;
   }
 }
 
@@ -811,7 +814,7 @@ button {
   align-items: center;
   justify-content: space-between;
   margin-top: auto;
-  padding: 0 0.3em 0 0.6em;
+  padding: 0 0.6em 0 0.45em;
 }
 
 .kw-tally {

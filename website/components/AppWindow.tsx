@@ -75,15 +75,15 @@ export default function AppWindow() {
           )}
         </For>
         <div class="kw-side__bottom">
-          <span class="kw-tally">
-            <StatusIcon status="waiting" size={12} /> 1
-            <StatusIcon status="working" size={12} /> 1
-            <StatusIcon status="done" size={12} /> 1
-          </span>
           <span class="kw-side__tools">
             <FolderIcon />
             <SearchIcon />
             <GearIcon />
+          </span>
+          <span class="kw-tally">
+            <StatusIcon status="waiting" size={12} /> 1
+            <StatusIcon status="working" size={12} /> 1
+            <StatusIcon status="done" size={12} /> 1
           </span>
         </div>
       </aside>
