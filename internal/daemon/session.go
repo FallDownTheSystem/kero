@@ -311,12 +311,25 @@ func (s *pane) tick(now time.Time) bool {
 		s.seen, s.looked = "", false
 		changed = true
 	}
-	if now.Sub(s.cwdAt) > 1500*time.Millisecond {
+	if now.Sub(s.cwdAt) > 1500*time.Millisecond || proc == "" && s.info.ProcessDir != "" {
 		s.cwdAt = now
 		if dir := procCwd(s.shellPID); dir != "" && dir != s.info.Dir {
 			s.info.Dir = dir
 			changed = true
 			s.d.save()
+		}
+		// The program's own, from its group's leader, as an agent's that
+		// went into a worktree: the shell under it stays where it was.
+		pdir := ""
+		if proc != "" {
+			pdir = procCwd(pg)
+		}
+		if pdir == s.info.Dir {
+			pdir = ""
+		}
+		if pdir != s.info.ProcessDir {
+			s.info.ProcessDir = pdir
+			changed = true
 		}
 	}
 	if s.look(now) {

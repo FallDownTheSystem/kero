@@ -362,7 +362,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	if row.DoubleClicked() {
 		a.startRename(s.ID)
 	}
-	tip := proto.ShortDir(s.Dir)
+	tip := proto.ShortDir(s.WorkDir())
 	if s.Process != "" {
 		tip = s.Process + " · " + tip
 	}
@@ -441,11 +441,11 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	if m.Item(locales.SessionCopyId()).Chosen() {
 		a.copyText = id
 	}
-	if m.Item(locales.SessionCopyDirectory()).Disabled(s.Dir == "").Chosen() {
-		a.copyText = s.Dir
+	if m.Item(locales.SessionCopyDirectory()).Disabled(s.WorkDir() == "").Chosen() {
+		a.copyText = s.WorkDir()
 	}
-	if m.Item(locales.SessionRevealIn(fileManager())).Disabled(s.Dir == "").Chosen() {
-		a.openLink(id, s.Dir)
+	if m.Item(locales.SessionRevealIn(fileManager())).Disabled(s.WorkDir() == "").Chosen() {
+		a.openLink(id, s.WorkDir())
 	}
 	m.Separator()
 	if a.menuShortcut(m.Item(locales.ActionCloseSession()), "session.close").Chosen() {

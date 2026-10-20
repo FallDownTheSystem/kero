@@ -344,7 +344,7 @@ func (a *App) notify(first bool) {
 		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
 			title, body = locales.NotifyDoneTitle(s.DisplayName()), s.Message
 			if body == "" {
-				body = locales.NotifyDoneBody(s.Agent, proto.ShortDir(s.Dir))
+				body = locales.NotifyDoneBody(s.Agent, proto.ShortDir(s.WorkDir()))
 			}
 		default:
 			continue
@@ -798,8 +798,8 @@ func (a *App) openLink(id, link string) bool {
 		path = filepath.Join(proto.Home(), path[2:])
 	}
 	if !filepath.IsAbs(path) {
-		if s := a.session(id); s != nil && s.Dir != "" {
-			path = filepath.Join(s.Dir, path)
+		if s := a.session(id); s != nil && s.WorkDir() != "" {
+			path = filepath.Join(s.WorkDir(), path)
 		}
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -842,7 +842,7 @@ func (a *App) newSession(projectID string) {
 		if projectID == "" || cur.Project == projectID {
 			p.Project, p.After = cur.Project, cur.ID
 			if a.set.NewSessionDir == "current" {
-				p.Dir = cur.FocusPane().Dir
+				p.Dir = cur.FocusPane().WorkDir()
 			}
 		}
 		p.Cols, p.Rows = cur.Cols, cur.Rows

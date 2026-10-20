@@ -720,7 +720,7 @@ func listSessions(st proto.State) {
 	}
 	for _, s := range st.Sessions {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, names[s.Project], s.DisplayName(), status(s.Pane),
-			orDash(s.Process), proto.Ago(s.Since, now), proto.ShortDir(s.Dir))
+			orDash(s.Process), proto.Ago(s.Since, now), proto.ShortDir(s.WorkDir()))
 		if len(s.Panes) > 1 {
 			for _, p := range s.Panes {
 				mark := " "
@@ -728,7 +728,7 @@ func listSessions(st proto.State) {
 					mark = "›"
 				}
 				fmt.Fprintf(w, "  %s %s\t\t%s\t%s\t%s\t%s\t%s\n", mark, p.ID, p.PaneName(), status(p),
-					orDash(p.Process), proto.Ago(p.Since, now), proto.ShortDir(p.Dir))
+					orDash(p.Process), proto.Ago(p.Since, now), proto.ShortDir(p.WorkDir()))
 			}
 		}
 	}

@@ -384,7 +384,7 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			}
 			// The home directory names itself "~", which the title may
 			// already say.
-			if dir := proto.ShortDir(p.Dir); dir != title {
+			if dir := proto.ShortDir(p.WorkDir()); dir != title {
 				ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
 			}
 		})

@@ -139,6 +139,9 @@ type Pane struct {
 	Command []string `json:"command,omitempty"`
 	// Process is the foreground program, "" while the shell is.
 	Process string `json:"process,omitempty"`
+	// ProcessDir is the foreground program's working directory, as a
+	// worktree a coding agent went into, while it is not the shell's.
+	ProcessDir string `json:"processDir,omitempty"`
 	// Agent names the coding agent running in the foreground, when known.
 	Agent string `json:"agent,omitempty"`
 	// Shell is the name of the pane's shell, as "fish".
@@ -276,6 +279,15 @@ func (p *Pane) PaneName() string {
 		return filepath.Base(p.Dir)
 	}
 	return "shell"
+}
+
+// WorkDir is where the pane works: the foreground program's directory,
+// else the shell's.
+func (p *Pane) WorkDir() string {
+	if p.ProcessDir != "" {
+		return p.ProcessDir
+	}
+	return p.Dir
 }
 
 // DisplayName is the name to show for a session: the user's, else the
