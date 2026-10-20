@@ -73,26 +73,54 @@ UI exists.
    - Look up the shell through NSS (`getent passwd`) instead of parsing
      `/etc/passwd`.
 
-## Phase 2: remote access, one user
+## Phase 2: remote access over the network, one user
 
 The app connects to a kerod on another machine that runs as the same person.
 
-### Transport: SSH first
+### Transport: HTTP, with Tailscale saying who connects
 
-The app runs `ssh <host> kero daemon bridge`. That command relays stdio to the
-remote kerod's Unix socket, starting kerod if it isn't running. Each Kero
-connection (one control connection, one attach per visible pane) becomes one
-`ssh` channel. With `ControlMaster`, or one `ssh` process multiplexing
-channels, it shares one TCP connection.
+kerod gets network listeners beside its Unix socket, off by default. As in
+Rex, there's no SSH: the connection is HTTP(S), and the network says who the
+caller is.
 
-- **For:** no new authentication, ports or certificates. It uses the user's
-  keys, agent, `~/.ssh/config`, jump hosts and `known_hosts`. It works with
-  every host the user can already reach, including Tailscale SSH.
-- **Against:** needs `ssh` on the client (fine on macOS, Linux and Windows 10+),
-  plus one more process.
+- **One connection per client, multiplexed.** Locally, the app opens one
+  socket for control and one per visible pane. Over a network, that would
+  mean a handshake per pane and per reconnect.
+  - Instead, the client opens one HTTP connection and carries the existing
+    control JSON and attach frames as streams in it: WebSockets, or HTTP/2
+    streams. A spike picks one.
+  - The Unix socket keeps today's protocol.
+- **Why HTTP:** Tailscale Serve proxies HTTPS to a local socket, so an HTTP
+  transport works with every Tailscale setup below. HTTP also passes
+  corporate proxies, and it's what an iOS client would speak.
+- **Why not SSH:**
+  - It needs a process and a channel per connection.
+  - It renegotiates on every reconnect, which happens each time a laptop
+    wakes.
+  - It depends on each user's `~/.ssh/config`.
+  - It can't sit behind Tailscale Serve, and it gives no path to iOS.
 
-A direct network listener (Phase 4) comes after. SSH covers most real setups,
-and it moves the security model onto something already trusted.
+  SSH keys may come back later as one way to authenticate (Phase 4), not as
+  the transport.
+
+### Listeners
+
+Each listener lets in only callers it can identify:
+
+| Listener | Needs | Identity from |
+| --- | --- | --- |
+| Built-in Tailscale (`tsnet` in kerod) | A Tailscale account; the machine needs no Tailscale | `WhoIs` on the embedded node |
+| Tailscale Serve, to a local socket | Tailscale on the machine | The headers Serve adds for tailnet users |
+| Tailnet address, such as `tailnet://:<port>` | Tailscale on the machine | `whois` on the local tailscaled API |
+
+- By default, only the Tailscale user who owns the machine gets in. An
+  allowlist, or a flag, lets in other tailnet members.
+- Serve doesn't identify tagged devices, such as CI runners. They use a
+  tailnet address instead.
+- No anonymous listener at first. Rex has one behind `--allow-anonymous` for
+  people who bring their own VPN. Wait until someone asks.
+- Tailscale's ACLs do the network-level restriction. Kero doesn't need its own
+  rules for that.
 
 ### Protocol changes
 
@@ -100,18 +128,23 @@ and it moves the security model onto something already trusted.
   the standard library). Rendered diffs compress well, and they cost bandwidth
   only on scroll-heavy output.
 - **Version skew:** a remote kerod of another version can't be restarted
-  quietly, because it may hold someone's long-running agents. Show it
-  per host, with "Update Kero on <host>", which runs the installer over the
-  same SSH link. Keep the no-compat rule (Kero is unreleased),
-  but the UI has to explain the mismatch rather than fail.
-- **Heartbeats** on the control connection, so a dead link shows as
-  "reconnecting" within seconds, and the app reattaches when it comes back.
+  quietly, because it may hold someone's long-running agents.
+  - Show it per host, with "Update Kero on <host>". That has kerod fetch the
+    matching release, using the updater the app already has, then restart
+    when the user confirms.
+  - Keep the no-compat rule (Kero is unreleased), but the UI has to explain
+    the mismatch rather than fail.
+- **Heartbeats** on the connection, so a dead link shows as "reconnecting"
+  within seconds, and the app reattaches when it comes back.
 
 ### App changes
 
-- **Hosts:** Settings › Hosts lists `ssh` destinations, and `host = name=ssh-destination` in the
-  config file. The sidebar groups projects by host, with the local machine
-  first and unlabeled. Each host has its own connection state.
+- **Hosts:**
+  - Settings › Hosts lists remote kerods by address, such as
+    `https://build.<tailnet>.ts.net`.
+  - In the config file: `host = name=address`.
+  - The sidebar groups projects by host, with the local machine first and
+    unlabeled. Each host has its own connection state.
 - **Open Project on a host:** a folder picker served by a new `fs.list` RPC.
   The NSOpenPanel stays for the local machine.
 - **⌘-click a path in a remote pane:** resolve it on the host (`fs.stat`).
@@ -129,7 +162,7 @@ and it moves the security model onto something already trusted.
 ### CLI and agents
 
 - `kero -H <host> ls` and `KERO_HOST` drive a remote kerod over the same
-  bridge. `kero hosts` lists them.
+  transport. `kero hosts add|ls|remove` saves addresses.
 - Inside a remote pane, `kero` already talks to the remote kerod through
   `KERO_SOCKET`, so the skill works there unchanged. `kero skill setup` needs
   running on the host.
@@ -148,76 +181,87 @@ Rex has three server modes:
 
 For Kero:
 
-- **Personal is already multi-user-safe once Phase 1's fixes land.** Each user
+- **Personal is multi-user-safe locally once Phase 1's fixes land.** Each user
   has their own kerod, `~/.config/kero` at 0700, a 0600 socket and a uid
-  check. With the SSH transport, each person connects as themselves to their
-  own kerod. That *is* the login-server mode, with sshd as the front door and
-  PAM done by sshd. No kero code runs as root.
-- **Login server without SSH** only matters for a network listener (Phase 4).
-  A root-owned `kero gateway` (a systemd system service) would:
-  - authenticate the connection, by Tailscale identity or a token;
-  - map it to an OS account through an accounts file;
-  - start that user's kerod with `systemd-run --uid=<user> --user` or through
-    PAM;
-  - relay the connection to that user's socket.
+  check.
+- **Login server**, for reaching several accounts on one machine over the
+  network: a root-owned `kero gateway` (a systemd system service). It:
+  - holds the network listener, in place of each user's kerod;
+  - identifies the caller through Tailscale (Phase 2);
+  - maps the caller to the OS accounts they may use, through an accounts
+    file, such as `alice@example.com` to `alice`, and to `root` only when the
+    file says so;
+  - starts that account's kerod through PAM, so limits, `nologin` and session
+    setup apply as at a console login (for example with
+    `systemd-run --uid=<user> --user`);
+  - relays the connection to that account's socket.
 
   It's the only piece that runs privileged, so keep it small and audit it.
+  The client picks an account as `https://alice@host`.
 - **Shared server** (several people's programs running as one `kero` account)
   is the weakest model: everyone can read everyone's sessions. Skip it unless
   someone asks. A shared session for pairing is a different feature, with its
   own design.
 
-## Phase 4: network listener and Tailscale
+## Phase 4: Kero's own authentication
 
-For machines without SSH, or for the iOS client later.
+For networks without Tailscale, and for the iOS client.
 
-- **`listen = tailscale` with tsnet built into kerod (or the gateway):**
-  - The server joins the tailnet as its own node.
-  - Every connection is identified with `WhoIs`.
-  - Access defaults to the tailnet user who owns the machine, with an
-    allowlist for more.
-  - No ports to open, and TLS comes from WireGuard.
-  - Cost: binary size, and a node per server.
-- **The alternative, `tailscale serve --tcp`, in front of a local TCP listener:**
-  no tsnet dependency, but the identity has to come from Tailscale's headers or
-  `whois` on the local API. It's worth a spike to compare.
-- **Plain TCP and TLS with a per-host token** for everything else:
-  - The token is created by `kero daemon token`.
-  - Self-signed certificates are pinned on first connect, as SSH host keys are.
-  - Plain unencrypted TCP is never offered.
-- Listening is off by default. Out of the box kerod listens only on its Unix
-  socket.
+- **Pair a device with a host once**, from the host's CLI or an
+  already-trusted client. The device gets a key. kerod, or the gateway, keeps
+  a list of trusted keys per account, which `kero devices` lists and revokes.
+- **Existing SSH keys as one more way to log in:** a client proves it holds a
+  key listed in the account's `~/.ssh/authorized_keys`. That's authentication
+  only, still over the HTTP transport. Rex plans the same.
+- **TLS:** automatic through Tailscale. Without it, use a self-signed
+  certificate pinned on first connect, or the user's own. Plain unencrypted
+  HTTP is never offered for an authenticated listener.
 
 ## Security notes
 
-- Everything a remote pane sends is untrusted, as it is locally. OSC 52
-  clipboard reads keep their per-pane `ask` policy, and OSC 7501 text is still
-  neutralized.
+- **A connection can do anything its account can,** including starting
+  programs. Every listener is off by default, and every one identifies its
+  callers.
+- **Remote panes are untrusted, as local ones are.** OSC 52 clipboard reads
+  keep their per-pane `ask` policy, and OSC 7501 text is still neutralized.
   - A remote host must not be able to pose as a local pane: show the host's
     name on its notifications and in the sidebar.
-- Remote Control is per host and off by default for remote hosts (above).
-- The bridge and gateway authenticate before they parse any `Hello` past its
-  version.
+- **Remote Control** is per host and off by default for remote hosts (above).
+- **Identify first:** listeners and the gateway identify the caller before
+  they parse any `Hello` past its version.
+- **Seeing who's connected:** `kero clients` on a host lists who is connected,
+  with each one's identity.
 
 ## Order and rough size
 
 1. **Phase 1, headless Linux kerod:** small to medium. Mostly packaging and
    CI, plus the socket and uid fixes. Worth doing on its own.
-2. **Phase 2, SSH remote:** large. Hosts in the app, `bridge`, compression,
-   reconnects, `fs.*` and `paste.file` RPCs, and the settings split.
-3. **Phase 3:** mostly free with SSH. The gateway waits for Phase 4.
-4. **Phase 4, Tailscale and network listener:** medium, after a tsnet versus
-   `serve` spike.
+2. **Phase 2, network transport and Tailscale:** large.
+   - The multiplexed HTTP transport, and the three Tailscale listeners.
+   - Hosts in the app, compression and reconnects.
+   - The `fs.*` and `paste.file` RPCs, and the settings split.
+3. **Phase 3, login gateway:** medium. The accounts file, PAM, and starting
+   and relaying to each account's kerod.
+4. **Phase 4, own authentication:** medium. Device keys first, then SSH keys.
 
 ## Open questions
 
 - Does `kero __kerod` start on a Linux machine with no display, given that the
   binary links the UI? This decides whether Phase 1 needs a separate build at
   all.
+- **WebSockets or HTTP/2 streams** for the multiplexed transport? Check what
+  passes Tailscale Serve, and what an iOS client can speak, before choosing.
+- **Built-in tsnet or the machine's Tailscale?**
+  - Built-in tsnet needs nothing installed on the server, but it adds size to
+    kerod and a node per server.
+  - The machine's Tailscale is lighter, but it's one more thing to have set
+    up.
+  - Rex offers both. Start with whichever the spike finds simpler, and add
+    the other on demand.
 - How does input latency feel over a slow link? kerod renders every frame, so
   a typed key needs a round trip before it shows. Measure before considering
   local echo prediction.
-- Windows hosts: kerod already runs on Windows with ConPTY. Is SSH to a
-  Windows box common enough to support in Phase 2?
+- Windows hosts: kerod already runs on Windows with ConPTY, and the listeners
+  don't depend on the OS. Are there users who'd run one?
 - Should a remote session show the host's own terminal theme, or always the
   app's? Today the app styles the terminal, so it would be the app's.
