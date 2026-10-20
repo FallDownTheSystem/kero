@@ -3,12 +3,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"kero/internal/proto"
 
@@ -39,9 +37,13 @@ func (a *App) installCLI() {
 		os.Remove(link)
 		err := os.Symlink(exe, link)
 		if err != nil && runtime.GOOS == "darwin" {
-			script := fmt.Sprintf(`do shell script "mkdir -p /usr/local/bin && ln -sf %s %s" with administrator privileges`,
-				strings.ReplaceAll(fmt.Sprintf("%q", exe), `\`, `\`), link)
-			err = exec.Command("/usr/bin/osascript", "-e", script).Run()
+			// The paths go in as arguments, quoted by AppleScript itself,
+			// so no app location can break the script.
+			err = exec.Command("/usr/bin/osascript",
+				"-e", "on run argv",
+				"-e", `do shell script "mkdir -p /usr/local/bin && ln -sf " & quoted form of item 1 of argv & " " & quoted form of item 2 of argv with administrator privileges`,
+				"-e", "end run",
+				exe, link).Run()
 		}
 		a.update(func() {
 			if err != nil {
