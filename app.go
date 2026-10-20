@@ -101,6 +101,7 @@ type App struct {
 	chrome       chrome // where the sidebar's animation puts things
 
 	pal          paletteState
+	find         findState
 	confirm      *confirmation
 	sideDrag     float32 // the width as a drag of the sidebar's edge began
 	pendingToast string
@@ -498,6 +499,9 @@ func (a *App) dropTerm(id string) {
 			e.stream.Close()
 		}
 		delete(a.terms, id)
+	}
+	if a.find.pane == id {
+		a.find.pane = ""
 	}
 	a.lru = slices.DeleteFunc(a.lru, func(x string) bool { return x == id })
 }
