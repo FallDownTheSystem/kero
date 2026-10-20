@@ -480,8 +480,8 @@ func (a *App) dropTerm(id string) {
 	a.lru = slices.DeleteFunc(a.lru, func(x string) bool { return x == id })
 }
 
-// gated holds back the stream's output until the terminal takes the size
-// of the snapshot, which then shows as it was.
+// gated holds back the stream's frames until the terminal takes the size
+// of the first, which then shows the session as it is.
 type gated struct {
 	*client.Stream
 	ready chan struct{}
@@ -511,12 +511,10 @@ func (a *App) ensureTerm(id string) {
 		}
 		g := &gated{Stream: stream, ready: make(chan struct{})}
 		o := a.termOptions(id, g)
-		// The terminal takes sizes where kerod's did, in the output, so
-		// that both lay it out alike: resized at once, ours would lay out
-		// what a program wrote for the size before at the new one, and the
-		// program's redraws, relative to where it thinks the cursor is,
-		// would land elsewhere here or in kerod's, which the next window
-		// attaching shows.
+		// The terminal shows kerod's frames: kerod's terminal is the
+		// session's, ours shows what it shows, cell for cell, and lays out
+		// nothing of the program's own. It takes the sizes kerod's does,
+		// between the frames of one size and the next.
 		o.ResizeByConn = true
 		term, err := terminal.New(o)
 		if err != nil {

@@ -107,7 +107,7 @@ func Run() error {
 	go func() {
 		s := <-sigs
 		lg.Printf("%v: saving and exiting", s)
-		d.saveSnapshots(true)
+		d.saveHistories(true)
 		d.saveState()
 		d.stop()
 	}()
@@ -499,7 +499,7 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 		return
 	}
 	a := newAttachment(conn)
-	snap, cols, rows, ok := s.attach(a)
+	first, cols, rows, ok := s.attach(a)
 	if !ok {
 		welcome.Error = "session closed"
 		json.NewEncoder(conn).Encode(welcome)
@@ -511,7 +511,7 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 	if err := json.NewEncoder(conn).Encode(welcome); err != nil {
 		return
 	}
-	if err := proto.WriteFrame(conn, proto.FrameOutput, snap); err != nil {
+	if err := proto.WriteFrame(conn, proto.FrameOutput, first); err != nil {
 		return
 	}
 	go a.write()

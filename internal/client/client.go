@@ -267,8 +267,9 @@ type Stream struct {
 	OnResized func(cols, rows int)
 }
 
-// Attach opens a session's stream. What reads from it gets the snapshot
-// of the session first, at the size of Welcome.
+// Attach opens a session's stream. What reads from it gets frames of the
+// session's terminal (proto.FrameOutput), the first of them at the size of
+// Welcome.
 func Attach(id string) (*Stream, error) {
 	conn, err := dial(true)
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo/plugins/terminal"
@@ -49,7 +48,7 @@ type pane struct {
 	lastInput time.Time
 	lastWork  time.Time
 	work      workMeter // output, until it is work
-	dirty     bool      // output since the last snapshot on disk
+	dirty     bool      // output since the history on disk
 	// osc finds OSC 7501 and 133 in the output; records are the programs'
 	// status reports (OSC 7501), by id, and reported tells that one came.
 	osc      oscScanner
@@ -57,14 +56,15 @@ type pane struct {
 	reported bool
 	closed   bool
 	changed  chan struct{} // closed and replaced on every status change
-
-	attached atomic.Int32
+	// framing tells that frames for the clients are due, after output.
+	framing bool
 }
 
 // headless connects the daemon's emulator to the program: it reads
 // nothing (the daemon feeds it), and writes the emulator's answers to the
-// program's queries only while no client is attached, whose emulator
-// answers instead.
+// program's queries. It is the session's only emulator: clients show its
+// frames (terminal.Mirror), and answer nothing but the clipboard's reads it
+// forwards them.
 type headless struct {
 	s      *pane
 	closed chan struct{}
@@ -77,13 +77,11 @@ func (h *headless) Read([]byte) (int, error) {
 }
 
 func (h *headless) Write(p []byte) (int, error) {
-	if h.s.attached.Load() == 0 {
-		h.s.mu.Lock()
-		proc := h.s.proc
-		h.s.mu.Unlock()
-		if proc != nil {
-			proc.Write(p)
-		}
+	h.s.mu.Lock()
+	proc := h.s.proc
+	h.s.mu.Unlock()
+	if proc != nil {
+		proc.Write(p)
 	}
 	return len(p), nil
 }
@@ -106,9 +104,12 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 	term, err := terminal.New(terminal.Options{
 		Conn:       &headless{s: s, closed: make(chan struct{})},
 		Scrollback: sb,
-		OnTitle:    s.onTitle,
-		OnBell:     s.onBell,
-		OnNotify:   s.onNotify,
+		// Programs' reads of the clipboard go on to the clients, whose
+		// terminals answer them, asking the user as they would.
+		ClipboardRead: terminal.ClipboardForward,
+		OnTitle:       s.onTitle,
+		OnBell:        s.onBell,
+		OnNotify:      s.onNotify,
 	})
 	if err != nil {
 		return nil, err
@@ -186,9 +187,7 @@ func (s *pane) output(p []byte) {
 	s.term.Feed(p)
 	s.dirty = true
 	s.info.Activity = now.UnixMilli()
-	for c := range s.clients {
-		c.send(proto.FrameOutput, p)
-	}
+	s.frameSoon()
 	if now.Sub(s.lastInput) > echoWindow {
 		s.lastWork = now
 		if s.info.Status != proto.Working && !s.declared() && s.programBusy(now) {
@@ -400,15 +399,60 @@ func (s *pane) resize(cols, rows int) {
 	if s.closed || cols == s.info.Cols && rows == s.info.Rows {
 		return
 	}
+	// The clients show what the screen holds at its old size, which
+	// their terminals then take the new size with, as this one does.
+	s.frame()
 	s.info.Cols, s.info.Rows = cols, rows
 	s.term.Resize(cols, rows)
 	if s.proc != nil {
 		s.proc.Resize(cols, rows)
 	}
-	// Where in the output this terminal took the size, which the clients'
-	// take there too: see proto.FrameResized.
+	// Where this terminal took the size, which the clients' take there
+	// too (proto.FrameResized), then what it shows at it.
 	for c := range s.clients {
 		c.send(proto.FrameResized, proto.ResizePayload(cols, rows))
+	}
+	s.frame()
+}
+
+// frameDelay is how long frames wait after output, for more of it: a
+// program's redraw comes in pieces.
+const frameDelay = 4 * time.Millisecond
+
+// frameSoon sends the clients a frame shortly; s.mu is held.
+func (s *pane) frameSoon() {
+	if s.framing || len(s.clients) == 0 {
+		return
+	}
+	s.framing = true
+	time.AfterFunc(frameDelay, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.framing = false
+		s.frame()
+	})
+}
+
+// frame sends each client what brings its terminal to what this one
+// shows, and asks for another frame when a synchronized update holds this
+// one back; s.mu is held.
+func (s *pane) frame() {
+	due := false
+	for c := range s.clients {
+		f, later := c.mirror.Frame()
+		if len(f) > 0 {
+			c.send(proto.FrameOutput, f)
+		}
+		due = due || later
+	}
+	if due && !s.framing {
+		s.framing = true
+		time.AfterFunc(50*time.Millisecond, func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.framing = false
+			s.frame()
+		})
 	}
 }
 
@@ -433,9 +477,7 @@ func (s *pane) exited(proc *ptyProc) {
 	}
 	msg := fmt.Sprintf("\r\n\x1b[0;2m[Process exited with code %d]\x1b[0m", code)
 	s.term.Feed([]byte(msg))
-	for c := range s.clients {
-		c.send(proto.FrameOutput, []byte(msg))
-	}
+	s.frame()
 	s.setStatus(proto.Exited)
 	if !s.viewed() {
 		s.info.Unread = true
@@ -453,9 +495,7 @@ func (s *pane) restart() error {
 	}
 	banner := "\r\n\x1b[0;2m[Restarted]\x1b[0m\r\n"
 	s.term.Feed([]byte(banner))
-	for c := range s.clients {
-		c.send(proto.FrameOutput, []byte(banner))
-	}
+	s.frame()
 	s.setStatus(proto.Idle)
 	s.info.Unread, s.info.Message, s.info.ExitCode = false, "", 0
 	s.mu.Unlock()
@@ -497,38 +537,45 @@ func (s *pane) close() {
 	s.term.Close()
 }
 
-// attach registers a client, returning the snapshot it starts from: what
-// the session shows, with the output after it going to the client.
-func (s *pane) attach(c *attachment) (snap []byte, cols, rows int, ok bool) {
+// attach registers a client, returning the first frame of its mirror,
+// which starts its terminal over from what the session shows; frames
+// follow output.
+func (s *pane) attach(c *attachment) (first []byte, cols, rows int, ok bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed {
 		return nil, 0, 0, false
 	}
-	snap = s.term.Snapshot()
+	m, err := s.term.NewMirror()
+	if err != nil {
+		return nil, 0, 0, false
+	}
+	c.mirror = m
+	first, _ = m.Frame()
 	s.clients[c] = struct{}{}
-	s.attached.Add(1)
-	return snap, s.info.Cols, s.info.Rows, true
+	return first, s.info.Cols, s.info.Rows, true
 }
 
 func (s *pane) detach(c *attachment) {
 	s.mu.Lock()
 	if _, ok := s.clients[c]; ok {
 		delete(s.clients, c)
-		s.attached.Add(-1)
+		c.mirror.Close()
 	}
 	s.mu.Unlock()
 }
 
-// snapshot returns what to save of the session, when it changed.
-func (s *pane) snapshot(force bool) []byte {
+// history returns what to save of the session, when it changed: its
+// scrollback and screen down to the cursor (terminal.History), which a
+// restore shows above the new shell.
+func (s *pane) history(force bool) []byte {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed || !s.dirty && !force {
 		return nil
 	}
 	s.dirty = false
-	return s.term.Snapshot()
+	return s.term.History()
 }
 
 // readText returns the session's text: the screen, or with scrollback.
@@ -553,10 +600,11 @@ func (s *pane) readText(scrollback bool, lines int) string {
 // attachment is a client attached to a session: its frames go out in
 // order through a queue, so that a slow client never holds the session.
 type attachment struct {
-	conn net.Conn
-	out  chan []byte
-	once sync.Once
-	done chan struct{}
+	conn   net.Conn
+	mirror *terminal.Mirror // what its terminal shows of the session's
+	out    chan []byte
+	once   sync.Once
+	done   chan struct{}
 }
 
 func newAttachment(conn net.Conn) *attachment {
@@ -572,7 +620,8 @@ func (a *attachment) send(kind byte, payload []byte) {
 	case a.out <- f:
 	case <-a.done:
 	default:
-		// Too far behind: drop it, and it attaches again from a snapshot.
+		// Too far behind: drop it, and it attaches again, from a first
+		// frame.
 		a.finish()
 	}
 }

@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -42,8 +41,10 @@ type savedPane struct {
 	Rows    int      `json:"rows"`
 }
 
-func (d *Daemon) statePath() string             { return filepath.Join(d.dir, "state.json") }
-func (d *Daemon) snapshotPath(id string) string { return filepath.Join(d.dir, "sessions", id+".vt") }
+func (d *Daemon) statePath() string { return filepath.Join(d.dir, "state.json") }
+
+// historyPath is where a pane's history is kept, for a restore.
+func (d *Daemon) historyPath(id string) string { return filepath.Join(d.dir, "sessions", id+".vt") }
 
 func (d *Daemon) saveLoop() {
 	snaps := time.NewTicker(10 * time.Second)
@@ -54,7 +55,7 @@ func (d *Daemon) saveLoop() {
 			time.Sleep(300 * time.Millisecond)
 			d.saveState()
 		case <-snaps.C:
-			d.saveSnapshots(false)
+			d.saveHistories(false)
 		case <-d.quit:
 			return
 		}
@@ -82,7 +83,8 @@ func (d *Daemon) saveState() {
 	writeAtomic(d.statePath(), data)
 }
 
-func (d *Daemon) saveSnapshots(force bool) {
+// saveHistories writes the panes' histories that changed, or all.
+func (d *Daemon) saveHistories(force bool) {
 	d.mu.Lock()
 	panes := make([]*pane, 0, len(d.panes))
 	for _, p := range d.panes {
@@ -90,8 +92,8 @@ func (d *Daemon) saveSnapshots(force bool) {
 	}
 	d.mu.Unlock()
 	for _, p := range panes {
-		if snap := p.snapshot(force); snap != nil {
-			writeAtomic(d.snapshotPath(p.info.ID), snap)
+		if h := p.history(force); h != nil {
+			writeAtomic(d.historyPath(p.info.ID), h)
 		}
 	}
 }
@@ -103,13 +105,6 @@ func writeAtomic(path string, data []byte) error {
 	}
 	return os.Rename(tmp, path)
 }
-
-// restoreReset leaves what a program set up in the snapshot, as an
-// agent's full-screen interface with the mouse, so that the new shell
-// starts on the main screen with the modes it expects.
-const restoreReset = "\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1004l\x1b[?1006l\x1b[?1015l" + // no mouse, focus reports
-	"\x1b[?2004l\x1b[?2026l\x1b[=0;1u\x1b[>4;0m" + // no bracketed paste, sync, kitty keys, modifyOtherKeys
-	"\x1b[!p\x1b[?25h\x1b[0m" // a soft reset, a visible cursor
 
 // restore starts again the sessions of the last daemon, which ended
 // without closing them.
@@ -167,14 +162,13 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 		d.log.Printf("restoring %s: %v", sp.ID, err)
 		return nil
 	}
-	if snap, err := os.ReadFile(d.snapshotPath(sp.ID)); err == nil && len(snap) > 0 {
-		p.term.Feed(snap)
-		if bytes.Contains(snap, []byte("\x1b[?1049h")) || bytes.Contains(snap, []byte("\x1b[?1047h")) {
-			// Back to the main screen, and its cursor, from a
-			// full-screen program's.
-			p.term.Feed([]byte("\x1b[?1049l"))
-		}
-		p.term.Feed([]byte(restoreReset + "\r\n\x1b[2m── restored · session ended " + when + " ──\x1b[0m\r\n"))
+	// What the session showed, down to where its cursor was, with the
+	// new shell under it: what a program drew below the cursor, as an
+	// agent's status bar, goes, rather than show under the new shell's
+	// prompt. History carries no modes and no cursor to undo.
+	if h, err := os.ReadFile(d.historyPath(sp.ID)); err == nil && len(h) > 0 {
+		p.term.Feed(h)
+		p.term.Feed([]byte("\x1b[2m── restored · session ended " + when + " ──\x1b[0m\r\n"))
 	}
 	// The shell alone: what ran in it, as an agent, may not want to run
 	// again unasked.

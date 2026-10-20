@@ -324,7 +324,7 @@ func (d *Daemon) removePane(id string) error {
 	}
 	d.mu.Unlock()
 	p.close()
-	os.Remove(d.snapshotPath(id))
+	os.Remove(d.historyPath(id))
 	d.changed()
 	d.log.Printf("pane %s closed", id)
 	return nil
@@ -346,7 +346,7 @@ func (d *Daemon) removeSession(ref string) error {
 	d.mu.Unlock()
 	for _, p := range panes {
 		p.close()
-		os.Remove(d.snapshotPath(p.info.ID))
+		os.Remove(d.historyPath(p.info.ID))
 	}
 	d.changed()
 	d.log.Printf("session %s closed", s.id)

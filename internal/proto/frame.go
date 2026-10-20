@@ -9,8 +9,11 @@ import (
 // Frames of an attach connection: a kind, the length of the payload as a
 // big-endian uint32, and the payload.
 const (
-	// FrameOutput carries what the program wrote (daemon → client). The
-	// first frames after the Welcome are the session's snapshot.
+	// FrameOutput carries frames of the session's terminal (daemon →
+	// client), a terminal.Mirror's: the first, after the Welcome, starts
+	// the client's terminal over from what the session shows, and the
+	// others bring it to what it shows after output. The client's terminal
+	// shows them as it would a program's output.
 	FrameOutput byte = 'o'
 	// FrameInput carries what the user typed (client → daemon).
 	FrameInput byte = 'i'
@@ -19,10 +22,10 @@ const (
 	FrameResize byte = 'r'
 	// FrameClosed tells the client the session is gone (daemon → client).
 	FrameClosed byte = 'c'
-	// FrameResized tells the client where in the output the session's
-	// terminal took a size, as FrameResize carries it (daemon → client):
-	// the client's terminal takes it there too, so that both lay out each
-	// byte at one size.
+	// FrameResized tells the client that the session's terminal took a
+	// size, as FrameResize carries it (daemon → client), between the frames
+	// of the old size and those of the new: the client's terminal takes it
+	// there.
 	FrameResized byte = 'z'
 )
 
