@@ -1,0 +1,109 @@
+---
+title: Configuration
+description: Kero's configuration file, its keys and their defaults.
+---
+
+# Configuration
+
+Kero keeps its settings in one plain-text file. The Settings window (<kbd>⌘</kbd> <kbd>,</kbd>) edits it for you, keeping your comments and order, and Kero reloads it when you edit it by hand.
+
+## The file
+
+Kero reads, in order of preference:
+
+1. `$KERO_CONFIG`
+2. `$XDG_CONFIG_HOME/kero/config`
+3. `~/.config/kero/config`
+
+It uses Ghostty's syntax: one `key = value` per line, `#` for comments, and repeated lines for keys that hold lists. Where a key means what it means in Ghostty, it has Ghostty's name.
+
+```ini
+# ~/.config/kero/config
+font-size = 14
+theme = light:GitHub Light Default,dark:Catppuccin Mocha
+cursor-style = bar
+
+env = EDITOR=nvim
+env = HOMEBREW_NO_AUTO_UPDATE=1
+
+keybind = cmd+shift+d=pane.split.down
+```
+
+The file only needs what you change. Everything else keeps its default.
+
+```sh
+kero config edit              # open it in $EDITOR
+kero config show              # every key with its current value
+kero config check             # report unknown keys and bad values
+```
+
+## General
+
+| Key                     | Default   | Description                                                   |
+| ----------------------- | --------- | ------------------------------------------------------------- |
+| `new-session-directory` | `current` | Where a new session starts: `current`, `project` or `home`    |
+| `confirm-close`         | `true`    | Ask before closing a pane that a program is running in        |
+| `restore-sessions`      | `true`    | Start sessions again after kerod restarts, as after a reboot  |
+
+## Appearance
+
+| Key                  | Default  | Description                                                     |
+| -------------------- | -------- | --------------------------------------------------------------- |
+| `window-theme`       | `system` | The app's appearance: `system`, `light` or `dark`               |
+| `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
+| `window-translucent` | `true`   | Let the desktop show through the window                         |
+
+## Terminal
+
+| Key                   | Default | Description                                                              |
+| --------------------- | ------- | ------------------------------------------------------------------------ |
+| `theme`               | `kero`  | Terminal colors: `kero`, any Ghostty theme, or `light:<theme>,dark:<theme>` |
+| `font-family`         |         | Empty for JetBrains Mono Nerd Font, which Kero includes; `monospace` for the system's |
+| `font-size`           | `13`    | In points                                                                |
+| `font-weight`         | `400`   | `100` to `900`                                                           |
+| `line-height`         | `1.22`  | A multiple of the font's                                                 |
+| `font-ligatures`      | `true`  | Join characters the way the font draws them                              |
+| `font-thicken`        | `false` | A heavier stroke, as in Ghostty                                          |
+| `cursor-style`        | `block` | `block`, `bar` or `underline`; programs may change it                    |
+| `cursor-style-blink`  | `true`  | Blink the cursor                                                         |
+| `macos-option-as-alt` | `false` | Option sends Alt (Meta) to programs                                      |
+| `copy-on-select`      | `false` | Copy what you select to the clipboard                                    |
+| `clipboard-read`      | `ask`   | Programs reading the clipboard (OSC 52): `ask`, `allow` or `deny`        |
+| `right-click-action`  | `context-menu` | `context-menu`, `paste` or `copy-or-paste`                        |
+
+## Shell
+
+| Key                | Default | Description                                                    |
+| ------------------ | ------- | -------------------------------------------------------------- |
+| `command`          |         | The shell of new panes; empty for your login shell             |
+| `env`              |         | Added to every pane's environment as `NAME=value`; repeat it   |
+| `scrollback-limit` | `4`     | The output each pane keeps, in megabytes; `0` for none         |
+
+## Notifications
+
+| Key                 | Default | Description                                    |
+| ------------------- | ------- | ---------------------------------------------- |
+| `notify-on-waiting` | `true`  | When a session needs you                       |
+| `notify-on-done`    | `true`  | When an agent finishes                         |
+| `notify-on-error`   | `true`  | When a program reports it failed               |
+| `notify-sound`      | `false` | Play a sound with notifications                |
+| `dock-badge`        | `true`  | Show how many sessions need you on the Dock icon |
+| `dock-bounce`       | `false` | Bounce the Dock icon once when a session comes to need you |
+
+## Agents
+
+| Key              | Default | Description                                         |
+| ---------------- | ------- | --------------------------------------------------- |
+| `remote-control` | `true`  | Let `kero do` and `kero focus` drive the app        |
+
+## Keyboard
+
+`keybind` rebinds an action, as `<keys>=<action>`. Repeat it for each binding. Use `unbind` as the action to free keys.
+
+```ini
+keybind = cmd+shift+d=pane.split.down
+keybind = cmd+k=palette.open
+keybind = cmd+b=unbind
+```
+
+Run `kero actions` for every action id, and see [Keyboard Shortcuts](./shortcuts.md) for the defaults.

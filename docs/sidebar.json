@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Getting Started",
+    "items": ["index", "quick-start"]
+  },
+  {
+    "title": "Using kero",
+    "items": ["sessions", "panes", "status"]
+  },
+  {
+    "title": "Automation",
+    "items": ["cli", "agents"]
+  },
+  {
+    "title": "Reference",
+    "items": ["configuration", "shortcuts"]
+  }
+]
