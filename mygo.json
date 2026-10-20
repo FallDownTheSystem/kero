@@ -1,6 +1,6 @@
 {
   "name": "Kero",
-  "identifier": "com.example.kero",
-  "version": "0.1.0",
+  "identifier": "sh.kero",
+  "version": "2.0.0",
   "out": "build"
 }
