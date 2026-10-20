@@ -608,6 +608,9 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 		// colors reach the card's edges.
 		Padding:      terminal.Padding{X: 16, Y: 6},
 		PaddingColor: terminal.PaddingExtend,
+		// Text a program colored for the other appearance, as a dark
+		// theme's light grays on a light one, stays legible.
+		MinimumContrast: a.set.MinContrast,
 		// Every terminal zooms together, and the size is remembered.
 		OnZoom: func(z terminal.Zoom) bool {
 			a.zoom(z.Steps, z.Reset)
@@ -688,6 +691,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 		}
 		if themes {
 			e.term.SetTheme(light, dark)
+		}
+		if old.MinContrast != s.MinContrast {
+			e.term.SetMinimumContrast(s.MinContrast)
 		}
 		if old.CopyOnSelect != s.CopyOnSelect {
 			mode := terminal.CopyOnSelectNone

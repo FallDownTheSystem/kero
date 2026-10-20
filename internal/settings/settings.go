@@ -37,7 +37,8 @@ type Settings struct {
 	FontWeight   int     `json:"fontWeight"`
 	Ligatures    bool    `json:"ligatures"`
 	Thicken      bool    `json:"thicken"`
-	Cursor       string  `json:"cursor"` // "block", "bar" or "underline"
+	MinContrast  float32 `json:"minContrast"` // a WCAG ratio text keeps with its background
+	Cursor       string  `json:"cursor"`      // "block", "bar" or "underline"
 	CursorBlink  bool    `json:"cursorBlink"`
 	LightTheme   string  `json:"lightTheme"` // "kero", or a Ghostty theme's name
 	DarkTheme    string  `json:"darkTheme"`
@@ -82,6 +83,7 @@ func Default() Settings {
 		LineHeight:      1.22,
 		FontWeight:      400,
 		Ligatures:       true,
+		MinContrast:     3,
 		Cursor:          "block",
 		CursorBlink:     true,
 		LightTheme:      "kero",
