@@ -395,7 +395,7 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		if top {
 			gap.DragWindow()
 		}
-		a.paneChips(c, pal, p)
+		a.paneChips(c, pal, p, !multi)
 		show := (hovered || focused && multi) && !dragging
 		ctl := ui.Row(c.Key("controls")).Gap(0).AlignItems(ui.Center)
 		ctl.Opacity(ctl.Animate("shown", b2f(show), 120*time.Millisecond)).Children(func() {
@@ -422,7 +422,9 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 	return dragging
 }
 
-func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
+// paneChips says what the pane is doing. With several panes the title
+// already leads with the status icon, so the chips go without (icon false).
+func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane, icon bool) {
 	switch p.Status {
 	case proto.Waiting:
 		msg := p.Message
@@ -433,12 +435,16 @@ func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
 			msg = locales.StatusNeedsYou()
 		}
 		chip(c, pal, pal.attnSoft, pal.attention, func() {
-			statusIcon(c, pal, p.Status, p.Unread, 11)
+			if icon {
+				statusIcon(c, pal, p.Status, p.Unread, 11)
+			}
 			ui.Text(c, msg).FontSize(12).FontWeight(500).SingleLine().Ellipsis("…").MaxWidth(320)
 		})
 	case proto.Working:
 		chip(c, pal, pal.chip, pal.textMuted, func() {
-			statusIconP(c, pal, p.Status, false, p.Progress, 11)
+			if icon {
+				statusIconP(c, pal, p.Status, false, p.Progress, 11)
+			}
 			label := ago(p.Since, c.Now())
 			if p.Progress >= 0 {
 				label = itoa(p.Progress) + "%"
@@ -450,7 +456,9 @@ func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
 		})
 	case proto.Failed:
 		chip(c, pal, pal.danger.Alpha(0.1), pal.danger, func() {
-			statusIcon(c, pal, p.Status, true, 11)
+			if icon {
+				statusIcon(c, pal, p.Status, true, 11)
+			}
 			msg := p.Message
 			if msg == "" {
 				msg = locales.StatusFailed()
@@ -467,7 +475,9 @@ func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
 	case proto.Idle:
 		if p.Message != "" {
 			chip(c, pal, pal.chip, pal.textMuted, func() {
-				statusIcon(c, pal, p.Status, p.Unread, 11)
+				if icon {
+					statusIcon(c, pal, p.Status, p.Unread, 11)
+				}
 				ui.Text(c, p.Message).FontSize(12).SingleLine().Ellipsis("…").MaxWidth(320)
 			})
 		}
