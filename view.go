@@ -603,12 +603,12 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 					iconButton(c, "new-session-2", plusIcon, "New Session (⌘T)", pal, func() { a.newSession("") })
 				})
 			}
-			ui.Text(c, "kero").FontSize(14).FontWeight(600).TextColor(pal.text)
+			ui.Text(c, "Kero").FontSize(14).FontWeight(600).TextColor(pal.text)
 		})
 		ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 			switch {
 			case a.conn == connVersion:
-				a.message(c, pal, "kero was updated",
+				a.message(c, pal, "Kero was updated",
 					"The background service that runs your sessions is from another version. Restart it: your sessions start again where they were, with their history.",
 					"Restart Service", a.restartDaemon)
 			case a.conn == connFailed && a.cl == nil:
@@ -643,7 +643,7 @@ func (a *App) emptyState(c *ui.Context, pal *palette) {
 			ui.Icon(c, terminalIcon).Size(26, 26)
 		})
 		ui.Text(c, "Start a session").FontSize(19).FontWeight(650).TextColor(pal.text)
-		ui.Text(c, "Sessions keep running in the background — quit kero and come back to everything just as you left it.").
+		ui.Text(c, "Sessions keep running in the background — quit Kero and come back to everything just as you left it.").
 			FontSize(13.5).TextColor(pal.textMuted).MaxWidth(380).TextAlign(ui.Center).LineHeight(1.45).Margin(8, 0, 22, 0)
 		ui.Row(c).Gap(10).Children(func() {
 			if button(c, "empty-new", "New Session", "⌘T", true, pal) {

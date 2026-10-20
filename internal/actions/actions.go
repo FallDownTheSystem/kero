@@ -18,9 +18,9 @@ type Action struct {
 
 // All are the app's actions, in their menus' order.
 var All = []Action{
-	{ID: "settings.open", Title: "Settings…", Menu: "kero", Keys: "CmdOrCtrl+,", Remote: true},
-	{ID: "cli.install", Title: "Install Command Line Tool…", Menu: "kero"},
-	{ID: "app.quitAll", Title: "Quit and End All Sessions…", Menu: "kero", Keys: "CmdOrCtrl+Alt+Q"},
+	{ID: "settings.open", Title: "Settings…", Menu: "Kero", Keys: "CmdOrCtrl+,", Remote: true},
+	{ID: "cli.install", Title: "Install Command Line Tool…", Menu: "Kero"},
+	{ID: "app.quitAll", Title: "Quit and End All Sessions…", Menu: "Kero", Keys: "CmdOrCtrl+Alt+Q"},
 
 	{ID: "session.new", Title: "New Session", Menu: "Session", Keys: "CmdOrCtrl+T", Remote: true},
 	{ID: "session.newHome", Title: "New Session in Home", Menu: "Session", Keys: "CmdOrCtrl+Shift+T", Remote: true},

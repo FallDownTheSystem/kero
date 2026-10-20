@@ -346,7 +346,7 @@ func (a *App) updateTitle() {
 	if a.win == nil {
 		return
 	}
-	title := "kero"
+	title := "Kero"
 	if s := a.session(a.selected); s != nil {
 		title = s.DisplayName()
 	}
@@ -1012,7 +1012,7 @@ func (a *App) quitAndEnd() {
 	a.confirm = &confirmation{
 		open:    true,
 		title:   "Quit and end all sessions?",
-		detail:  fmt.Sprintf("kero keeps sessions running when it quits. This ends all %d of them, with what runs in them.", n),
+		detail:  fmt.Sprintf("Kero keeps sessions running when it quits. This ends all %d of them, with what runs in them.", n),
 		action:  "End Sessions and Quit",
 		destroy: true,
 		run: func() {

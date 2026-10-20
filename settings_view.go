@@ -410,7 +410,7 @@ func segmented(c *ui.Context, key string, value *string, ids, labels []string) {
 
 func (a *App) generalPage(c *ui.Context, pal *palette) {
 	s := &a.set
-	settingsGroup(c, pal, "Sessions", "Sessions keep running in the background when kero quits; Quit and End All Sessions (⌥⌘Q) ends them.", func() {
+	settingsGroup(c, pal, "Sessions", "Sessions keep running in the background when Kero quits; Quit and End All Sessions (⌥⌘Q) ends them.", func() {
 		settingRow(c, pal, "New sessions start in", "", func() {
 			segmented(c, "newdir", &s.NewSessionDir, []string{"current", "project", "home"}, []string{"Current Folder", "Project", "Home"})
 		})
@@ -422,7 +422,7 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		})
 	})
 	settingsGroup(c, pal, "Startup", "", func() {
-		settingRow(c, pal, "Open kero at login", "", func() {
+		settingRow(c, pal, "Open Kero at login", "", func() {
 			toggle(c.Key("login"), &a.ss.loginOpen, pal).OnChange(func() {
 				if err := mygo.App.SetOpenAtLogin(a.ss.loginOpen); err != nil {
 					a.ss.loginOpen = !a.ss.loginOpen
@@ -494,7 +494,7 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	a.terminalPreview(c, pal)
 	settingsGroup(c, pal, "Text", "", func() {
-		settingRow(c, pal, "Font", "JetBrains Mono with Nerd Fonts’ icons comes with kero. Any installed monospaced font works; names separated by commas are tried in order.", func() {
+		settingRow(c, pal, "Font", "JetBrains Mono with Nerd Fonts’ icons comes with Kero. Any installed monospaced font works; names separated by commas are tried in order.", func() {
 			// The picker's names for the settings' values: "" is kero's
 			// font, "monospace" the system's.
 			family := s.FontFamily
@@ -689,7 +689,7 @@ func (a *App) notificationsPage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, "Bounce the Dock icon", "Once, when a session comes to need you.", func() { toggle(c.Key("nbo"), &s.BounceDock, pal) })
 	})
 	if button(c, "test-notif", "Send a Test Notification", "", false, pal) {
-		n := mygo.NewNotification(mygo.NotificationOptions{Title: "kero", Body: "Notifications work.", Silent: !s.NotifySound})
+		n := mygo.NewNotification(mygo.NotificationOptions{Title: "Kero", Body: "Notifications work.", Silent: !s.NotifySound})
 		go func() {
 			if err := n.Show(); err != nil {
 				a.update(func() {
@@ -711,8 +711,8 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 		})
 	})
 	codeBlock(c, pal, "kero do pane.split.down\nkero do session.attention\nkero actions        # what kero do runs")
-	settingsGroup(c, pal, "Command line tool", "Inside kero, every pane has kero on its PATH already.", func() {
-		detail := "Not installed: other terminals don’t know kero."
+	settingsGroup(c, pal, "Command line tool", "Inside Kero, every pane has the kero command on its PATH already.", func() {
+		detail := "Not installed: other terminals don’t know the kero command."
 		if a.ss.cliPath != "" {
 			detail = a.ss.cliPath
 		}
@@ -730,7 +730,7 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 	settingsGroup(c, pal, "Skills for agents", "Teaches agents to start sessions and panes, drive them, wait for them and report their status.", func() {
 		for _, st := range cli.SkillStates() {
 			name := map[string]string{"claude": "Claude Code", "agents": "Codex, OpenCode, Pi"}[st.Agent]
-			detail := map[string]string{"current": "Installed", "outdated": "Installed, from an older kero", "missing": "Not installed"}[st.State] + " · " + proto.ShortDir(st.Dir)
+			detail := map[string]string{"current": "Installed", "outdated": "Installed, from an older Kero", "missing": "Not installed"}[st.State] + " · " + proto.ShortDir(st.Dir)
 			settingRow(c, pal, name, detail, func() {
 				agent := st.Agent
 				if st.State != "missing" && button(c, "rm-"+agent, "Remove", "", false, pal) {
@@ -805,7 +805,7 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 				exec.Command("/usr/bin/open", proto.Dir()).Start()
 			}
 		})
-		settingRow(c, pal, "Reset all settings", "Back to how kero comes, shortcuts included.", func() {
+		settingRow(c, pal, "Reset all settings", "Back to how Kero comes, shortcuts included.", func() {
 			if button(c, "reset", "Reset…", "", false, pal) {
 				a.confirm = &confirmation{
 					open: true, title: "Reset all settings?", detail: "Your sessions stay.", action: "Reset", destroy: true,
@@ -850,7 +850,7 @@ func (a *App) keyboardPage(c *ui.Context, pal *palette) {
 		ui.Text(c, a.ss.notice).FontSize(12).TextColor(pal.attention).Padding(0, 4)
 	}
 	q := strings.ToLower(strings.TrimSpace(a.ss.filter))
-	menus := []string{"kero", "Session", "Pane", "View"}
+	menus := []string{"Kero", "Session", "Pane", "View"}
 	for _, menu := range menus {
 		var acts []actions.Action
 		for _, act := range actions.All {
@@ -867,7 +867,7 @@ func (a *App) keyboardPage(c *ui.Context, pal *palette) {
 			continue
 		}
 		title := menu
-		if menu == "kero" {
+		if menu == "Kero" {
 			title = "App"
 		}
 		settingsGroup(c, pal, title, "", func() {

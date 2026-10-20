@@ -20,7 +20,7 @@ var settingsIndex = []searchEntry{
 	{"general", "New sessions start in", "new-session-directory folder current project home tab"},
 	{"general", "Ask before closing a running program", "confirm-close quit kill"},
 	{"general", "Restore sessions after a restart", "restore-sessions reboot persist"},
-	{"general", "Open kero at login", "startup launch login items"},
+	{"general", "Open Kero at login", "startup launch login items"},
 
 	{"appearance", "Appearance", "window-theme dark light mode system"},
 	{"appearance", "Translucent window", "window-translucent vibrancy blur material transparency"},

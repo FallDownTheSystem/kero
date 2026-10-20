@@ -13,12 +13,12 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in kero — start agents and commands in their own sessions or panes, type into them, wait for them, read their screens, and report your own status. Use when running inside kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, or the user's attention.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, type into them, wait for them, read their screens, and report your own status. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, or the user's attention.
 ---
 
-# kero
+# Kero
 
-You run inside kero, a terminal whose sessions keep running in the
+You run inside Kero, a terminal whose sessions keep running in the
 background. $KERO_SESSION is your session and $KERO_PANE your pane; the
 ` + "`kero`" + ` command drives them. A target is a session or a pane id (a
 prefix works), or a session's name; a session stands for its focused pane.
@@ -52,7 +52,7 @@ exited. ` + "`kero wait`" + ` with no --for waits until it stops working.
     kero report done "Deployed to staging"
     kero notify "Need your API key to continue"
 
-Reports are OSC 7501 sequences: kero shows them in its sidebar, and
+Reports are OSC 7501 sequences: Kero shows them in its sidebar, and
 notifies the user when you are blocked or done while they look elsewhere.
 Report blocked only when you truly cannot go on without them.
 
@@ -60,7 +60,7 @@ Report blocked only when you truly cannot go on without them.
 
 - Close what you started when it is done: ` + "`kero close <target>`" + `.
 - Never type into a pane you did not start unless the user asked.
-- Exit status 3 means no such target, 4 that kero is not running.
+- Exit status 3 means no such target, 4 that Kero is not running.
 `
 
 func skillCmd(args []string) error {

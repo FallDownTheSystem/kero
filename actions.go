@@ -116,7 +116,7 @@ func (a *App) items(menu string, groups ...[]string) []*mygo.MenuItem {
 func (a *App) menu() *mygo.Menu {
 	appMenu := []*mygo.MenuItem{{Role: mygo.RoleAbout}, mygo.Separator(), a.item("settings.open"), a.item("cli.install"),
 		mygo.Separator(), {Role: mygo.RoleHide}, {Role: mygo.RoleHideOthers}, {Role: mygo.RoleUnhide}, mygo.Separator(),
-		{Label: "Quit kero", Accelerator: "CmdOrCtrl+Q", ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
+		{Label: "Quit " + mygo.App.Name(), Accelerator: "CmdOrCtrl+Q", ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 		a.item("app.quitAll")}
 	view := append(a.items("View", []string{"sidebar.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})

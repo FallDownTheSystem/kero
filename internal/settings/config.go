@@ -112,7 +112,7 @@ var keys = []key{
 		[]string{"petal", "mist", "meadow", "dusk", "plain"}, []string{"rex", "mist", "meadow", "dusk", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
 
-	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),
+	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which Kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),
 	numberKey("font-size", "in points", func(s *Settings) float64 { return float64(s.FontSize) }, func(s *Settings, n float64) { s.FontSize = float32(n) }),
 	numberKey("font-weight", "100 to 900", func(s *Settings) float64 { return float64(s.FontWeight) }, func(s *Settings, n float64) { s.FontWeight = int(n) }),
 	numberKey("line-height", "a multiple of the font's", func(s *Settings) float64 { return float64(s.LineHeight) }, func(s *Settings, n float64) { s.LineHeight = float32(n) }),
@@ -397,8 +397,8 @@ func format(s Settings, data string) string {
 }
 
 var header = []string{
-	"# kero's configuration, as Ghostty's: one setting a line, `key = value`.",
-	"# It holds what differs from the defaults. kero's Settings window edits",
+	"# Kero's configuration, as Ghostty's: one setting a line, `key = value`.",
+	"# It holds what differs from the defaults. Kero's Settings window edits",
 	"# it in place, keeping your comments; what you save here applies at once.",
 	"# `kero config show` lists every key, with its default.",
 	"",

@@ -508,7 +508,7 @@ func run(args []string) error {
 			ref = current()
 		}
 		if ref == "" {
-			return usageErr("which pane? run it in kero, or give --session")
+			return usageErr("which pane? run it in Kero, or give --session")
 		}
 		t, err := find(st, ref)
 		if err != nil {

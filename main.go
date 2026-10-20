@@ -85,7 +85,7 @@ func runApp() {
 	})
 	mygo.App.WhenReady(func() {
 		a.win = mygo.NewWindow(mygo.WindowOptions{
-			Title:          "kero",
+			Title:          "Kero",
 			Width:          1180,
 			Height:         760,
 			MinWidth:       560,
@@ -152,7 +152,7 @@ func (a *App) installCLI() {
 				a.toast("Couldn’t install the command line tool")
 				return
 			}
-			a.toast("Installed kero in /usr/local/bin")
+			a.toast("Installed the kero command in /usr/local/bin")
 		})
 	}()
 }
