@@ -282,15 +282,19 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if resumeCommand(as) == nil {
 			return nil, fmt.Errorf("no agent session %q of %q", p.Session, p.Agent)
 		}
-		pn, err := findPane(p.ID)
-		if err != nil {
-			return nil, err
+		pn, away := d.agentPane(p.PID, p.Agent, p.Dir)
+		if pn == nil {
+			return nil, fmt.Errorf("no pane runs %s session %q", p.Agent, p.Session)
 		}
 		pn.mu.Lock()
 		pn.info.AgentSession = as
+		id := pn.info.ID
 		pn.mu.Unlock()
 		d.changed()
-		return nil, nil
+		d.mu.Lock()
+		sid := pn.sid
+		d.mu.Unlock()
+		return proto.AgentSessionResult{Pane: id, Session: sid, Away: away}, nil
 
 	case "project.create":
 		var p proto.ProjectParams

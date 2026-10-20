@@ -213,3 +213,52 @@ func TestResumeCommand(t *testing.T) {
 		t.Error("resumed nothing")
 	}
 }
+
+// An agent's hook tells of the pane whose shell runs it; one that runs
+// under none, as in Codex's app server that panes share, tells of the
+// pane that can only be the agent's, and of none when several could be.
+func TestAgentPane(t *testing.T) {
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
+	d := &Daemon{changeCh: make(chan struct{}, 1), saveCh: make(chan struct{}, 1), panes: map[string]*pane{}}
+	d.viewed.Store(new(string))
+	add := func(id, agent, dir string, session bool) *pane {
+		info := proto.Pane{ID: id, Agent: agent, Dir: dir, Status: proto.Idle, Cols: 80, Rows: 24}
+		if session {
+			info.AgentSession = &proto.AgentSession{Agent: agent, ID: "old-" + id}
+		}
+		p, err := newPane(d, "s", info)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { p.term.Close() })
+		d.panes[id] = p
+		return p
+	}
+	name := func(p *pane) string {
+		if p == nil {
+			return "none"
+		}
+		return p.info.ID
+	}
+	check := func(what string, pid int, dir, want string, wantAway bool) {
+		t.Helper()
+		p, away := d.agentPane(pid, "codex", dir)
+		if name(p) != want || away != wantAway {
+			t.Errorf("%s: %s away=%v, want %s away=%v", what, name(p), away, want, wantAway)
+		}
+	}
+
+	a := add("a", "codex", "/repo", true)
+	check("its only pane, telling a new session", 0, "", "a", true)
+	add("b", "codex", "/repo", false)
+	check("its only pane yet to tell", 0, "", "b", true)
+	add("c", "codex", "/other", false)
+	check("of two yet to tell, the one in its dir", 0, "/other", "c", true)
+	check("two yet to tell, in a dir neither is in", 0, "/worktree", "none", true)
+	add("d", "claude", "/repo", false)
+	check("two yet to tell, no dir", 0, "", "none", true)
+
+	// Run under a pane's shell: that pane, whatever the others.
+	a.shellPID = os.Getppid()
+	check("under a's shell", os.Getpid(), "", "a", false)
+}

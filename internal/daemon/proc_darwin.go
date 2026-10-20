@@ -87,3 +87,12 @@ func procCwd(pid int) string {
 	}
 	return string(path)
 }
+
+// procParent returns a process's parent, 0 when it is gone.
+func procParent(pid int) int {
+	kp, err := unix.SysctlKinfoProc("kern.proc.pid", pid)
+	if err != nil {
+		return 0
+	}
+	return int(kp.Eproc.Ppid)
+}

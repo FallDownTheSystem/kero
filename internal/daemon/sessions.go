@@ -137,6 +137,59 @@ func (d *Daemon) findPane(ref string) *pane {
 	return nil
 }
 
+// agentPane finds the pane an agent's hook tells of, from the hook's
+// process pid: the pane whose shell runs it. An agent's service that
+// panes share, as Codex's app server, runs its hooks under no pane's
+// shell, and with the environment of the pane that started it, which
+// names no pane to trust: then the pane is the one that can only be
+// the agent's, its only pane yet to tell a session (or, of several, the
+// only one in the agent's dir), else its only pane; away tells it.
+func (d *Daemon) agentPane(pid int, agent, dir string) (found *pane, away bool) {
+	d.mu.Lock()
+	panes := make([]*pane, 0, len(d.panes))
+	for _, p := range d.panes {
+		panes = append(panes, p)
+	}
+	d.mu.Unlock()
+	byShell := make(map[int]*pane, len(panes))
+	var running, pending, inDir []*pane
+	for _, p := range panes {
+		p.mu.Lock()
+		if p.info.Status != proto.Exited {
+			if p.shellPID > 0 {
+				byShell[p.shellPID] = p
+			}
+			if p.info.Agent == agent {
+				running = append(running, p)
+				if p.info.AgentSession == nil {
+					pending = append(pending, p)
+					if dir != "" && p.info.WorkDir() == dir {
+						inDir = append(inDir, p)
+					}
+				}
+			}
+		}
+		p.mu.Unlock()
+	}
+	for i := 0; i < 64 && pid > 1; i++ {
+		if p := byShell[pid]; p != nil {
+			return p, false
+		}
+		pid = procParent(pid)
+	}
+	switch {
+	case len(pending) == 1:
+		return pending[0], true
+	case len(pending) > 1:
+		if len(inDir) == 1 {
+			return inDir[0], true
+		}
+	case len(running) == 1:
+		return running[0], true
+	}
+	return nil, true
+}
+
 // focusedLocked returns a session's focused pane, else its first; d.mu is
 // held.
 func focusedLocked(s *session) *pane {

@@ -572,10 +572,21 @@ type (
 		Timeout int64 `json:"timeout,omitempty"` // ms; 0 waits as long as it takes
 	}
 	// AgentSessionParams tell a pane's agent's session (kero hook).
+	// The pane is the one whose shell runs PID, the hook's process, else
+	// the one that can only be the agent's: an agent's service that panes
+	// share, as Codex's app server, runs hooks under none.
 	AgentSessionParams struct {
-		ID      string `json:"id"` // the pane
+		PID     int    `json:"pid"`
 		Agent   string `json:"agent"`
 		Session string `json:"session"`
+		Dir     string `json:"dir,omitempty"` // the agent's, to tell its pane by
+	}
+	// AgentSessionResult is the pane told of, and its session; Away: the
+	// agent runs under none of kero's shells, and so do its commands.
+	AgentSessionResult struct {
+		Pane    string `json:"pane"`
+		Session string `json:"session"`
+		Away    bool   `json:"away,omitempty"`
 	}
 	ProjectParams struct {
 		ID   string `json:"id,omitempty"`

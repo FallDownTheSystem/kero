@@ -37,6 +37,7 @@ func hookCmd(args []string) error {
 		Event   string `json:"hook_event_name"`
 		AgentID string `json:"agent_id"`   // set for Claude Code's subagents
 		Session string `json:"session_id"` // the agent's own
+		Cwd     string `json:"cwd"`
 	}
 	json.NewDecoder(io.LimitReader(os.Stdin, 1<<20)).Decode(&in)
 	if pane == "" || in.Event != "SessionStart" || in.AgentID != "" {
@@ -45,18 +46,26 @@ func hookCmd(args []string) error {
 	if t := os.Getenv("CODEX_THREAD_ID"); t != "" && in.Session != "" && t != in.Session {
 		return nil // a Codex run by another agent in this pane, not the pane's
 	}
+	sid, away := os.Getenv("KERO_SESSION"), false
 	c, err := client.Connect(true)
 	if err != nil {
 		c = nil
 	} else {
 		defer c.Close()
 		if in.Session != "" {
-			c.Call("pane.agentSession", proto.AgentSessionParams{ID: pane, Agent: agent, Session: in.Session}, nil)
+			// kerod tells the pane: the environment may be that of
+			// another, as when Codex's app server, which panes share,
+			// runs the hook.
+			var r proto.AgentSessionResult
+			if c.Call("pane.agentSession", proto.AgentSessionParams{PID: os.Getpid(), Agent: agent, Session: in.Session, Dir: in.Cwd}, &r) != nil {
+				return nil
+			}
+			pane, sid, away = r.Pane, r.Session, r.Away
 		}
 	}
 	out := map[string]any{"hookSpecificOutput": map[string]string{
 		"hookEventName":     "SessionStart",
-		"additionalContext": hookContext(c, pane, os.Getenv("KERO_SESSION"), false),
+		"additionalContext": hookContext(c, pane, sid, away),
 	}}
 	return json.NewEncoder(os.Stdout).Encode(out)
 }
@@ -100,7 +109,7 @@ func hookContext(c *client.Client, pane, sid string, away bool) string {
 	if away {
 		fmt.Fprintf(&b, "You are running in Kero, a terminal for coding agents: session %s, pane %s. "+
 			"The `kero` command (see the kero skill) runs things beside you, such as a dev server, tests or another agent. "+
-			"Your commands don't run in your pane and don't have $KERO_SESSION and $KERO_PANE: give kero your pane as the target, "+
+			"Your commands don't run in your pane and don't have its $KERO_SESSION and $KERO_PANE: give kero your pane as the target, "+
 			"as in `kero split %s --down -- npm run dev`.", sid, pane, pane)
 	} else {
 		fmt.Fprintf(&b, "You are running in Kero, a terminal for coding agents: session %s, pane %s ($KERO_SESSION and $KERO_PANE). "+

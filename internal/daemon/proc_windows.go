@@ -184,3 +184,13 @@ func foreground(shell int) int {
 	}
 	return int(child)
 }
+
+// procParent returns a process's parent, 0 when it is gone.
+func procParent(pid int) int {
+	for _, e := range processes() {
+		if int(e.pid) == pid {
+			return int(e.parent)
+		}
+	}
+	return 0
+}
