@@ -215,6 +215,7 @@ button {
 }
 
 .logo {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -272,14 +273,233 @@ button {
 
 @media (max-width: 640px) {
   .site-header__inner {
-    gap: 20px;
+    gap: 14px;
     padding: 0 16px;
+  }
+  .site-header__end {
+    gap: 0;
   }
   .site-nav {
     gap: 18px;
   }
   .hide-sm {
     display: none;
+  }
+}
+
+/* ---------- Search ---------- */
+
+.search-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 224px;
+  height: 32px;
+  margin-right: 4px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--pill) 50%, transparent);
+  color: var(--text-3);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.search-button:hover {
+  color: var(--text-2);
+  background: var(--pill);
+}
+
+.search-button kbd {
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid var(--stroke);
+  border-radius: 5px;
+  background: var(--bg);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.search-icon-button {
+  display: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .search-button {
+    display: none;
+  }
+  .search-icon-button {
+    display: inline-grid;
+  }
+}
+
+.search-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+}
+
+.search-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: search-fade 0.15s ease-out;
+}
+
+.site--dark .search-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.search-dialog__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 576px;
+  max-height: min(76vh, 30rem);
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--text) 10%, transparent),
+    0 24px 48px -12px rgba(0, 0, 0, 0.18);
+  animation: search-pop 0.15s ease-out;
+}
+
+.search-dialog__field {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin: 6px 6px 0;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pill) 60%, transparent);
+  color: var(--text-3);
+}
+
+.search-dialog__field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.search-dialog__field input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-dialog__field input::placeholder {
+  color: var(--text-3);
+}
+
+.search-dialog__results {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+}
+
+.search-dialog__empty {
+  margin: 0;
+  padding: 40px 0;
+  color: var(--text-3);
+  font-size: 14px;
+  text-align: center;
+}
+
+.search-dialog__heading {
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.search-dialog__group + .search-dialog__group {
+  margin-top: 4px;
+}
+
+.search-dialog__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 20px;
+  scroll-margin: 6px;
+}
+
+.search-dialog__item svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-3);
+}
+
+.search-dialog__item[aria-selected='true'] {
+  background: var(--pill);
+}
+
+.search-dialog__item-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.search-dialog__item-title {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-dialog__item-text {
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.search-dialog mark {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  color: var(--text);
+}
+
+@keyframes search-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes search-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
   }
 }
 

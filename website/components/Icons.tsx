@@ -77,6 +77,30 @@ export const MenuIcon = icon(() => (
   </>
 ));
 
+export const SearchIcon = icon(() => (
+  <>
+    <path d="m21 21-4.34-4.34" />
+    <circle cx="11" cy="11" r="8" />
+  </>
+));
+export const HashIcon = icon(() => (
+  <>
+    <line x1="4" x2="20" y1="9" y2="9" />
+    <line x1="4" x2="20" y1="15" y2="15" />
+    <line x1="10" x2="8" y1="3" y2="21" />
+    <line x1="16" x2="14" y1="3" y2="21" />
+  </>
+));
+export const FileTextIcon = icon(() => (
+  <>
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M10 9H8" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+  </>
+));
+
 export const DownloadIcon = icon(() => (
   <>
     <path d="M12 15V3" />

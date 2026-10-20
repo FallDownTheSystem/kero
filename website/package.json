@@ -11,7 +11,8 @@
     "typescript": "^7.0.2",
     "vite": "npm:@voidzero-dev/vite-plus-core@^1.2.0",
     "vite-plus": "^1.2.0",
-    "void": "^1.1.12"
+    "void": "^1.1.12",
+    "zbsearch": "^4.0.1"
   },
   "type": "module",
   "scripts": {

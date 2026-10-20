@@ -1,5 +1,6 @@
 import { Link } from '@void/solid';
 import { GitHubIcon } from './Icons';
+import Search from './Search';
 
 export const GITHUB_URL = 'https://github.com/egoist/kero';
 
@@ -27,6 +28,7 @@ export default function SiteHeader(props: { path: string }) {
           </Link>
         </nav>
         <div class="site-header__end">
+          <Search />
           <a class="icon-link" href={GITHUB_URL} aria-label="Kero on GitHub">
             <GitHubIcon size={18} />
           </a>
