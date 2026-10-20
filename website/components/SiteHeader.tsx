@@ -1,4 +1,4 @@
-import { Link } from '@void/solid';
+import { Link } from './Link';
 import { GitHubIcon } from './Icons';
 import Search from './Search';
 

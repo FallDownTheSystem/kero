@@ -1,6 +1,6 @@
 import { For, Show, createSignal, onMount } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
-import { Link } from '@void/solid';
+import { Link } from '../components/Link';
 import { AppleIcon, ArrowUpRightIcon, DownloadIcon, LinuxIcon, WindowsIcon } from '../components/Icons';
 import { GITHUB_URL } from '../components/SiteHeader';
 import type { Props } from './download.server';

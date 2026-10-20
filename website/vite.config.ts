@@ -27,7 +27,9 @@ function docsLinks(): Plugin {
 export default defineConfig({
   plugins: [
     voidPlugin(),
-    voidSolid(),
+    // Prefetched page data is static until the next deploy, so keep it a
+    // while rather than refetching after the 30s default.
+    voidSolid({ prefetch: { cacheFor: "5m" } }),
     docsLinks(),
     // Compiles the Markdown in ../docs, which pages/docs imports.
     voidMarkdown({ shiki: { themes: { light: "github-light", dark: "github-dark-dimmed" } } }),

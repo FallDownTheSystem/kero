@@ -112,6 +112,12 @@ function SearchDialog(props: { onClose: () => void }) {
     list?.querySelector(`[data-index="${selected()}"]`)?.scrollIntoView({ block: 'nearest' });
   });
 
+  // Fetch the highlighted result's page data ahead of Enter or a click.
+  createEffect(() => {
+    const entry = flat()[selected()];
+    if (entry) void router.prefetch(entry.href);
+  });
+
   function go(entry: SearchEntry | undefined) {
     if (!entry) return;
     props.onClose();

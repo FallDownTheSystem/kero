@@ -1,4 +1,4 @@
-import { Link } from '@void/solid';
+import { Link } from './Link';
 import { GITHUB_URL } from './SiteHeader';
 
 export default function SiteFooter() {

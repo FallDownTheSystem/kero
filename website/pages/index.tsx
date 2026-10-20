@@ -1,6 +1,6 @@
 import { For } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
-import { Link } from '@void/solid';
+import { Link } from '../components/Link';
 import AppWindow from '../components/AppWindow';
 import CliShowcase from '../components/CliShowcase';
 import ParticleMorph from '../components/ParticleMorph';

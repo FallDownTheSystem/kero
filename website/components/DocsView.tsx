@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
-import { Link } from '@void/solid';
+import { useRouter } from '@void/solid';
+import { Link } from './Link';
 import { docs, ordered, sidebar } from '../lib/docs';
 import { ArrowLeftIcon, ArrowRightIcon, MenuIcon } from './Icons';
 
@@ -37,7 +38,7 @@ export default function DocsView(props: { slug: string }) {
       <main class="docs-main">
         <article class="docs-article">
           <Show when={section()}>{(s) => <p class="eyebrow">{s().title}</p>}</Show>
-          <div class="void-md">
+          <div class="void-md" {...useInternalLinks()}>
             <Dynamic component={doc().Content} />
           </div>
         </article>
@@ -108,6 +109,38 @@ function SidebarNav(props: { current: string }) {
       </For>
     </nav>
   );
+}
+
+// The Markdown renders plain <a> tags, which would reload the whole page.
+// Route internal ones through Void like Link does: prefetch on hover, focus
+// or touch, and navigate in place on click.
+function useInternalLinks() {
+  const router = useRouter();
+  const internal = (e: Event) => {
+    const a = (e.target as Element | null)?.closest?.('a');
+    if (!a || a.target || a.hasAttribute('download')) return;
+    const url = new URL(a.href, location.href);
+    if (url.origin !== location.origin) return;
+    // A link to a heading on this page is left to the browser.
+    if (url.pathname === location.pathname && url.search === location.search) return;
+    return url.pathname + url.search + url.hash;
+  };
+  const prefetch = (e: Event) => {
+    const href = internal(e);
+    if (href) void router.prefetch(href);
+  };
+  return {
+    onMouseOver: prefetch,
+    onFocusIn: prefetch,
+    onTouchStart: prefetch,
+    onClick: (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const href = internal(e);
+      if (!href) return;
+      e.preventDefault();
+      void router.visit(href);
+    },
+  };
 }
 
 // The heading the reader is at: the last one above the top fifth of the
