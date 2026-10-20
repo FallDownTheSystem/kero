@@ -14,6 +14,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/egoist/mygo/plugins/terminal"
+	"github.com/egoist/mygo/ui"
+
 	"kero/internal/proto"
 )
 
@@ -247,7 +250,8 @@ func (c *Client) Go(method string, params any, fn func(error)) {
 }
 
 // Stream is a session's terminal stream: an io.ReadWriteCloser for the
-// terminal plugin's Conn, with ResizePixels, which it calls with its size.
+// terminal plugin's Conn, with ResizePixels and UseTheme, which it calls
+// with its size and its colors.
 type Stream struct {
 	conn    net.Conn
 	r       *bufio.Reader
@@ -319,6 +323,22 @@ func (s *Stream) ResizePixels(cols, rows, cellWidth, cellHeight int) error {
 	s.wmu.Lock()
 	defer s.wmu.Unlock()
 	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePixelsPayload(cols, rows, cellWidth, cellHeight))
+}
+
+// UseTheme tells the daemon the colors the terminal shows, which programs
+// asking about them get.
+func (s *Stream) UseTheme(theme *terminal.Theme) error {
+	if theme == nil {
+		return nil
+	}
+	rgba := func(c ui.Color) [4]byte { return [4]byte{c.R, c.G, c.B, c.A} }
+	t := proto.Theme{Foreground: rgba(theme.Foreground), Background: rgba(theme.Background), Cursor: rgba(theme.Cursor)}
+	for i, c := range theme.Palette {
+		t.Palette[i] = rgba(c)
+	}
+	s.wmu.Lock()
+	defer s.wmu.Unlock()
+	return proto.WriteFrame(s.conn, proto.FrameTheme, t.Payload())
 }
 
 // Clear asks the session's terminal to clear, what being

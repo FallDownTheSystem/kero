@@ -34,6 +34,10 @@ const (
 	// ClearScrollback. The session's terminal clears, not the client's,
 	// which shows it with the next frame.
 	FrameClear byte = 'k'
+	// FrameTheme carries the colors the client's terminal shows (client →
+	// daemon), a Theme's Payload, which the daemon's terminals answer
+	// programs' questions about the colors with.
+	FrameTheme byte = 't'
 )
 
 // What a FrameClear clears.
@@ -90,6 +94,40 @@ func ParseResize(p []byte) (cols, rows int, ok bool) {
 		return 0, 0, false
 	}
 	return int(binary.BigEndian.Uint16(p[0:])), int(binary.BigEndian.Uint16(p[2:])), true
+}
+
+// Theme is the colors programs ask a terminal about (OSC 4, 10, 11, 12),
+// as RGBA: a Cursor with A 0 is the foreground.
+type Theme struct {
+	Foreground, Background, Cursor [4]byte
+	Palette                        [16][4]byte
+}
+
+// Payload encodes the theme for FrameTheme.
+func (t Theme) Payload() []byte {
+	b := make([]byte, 0, 4*19)
+	b = append(b, t.Foreground[:]...)
+	b = append(b, t.Background[:]...)
+	b = append(b, t.Cursor[:]...)
+	for _, c := range t.Palette {
+		b = append(b, c[:]...)
+	}
+	return b
+}
+
+// ParseTheme decodes a FrameTheme payload.
+func ParseTheme(p []byte) (t Theme, ok bool) {
+	if len(p) != 4*19 {
+		return t, false
+	}
+	colors := append([]*[4]byte{&t.Foreground, &t.Background, &t.Cursor}, make([]*[4]byte, 16)...)
+	for i := range t.Palette {
+		colors[3+i] = &t.Palette[i]
+	}
+	for i, c := range colors {
+		copy(c[:], p[4*i:])
+	}
+	return t, true
 }
 
 // ResizePixelsPayload encodes a size for FrameResize: a cell's size in

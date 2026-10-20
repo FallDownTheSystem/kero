@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/plugins/terminal"
+	"github.com/egoist/mygo/ui"
 
 	"kero/internal/detect"
 	"kero/internal/proto"
@@ -121,6 +122,7 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 		return nil, err
 	}
 	term.Resize(s.info.Cols, s.info.Rows)
+	term.UseTheme(d.theme.Load())
 	s.term = term
 	return s, nil
 }
@@ -433,6 +435,27 @@ func (s *pane) input(p []byte) {
 	}
 	if changed {
 		s.d.changed()
+	}
+}
+
+// useTheme gives the panes, and those to come, a client's colors, which
+// programs asking about them get: Copilot CLI drew its input box dark on
+// a light background, as kerod's terminals answered with a dark theme.
+func (d *Daemon) useTheme(t proto.Theme) {
+	color := func(c [4]byte) ui.Color { return ui.Color{R: c[0], G: c[1], B: c[2], A: c[3]} }
+	th := &terminal.Theme{Foreground: color(t.Foreground), Background: color(t.Background), Cursor: color(t.Cursor)}
+	for i, c := range t.Palette {
+		th.Palette[i] = color(c)
+	}
+	d.theme.Store(th)
+	d.mu.Lock()
+	panes := make([]*pane, 0, len(d.panes))
+	for _, p := range d.panes {
+		panes = append(panes, p)
+	}
+	d.mu.Unlock()
+	for _, p := range panes {
+		p.term.UseTheme(th)
 	}
 }
 

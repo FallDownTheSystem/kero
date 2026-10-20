@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/terminal"
 
 	"kero/internal/clilink"
 	"kero/internal/proto"
@@ -47,7 +48,10 @@ type Daemon struct {
 	idleAt   time.Time
 	ending   bool
 
-	viewed   atomic.Pointer[string]
+	viewed atomic.Pointer[string]
+	// theme is the colors of the client that last told them, which the
+	// panes answer programs' questions about the colors with.
+	theme    atomic.Pointer[terminal.Theme]
 	changeCh chan struct{}
 	saveCh   chan struct{}
 	quit     chan struct{}
@@ -523,6 +527,10 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 		case proto.FrameResize:
 			if c, rr, cw, ch, ok := proto.ParseResizePixels(payload); ok {
 				s.resize(c, rr, cw, ch)
+			}
+		case proto.FrameTheme:
+			if th, ok := proto.ParseTheme(payload); ok {
+				d.useTheme(th)
 			}
 		case proto.FrameClear:
 			if len(payload) == 1 {
