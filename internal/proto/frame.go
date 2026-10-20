@@ -27,6 +27,21 @@ const (
 	// of the old size and those of the new: the client's terminal takes it
 	// there.
 	FrameResized byte = 'z'
+	// FrameClear asks the session's terminal to clear as the user asked
+	// the client's (client → daemon): its payload is ClearScreen or
+	// ClearScrollback. The session's terminal clears, not the client's,
+	// which shows it with the next frame.
+	FrameClear byte = 'k'
+)
+
+// What a FrameClear clears.
+const (
+	// ClearScreen: the scrollback and the screen above the cursor's line,
+	// which moves to the top, as ⌘K does (terminal.ClearScreen).
+	ClearScreen byte = 's'
+	// ClearScrollback: the scrollback, as the context menu's Clear
+	// Scrollback does (terminal.ClearScrollback).
+	ClearScrollback byte = 'b'
 )
 
 // maxFrame bounds a frame's payload, against a corrupt stream.

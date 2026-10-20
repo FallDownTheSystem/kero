@@ -591,6 +591,17 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 			a.zoom(z.Steps, z.Reset)
 			return true
 		},
+		// ⌘K and Clear Scrollback clear kerod's terminal, the session's:
+		// cleared here alone, kerod's next frames, drawn from a screen
+		// still full, would put rows back wrong.
+		OnClear: func(c terminal.Clear) bool {
+			what := proto.ClearScreen
+			if c == terminal.ClearScrollback {
+				what = proto.ClearScrollback
+			}
+			conn.Clear(what)
+			return true
+		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
 		// A selection copied as it ends shows nothing else: say so.
 		OnCopy: func(_ string, by terminal.CopySource) {

@@ -430,6 +430,32 @@ func (s *pane) resize(cols, rows int) {
 	s.frame()
 }
 
+// clear clears the session's terminal as a client's user asked
+// (proto.FrameClear): proto.ClearScreen, the scrollback and the screen
+// above the cursor's line, which moves to the top with the shell's prompt,
+// but for a full-screen program's screen, which it leaves alone; or
+// proto.ClearScrollback. The clients show it with the next frame.
+func (s *pane) clear(what byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	switch what {
+	case proto.ClearScreen:
+		if !s.term.ClearScreen() {
+			return
+		}
+	case proto.ClearScrollback:
+		s.term.ClearScrollback()
+	default:
+		return
+	}
+	s.dirty = true
+	s.looked = false
+	s.frameSoon()
+}
+
 // frameDelay is how long frames wait after output, for more of it: a
 // program's redraw comes in pieces.
 const frameDelay = 4 * time.Millisecond

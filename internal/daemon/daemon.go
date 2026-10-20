@@ -527,6 +527,10 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 			if c, rr, ok := proto.ParseResize(payload); ok {
 				s.resize(c, rr)
 			}
+		case proto.FrameClear:
+			if len(payload) == 1 {
+				s.clear(payload[0])
+			}
 		}
 	}
 }

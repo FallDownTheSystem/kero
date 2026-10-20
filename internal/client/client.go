@@ -321,6 +321,15 @@ func (s *Stream) Resize(cols, rows int) error {
 	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePayload(cols, rows))
 }
 
+// Clear asks the session's terminal to clear, what being
+// proto.ClearScreen or proto.ClearScrollback (proto.FrameClear), in order
+// with what is typed.
+func (s *Stream) Clear(what byte) error {
+	s.wmu.Lock()
+	defer s.wmu.Unlock()
+	return proto.WriteFrame(s.conn, proto.FrameClear, []byte{what})
+}
+
 func (s *Stream) Close() error {
 	var err error
 	s.once.Do(func() {
