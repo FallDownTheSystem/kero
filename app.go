@@ -93,8 +93,9 @@ type App struct {
 	focused  bool
 	statuses map[string]proto.Status // as last seen, for notifications
 
-	renaming  string
-	renameBuf string
+	renaming        string
+	renamingProject string
+	renameBuf       string
 
 	renameFrames int
 	chrome       chrome // where the sidebar's animation puts things
@@ -940,7 +941,7 @@ func (a *App) startRename(id string) {
 	if s == nil {
 		return
 	}
-	a.renaming, a.renameBuf, a.renameFrames = id, s.DisplayName(), 0
+	a.renaming, a.renamingProject, a.renameBuf, a.renameFrames = id, "", s.DisplayName(), 0
 }
 
 func (a *App) commitRename() {
@@ -955,6 +956,26 @@ func (a *App) commitRename() {
 	a.call("rename", proto.RenameParams{ID: id, Name: name}, nil)
 	a.focusTerminal()
 	a.updateTitle()
+}
+
+func (a *App) startProjectRename(id string) {
+	for _, p := range a.st.Projects {
+		if p.ID == id {
+			a.renaming, a.renamingProject, a.renameBuf, a.renameFrames = "", id, p.Name, 0
+		}
+	}
+}
+
+func (a *App) commitProjectRename() {
+	id, name := a.renamingProject, strings.TrimSpace(a.renameBuf)
+	a.renamingProject = ""
+	for i := range a.st.Projects {
+		if p := &a.st.Projects[i]; p.ID == id && name != "" && name != p.Name {
+			p.Name = name // at once; the daemon's state follows
+			a.call("project.rename", proto.ProjectParams{ID: id, Name: name}, nil)
+		}
+	}
+	a.focusTerminal()
 }
 
 func (a *App) moveSession(id, project string) {

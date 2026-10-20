@@ -259,7 +259,8 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 	}
 	hdr := ui.Row(c.Key("project-"+id)).Height(28).Margin(top, 0, 3, 0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Radius(6)
 	hovered := hdr.Hovered()
-	if hdr.Clicked() {
+	renaming := id != "" && a.renamingProject == id
+	if hdr.Clicked() && !renaming {
 		a.toggleProject(id)
 	}
 	pointerTooltip(c, hdr, "tip-project-"+id, proto.ShortDir(g.project.Dir))
@@ -273,6 +274,9 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 		}
 		if m.Item(label).Chosen() {
 			a.toggleProject(id)
+		}
+		if m.Item(locales.SessionRename()).Disabled(id == "").Chosen() {
+			a.startProjectRename(id)
 		}
 		m.Separator()
 		if m.Item(locales.SidebarCloseProjectMenu()).Disabled(id == "").Chosen() {
@@ -288,6 +292,16 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 		}
 	})
 	hdr.Children(func() {
+		if renaming {
+			in := ui.TextInputBase(c.Key("rename"), &a.renameBuf).Grow(1).MinWidth(0).FontSize(12.5).FontWeight(600).AutoFocus()
+			if in.Shortcut(0, ui.KeyEscape) {
+				a.renamingProject = ""
+				a.focusTerminal()
+			} else if in.Submitted() || (!in.Focused() && !in.Pressed() && in.Valid() && a.renameStarted(c)) {
+				a.commitProjectRename()
+			}
+			return
+		}
 		ui.Text(c, g.project.Name).FontSize(12.5).FontWeight(600).TextColor(pal.textMuted).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
 		ui.Textf(c, "%d", len(g.sessions)).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum")
 		chev := ui.Icon(c, chevronIcon).Size(11, 11).TextColor(pal.textFaint)

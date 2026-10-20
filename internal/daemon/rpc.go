@@ -323,10 +323,14 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
+		name := strings.TrimSpace(p.Name)
+		if name == "" {
+			return nil, errors.New("a project needs a name")
+		}
 		d.mu.Lock()
 		for i := range d.projects {
 			if d.projects[i].ID == p.ID {
-				d.projects[i].Name = strings.TrimSpace(p.Name)
+				d.projects[i].Name = name
 			}
 		}
 		d.mu.Unlock()
