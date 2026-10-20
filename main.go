@@ -67,6 +67,13 @@ func main() {
 }
 
 func runApp() {
+	// Started from a pane, as Kero Dev by `mygo dev` in the installed Kero:
+	// the pane's variables name its kerod, not this build's.
+	if os.Getenv("KERO_PANE") != "" {
+		for _, k := range []string{"KERO_SOCKET", "KERO_SESSION", "KERO_PANE"} {
+			os.Unsetenv(k)
+		}
+	}
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
