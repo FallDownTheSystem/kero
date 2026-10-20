@@ -521,8 +521,8 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 		case proto.FrameInput:
 			s.input(payload)
 		case proto.FrameResize:
-			if c, rr, ok := proto.ParseResize(payload); ok {
-				s.resize(c, rr)
+			if c, rr, cw, ch, ok := proto.ParseResizePixels(payload); ok {
+				s.resize(c, rr, cw, ch)
 			}
 		case proto.FrameClear:
 			if len(payload) == 1 {

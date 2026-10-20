@@ -32,14 +32,17 @@ type pane struct {
 	// mu guards the fields below, and orders the output the emulator and
 	// the clients get with clients attaching. The emulator's callbacks
 	// (OnTitle, OnNotify) run within Feed, with mu held.
-	mu       sync.Mutex
-	info     proto.Pane
-	proc     *ptyProc
-	term     *terminal.Terminal
-	clients  map[*attachment]struct{}
-	shellPID int
-	fgPGID   int
-	cwdAt    time.Time
+	mu   sync.Mutex
+	info proto.Pane
+	// cellW and cellH are the size of a cell in pixels on the client
+	// that last resized the pane, 0 until one did.
+	cellW, cellH int
+	proc         *ptyProc
+	term         *terminal.Terminal
+	clients      map[*attachment]struct{}
+	shellPID     int
+	fgPGID       int
+	cwdAt        time.Time
 
 	dirty bool // output since the history on disk
 	// seen is what the screen showed when the status last came from it,
@@ -433,13 +436,26 @@ func (s *pane) input(p []byte) {
 	}
 }
 
-func (s *pane) resize(cols, rows int) {
+func (s *pane) resize(cols, rows, cellW, cellH int) {
 	if cols <= 0 || rows <= 0 {
 		return
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed || cols == s.info.Cols && rows == s.info.Rows {
+	if s.closed {
+		return
+	}
+	if cellW > 0 && cellH > 0 && (cellW != s.cellW || cellH != s.cellH) {
+		// The cells' size in pixels: what the program asking the size in
+		// pixels gets, and what the client's mouse reports in pixels count
+		// in.
+		s.cellW, s.cellH = cellW, cellH
+		s.term.ResizePixels(s.info.Cols, s.info.Rows, cellW, cellH)
+		if s.proc != nil {
+			s.proc.Resize(s.info.Cols, s.info.Rows, cellW, cellH)
+		}
+	}
+	if cols == s.info.Cols && rows == s.info.Rows {
 		return
 	}
 	// The clients show what the screen holds at its old size, which
@@ -448,7 +464,7 @@ func (s *pane) resize(cols, rows int) {
 	s.info.Cols, s.info.Rows = cols, rows
 	s.term.Resize(cols, rows)
 	if s.proc != nil {
-		s.proc.Resize(cols, rows)
+		s.proc.Resize(cols, rows, s.cellW, s.cellH)
 	}
 	// Where this terminal took the size, which the clients' take there
 	// too (proto.FrameResized), then what it shows at it.

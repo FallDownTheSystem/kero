@@ -17,13 +17,15 @@ const (
 	FrameOutput byte = 'o'
 	// FrameInput carries what the user typed (client → daemon).
 	FrameInput byte = 'i'
-	// FrameResize carries the terminal's size: cols and rows as big-endian
-	// uint16s (client → daemon).
+	// FrameResize carries the terminal's size: cols, rows and a cell's
+	// width and height in pixels as big-endian uint16s (client → daemon),
+	// which programs asking the size in pixels, or taking the mouse in
+	// pixels (mode 1016), need.
 	FrameResize byte = 'r'
 	// FrameClosed tells the client the session is gone (daemon → client).
 	FrameClosed byte = 'c'
 	// FrameResized tells the client that the session's terminal took a
-	// size, as FrameResize carries it (daemon → client), between the frames
+	// size, cols and rows as big-endian uint16s (daemon → client), between the frames
 	// of the old size and those of the new: the client's terminal takes it
 	// there.
 	FrameResized byte = 'z'
@@ -74,7 +76,7 @@ func ReadFrame(r io.Reader) (kind byte, payload []byte, err error) {
 	return hdr[0], payload, nil
 }
 
-// ResizePayload encodes a size for FrameResize.
+// ResizePayload encodes a size for FrameResized.
 func ResizePayload(cols, rows int) []byte {
 	var b [4]byte
 	binary.BigEndian.PutUint16(b[0:], uint16(max(1, min(cols, 0xFFFF))))
@@ -82,10 +84,29 @@ func ResizePayload(cols, rows int) []byte {
 	return b[:]
 }
 
-// ParseResize decodes a FrameResize payload.
+// ParseResize decodes a FrameResized payload.
 func ParseResize(p []byte) (cols, rows int, ok bool) {
 	if len(p) != 4 {
 		return 0, 0, false
 	}
 	return int(binary.BigEndian.Uint16(p[0:])), int(binary.BigEndian.Uint16(p[2:])), true
+}
+
+// ResizePixelsPayload encodes a size for FrameResize: a cell's size in
+// pixels is 0 when unknown.
+func ResizePixelsPayload(cols, rows, cellWidth, cellHeight int) []byte {
+	b := make([]byte, 8)
+	copy(b, ResizePayload(cols, rows))
+	binary.BigEndian.PutUint16(b[4:], uint16(max(0, min(cellWidth, 0xFFFF))))
+	binary.BigEndian.PutUint16(b[6:], uint16(max(0, min(cellHeight, 0xFFFF))))
+	return b
+}
+
+// ParseResizePixels decodes a FrameResize payload.
+func ParseResizePixels(p []byte) (cols, rows, cellWidth, cellHeight int, ok bool) {
+	if len(p) != 8 {
+		return 0, 0, 0, 0, false
+	}
+	cols, rows, _ = ParseResize(p[:4])
+	return cols, rows, int(binary.BigEndian.Uint16(p[4:])), int(binary.BigEndian.Uint16(p[6:])), true
 }

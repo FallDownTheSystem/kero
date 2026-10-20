@@ -247,7 +247,7 @@ func (c *Client) Go(method string, params any, fn func(error)) {
 }
 
 // Stream is a session's terminal stream: an io.ReadWriteCloser for the
-// terminal plugin's Conn, with Resize, which it calls with its size.
+// terminal plugin's Conn, with ResizePixels, which it calls with its size.
 type Stream struct {
 	conn    net.Conn
 	r       *bufio.Reader
@@ -313,11 +313,12 @@ func (s *Stream) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// Resize tells the daemon the terminal's size, which the program gets.
-func (s *Stream) Resize(cols, rows int) error {
+// ResizePixels tells the daemon the terminal's size, and its cells' in
+// pixels, which the program gets.
+func (s *Stream) ResizePixels(cols, rows, cellWidth, cellHeight int) error {
 	s.wmu.Lock()
 	defer s.wmu.Unlock()
-	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePayload(cols, rows))
+	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePixelsPayload(cols, rows, cellWidth, cellHeight))
 }
 
 // Clear asks the session's terminal to clear, what being
