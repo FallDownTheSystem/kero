@@ -3,9 +3,13 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Run by hand, it releases mygo.json's version from the branch it runs
+  # on, in a new draft: the draft of the version, if there is one, and its
+  # tag go, so the release is of this commit. A published release stays.
+  workflow_dispatch:
 
 permissions:
-  contents: write # the draft release, and the uploads to it
+  contents: write # the draft release, its tag, and the uploads to it
 
 jobs:
   draft-release:
@@ -13,14 +17,35 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Check the tag against mygo.json's version
+        if: github.event_name == 'push'
         run: test "$GITHUB_REF_NAME" = "v$(jq -r .version mygo.json)"
+      - name: Replace the draft release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$(jq -r .version mygo.json)"
+          draft="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || true)"
+          if [ "$draft" = "false" ]; then
+            echo "::error::$tag is published already: bump the version in mygo.json"
+            exit 1
+          fi
+          if [ "$draft" = "true" ]; then
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            git push origin ":refs/tags/$tag"
+          fi
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-              --draft --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          tag="v$(jq -r .version mygo.json)"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "$tag" --generate-notes
           fi
 
   build:
