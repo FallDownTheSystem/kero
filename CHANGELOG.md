@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.2
+
+- Installing the command line tool on macOS asks for an administrator's
+  password instead of failing.
+
 ## 2.0.1
 
 - Kero speaks Simplified Chinese; pick the language in Settings.
