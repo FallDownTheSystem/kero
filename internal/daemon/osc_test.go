@@ -4,18 +4,20 @@ import (
 	"encoding/base64"
 	"strings"
 	"testing"
+
+	"kero/internal/proto"
 )
 
 func TestScannerAcrossReads(t *testing.T) {
 	msg := base64.StdEncoding.EncodeToString([]byte("Installing updates"))
-	stream := "hello \x1b]0;title\x07 \x1b]7501;state=working:app=brew:msg=" + msg + "\x1b\\ world \x1b]133;A\x07 \x1b]9;4;1;40\x07"
+	stream := "hello \x1b]0;title\x07 \x1b]7501;state=working:app=brew:msg=" + msg + "\x1b\\ world \x1b]133;A\x07 \x1b]9;4;1;40\x07 \x1bc"
 	var got []string
 	var o oscScanner
 	// Byte at a time: sequences split anywhere still come whole.
 	for i := range len(stream) {
-		o.scan([]byte{stream[i]}, func(b []byte) { got = append(got, string(b)) })
+		o.scan([]byte{stream[i]}, func(b []byte) { got = append(got, string(b)) }, func() { got = append(got, "RIS") })
 	}
-	want := []string{"7501;state=working:app=brew:msg=" + msg, "133;A", "9;4;1;40"}
+	want := []string{"7501;state=working:app=brew:msg=" + msg, "133;A", "9;4;1;40", "RIS"}
 	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("got %q, want %q", got, want)
 	}
@@ -55,5 +57,32 @@ func TestParseStatus(t *testing.T) {
 	// Bidi overrides are dropped from messages shown outside the grid.
 	if r, _ := parseStatus("state=done:msg=" + b64("ok‮gnp.exe")); r.rec.Msg != "okgnp.exe" {
 		t.Errorf("bidi not neutralized: %q", r.rec.Msg)
+	}
+}
+
+// The first command to end, in a pane started with one, is that command.
+func TestCommandExit(t *testing.T) {
+	s := testPane(t)
+	s.output([]byte("\x1b]133;D;0\x07"))
+	if s.info.CommandExit != nil {
+		t.Fatal("a pane started with no command took an exit status")
+	}
+	s.awaiting = true
+	s.output([]byte("out\r\n\x1b]133;D;3\x07\x1b]133;D;0\x1b\\"))
+	if s.info.CommandExit == nil || *s.info.CommandExit != 3 {
+		t.Fatalf("CommandExit = %v, want 3", s.info.CommandExit)
+	}
+}
+
+// A full reset forgets the programs' reports.
+func TestFullResetClearsRecords(t *testing.T) {
+	s := testPane(t)
+	s.output([]byte("\x1b]7501;state=working:id=build\x1b\\"))
+	if s.info.Status != proto.Working {
+		t.Fatalf("status %s, want working", s.info.Status)
+	}
+	s.output([]byte("\x1bc"))
+	if len(s.info.Records) != 0 || s.info.Status != proto.Idle || s.reported {
+		t.Fatalf("after RIS: records %v, status %s, reported %v", s.info.Records, s.info.Status, s.reported)
 	}
 }

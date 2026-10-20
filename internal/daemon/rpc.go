@@ -374,11 +374,22 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 
 // wait waits for a pane's status to be one of p.Status.
 func (d *Daemon) wait(c *controlConn, s *pane, p proto.WaitParams) (any, error) {
-	want := func(st proto.Status) bool {
-		if len(p.Status) == 0 {
-			return st != proto.Working
+	want := func(info proto.Pane) bool {
+		switch {
+		case p.Exit:
+			return info.CommandExit != nil || info.Status == proto.Exited
+		case len(p.Status) == 0:
+			return info.Status != proto.Working
 		}
-		return slices.Contains(p.Status, st)
+		return slices.Contains(p.Status, info.Status)
+	}
+	if p.Exit {
+		s.mu.Lock()
+		unmarked := s.info.CommandExit == nil && !s.awaiting && s.info.Status != proto.Exited
+		s.mu.Unlock()
+		if unmarked {
+			return nil, errors.New("no command to wait for: the pane wasn't started with one, or its shell (cmd) can't tell when it ends")
+		}
 	}
 	var timeout <-chan time.Time
 	if p.Timeout > 0 {
@@ -389,7 +400,7 @@ func (d *Daemon) wait(c *controlConn, s *pane, p proto.WaitParams) (any, error) 
 	// An agent given a prompt takes a moment to start working: waiting
 	// for it to stop right away would end at once. Give it a little time
 	// to start.
-	if len(p.Status) == 0 {
+	if len(p.Status) == 0 && !p.Exit {
 		s.mu.Lock()
 		ch, st, since := s.changed, s.info.Status, s.info.Since
 		s.mu.Unlock()
@@ -409,7 +420,7 @@ func (d *Daemon) wait(c *controlConn, s *pane, p proto.WaitParams) (any, error) 
 		if closed {
 			return info, errors.New("pane closed")
 		}
-		if want(info.Status) {
+		if want(info) {
 			return info, nil
 		}
 		select {

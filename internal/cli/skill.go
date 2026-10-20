@@ -38,12 +38,19 @@ so the user finds it in the sidebar.
     kero key <target> ctrl+c                  # enter, escape, up, tab, ctrl+d…
     kero prompt <target> "run the tests"      # send + Enter, wait, print screen
     kero wait <target> [--for idle,waiting,error,exited] [--timeout 10m]
+    kero wait <target> --exit                 # until its command ends; exits with its status
     kero read <target> [-n 40] [-a]           # the screen, or with scrollback
     kero status <target> --json               # status, program, directory
     kero ls                                   # every session and pane
 
 A pane's status is working, waiting (it needs the user), idle, error or
-exited. ` + "`kero wait`" + ` with no --for waits until it stops working.
+exited. ` + "`kero wait`" + ` with no --for waits until it stops working. A
+command such as a test run doesn't show as working: wait for it with --exit,
+or start it with --wait, which exits with the command's status:
+
+    pane=$(kero split --down -- go test ./...)
+    kero wait "$pane" --exit || kero read "$pane" -n 80
+    kero split --down --wait -- make build    # the same, in one step
 
 ## Tell the user
 

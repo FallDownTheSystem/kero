@@ -44,7 +44,20 @@ kero report done "Deployed to staging"
 kero report clear
 ```
 
-The states are `idle`, `working`, `done`, `blocked`, `error` and `clear`. Kero shows the message in the sidebar. A `blocked` report turns the session to *waiting*, and `done` or `blocked` notify you when you're away.
+The states are:
+
+| State     | Meaning                                                    |
+| --------- | ---------------------------------------------------------- |
+| `idle`    | At rest, waiting for the next instruction                  |
+| `working` | Busy; `--progress` gives a percentage                      |
+| `blocked` | It can't go on without you; `--kind` says what it needs    |
+| `done`    | It finished, and you haven't looked yet                    |
+| `error`   | It failed and stopped                                      |
+| `clear`   | Not a state: removes what the program reported             |
+
+Kero shows the message in the sidebar. A `blocked` report turns the session to *waiting*, and `done` or `blocked` notify you when you're away. `--kind` is `permission` (approve something), `question` (type an answer) or `auth` (a login or a token).
+
+`working` and `blocked` last only as long as the program: they end when it exits. `done` and `error` stay until you type in the pane, so a program that finishes while you're away leaves its result for you to find. A program that is interrupted should report `idle`.
 
 To flag a pane as needing you without changing its state:
 
@@ -52,16 +65,39 @@ To flag a pane as needing you without changing its state:
 kero notify "Need your API key to continue"
 ```
 
-### The escape sequence
+### Several tasks in one pane
 
-`kero report` writes an OSC 7501 escape sequence to the terminal, which any program can emit directly:
-
-```txt
-ESC ] 7501 ; state=<state> [:progress=<n>] [:kind=<kind>] [:msg=<base64>] ESC \
-```
-
-Fields are separated by `:`, and `msg` and `title` are Base64-encoded. For example, in a shell:
+A program that runs several things at once can report each of them under an `--id`, and name it with `--title`:
 
 ```sh
-printf '\e]7501;state=working:progress=40:msg=%s\e\\' "$(printf 'Building' | base64)"
+kero report working "Deploying v2.4.1" --app deploy
+kero report working "Pushing image" --id us-east --title "US East" --progress 40
+kero report blocked "Approve deploy to production?" --id eu-west --title "EU West" --kind permission
+kero report clear --id us-east
 ```
+
+Each report replaces what was there under its id, so repeat `--app` and `--title` in every one. An id can have children, as `build/test` is a child of `build`, and `clear` with an id removes it and its children. The pane shows the report that most needs you: `blocked` over `working` over `error` over `done`.
+
+`--app` is a stable name for the program, such as `cargo` or `terraform`, which ids under it take on.
+
+### The escape sequence
+
+`kero report` writes an OSC 7501 escape sequence, the [Program Status Protocol](https://www.superlogical.com/rex/docs/build/program-status), which any program can write itself. It isn't Kero's own: a program that adopts it reports to every terminal that reads it.
+
+```txt
+ESC ] 7501 ; state=<state> [:id=<id>] [:kind=<kind>] [:progress=<n>] [:app=<app>] [:title=<base64>] [:msg=<base64>] ESC \
+```
+
+Fields are separated by `:`, and `msg` and `title` are Base64-encoded UTF-8. For example, in a shell:
+
+```sh
+status() {
+  printf '\e]7501;state=%s:msg=%s\e\\' "$1" "$(printf '%s' "$2" | base64 | tr -d '\n')"
+}
+status working "Syncing photos"
+rsync -a ~/Photos backup:/photos && status done "Photos synced" || status error "rsync failed"
+```
+
+A program can ask whether the terminal reads the protocol by writing `ESC ] 7501 ; ? ESC \`. Kero answers with the same sequence.
+
+Kero also reads ConEmu's progress sequence, OSC 9;4, which some build tools write, until a program reports with OSC 7501.

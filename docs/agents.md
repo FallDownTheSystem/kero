@@ -42,6 +42,13 @@ kero wait tests --for idle,error --timeout 10m
 kero read tests -n 60
 ```
 
+Run tests beside themselves and read what failed:
+
+```sh
+pane=$(kero split --down -- go test ./...)
+kero wait "$pane" --exit || kero read "$pane" -n 80
+```
+
 Tell you what's going on:
 
 ```sh

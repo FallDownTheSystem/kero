@@ -35,5 +35,6 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 | `--right` (default), `--down`, `--left`, `--up` | Where the new pane goes               |
 | `-r`, `--ratio <0..1>`                | The new pane's share of the space (default 0.5) |
 | `-d`, `--dir <dir>`                   | Start it in another directory                  |
+| `-w`, `--wait`                        | Wait for its command to end, and exit with its status |
 
 Run inside Kero, `kero split` splits the pane it runs in. Elsewhere, name a target: `kero split my-session --down`.

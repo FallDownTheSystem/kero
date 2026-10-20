@@ -47,8 +47,12 @@ func shellArgs(shell string, command []string) []string {
 	}
 	// The command runs in an interactive login shell, so that it finds
 	// what the user's profile puts on PATH; the session goes on with the
-	// shell once it ends.
-	script := shellJoin(name, command) + "; exec " + shellQuote(name, shell) + " -l"
+	// shell once it ends, after telling its exit status (OSC 133;D).
+	status := `"$?"`
+	if name == "fish" {
+		status = "$status"
+	}
+	script := shellJoin(name, command) + `; printf '\033]133;D;%s\007' ` + status + "; exec " + shellQuote(name, shell) + " -l"
 	if name == "fish" {
 		// fish leaves job control off for -c, so the command would run in
 		// the shell's process group, where tick doesn't see it.
@@ -57,16 +61,34 @@ func shellArgs(shell string, command []string) []string {
 	return []string{name, "-l", "-i", "-c", script}
 }
 
+// marksExit tells whether shellArgs has the shell tell when the command
+// ends: all but cmd and other shells of Windows' own.
+func marksExit(shell string) bool {
+	name := shellName(shell)
+	switch {
+	case name == "pwsh" || name == "powershell":
+		return true
+	case name == "cmd", runtime.GOOS == "windows" && !posixShell(name):
+		return false
+	}
+	return true
+}
+
 // powershellPrompt wraps PowerShell's prompt, after the profile made it:
 // it makes the process's directory the shell's location, which cd leaves
 // alone, so that the sidebar sees where the shell is (procCwd).
 const powershellPrompt = `$global:__keroPrompt=$function:prompt;` +
 	`function global:prompt{if($PWD.Provider.Name -eq 'FileSystem'){[Environment]::CurrentDirectory=$PWD.ProviderPath};& $global:__keroPrompt}`
 
+const powershellExit = `$__keroOk=$?; $__keroCode=$LASTEXITCODE; ` +
+	`[Console]::Write("$([char]27)]133;D;$(if ($__keroOk) {0} elseif ($__keroCode) {$__keroCode} else {1})$([char]7)")`
+
 func powershellArgs(name string, command []string) []string {
 	script := powershellPrompt
 	if len(command) > 0 {
-		script += "; " + powershellJoin(command)
+		// Then its exit status (OSC 133;D): a program's, else 1 for a
+		// cmdlet that failed.
+		script += "; " + powershellJoin(command) + "; " + powershellExit
 	}
 	// -NoExit: the session goes on with the shell once the command ends.
 	return []string{name, "-NoLogo", "-NoExit", "-Command", script}

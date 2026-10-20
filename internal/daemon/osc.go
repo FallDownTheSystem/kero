@@ -15,7 +15,8 @@ import (
 
 // oscScanner finds, in a program's output, the OSC sequences the daemon
 // handles itself, which the emulator ignores: OSC 7501 (program status)
-// and OSC 133 (shell prompts). It follows them across reads.
+// and OSC 133 (shell prompts), and full resets (RIS). It follows them
+// across reads.
 type oscScanner struct {
 	state int // 0 text, 1 after ESC, 2 in an OSC we keep, 3 in one we skip, 4 ESC in an OSC
 	skip  bool
@@ -25,8 +26,8 @@ type oscScanner struct {
 const maxOSC = 4096 // OSC 7501's limit on a whole sequence
 
 // scan calls fn with the body of each OSC 7501 and 133 in p (what is
-// between "ESC ]" and the terminator).
-func (o *oscScanner) scan(p []byte, fn func(body []byte)) {
+// between "ESC ]" and the terminator), and reset at each RIS (ESC c).
+func (o *oscScanner) scan(p []byte, fn func(body []byte), reset func()) {
 	for _, b := range p {
 		switch o.state {
 		case 0:
@@ -40,6 +41,9 @@ func (o *oscScanner) scan(p []byte, fn func(body []byte)) {
 				o.begin()
 			} else if b != 0x1b {
 				o.state = 0
+				if b == 'c' {
+					reset()
+				}
 			}
 		case 2, 3:
 			switch b {
@@ -252,7 +256,29 @@ func (s *pane) handleOSC(body []byte) {
 	case bytes.HasPrefix(body, []byte("133;A")):
 		// A new prompt: what ran is over.
 		s.dropLive()
+	case bytes.HasPrefix(body, []byte("133;D")):
+		// A command ended, with its exit status: the first to, of a pane
+		// started with one, is that command (shellArgs).
+		if !s.awaiting {
+			return
+		}
+		s.awaiting = false
+		code, _, _ := strings.Cut(strings.TrimPrefix(string(body[5:]), ";"), ";")
+		n, _ := strconv.Atoi(code)
+		s.info.CommandExit = &n
+		s.wake()
+		s.d.changed()
 	}
+}
+
+// fullReset forgets every record, as a full reset (RIS) does, and takes
+// OSC 9;4 again; s.mu is held.
+func (s *pane) fullReset() {
+	if len(s.records) > 0 {
+		clear(s.records)
+		s.fromRecords()
+	}
+	s.reported = false
 }
 
 func (s *pane) applyReport(r proto.Record, osc7501 bool) {

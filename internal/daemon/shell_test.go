@@ -49,6 +49,60 @@ func TestCommandInForeground(t *testing.T) {
 	}
 }
 
+// A shell tells when the command a session starts with ends, with its
+// exit status, and goes on.
+func TestCommandTellsExit(t *testing.T) {
+	shells, command := []string{"fish", "zsh", "bash", "dash"}, []string{"sh", "-c", "exit 3"}
+	if runtime.GOOS == "windows" {
+		shells, command = []string{"pwsh", "powershell"}, []string{"cmd", "/c", "exit 3"}
+	}
+	for _, name := range shells {
+		t.Run(name, func(t *testing.T) {
+			shell, err := exec.LookPath(name)
+			if err != nil {
+				t.Skip(name, "not installed")
+			}
+			if !marksExit(shell) {
+				t.Fatal("marksExit is false")
+			}
+			proc, err := startPTY(ptyOptions{
+				Path: shell, Args: shellArgs(shell, command),
+				Dir: t.TempDir(), Env: testEnv(t),
+				Cols: 80, Rows: 24,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer proc.Kill()
+			got := make(chan string, 16)
+			go func() {
+				var o oscScanner
+				buf := make([]byte, 4096)
+				for {
+					n, err := proc.Read(buf)
+					o.scan(buf[:n], func(b []byte) { got <- string(b) }, func() {})
+					if err != nil {
+						return
+					}
+				}
+			}()
+			for timeout := time.After(10 * time.Second); ; {
+				select {
+				case b := <-got:
+					if strings.HasPrefix(b, "133;D") {
+						if b != "133;D;3" {
+							t.Fatalf("got %q, want 133;D;3", b)
+						}
+						return
+					}
+				case <-timeout:
+					t.Fatal("no OSC 133;D")
+				}
+			}
+		})
+	}
+}
+
 func testEnv(t *testing.T) []string {
 	if runtime.GOOS != "windows" {
 		return []string{"HOME=" + t.TempDir(), "TERM=xterm-256color"}

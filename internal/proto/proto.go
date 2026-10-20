@@ -154,6 +154,9 @@ type Pane struct {
 	Activity int64 `json:"activity"`
 	Created  int64 `json:"created"`
 	ExitCode int   `json:"exitCode,omitempty"`
+	// CommandExit is the exit status of the command the pane started
+	// with, once it ended and the pane went on with its shell.
+	CommandExit *int `json:"commandExit,omitempty"`
 	// Restored: the daemon restarted (as after a reboot) and this pane's
 	// shell was started again in its directory, under its old scrollback.
 	Restored bool `json:"restored,omitempty"`
@@ -519,8 +522,11 @@ type (
 		ID string `json:"id"`
 		// Status waits for one of these; empty waits for the session to
 		// stop working: idle, waiting or exited.
-		Status  []Status `json:"status,omitempty"`
-		Timeout int64    `json:"timeout,omitempty"` // ms; 0 waits as long as it takes
+		Status []Status `json:"status,omitempty"`
+		// Exit waits instead for the command the pane started with to
+		// end (CommandExit), or for its shell to.
+		Exit    bool  `json:"exit,omitempty"`
+		Timeout int64 `json:"timeout,omitempty"` // ms; 0 waits as long as it takes
 	}
 	ProjectParams struct {
 		ID   string `json:"id,omitempty"`

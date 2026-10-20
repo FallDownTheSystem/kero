@@ -55,6 +55,9 @@ type pane struct {
 	osc      oscScanner
 	records  map[string]proto.Record
 	reported bool
+	// awaiting tells that the command the pane started with runs, whose
+	// end its shell will tell (OSC 133;D, see shellArgs).
+	awaiting bool
 	closed   bool
 	changed  chan struct{} // closed and replaced on every status change
 	// framing tells that frames for the clients are due, after output.
@@ -143,6 +146,8 @@ func (s *pane) start(command []string, env []string) error {
 	s.info.PID = s.shellPID
 	s.info.Dir = dir
 	s.info.Shell = name
+	s.info.CommandExit = nil
+	s.awaiting = len(command) > 0 && marksExit(shell)
 	s.mu.Unlock()
 	go s.pump(proc)
 	return nil
@@ -177,7 +182,7 @@ func (s *pane) output(p []byte) {
 		return
 	}
 	before := s.info.Status
-	s.osc.scan(p, s.handleOSC)
+	s.osc.scan(p, s.handleOSC, s.fullReset)
 	s.term.Feed(p)
 	s.dirty = true
 	s.info.Activity = now.UnixMilli()
@@ -239,6 +244,11 @@ func (s *pane) setStatus(st proto.Status) {
 	}
 	s.info.Status = st
 	s.info.Since = time.Now().UnixMilli()
+	s.wake()
+}
+
+// wake wakes those waiting on the pane; s.mu is held.
+func (s *pane) wake() {
 	close(s.changed)
 	s.changed = make(chan struct{})
 }

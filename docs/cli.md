@@ -38,6 +38,7 @@ kero restart <pane>              # start an exited pane's shell again
 | `-n`, `--name <name>`       | Name the session                                |
 | `-d`, `--dir <dir>`         | Start it there (default: the current directory) |
 | `-f`, `--focus`             | Show it in the app                              |
+| `-w`, `--wait`              | Wait for its command to end, and exit with its status |
 
 ## Typing and reading
 
@@ -59,7 +60,28 @@ kero wait api --for waiting,error --timeout 10m
 kero prompt review "summarize the diff"   # send + Enter, wait, print the screen
 ```
 
-`kero wait` prints the pane's screen when it returns. `kero prompt` sends text and Enter, waits until the pane stops working, then prints its screen. It's the quickest way to ask another agent something.
+`kero wait` prints the pane's status when it returns. `kero prompt` sends text and Enter, waits until the pane stops working, then prints its screen. It's the quickest way to ask another agent something.
+
+### Waiting for a command
+
+A command such as `make test` doesn't show as *working*, so to wait for one to finish, start it with `--wait`. `kero` then exits with the command's own status:
+
+```sh
+if kero split --down --wait -- make test; then
+  echo "tests passed"
+fi
+```
+
+`kero wait --exit` does the same for a pane that is already running a command it started with:
+
+```sh
+pane=$(kero split --down -- go test ./...)
+# … do other things …
+kero wait "$pane" --exit --timeout 10m
+echo "go test exited with $?"
+```
+
+The pane stays open after the command, with its output, so you can `kero read` it. Waiting for a command doesn't work with `cmd` as the shell, which can't tell when one ends.
 
 ## Status
 
@@ -103,5 +125,7 @@ kero do sidebar.toggle
 | `2`  | Bad usage                            |
 | `3`  | No such target, or an ambiguous one  |
 | `4`  | kerod is unreachable                 |
+
+Commands that wait for a program, `kero wait --exit` and `--wait`, exit with the program's status instead, as does `kero wait` when the pane's shell exits with an error. A wait that times out exits with `1`.
 
 Add `--json` to `ls`, `status` and `projects` for machine-readable output.

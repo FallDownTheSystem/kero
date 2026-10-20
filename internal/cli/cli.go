@@ -30,11 +30,13 @@ Usage:
       -n, --name <name>           name it
       -d, --dir <dir>             start it there (default: here)
       -f, --focus                 show it in the app
+      -w, --wait                  wait for cmd to end, exit with its status
   kero split [target] [options] [-- cmd…]
                                 start a pane beside a pane, printing its id
       --right (default), --down, --left, --up
       -r, --ratio <0..1>          the new pane's share (default 0.5)
       -d, --dir <dir>             start it there (default: the pane's)
+      -w, --wait                  wait for cmd to end, exit with its status
   kero send <target> <text…>    type text into a pane
       -e                          interpret \n \r \t \e \xHH escapes
       --enter                     press Enter after it
@@ -47,6 +49,8 @@ Usage:
   kero wait [target] [--for idle,waiting,error,exited] [--timeout 10m]
                                 wait until the pane stops working (or
                                 reaches one of the statuses), print it
+      -x, --exit                  instead wait for the command it started
+                                  with to end, exit with its status
   kero status [target] [--json]
   kero rename <session> <name>
   kero focus <target>           show a session (and pane) in the app
@@ -89,11 +93,21 @@ var (
 	errUnreachable = errors.New("unreachable")
 )
 
+// exitStatus is a waited-for program's exit status, which kero exits
+// with.
+type exitStatus int
+
+func (e exitStatus) Error() string { return fmt.Sprintf("exit status %d", int(e)) }
+
 // Run runs a subcommand, returning the exit code.
 func Run(args []string) int {
 	err := run(args)
 	if err == nil {
 		return 0
+	}
+	var es exitStatus
+	if errors.As(err, &es) {
+		return int(es)
 	}
 	fmt.Fprintln(os.Stderr, "kero:", err)
 	switch {
@@ -228,12 +242,15 @@ func run(args []string) error {
 
 	case "new":
 		f, err := parse(args,
-			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir"},
-			map[string]string{"f": "focus", "focus": "focus", "json": "json"})
+			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout"},
+			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
 		}
 		command := append(f.pos, f.rest...)
+		if f.set["wait"] && len(command) == 0 {
+			return usageErr("kero new --wait needs a command: kero new --wait -- cmd…")
+		}
 		dir := f.vals["dir"]
 		if dir == "" && f.vals["project"] == "" {
 			dir, _ = os.Getwd()
@@ -249,14 +266,20 @@ func run(args []string) error {
 			c.Call("select", proto.FocusParams{Session: s.ID}, nil)
 		}
 		if f.set["json"] {
-			return printJSON(s)
+			if err := printJSON(s); err != nil {
+				return err
+			}
+		} else {
+			fmt.Println(s.ID)
 		}
-		fmt.Println(s.ID)
+		if f.set["wait"] {
+			return waitExit(c, s.Panes[0].ID, f.vals["timeout"])
+		}
 		return nil
 
 	case "split":
-		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir"},
-			map[string]string{"right": "right", "down": "down", "left": "left", "up": "up", "json": "json", "f": "focus", "focus": "focus"})
+		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout"},
+			map[string]string{"right": "right", "down": "down", "left": "left", "up": "up", "json": "json", "f": "focus", "focus": "focus", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
 		}
@@ -271,18 +294,28 @@ func run(args []string) error {
 			}
 		}
 		ratio, _ := strconv.ParseFloat(f.vals["ratio"], 64)
+		command := append(f.pos[min(1, len(f.pos)):], f.rest...)
+		if f.set["wait"] && len(command) == 0 {
+			return usageErr("kero split --wait needs a command: kero split --wait -- cmd…")
+		}
 		var s proto.Session
 		if err := c.Call("split", proto.CreateParams{Split: t.ref(), Direction: dir, Ratio: ratio,
-			Dir: f.vals["dir"], Command: append(f.pos[min(1, len(f.pos)):], f.rest...)}, &s); err != nil {
+			Dir: f.vals["dir"], Command: command}, &s); err != nil {
 			return err
 		}
 		if f.set["focus"] {
 			c.Call("select", proto.FocusParams{Session: s.ID, Pane: s.Focus}, nil)
 		}
 		if f.set["json"] {
-			return printJSON(s)
+			if err := printJSON(s); err != nil {
+				return err
+			}
+		} else {
+			fmt.Println(s.Focus)
 		}
-		fmt.Println(s.Focus)
+		if f.set["wait"] {
+			return waitExit(c, s.Focus, f.vals["timeout"])
+		}
 		return nil
 
 	case "send", "prompt":
@@ -376,13 +409,19 @@ func run(args []string) error {
 		return nil
 
 	case "wait":
-		f, err := parse(args, map[string]string{"for": "for", "timeout": "timeout", "t": "timeout"}, map[string]string{"json": "json"})
+		f, err := parse(args, map[string]string{"for": "for", "timeout": "timeout", "t": "timeout"}, map[string]string{"json": "json", "exit": "exit", "x": "exit"})
 		if err != nil {
 			return err
 		}
 		t, err := findOrCurrent(st, f.pos)
 		if err != nil {
 			return err
+		}
+		if f.set["exit"] {
+			if f.vals["for"] != "" {
+				return usageErr("kero wait: --exit or --for, not both")
+			}
+			return waitExit(c, t.ref(), f.vals["timeout"])
 		}
 		var want []proto.Status
 		for _, w := range strings.Split(f.vals["for"], ",") {
@@ -399,10 +438,14 @@ func run(args []string) error {
 			return err
 		}
 		if f.set["json"] {
-			return printJSON(info)
+			err = printJSON(info)
+		} else {
+			fmt.Println(info.Status)
 		}
-		fmt.Println(info.Status)
-		return nil
+		if err == nil && info.Status == proto.Exited && info.ExitCode != 0 {
+			return exitStatus(info.ExitCode)
+		}
+		return err
 
 	case "status":
 		f, err := parse(args, nil, map[string]string{"json": "json"})
@@ -750,6 +793,27 @@ func keyBytes(name string) ([]byte, error) {
 		return []byte(name), nil
 	}
 	return nil, usageErr("unknown key %q", name)
+}
+
+// waitExit waits for the command a pane started with to end, and exits
+// with its status: or its shell's, if that ended first.
+func waitExit(c *client.Client, pane, timeout string) error {
+	ms, err := parseTimeout(timeout)
+	if err != nil {
+		return err
+	}
+	var info proto.Pane
+	if err := c.Call("wait", proto.WaitParams{ID: pane, Exit: true, Timeout: ms}, &info); err != nil {
+		return err
+	}
+	code := info.ExitCode
+	if info.CommandExit != nil {
+		code = *info.CommandExit
+	}
+	if code != 0 {
+		return exitStatus(code)
+	}
+	return nil
 }
 
 // report writes an OSC 7501 report of the program's status to the
