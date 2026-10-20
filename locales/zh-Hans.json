@@ -17,6 +17,9 @@
   "actionSplitRight": "向右拆分",
   "actionSplitDown": "向下拆分",
   "actionZoomPane": "放大窗格",
+  "actionFind": "查找…",
+  "actionFindNext": "查找下一个",
+  "actionFindPrevious": "查找上一个",
   "actionNextPane": "下一个窗格",
   "actionPreviousPane": "上一个窗格",
   "actionPaneLeft": "左侧窗格",
@@ -33,6 +36,7 @@
   "menuSession": "会话",
   "menuPane": "窗格",
   "menuView": "显示",
+  "menuEdit": "编辑",
   "menuApp": "应用",
   "commonSearch": "搜索",
   "commonNoResults": "无结果",
@@ -311,5 +315,10 @@
   "setTypeShortcut": "输入快捷键",
   "setShortcutNeedsMac": "快捷键需要包含 ⌘、⌃ 或 ⌥，功能键除外。",
   "setShortcutNeedsPc": "快捷键需要包含 Ctrl 或 Alt，功能键除外。",
-  "setShortcutTaken": "{keys} 原属于“{action}”：它现在没有快捷键了。"
+  "setShortcutTaken": "{keys} 原属于“{action}”：它现在没有快捷键了。",
+  "findLabel": "在窗格中查找",
+  "findPlaceholder": "查找",
+  "findCount": "{selected}/{total}",
+  "findNoMatches": "没有匹配项",
+  "findClose": "关闭查找栏"
 }

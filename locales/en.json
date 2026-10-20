@@ -17,6 +17,9 @@
   "actionSplitRight": "Split Right",
   "actionSplitDown": "Split Down",
   "actionZoomPane": "Zoom Pane",
+  "actionFind": "Find…",
+  "actionFindNext": "Find Next",
+  "actionFindPrevious": "Find Previous",
   "actionNextPane": "Next Pane",
   "actionPreviousPane": "Previous Pane",
   "actionPaneLeft": "Pane Left",
@@ -33,6 +36,7 @@
   "menuSession": "Session",
   "menuPane": "Pane",
   "menuView": "View",
+  "menuEdit": "Edit",
   "menuApp": "App",
   "commonSearch": "Search",
   "commonNoResults": "No Results",
@@ -452,5 +456,10 @@
   "setTypeShortcut": "Type a shortcut",
   "setShortcutNeedsMac": "A shortcut needs ⌘, ⌃ or ⌥, unless it is a function key.",
   "setShortcutNeedsPc": "A shortcut needs Ctrl or Alt, unless it is a function key.",
-  "setShortcutTaken": "{keys} was {action}’s: it has none now."
+  "setShortcutTaken": "{keys} was {action}’s: it has none now.",
+  "findLabel": "Find in pane",
+  "findPlaceholder": "Find",
+  "findCount": "{selected} of {total}",
+  "findNoMatches": "No matches",
+  "findClose": "Close Find Bar"
 }

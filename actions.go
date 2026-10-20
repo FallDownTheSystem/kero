@@ -53,6 +53,12 @@ func (a *App) run(id string, args map[string]string) {
 		a.closeFocused()
 	case "session.close":
 		a.closeSession(a.selected, true)
+	case "find.open":
+		a.openFind()
+	case "find.next":
+		a.findStep(false)
+	case "find.previous":
+		a.findStep(true)
 	case "pane.split.right":
 		a.splitPane(s, "", "right")
 	case "pane.split.down":
@@ -113,6 +119,9 @@ var actionTitles = map[string]func() string{
 	"pane.restart":      locales.ActionRestartPane,
 	"pane.close":        locales.ActionClose,
 	"session.close":     locales.ActionCloseSession,
+	"find.open":         locales.ActionFind,
+	"find.next":         locales.ActionFindNext,
+	"find.previous":     locales.ActionFindPrevious,
 	"pane.split.right":  locales.ActionSplitRight,
 	"pane.split.down":   locales.ActionSplitDown,
 	"pane.zoom":         locales.ActionZoomPane,
@@ -184,7 +193,10 @@ func (a *App) menu() *mygo.Menu {
 			[]string{"palette.open", "session.attention", "session.next", "session.previous"},
 			[]string{"session.rename", "pane.restart"},
 			[]string{"pane.close", "session.close"})},
-		{Role: mygo.RoleEditMenu},
+		// The Edit menu's own items, then finding.
+		{Role: mygo.RoleEditMenu, Submenu: append([]*mygo.MenuItem{{Role: mygo.RoleUndo}, {Role: mygo.RoleRedo}, mygo.Separator(),
+			{Role: mygo.RoleCut}, {Role: mygo.RoleCopy}, {Role: mygo.RolePaste}, {Role: mygo.RoleSelectAll}, mygo.Separator()},
+			a.items("Edit", []string{"find.open", "find.next", "find.previous"})...)},
 		{Label: locales.MenuPane(), Submenu: a.items("Pane",
 			[]string{"pane.split.right", "pane.split.down"},
 			[]string{"pane.zoom"},

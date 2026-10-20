@@ -204,6 +204,36 @@ func (msgs Messages) ActionZoomPane() string {
 	return Catalog.Format(msgs.locale, "actionZoomPane", nil)
 }
 
+// ActionFind says "Find…"
+// in the language the app shows.
+func ActionFind() string { return In(i18n.Locale()).ActionFind() }
+
+// ActionFind says "Find…"
+// in the language of msgs.
+func (msgs Messages) ActionFind() string {
+	return Catalog.Format(msgs.locale, "actionFind", nil)
+}
+
+// ActionFindNext says "Find Next"
+// in the language the app shows.
+func ActionFindNext() string { return In(i18n.Locale()).ActionFindNext() }
+
+// ActionFindNext says "Find Next"
+// in the language of msgs.
+func (msgs Messages) ActionFindNext() string {
+	return Catalog.Format(msgs.locale, "actionFindNext", nil)
+}
+
+// ActionFindPrevious says "Find Previous"
+// in the language the app shows.
+func ActionFindPrevious() string { return In(i18n.Locale()).ActionFindPrevious() }
+
+// ActionFindPrevious says "Find Previous"
+// in the language of msgs.
+func (msgs Messages) ActionFindPrevious() string {
+	return Catalog.Format(msgs.locale, "actionFindPrevious", nil)
+}
+
 // ActionNextPane says "Next Pane"
 // in the language the app shows.
 func ActionNextPane() string { return In(i18n.Locale()).ActionNextPane() }
@@ -362,6 +392,16 @@ func MenuView() string { return In(i18n.Locale()).MenuView() }
 // in the language of msgs.
 func (msgs Messages) MenuView() string {
 	return Catalog.Format(msgs.locale, "menuView", nil)
+}
+
+// MenuEdit says "Edit"
+// in the language the app shows.
+func MenuEdit() string { return In(i18n.Locale()).MenuEdit() }
+
+// MenuEdit says "Edit"
+// in the language of msgs.
+func (msgs Messages) MenuEdit() string {
+	return Catalog.Format(msgs.locale, "menuEdit", nil)
 }
 
 // MenuApp says "App"
@@ -3172,4 +3212,56 @@ func SetShortcutTaken(keys string, action string) string {
 // in the language of msgs.
 func (msgs Messages) SetShortcutTaken(keys string, action string) string {
 	return Catalog.Format(msgs.locale, "setShortcutTaken", map[string]any{"keys": keys, "action": action})
+}
+
+// FindLabel says "Find in pane"
+// in the language the app shows.
+func FindLabel() string { return In(i18n.Locale()).FindLabel() }
+
+// FindLabel says "Find in pane"
+// in the language of msgs.
+func (msgs Messages) FindLabel() string {
+	return Catalog.Format(msgs.locale, "findLabel", nil)
+}
+
+// FindPlaceholder says "Find"
+// in the language the app shows.
+func FindPlaceholder() string { return In(i18n.Locale()).FindPlaceholder() }
+
+// FindPlaceholder says "Find"
+// in the language of msgs.
+func (msgs Messages) FindPlaceholder() string {
+	return Catalog.Format(msgs.locale, "findPlaceholder", nil)
+}
+
+// FindCount says "{selected} of {total}"
+// in the language the app shows.
+func FindCount(selected string, total string) string {
+	return In(i18n.Locale()).FindCount(selected, total)
+}
+
+// FindCount says "{selected} of {total}"
+// in the language of msgs.
+func (msgs Messages) FindCount(selected string, total string) string {
+	return Catalog.Format(msgs.locale, "findCount", map[string]any{"selected": selected, "total": total})
+}
+
+// FindNoMatches says "No matches"
+// in the language the app shows.
+func FindNoMatches() string { return In(i18n.Locale()).FindNoMatches() }
+
+// FindNoMatches says "No matches"
+// in the language of msgs.
+func (msgs Messages) FindNoMatches() string {
+	return Catalog.Format(msgs.locale, "findNoMatches", nil)
+}
+
+// FindClose says "Close Find Bar"
+// in the language the app shows.
+func FindClose() string { return In(i18n.Locale()).FindClose() }
+
+// FindClose says "Close Find Bar"
+// in the language of msgs.
+func (msgs Messages) FindClose() string {
+	return Catalog.Format(msgs.locale, "findClose", nil)
 }

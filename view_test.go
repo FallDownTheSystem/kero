@@ -15,6 +15,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 // testApp is the app with a session of two panes side by side, a | b,
@@ -288,5 +290,96 @@ func TestRestartStaleDaemon(t *testing.T) {
 	tt.Frame()
 	if tt.HasText("Restart Service") {
 		t.Error("a chip to restart a kerod of this version")
+	}
+}
+
+// idleConn is a Conn that shows only what a test feeds the terminal.
+type idleConn struct{ closed chan struct{} }
+
+func (c idleConn) Read([]byte) (int, error) {
+	<-c.closed
+	return 0, os.ErrClosed
+}
+func (c idleConn) Write(b []byte) (int, error) { return len(b), nil }
+func (c idleConn) Close() error {
+	select {
+	case <-c.closed:
+	default:
+		close(c.closed)
+	}
+	return nil
+}
+
+// Find searches the pane the user is in, its scrollback too: the bar
+// counts the matches as one types, Enter and the buttons go through them,
+// and Escape closes it, the highlights going; Find Next opens it again
+// with the last query.
+func TestFindBar(t *testing.T) {
+	if testing.Short() {
+		t.Skip("downloads libghostty-vt")
+	}
+	if err := terminal.Load(); err != nil {
+		t.Fatal(err)
+	}
+	a := testApp(t)
+	term, err := terminal.New(terminal.Options{Conn: idleConn{make(chan struct{})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer term.Close()
+	var b strings.Builder
+	for i := range 200 {
+		if i%50 == 7 {
+			b.WriteString("error: build failed\r\n")
+		} else {
+			b.WriteString("ok " + itoa(i) + "\r\n")
+		}
+	}
+	term.Feed([]byte(b.String()))
+	a.terms["a"] = &termEntry{term: term}
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	a.run("find.open", nil)
+	tt.Frame()
+	tt.Type("ERROR")
+	for range 50 {
+		tt.Frame()
+		if s := term.SearchStatus(); !s.Searching && s.Selected > 0 {
+			break
+		}
+	}
+	tt.Frame()
+	if !tt.HasText("1 of 4") {
+		t.Fatalf("no count; texts %q", tt.Texts())
+	}
+	shot(t, tt, "find")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	tt.Key(ui.Shift, ui.KeyEnter)
+	tt.Frame()
+	if !tt.HasText("2 of 4") {
+		t.Errorf("after Enter twice and Shift+Enter; texts %q", tt.Texts())
+	}
+	if err := tt.Click(a.tip(locales.ActionFindNext(), "find.next")); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("3 of 4") {
+		t.Errorf("after the button for the next; texts %q", tt.Texts())
+	}
+	shot(t, tt, "find-scrolled")
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	tt.Frame()
+	if a.find.pane != "" || tt.HasText("3 of 4") || term.SearchStatus().Text != "" {
+		t.Errorf("Escape left the bar open or the search on: %+v; texts %q", term.SearchStatus(), tt.Texts())
+	}
+	a.run("find.next", nil)
+	tt.Frame()
+	tt.Frame()
+	if a.find.pane != "a" || a.find.query != "ERROR" || term.SearchStatus().Text != "ERROR" {
+		t.Errorf("Find Next did not search again: %+v, %+v", a.find.query, term.SearchStatus())
 	}
 }
