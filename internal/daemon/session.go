@@ -12,18 +12,15 @@ import (
 
 	"github.com/egoist/mygo/plugins/terminal"
 
+	"kero/internal/detect"
 	"kero/internal/proto"
 	"kero/internal/settings"
 )
 
-const (
-	// echoWindow: output this soon after input is the program answering
-	// the keys (echo, a redraw), not work of its own.
-	echoWindow = 350 * time.Millisecond
-	// quietAfter: a program working that writes nothing for this long is
-	// done, or waiting for the user.
-	quietAfter = 2 * time.Second
-)
+// idleHold: an agent's screen that stops showing work, without showing
+// its prompt either, is idle once it has stayed so this long: a turn's
+// spinner line can go between two redraws.
+const idleHold = 700 * time.Millisecond
 
 // pane is a shell the daemon keeps running in a pseudo-terminal, with a
 // terminal emulator of its own (libghostty-vt, headless) that keeps its
@@ -42,13 +39,17 @@ type pane struct {
 	clients  map[*attachment]struct{}
 	shellPID int
 	fgPGID   int
-	fgAt     time.Time
 	cwdAt    time.Time
 
-	lastInput time.Time
-	lastWork  time.Time
-	work      workMeter // output, until it is work
-	dirty     bool      // output since the history on disk
+	dirty bool // output since the history on disk
+	// seen is what the screen showed when the status last came from it,
+	// which a status of other origin (a notification, the user's input)
+	// then stands against until the screen shows something else; looked
+	// tells that the screen was read since it last changed; idleFrom
+	// holds back working going idle (idleHold).
+	seen     detect.State
+	looked   bool
+	idleFrom time.Time
 	// osc finds OSC 7501 and 133 in the output; records are the programs'
 	// status reports (OSC 7501), by id, and reported tells that one came.
 	osc      oscScanner
@@ -187,19 +188,8 @@ func (s *pane) output(p []byte) {
 	s.term.Feed(p)
 	s.dirty = true
 	s.info.Activity = now.UnixMilli()
+	s.looked = false
 	s.frameSoon()
-	if now.Sub(s.lastInput) > echoWindow {
-		s.lastWork = now
-		if s.info.Status != proto.Working && !s.declared() && s.programBusy(now) {
-			s.work.add(now, len(p))
-			// A redraw is not work yet: a prompt's clock, a cursor
-			// moving, a TUI's toast going away.
-			if s.work.working() || proto.TitleBusy(s.info.Title) {
-				s.setStatus(proto.Working)
-				s.info.Message = ""
-			}
-		}
-	}
 	changed := s.info.Status != before
 	s.mu.Unlock()
 	if changed {
@@ -207,27 +197,11 @@ func (s *pane) output(p []byte) {
 	}
 }
 
-// programBusy reports whether a program other than the shell is in the
-// foreground, as when a command or an agent runs; s.mu is held.
-func (s *pane) programBusy(now time.Time) bool {
-	if s.proc == nil {
-		return false
-	}
-	if now.Sub(s.fgAt) > 100*time.Millisecond {
-		s.fgPGID = s.proc.Foreground()
-		s.fgAt = now
-	}
-	return s.fgPGID != 0 && s.fgPGID != s.shellPID
-}
-
 func (s *pane) onTitle(title string) {
 	// s.mu is held (see session.mu).
 	if s.info.Title != title {
 		s.info.Title = title
-		if proto.TitleBusy(title) && s.info.Status != proto.Working && s.info.Status != proto.Exited && !s.declared() {
-			s.setStatus(proto.Working)
-			s.info.Message = ""
-		}
+		s.looked = false
 		s.d.changed()
 	}
 }
@@ -257,7 +231,6 @@ func (s *pane) needsUser(msg string) {
 	if msg != "" {
 		s.info.Message = msg
 	}
-	s.work.reset()
 	if !s.viewed() {
 		s.info.Unread = true
 	}
@@ -287,7 +260,7 @@ func (s *pane) tick(now time.Time) bool {
 	}
 	changed := false
 	pg := s.proc.Foreground()
-	s.fgPGID, s.fgAt = pg, now
+	s.fgPGID = pg
 	proc, agent := "", ""
 	if pg != 0 && pg != s.shellPID {
 		proc = procName(pg)
@@ -309,6 +282,7 @@ func (s *pane) tick(now time.Time) bool {
 	}
 	if proc != s.info.Process || agent != s.info.Agent {
 		s.info.Process, s.info.Agent = proc, agent
+		s.seen, s.looked = "", false
 		changed = true
 	}
 	if now.Sub(s.cwdAt) > 1500*time.Millisecond {
@@ -319,60 +293,90 @@ func (s *pane) tick(now time.Time) bool {
 			s.d.save()
 		}
 	}
-	if s.info.Status == proto.Working && now.Sub(s.lastWork) > quietAfter && !proto.TitleBusy(s.info.Title) && !s.declared() {
-		s.work.reset()
-		if s.asksQuestion() {
-			s.setStatus(proto.Waiting)
-		} else {
-			s.setStatus(proto.Idle)
-		}
-		if !s.viewed() {
-			s.info.Unread = true
-		}
+	if s.look(now) {
 		changed = true
 	}
 	return changed
 }
 
-// questions are what the bottom of a screen shows when a program asks
-// the user something: agents' permission prompts and confirmations.
-var questions = []string{
-	"do you want", "would you like", "(y/n)", "[y/n]", "y/n]", "(yes/no)", "[yes/no]",
-	"press enter", "proceed?", "continue?", "allow ", "approve", "❯ 1.", "› 1.", "● 1.",
-	"yes, allow", "waiting for your", "requires approval", "needs your",
-}
-
-// asksQuestion reports whether the screen's last lines ask the user
-// something; s.mu is held.
-func (s *pane) asksQuestion() bool {
-	text := s.term.Text()
-	lines := strings.Split(text, "\n")
-	n := 0
-	for i := len(lines) - 1; i >= 0 && n < 14; i-- {
-		l := strings.ToLower(strings.TrimSpace(lines[i]))
-		if l == "" {
-			continue
+// look sets the status from what the screen shows, when it may have
+// changed: an agent's from its rules (package detect), any other
+// program's from its title, which turns as a spinner while it works. Only
+// a change of what shows changes the status, so that a redraw changes
+// nothing, as one after a resize; s.mu is held.
+func (s *pane) look(now time.Time) bool {
+	if s.declared() {
+		// What the program declares stands; once it ends, the screen
+		// tells again.
+		s.seen = ""
+		return false
+	}
+	if s.looked && s.idleFrom.IsZero() || s.info.Status == proto.Exited {
+		return false
+	}
+	s.looked = true
+	st, visible := detect.Idle, true
+	if detect.Known(s.info.Agent) {
+		r := detect.Detect(s.info.Agent, detect.Input{Screen: s.screen(), Title: s.info.Title})
+		if r.Skip {
+			return false
 		}
-		n++
-		for _, q := range questions {
-			if strings.Contains(l, q) {
-				return true
+		st, visible = r.State, r.Visible
+	} else if proto.TitleBusy(s.info.Title) {
+		st = detect.Working
+	}
+	if st == s.seen {
+		s.idleFrom = time.Time{}
+		return false
+	}
+	if st == detect.Idle && !visible && s.info.Status == proto.Working {
+		if s.idleFrom.IsZero() {
+			s.idleFrom = now
+		}
+		if now.Sub(s.idleFrom) < idleHold {
+			return false
+		}
+	}
+	s.idleFrom = time.Time{}
+	s.seen = st
+	before := s.info.Status
+	switch st {
+	case detect.Working:
+		s.setStatus(proto.Working)
+		s.info.Message = ""
+	case detect.Blocked:
+		s.needsUser("")
+	default:
+		if before == proto.Working || before == proto.Waiting {
+			s.setStatus(proto.Idle)
+			s.info.Message = ""
+			if before == proto.Working && !s.viewed() {
+				s.info.Unread = true
 			}
 		}
 	}
-	return false
+	return s.info.Status != before
+}
+
+// screen returns the text of the screen: the last rows of the terminal's
+// text; s.mu is held.
+func (s *pane) screen() string {
+	text := strings.TrimRight(s.term.Text(), "\n")
+	lines := strings.Split(text, "\n")
+	return strings.Join(lines[max(0, len(lines)-s.info.Rows):], "\n") + "\n"
 }
 
 // input writes what the user typed to the program.
 func (s *pane) input(p []byte) {
 	s.mu.Lock()
 	proc := s.proc
-	s.lastInput = time.Now()
 	changed := false
 	if len(s.records) > 0 {
 		s.dismissFinished()
 	}
-	if s.info.Status == proto.Waiting && !s.declared() || s.info.Status == proto.Failed {
+	// Waiting is over once the user acts, unless the screen still asks,
+	// as a permission dialog does until it is answered.
+	if s.info.Status == proto.Waiting && !s.declared() && s.seen != detect.Blocked || s.info.Status == proto.Failed {
 		s.setStatus(proto.Idle)
 		s.info.Message = ""
 		changed = true

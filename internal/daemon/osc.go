@@ -374,7 +374,6 @@ func (s *pane) fromRecords() {
 		r := pick("working")
 		s.setStatus(proto.Working)
 		s.info.Message, s.info.Kind, s.info.Progress = r.Msg, "", r.Progress
-		s.lastWork = time.Now()
 	case pick("error") != nil:
 		r := pick("error")
 		s.setStatus(proto.Failed)

@@ -13,11 +13,13 @@ Every pane has a status, shown in the sidebar:
 
 | Status    | Meaning                                       |
 | --------- | --------------------------------------------- |
-| `working` | A program is busy: an agent thinking, a build running |
+| `working` | A program is busy: an agent thinking, a tool it runs |
 | `waiting` | It needs you: a question, a permission prompt |
 | `idle`    | Nothing is happening; the shell is at a prompt |
 | `error`   | The program reported that it failed           |
 | `exited`  | The program ended; the pane keeps its output  |
+
+Kero tells a coding agent's status from what its screen shows: its spinner, a permission prompt, its prompt waiting for you. Redrawing the same screen, as when you resize a pane, changes nothing. Other programs are `working` while their title shows a spinner, or when they [report their status](#reporting-status-from-a-program).
 
 A session shows the status of its panes, and sessions that need you stand out. Press <kbd>⌘</kbd> <kbd>J</kbd> to jump to the next one.
 
