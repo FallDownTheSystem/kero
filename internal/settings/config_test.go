@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"kero/internal/actions"
 )
 
 func TestFormatKeepsTheUsersFile(t *testing.T) {
@@ -89,11 +91,13 @@ func TestKeybinds(t *testing.T) {
 		t.Errorf("problems %q", probs)
 	}
 	// Unbinding keys frees the action that has them.
-	s2, _ := parse("keybind = cmd+d=unbind\n")
+	split, _ := actions.Find("pane.split.right")
+	keys := configKeys(split.Keys) // cmd+d on macOS
+	s2, _ := parse("keybind = " + keys + "=unbind\n")
 	if v, ok := s2.Shortcuts["pane.split.right"]; !ok || v != "" {
-		t.Errorf("cmd+d unbound, split right %q %v", v, ok)
+		t.Errorf("%s unbound, split right %q %v", keys, v, ok)
 	}
-	if out := format(s2, ""); !strings.Contains(out, "keybind = cmd+d=unbind\n") {
+	if out := format(s2, ""); !strings.Contains(out, "keybind = "+keys+"=unbind\n") {
 		t.Errorf("formatted:\n%s", out)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"kero/internal/settings"
@@ -57,10 +58,21 @@ func configCmd(args []string) error {
 			parts := strings.Fields(editor)
 			cmd = exec.Command(parts[0], append(parts[1:], settings.Path())...)
 		} else {
-			cmd = exec.Command("/usr/bin/open", "-t", settings.Path())
+			cmd = textEditor(settings.Path())
 		}
 		cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 		return cmd.Run()
 	}
 	return usageErr("kero config path|show [--defaults]|edit|check")
+}
+
+// textEditor opens a text file in the system's text editor.
+func textEditor(path string) *exec.Cmd {
+	switch runtime.GOOS {
+	case "darwin":
+		return exec.Command("/usr/bin/open", "-t", path)
+	case "windows":
+		return exec.Command("notepad.exe", path)
+	}
+	return exec.Command("xdg-open", path)
 }

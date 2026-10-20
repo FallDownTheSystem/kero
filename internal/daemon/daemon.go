@@ -13,14 +13,17 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
+	"kero/internal/clilink"
 	"kero/internal/proto"
 	"kero/internal/settings"
 	"kero/internal/shell"
@@ -72,7 +75,7 @@ func Run() error {
 		return err
 	}
 	defer lock.Close()
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	if err := lockFile(lock); err != nil {
 		return errors.New("kerod is already running")
 	}
 
@@ -104,6 +107,7 @@ func Run() error {
 	signal.Ignore(syscall.SIGHUP, syscall.SIGPIPE)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
+	notifyStop(sigs)
 	go func() {
 		s := <-sigs
 		lg.Printf("%v: saving and exiting", s)
@@ -131,20 +135,14 @@ func Run() error {
 
 func (d *Daemon) stop() { d.quitOnce.Do(func() { close(d.quit) }) }
 
-// linkCLI keeps bin/kero pointing at this executable, which sessions have
-// on their PATH: the kero CLI, for agents to drive other sessions.
+// linkCLI keeps bin/kero pointing at this executable (package clilink),
+// which sessions have on their PATH: the kero CLI, for agents to drive
+// other sessions.
 func (d *Daemon) linkCLI() {
 	if d.exe == "" {
 		return
 	}
-	bin := filepath.Join(d.dir, "bin")
-	os.MkdirAll(bin, 0o755)
-	link := filepath.Join(bin, "kero")
-	if cur, err := os.Readlink(link); err == nil && cur == d.exe {
-		return
-	}
-	os.Remove(link)
-	if err := os.Symlink(d.exe, link); err != nil {
+	if err := clilink.Link(d.exe, filepath.Join(d.dir, "bin")); err != nil {
 		d.log.Printf("linking the CLI: %v", err)
 	}
 }
@@ -250,7 +248,7 @@ func (d *Daemon) projectFor(ref, dir string) string {
 	}
 	best, bestLen := "", -1
 	for _, p := range d.projects {
-		if p.Dir != "" && (dir == p.Dir || strings.HasPrefix(dir, p.Dir+"/")) && len(p.Dir) > bestLen {
+		if p.Dir != "" && proto.Within(dir, p.Dir) && len(p.Dir) > bestLen {
 			best, bestLen = p.ID, len(p.Dir)
 		}
 	}
@@ -303,7 +301,8 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	set := func(kv string) {
 		k, _, _ := strings.Cut(kv, "=")
 		for i, e := range env {
-			if strings.HasPrefix(e, k+"=") {
+			// Windows' names are of any case: its PATH is "Path".
+			if ek, _, _ := strings.Cut(e, "="); ek == k || runtime.GOOS == "windows" && strings.EqualFold(ek, k) {
 				env[i] = kv
 				return
 			}
@@ -319,8 +318,11 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	set("TERM_PROGRAM_VERSION=" + ghosttyVersion)
 	set("LC_TERMINAL=kero")
 	set(fmt.Sprintf("LC_TERMINAL_VERSION=%d", proto.Version))
-	// The shell the pane runs, not the one whoever started kerod had.
-	set("SHELL=" + shell)
+	// The shell the pane runs, not the one whoever started kerod had. On
+	// Windows, only a POSIX shell's: programs there take $SHELL for one.
+	if runtime.GOOS != "windows" || posixShell(shellName(shell)) {
+		set("SHELL=" + shell)
+	}
 	set("KERO_SESSION=" + sid)
 	set("KERO_PANE=" + pid)
 	set("KERO_SOCKET=" + proto.SocketPath())
@@ -329,10 +331,10 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	}
 	// The CLI, after what the user's profile puts first.
 	path := os.Getenv("PATH")
-	if path == "" {
+	if path == "" && runtime.GOOS != "windows" {
 		path = "/usr/bin:/bin:/usr/sbin:/sbin"
 	}
-	set("PATH=" + path + ":" + filepath.Join(d.dir, "bin"))
+	set("PATH=" + path + string(os.PathListSeparator) + filepath.Join(d.dir, "bin"))
 	for _, kv := range settings.Load().Env {
 		if strings.Contains(kv, "=") {
 			set(kv)
@@ -351,40 +353,21 @@ func userShell() string {
 		if st, err := os.Stat(expandHome(sh)); err == nil && !st.IsDir() {
 			return expandHome(sh)
 		}
+		// A name on PATH, as "pwsh" or "bash" on Windows.
+		if !strings.ContainsAny(sh, `/\`) {
+			if p, err := exec.LookPath(sh); err == nil {
+				return p
+			}
+		}
 	}
 	return shell.Login()
-}
-
-// shellQuote quotes an argument for a shell's command line.
-func shellQuote(shell, s string) string {
-	if s != "" && strings.IndexFunc(s, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-_./=:,+@%", r))
-	}) < 0 {
-		return s
-	}
-	if shell == "fish" {
-		return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) + "'"
-	}
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
-}
-
-func shellJoin(shell string, args []string) string {
-	if len(args) == 1 && strings.ContainsAny(args[0], " ;|&") {
-		// A command line, as `kero new -- "npm run dev"` gives it.
-		return args[0]
-	}
-	q := make([]string, len(args))
-	for i, a := range args {
-		q[i] = shellQuote(shell, a)
-	}
-	return strings.Join(q, " ")
 }
 
 func expandHome(p string) string {
 	if p == "~" {
 		return proto.Home()
 	}
-	if strings.HasPrefix(p, "~/") {
+	if strings.HasPrefix(p, "~/") || runtime.GOOS == "windows" && strings.HasPrefix(p, `~\`) {
 		return filepath.Join(proto.Home(), p[2:])
 	}
 	return p
@@ -413,13 +396,16 @@ func detectAgent(name string, args []string) string {
 			}
 		}
 	}
-	// Scripts installed by npm: …/node_modules/@openai/codex/bin/codex.js.
+	// Scripts installed by npm: …/node_modules/@openai/codex/bin/codex.js,
+	// or …\@anthropic-ai\claude-code\cli.js, which npm's shims run on
+	// Windows, where nothing names the script after the command.
 	for i, a := range args {
 		if i > 2 {
 			break
 		}
+		a = strings.ReplaceAll(a, `\`, "/")
 		for _, ag := range agents {
-			if len(ag) > 3 && strings.Contains(a, "/"+ag+"/") {
+			if len(ag) > 3 && (strings.Contains(a, "/"+ag+"/") || strings.Contains(a, "/"+ag+"-code/")) {
 				return ag
 			}
 		}

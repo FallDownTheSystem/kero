@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -81,15 +81,12 @@ func (a *App) openSettings(page string) {
 	a.ss.draft = map[string]string{}
 	a.refreshAgents()
 	a.refreshService()
-	a.setWin = mygo.NewWindow(mygo.WindowOptions{
+	a.setWin = mygo.NewWindow(framed(mygo.WindowOptions{
 		Title: "Settings", Width: 820, Height: 620, MinWidth: 700, MinHeight: 480,
-		StateKey:             "settings",
-		TitleBarStyle:        mygo.TitleBarHiddenInset,
-		TitleBarHeight:       topBar,
-		TrafficLightPosition: &mygo.Point{X: 18, Y: barMid - 7},
-		Vibrancy:             vibrancyFor(a.set),
-		Content:              ui.View(a.settingsView),
-	})
+		StateKey: "settings",
+		Vibrancy: vibrancyFor(a.set),
+		Content:  ui.View(a.settingsView),
+	}))
 	a.setWin.OnClosed(func() {
 		a.setWin = nil
 		a.setRecording("") // the menus take their shortcuts back
@@ -98,13 +95,7 @@ func (a *App) openSettings(page string) {
 }
 
 func (a *App) refreshAgents() {
-	a.ss.cliPath = ""
-	for _, p := range []string{"/usr/local/bin/kero", "/opt/homebrew/bin/kero", filepath.Join(proto.Home(), ".local/bin/kero")} {
-		if t, err := os.Readlink(p); err == nil {
-			a.ss.cliPath = p + " → " + proto.ShortDir(t)
-			break
-		}
-	}
+	a.ss.cliPath = cliInstalled()
 }
 
 // refreshService asks kerod how it is, off the main thread.
@@ -155,7 +146,14 @@ func (a *App) settingsView(c *ui.Context) {
 	row := ui.Row(c).Fill().AlignItems(ui.Stretch)
 	backdrop(c, pal, row, a.set)
 	row.Children(func() {
-		ui.Column(c).Width(212).Shrink(0).Padding(topBar, 10, 12, 10).Gap(2).DragWindow().Children(func() {
+		// Under the traffic lights on macOS; elsewhere the search starts
+		// the sidebar, centered on barMid as the page's title and the
+		// window controls are.
+		top := float32(topBar)
+		if ownControls {
+			top = barMid - (controlH+2)/2
+		}
+		ui.Column(c).Width(212).Shrink(0).Padding(top, 10, 12, 10).Gap(2).DragWindow().Children(func() {
 			a.settingsSearch(c, pal)
 			for _, p := range settingsPages {
 				if found == nil || found[p.id] != nil {
@@ -230,8 +228,10 @@ func (a *App) settingsView(c *ui.Context) {
 					edge := ui.Box(c.Key("edge")).Absolute().Top(0).Left(0).Right(0).Height(headerH).PassThrough().
 						Material(glass.ScrollEdge{Hard: true, Background: pal.card})
 					edge.Opacity(edge.Animate("on", b2f(edgeOn), 160*time.Millisecond))
-					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).AlignItems(ui.Center).Padding(0, 24).DragWindow().Children(func() {
+					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).AlignItems(ui.Center).Padding(0, 10, 0, 24).DragWindow().Children(func() {
 						ui.Text(c, page.title).FontSize(15).FontWeight(650).TextColor(pal.text)
+						ui.Spacer(c)
+						windowControls(c, pal, a.setWin)
 					})
 				})
 			})
@@ -410,7 +410,7 @@ func segmented(c *ui.Context, key string, value *string, ids, labels []string) {
 
 func (a *App) generalPage(c *ui.Context, pal *palette) {
 	s := &a.set
-	settingsGroup(c, pal, "Sessions", "Sessions keep running in the background when Kero quits; Quit and End All Sessions (⌥⌘Q) ends them.", func() {
+	settingsGroup(c, pal, "Sessions", "Sessions keep running in the background when Kero quits; "+a.tip("Quit and End All Sessions", "app.quitAll")+" ends them.", func() {
 		settingRow(c, pal, "New sessions start in", "", func() {
 			segmented(c, "newdir", &s.NewSessionDir, []string{"current", "project", "home"}, []string{"Current Folder", "Project", "Home"})
 		})
@@ -518,7 +518,7 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 				a.set.FontFamily = v
 			})
 		})
-		settingRow(c, pal, "Size", "⌘= and ⌘- change it too.", func() {
+		settingRow(c, pal, "Size", a.keys("text.bigger")+" and "+a.keys("text.smaller")+" change it too.", func() {
 			sizes := []float32{10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28}
 			if !slices.Contains(sizes, s.FontSize) {
 				sizes = append(sizes, s.FontSize)
@@ -764,9 +764,9 @@ func codeBlock(c *ui.Context, pal *palette, code string) {
 func (a *App) advancedPage(c *ui.Context, pal *palette) {
 	settingsGroup(c, pal, "Configuration", "Every setting here is a line of this file, as Ghostty’s: edit it in any editor, and what you save applies at once. kero config show lists every key.", func() {
 		settingRow(c, pal, "Config file", proto.ShortDir(settings.Path()), func() {
-			if button(c, "reveal-config", "Show in Finder", "", false, pal) {
+			if button(c, "reveal-config", "Show in "+fileManager, "", false, pal) {
 				a.ensureConfig()
-				exec.Command("/usr/bin/open", "-R", settings.Path()).Start()
+				revealPath(settings.Path())
 			}
 			if button(c, "edit-config", "Open", "", true, pal) {
 				a.openConfig()
@@ -795,14 +795,14 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, "Log", proto.ShortDir(filepath.Join(proto.Dir(), "kerod.log")), func() {
 			if button(c, "log", "Show", "", false, pal) {
-				exec.Command("/usr/bin/open", "-R", filepath.Join(proto.Dir(), "kerod.log")).Start()
+				revealPath(filepath.Join(proto.Dir(), "kerod.log"))
 			}
 		})
 	})
 	settingsGroup(c, pal, "Data", "Settings, sessions and their scrollback.", func() {
 		settingRow(c, pal, "Folder", proto.ShortDir(proto.Dir()), func() {
-			if button(c, "reveal", "Show in Finder", "", false, pal) {
-				exec.Command("/usr/bin/open", proto.Dir()).Start()
+			if button(c, "reveal", "Show in "+fileManager, "", false, pal) {
+				openPath(proto.Dir())
 			}
 		})
 		settingRow(c, pal, "Reset all settings", "Back to how Kero comes, shortcuts included.", func() {
@@ -830,7 +830,7 @@ func (a *App) ensureConfig() {
 // openConfig opens the configuration in the user's text editor.
 func (a *App) openConfig() {
 	a.ensureConfig()
-	exec.Command("/usr/bin/open", "-t", settings.Path()).Start()
+	openTextFile(settings.Path())
 }
 
 // toastIn shows a short message in the window c is of.
@@ -950,6 +950,14 @@ func (a *App) setRecording(id string) {
 	}
 }
 
+// shortcutNeeds tells what a shortcut needs, typed without it.
+var shortcutNeeds = func() string {
+	if runtime.GOOS == "darwin" {
+		return "A shortcut needs ⌘, ⌃ or ⌥, unless it is a function key."
+	}
+	return "A shortcut needs Ctrl or Alt, unless it is a function key."
+}()
+
 // recordKey takes a key typed for a shortcut, reporting whether it took it.
 func (a *App) recordKey(act actions.Action, mods ui.Modifiers, key ui.Key) bool {
 	switch {
@@ -966,12 +974,14 @@ func (a *App) recordKey(act actions.Action, mods ui.Modifiers, key ui.Key) bool 
 		return false // a modifier alone, or a key menus can't take
 	}
 	if mods&(ui.Super|ui.Ctrl|ui.Alt) == 0 && !strings.HasPrefix(name, "F") {
-		a.ss.notice = "A shortcut needs ⌘, ⌃ or ⌥, unless it is a function key."
+		a.ss.notice = shortcutNeeds
 		return true
 	}
 	var parts []string
-	if mods&ui.Super != 0 {
+	if mods&ui.Super != 0 && runtime.GOOS == "darwin" {
 		parts = append(parts, "CmdOrCtrl")
+	} else if mods&ui.Super != 0 {
+		parts = append(parts, "Super")
 	}
 	if mods&ui.Ctrl != 0 {
 		parts = append(parts, "Ctrl")

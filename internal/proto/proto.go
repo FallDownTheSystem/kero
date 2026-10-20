@@ -13,6 +13,7 @@ import (
 	"hash/fnv"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -318,16 +319,56 @@ func isTitleGlyph(r rune) bool {
 }
 
 func looksLikePath(t string) bool {
-	return strings.HasPrefix(t, "/") || strings.HasPrefix(t, "~") || strings.Contains(t, "@") && strings.Contains(t, ":")
+	return strings.HasPrefix(t, "/") || strings.HasPrefix(t, "~") || strings.Contains(t, "@") && strings.Contains(t, ":") ||
+		windowsPath(t) || consoleTitle(t)
+}
+
+// windowsPath tells a path of a drive: C:\Users.
+func windowsPath(t string) bool {
+	return len(t) > 2 && t[1] == ':' && (t[2] == '\\' || t[2] == '/')
+}
+
+// consoleTitle tells the title Windows gives a console, its program's
+// path, after "Administrator: " in the user's language when it is
+// elevated, and before " - ping" while cmd.exe runs a command:
+// "管理员: C:\Program Files\PowerShell\7\pwsh.exe".
+func consoleTitle(t string) bool {
+	i := strings.Index(t, `:\`)
+	if i < 1 || !windowsPath(t[i-1:]) {
+		return false
+	}
+	if prefix := strings.TrimSpace(t[:i-1]); prefix != "" && !strings.HasSuffix(prefix, ":") {
+		return false
+	}
+	exe, _, _ := strings.Cut(t[i-1:], " - ")
+	return strings.HasSuffix(strings.ToLower(exe), ".exe")
 }
 
 // ShortDir writes a directory with ~ for the home directory.
 func ShortDir(dir string) string {
 	home := Home()
-	if home != "" && (dir == home || strings.HasPrefix(dir, home+"/")) {
+	if home != "" && Within(dir, home) {
 		return "~" + dir[len(home):]
 	}
 	return dir
+}
+
+// Within reports whether path is dir or in it. Windows' paths are of any
+// case.
+func Within(path, dir string) bool {
+	if len(path) < len(dir) || dir == "" {
+		return false
+	}
+	head := path[:len(dir)]
+	if runtime.GOOS == "windows" {
+		if !strings.EqualFold(head, dir) {
+			return false
+		}
+	} else if head != dir {
+		return false
+	}
+	rest := path[len(dir):]
+	return rest == "" || os.IsPathSeparator(rest[0]) || os.IsPathSeparator(dir[len(dir)-1])
 }
 
 // Home returns the user's home directory.
@@ -337,8 +378,9 @@ func Home() string {
 }
 
 // Dir returns kero's directory: $KERO_HOME, else
-// ~/Library/Application Support/kero (~/.config/kero on Linux). The app,
-// the daemon and the CLI share it, whatever build they are.
+// ~/Library/Application Support/kero (~/.config/kero on Linux,
+// %AppData%\kero on Windows). The app, the daemon and the CLI share it,
+// whatever build they are.
 func Dir() string {
 	if d := os.Getenv("KERO_HOME"); d != "" {
 		return d
@@ -362,10 +404,18 @@ func SocketPath() string {
 		// a short path of the user's, named after the directory.
 		h := fnv.New32a()
 		h.Write([]byte(Dir()))
+		if runtime.GOOS == "windows" {
+			// Its temporary directory is the user's.
+			return filepath.Join(os.TempDir(), fmt.Sprintf("kero-%08x.sock", h.Sum32()))
+		}
 		p = fmt.Sprintf("/tmp/kero-%d-%08x.sock", os.Getuid(), h.Sum32())
 	}
 	return p
 }
+
+// StopEvent names the event that asks the daemon of a pid to stop on
+// Windows, where it has no signals.
+func StopEvent(pid int) string { return fmt.Sprintf(`Local\kerod-stop-%d`, pid) }
 
 // Ago writes how long ago a time was, as the sidebar shows it: "now",
 // "4m", "2h", "3d".

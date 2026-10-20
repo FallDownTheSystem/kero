@@ -3,7 +3,10 @@
 // which runs them from a shell or an agent (Remote Control).
 package actions
 
-import "strings"
+import (
+	"runtime"
+	"strings"
+)
 
 // Action is something the app does.
 type Action struct {
@@ -50,6 +53,49 @@ var All = []Action{
 	{ID: "text.reset", Title: "Actual Size", Menu: "View", Keys: "CmdOrCtrl+0", Remote: true},
 }
 
+// pcKeys are the defaults on Windows and Linux, where Control is the
+// terminal's: Control+T, D, W or R belong to the shell, so the shortcuts add
+// Shift, as Windows Terminal's do, or Alt; "" leaves an action without one.
+var pcKeys = map[string]string{
+	"settings.open":     "Ctrl+,",
+	"app.quitAll":       "",
+	"session.new":       "Ctrl+Shift+T",
+	"session.newHome":   "",
+	"project.open":      "Ctrl+Shift+O",
+	"palette.open":      "Ctrl+Shift+P",
+	"session.attention": "Ctrl+Shift+J",
+	"session.next":      "Ctrl+PageDown",
+	"session.previous":  "Ctrl+PageUp",
+	"session.rename":    "",
+	"pane.restart":      "Ctrl+Shift+R",
+	"pane.close":        "Ctrl+Shift+W",
+	"session.close":     "",
+	"pane.split.right":  "Alt+Shift+=",
+	"pane.split.down":   "Alt+Shift+-",
+	"pane.zoom":         "Ctrl+Shift+Enter",
+	"pane.next":         "Ctrl+Shift+]",
+	"pane.previous":     "Ctrl+Shift+[",
+	"pane.left":         "Alt+Left",
+	"pane.right":        "Alt+Right",
+	"pane.up":           "Alt+Up",
+	"pane.down":         "Alt+Down",
+	"sidebar.toggle":    "Ctrl+Shift+B",
+	"text.bigger":       "Ctrl+=",
+	"text.smaller":      "Ctrl+-",
+	"text.reset":        "Ctrl+0",
+}
+
+func init() {
+	if runtime.GOOS == "darwin" {
+		return
+	}
+	for i, a := range All {
+		if k, ok := pcKeys[a.ID]; ok {
+			All[i].Keys = k
+		}
+	}
+}
+
 // Find returns an action by its id.
 func Find(id string) (Action, bool) {
 	for _, a := range All {
@@ -68,7 +114,8 @@ func Keys(a Action, overrides map[string]string) string {
 	return a.Keys
 }
 
-// Glyphs writes an accelerator as macOS menus show it: "⇧⌘D".
+// Glyphs writes an accelerator as the system's menus show it: "⇧⌘D" on
+// macOS, "Ctrl+Shift+D" elsewhere.
 func Glyphs(accel string) string {
 	if accel == "" {
 		return ""
@@ -77,6 +124,9 @@ func Glyphs(accel string) string {
 	key := parts[len(parts)-1]
 	if key == "" && len(parts) > 1 { // "CmdOrCtrl++"
 		key = "+"
+	}
+	if runtime.GOOS != "darwin" {
+		return words(parts[:len(parts)-1], key)
 	}
 	var ctrl, alt, shift, cmd bool
 	for _, m := range parts[:len(parts)-1] {
@@ -115,4 +165,48 @@ func Glyphs(accel string) string {
 		b.WriteString(strings.ToUpper(key))
 	}
 	return b.String()
+}
+
+// words writes an accelerator as Windows and Linux menus show it:
+// "Ctrl+Shift+D".
+func words(mods []string, key string) string {
+	var ctrl, alt, shift, super bool
+	for _, m := range mods {
+		switch strings.ToLower(m) {
+		case "cmdorctrl", "commandorcontrol", "ctrl", "control":
+			ctrl = true
+		case "cmd", "command", "super", "meta":
+			super = true
+		case "alt", "option":
+			alt = true
+		case "shift":
+			shift = true
+		}
+	}
+	var out []string
+	if super && runtime.GOOS == "windows" {
+		out = append(out, "Win")
+	} else if super {
+		out = append(out, "Super")
+	}
+	if ctrl {
+		out = append(out, "Ctrl")
+	}
+	if alt {
+		out = append(out, "Alt")
+	}
+	if shift {
+		out = append(out, "Shift")
+	}
+	names := map[string]string{
+		"enter": "Enter", "return": "Enter", "tab": "Tab", "space": "Space", "backspace": "Backspace", "delete": "Del",
+		"escape": "Esc", "esc": "Esc", "up": "↑", "down": "↓", "left": "←", "right": "→",
+		"home": "Home", "end": "End", "pageup": "PgUp", "pagedown": "PgDn", "plus": "+",
+	}
+	if n, ok := names[strings.ToLower(key)]; ok {
+		key = n
+	} else {
+		key = strings.ToUpper(key)
+	}
+	return strings.Join(append(out, key), "+")
 }

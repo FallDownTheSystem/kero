@@ -73,17 +73,17 @@ func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32,
 			p = s.FocusPane()
 		}
 		if p != nil {
-			a.paneCard(c, pal, bar, shown, s, p, true, true, multi)
+			a.paneCard(c, pal, bar, shown, s, p, true, true, true, multi)
 		}
 		return
 	}
-	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", true, true)
+	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", true, true, true)
 }
 
-func (a *App) layoutNode(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, l *proto.Layout, path string, top, left bool) {
+func (a *App) layoutNode(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, l *proto.Layout, path string, top, left, right bool) {
 	if l.Leaf() {
 		if p := s.PaneByID(l.Pane); p != nil {
-			a.paneCard(c, pal, bar, shown, s, p, top, left, true)
+			a.paneCard(c, pal, bar, shown, s, p, top, left, right, true)
 		}
 		return
 	}
@@ -99,11 +99,11 @@ func (a *App) layoutNode(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 	box.Grow(1).Basis(0).MinWidth(0).MinHeight(0).AlignItems(ui.Stretch).Bind(a.paneRef(key))
 	box.Children(func() {
 		ui.Column(c.Key("a")).Grow(ratio).Basis(0).MinWidth(0).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-			a.layoutNode(c, pal, bar, shown, s, l.A, path+"a", top, left)
+			a.layoutNode(c, pal, bar, shown, s, l.A, path+"a", top, left, right && !l.Row)
 		})
 		a.divider(c, pal, s, l, key)
 		ui.Column(c.Key("b")).Grow(1 - ratio).Basis(0).MinWidth(0).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-			a.layoutNode(c, pal, bar, shown, s, l.B, path+"b", top && l.Row, left && !l.Row)
+			a.layoutNode(c, pal, bar, shown, s, l.B, path+"b", top && l.Row, left && !l.Row, right)
 		})
 	})
 }
@@ -150,10 +150,11 @@ func (a *App) divider(c *ui.Context, pal *palette, s *proto.Session, l *proto.La
 	}
 }
 
-// paneCard is a pane: a card with a header and the terminal. top and left
-// tell that it touches the window's top and left edges, where the header
-// drags the window and keeps clear of the traffic lights.
-func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, multi bool) {
+// paneCard is a pane: a card with a header and the terminal. top, left and
+// right tell that it touches the window's edges, where the header drags
+// the window, keeps clear of the traffic lights on macOS, and holds the
+// window controls elsewhere (windowControls).
+func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi bool) {
 	focused := p.ID == a.focusOf(s)
 	bg := pal.card
 	if multi && !focused {
@@ -190,7 +191,7 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 
 	dragging := false
 	card.Children(func() {
-		dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, multi, focused, hovered)
+		dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
 		a.paneTerminal(c, pal, s, p)
 		if multi {
 			// The panes the user is not in fade, text and all.
@@ -327,7 +328,7 @@ func (a *App) movePane(sid, pane, target string, zone dropZone) {
 
 // paneHeader builds a pane's header, and reports whether its title is
 // being dragged.
-func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, multi, focused, hovered bool) (dragging bool) {
+func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi, focused, hovered bool) (dragging bool) {
 	pad := float32(16)
 	if left {
 		// With the sidebar hidden, the header starts after the traffic
@@ -342,8 +343,8 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 	h.Children(func() {
 		if top && left && shown < 0.5 {
 			ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-				iconButton(c, "show-sidebar", sidebarIcon, "Show Sidebar (⌘B)", pal, a.toggleSidebar)
-				iconButton(c, "new-session-2", plusIcon, "New Session (⌘T)", pal, func() { a.newSession("") })
+				iconButton(c, "show-sidebar", sidebarIcon, a.tip("Show Sidebar", "sidebar.toggle"), pal, a.toggleSidebar)
+				iconButton(c, "new-session-2", plusIcon, a.tip("New Session", "session.new"), pal, func() { a.newSession("") })
 			})
 		}
 		// The title is the pane's handle: dragged, it takes the pane to
@@ -395,19 +396,22 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			if !show {
 				return
 			}
-			iconButton(c, "split-r", splitRightIcon, "Split Right (⌘D)", pal, func() { a.splitPane(s, p.ID, "right") })
-			iconButton(c, "split-d", splitDownIcon, "Split Down (⇧⌘D)", pal, func() { a.splitPane(s, p.ID, "down") })
+			iconButton(c, "split-r", splitRightIcon, a.tip("Split Right", "pane.split.right"), pal, func() { a.splitPane(s, p.ID, "right") })
+			iconButton(c, "split-d", splitDownIcon, a.tip("Split Down", "pane.split.down"), pal, func() { a.splitPane(s, p.ID, "down") })
 			if multi {
 				sid, pid := s.ID, p.ID
 				zoom := func() { a.defer_(func() { a.zoomPane(a.session(sid), pid) }) }
 				if s.Zoomed == p.ID {
-					iconButton(c, "zoom", unzoomIcon, "Show All Panes (⇧⌘↩)", pal, zoom)
+					iconButton(c, "zoom", unzoomIcon, a.tip("Show All Panes", "pane.zoom"), pal, zoom)
 				} else {
-					iconButton(c, "zoom", zoomIcon, "Zoom Pane (⇧⌘↩)", pal, zoom)
+					iconButton(c, "zoom", zoomIcon, a.tip("Zoom Pane", "pane.zoom"), pal, zoom)
 				}
-				iconButton(c, "close", closeIcon, "Close Pane (⌘W)", pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
+				iconButton(c, "close", closeIcon, a.tip("Close Pane", "pane.close"), pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
 			}
 		})
+		if top && right {
+			windowControls(c, pal, a.win)
+		}
 	})
 	return dragging
 }

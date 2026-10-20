@@ -123,7 +123,7 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 // start starts the shell, running command first when set.
 func (s *pane) start(command []string, env []string) error {
 	shell := userShell()
-	name := filepath.Base(shell)
+	name := shellName(shell)
 	args := shellArgs(shell, command)
 	dir := s.info.Dir
 	if st, err := os.Stat(dir); dir == "" || err != nil || !st.IsDir() {
@@ -146,24 +146,6 @@ func (s *pane) start(command []string, env []string) error {
 	s.mu.Unlock()
 	go s.pump(proc)
 	return nil
-}
-
-// shellArgs is the argv that starts shell, running command first when set.
-func shellArgs(shell string, command []string) []string {
-	name := filepath.Base(shell)
-	if len(command) == 0 {
-		return []string{"-" + name}
-	}
-	// The command runs in an interactive login shell, so that it finds
-	// what the user's profile puts on PATH; the session goes on with the
-	// shell once it ends.
-	script := shellJoin(name, command) + "; exec " + shellQuote(name, shell) + " -l"
-	if name == "fish" {
-		// fish leaves job control off for -c, so the command would run in
-		// the shell's process group, where tick doesn't see it.
-		script = "status job-control full; " + script
-	}
-	return []string{name, "-l", "-i", "-c", script}
 }
 
 // pump reads the program's output until it ends.

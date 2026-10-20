@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"math"
+	"runtime"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/actions"
 	"kero/internal/proto"
 )
 
@@ -38,7 +40,17 @@ type chrome struct {
 // the sidebar hides, in the header's coordinates, so that they stay where
 // they are in the window, after the traffic lights, as the card slides.
 func (ch chrome) buttonsLeft(bar ui.TitleBar) float32 {
-	return bar.Left + cardGap - (ch.sideW + ch.mainPad)
+	return lead(bar) - (ch.sideW + ch.mainPad)
+}
+
+// lead is where the sidebar's buttons start in the window, with the sidebar
+// shown or not: after the traffic lights on macOS; elsewhere inside the
+// card's edge, which they come over as the sidebar hides.
+func lead(bar ui.TitleBar) float32 {
+	if ownControls {
+		return bar.Left + 2*cardGap
+	}
+	return bar.Left + cardGap
 }
 
 var sidebarMotion = ui.Animation{Duration: 260 * time.Millisecond, Ease: ui.CubicBezier(0.25, 1, 0.5, 1)}
@@ -51,7 +63,7 @@ func chromeFor(progress, width float32, bar ui.TitleBar) chrome {
 	// Where the header's title starts in the window, rounded once: after
 	// the traffic lights and the sidebar's buttons with the sidebar
 	// hidden, 16 into the card with it shown.
-	hidden, shown := cardGap+16+bar.Left+60, width+16
+	hidden, shown := lead(bar)+16+60, width+16
 	x := round(hidden + (shown-hidden)*s)
 	return chrome{shown: s, sideW: w, mainPad: pad, headerPad: x - w - pad}
 }
@@ -204,16 +216,21 @@ func kbd(c *ui.Context, pal *palette, keys string) {
 // --- the sidebar ---
 
 func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
-	ui.Row(c).Height(topBar).Shrink(0).AlignItems(ui.Center).Padding(0, 12, 0, bar.Left+8).Gap(2).DragWindow().Children(func() {
-		ui.Spacer(c)
-		iconButton(c, "hide-sidebar", sidebarIcon, "Hide Sidebar (⌘B)", pal, a.toggleSidebar)
-		iconButton(c, "new-session", plusIcon, "New Session (⌘T)", pal, func() { a.newSession("") })
+	ui.Row(c).Height(topBar).Shrink(0).AlignItems(ui.Center).Padding(0, 12, 0, lead(bar)).Gap(2).DragWindow().Children(func() {
+		// After the traffic lights on macOS, at the right; elsewhere the
+		// window controls are at the right, and the buttons at the left,
+		// where they stay as the sidebar hides (chrome.buttonsLeft).
+		if runtime.GOOS == "darwin" {
+			ui.Spacer(c)
+		}
+		iconButton(c, "hide-sidebar", sidebarIcon, a.tip("Hide Sidebar", "sidebar.toggle"), pal, a.toggleSidebar)
+		iconButton(c, "new-session", plusIcon, a.tip("New Session", "session.new"), pal, func() { a.newSession("") })
 	})
 	ui.Scroll(c.Key("sessions")).Grow(1).Padding(0, 10, 16, 10).Children(func() {
 		if !a.loaded {
 			return
 		}
-		n := 0 // the rows shown, for ⌘1–9
+		n := 0 // the rows shown, for ⌘1–9 (Ctrl+1–9 elsewhere)
 		for gi, g := range a.groups() {
 			a.groupView(c, pal, g, gi, &n)
 		}
@@ -360,9 +377,9 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 		if s.Status == proto.Exited && !s.Unread {
 			name.TextColor(pal.textMuted)
 		}
-		cmd := c.Modifiers() == ui.Super
+		cmd := c.Modifiers() == ui.Cmd
 		if cmd && index <= 9 {
-			ui.Textf(c, "⌘%d", index).FontSize(12).TextColor(pal.textMuted).FontFeatures("tnum").SingleLine()
+			ui.Text(c, actions.Glyphs(fmt.Sprintf("CmdOrCtrl+%d", index))).FontSize(12).TextColor(pal.textMuted).FontFeatures("tnum").SingleLine()
 		} else {
 			ui.Text(c, proto.Ago(s.Since, c.Now())).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum").SingleLine()
 		}
@@ -383,7 +400,7 @@ func (a *App) renameStarted(c *ui.Context) bool {
 
 func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	id := s.ID
-	if m.Item("Rename").Shortcut(ui.Super, ui.KeyR).Chosen() {
+	if a.menuShortcut(m.Item("Rename"), "session.rename").Chosen() {
 		a.startRename(id)
 	}
 	if s.Status == proto.Exited {
@@ -411,27 +428,32 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	if m.Item("Copy Directory").Disabled(s.Dir == "").Chosen() {
 		a.copyText = s.Dir
 	}
-	if m.Item("Reveal in Finder").Disabled(s.Dir == "").Chosen() {
+	if m.Item("Reveal in " + fileManager).Disabled(s.Dir == "").Chosen() {
 		a.openLink(id, s.Dir)
 	}
 	m.Separator()
-	if m.Item("Close Session").Shortcut(ui.Super|ui.Shift, ui.KeyW).Chosen() {
+	if a.menuShortcut(m.Item("Close Session"), "session.close").Chosen() {
 		a.defer_(func() { a.closeSession(id, true) })
 	}
 }
 
-// sidebarFooter is the sidebar's foot: what across the sessions wants
-// a look, each a button going to the next session of it, and nothing
-// while nothing does; the connection to kerod while there is none; and
-// the buttons for projects, the palette and Settings.
+// sidebarFooter is the sidebar's foot: the buttons for projects, the
+// palette and Settings; then, at the right, what across the sessions
+// wants a look, each a button going to the next session of it, and
+// nothing while nothing does, or the connection to kerod while there is
+// none.
 func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 	ui.Row(c).Height(36).Shrink(0).Padding(0, 12, 4, 12).Gap(2).AlignItems(ui.Center).DragWindow().Children(func() {
+		iconButton(c, "open-project", folderIcon, a.tip("Open Project…", "project.open"), pal, a.openProject)
+		iconButton(c, "palette", searchIcon, a.tip("Go to Session…", "palette.open"), pal, a.openPalette)
+		iconButton(c, "settings", gearIcon, a.tip("Settings", "settings.open"), pal, func() { a.openSettings("") })
+		ui.Spacer(c)
 		switch a.conn {
 		case connReady:
 			waiting := func(s *proto.Session) bool { return s.Status == proto.Waiting }
 			working := func(s *proto.Session) bool { return s.Status == proto.Working }
 			done := func(s *proto.Session) bool { return s.Status == proto.Idle && s.Unread }
-			a.footerChip(c, pal, proto.Waiting, false, waiting, pal.attention, "%d session needs you", "%d sessions need you", "Go to it (⌘J)", a.jumpToAttention)
+			a.footerChip(c, pal, proto.Waiting, false, waiting, pal.attention, "%d session needs you", "%d sessions need you", a.tip("Go to it", "session.attention"), a.jumpToAttention)
 			a.footerChip(c, pal, proto.Working, false, working, pal.textMuted, "%d session working", "%d sessions working", "Go to it", nil)
 			a.footerChip(c, pal, proto.Idle, true, done, pal.textMuted, "%d session done, unseen", "%d sessions done, unseen", "Go to it", nil)
 		case connConnecting:
@@ -439,10 +461,6 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 		default:
 			a.footerNote(c, pal, pal.danger, "Disconnected")
 		}
-		ui.Spacer(c)
-		iconButton(c, "open-project", folderIcon, "Open Project… (⌘O)", pal, a.openProject)
-		iconButton(c, "palette", searchIcon, "Go to Session… (⌘P)", pal, a.openPalette)
-		iconButton(c, "settings", gearIcon, "Settings (⌘,)", pal, func() { a.openSettings("") })
 	})
 }
 
@@ -596,14 +614,16 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 	card := raised(ui.Column(c).Grow(1).MinHeight(0).Radius(14).Background(pal.card), pal).Clip()
 	card.Children(func() {
 		left := a.chrome.headerPad
-		ui.Row(c).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 12, 0, left).DragWindow().Children(func() {
+		ui.Row(c).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, left).DragWindow().Children(func() {
 			if shown < 0.5 {
 				ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-					iconButton(c, "show-sidebar", sidebarIcon, "Show Sidebar (⌘B)", pal, a.toggleSidebar)
-					iconButton(c, "new-session-2", plusIcon, "New Session (⌘T)", pal, func() { a.newSession("") })
+					iconButton(c, "show-sidebar", sidebarIcon, a.tip("Show Sidebar", "sidebar.toggle"), pal, a.toggleSidebar)
+					iconButton(c, "new-session-2", plusIcon, a.tip("New Session", "session.new"), pal, func() { a.newSession("") })
 				})
 			}
 			ui.Text(c, "Kero").FontSize(14).FontWeight(600).TextColor(pal.text)
+			ui.Spacer(c)
+			windowControls(c, pal, a.win)
 		})
 		ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 			switch {
@@ -646,10 +666,10 @@ func (a *App) emptyState(c *ui.Context, pal *palette) {
 		ui.Text(c, "Sessions keep running in the background — quit Kero and come back to everything just as you left it.").
 			FontSize(13.5).TextColor(pal.textMuted).MaxWidth(380).TextAlign(ui.Center).LineHeight(1.45).Margin(8, 0, 22, 0)
 		ui.Row(c).Gap(10).Children(func() {
-			if button(c, "empty-new", "New Session", "⌘T", true, pal) {
+			if button(c, "empty-new", "New Session", a.keys("session.new"), true, pal) {
 				a.newSession("")
 			}
-			if button(c, "empty-open", "Open Project…", "⌘O", false, pal) {
+			if button(c, "empty-open", "Open Project…", a.keys("project.open"), false, pal) {
 				a.openProject()
 			}
 		})

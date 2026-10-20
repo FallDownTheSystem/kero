@@ -638,7 +638,9 @@ func StopDaemon() error {
 	if err != nil {
 		return err
 	}
-	p.Signal(os.Interrupt)
+	if client.Interrupt(p) != nil {
+		p.Kill()
+	}
 	for range 100 {
 		if client.DaemonPID() == 0 {
 			return nil

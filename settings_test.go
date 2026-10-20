@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/actions"
 	"kero/internal/settings"
 )
 
@@ -45,19 +47,24 @@ func TestRecordShortcut(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	tt.Key(ui.Super|ui.Shift, ui.KeyD) // Split Down's
+	// Split Down's keys.
+	mods, key, accel := ui.Super|ui.Shift, ui.KeyD, "CmdOrCtrl+Shift+D"
+	if runtime.GOOS != "darwin" {
+		mods, key, accel = ui.Alt|ui.Shift, ui.KeyMinus, "Alt+Shift+-"
+	}
+	tt.Key(mods, key)
 	tt.Frame()
 	tt.Frame()
-	if got := a.set.Shortcuts["pane.split.right"]; got != "CmdOrCtrl+Shift+D" {
+	if got := a.set.Shortcuts["pane.split.right"]; got != accel {
 		t.Fatalf("Split Right's shortcut %q", got)
 	}
 	if got, ok := a.set.Shortcuts["pane.split.down"]; !ok || got != "" {
 		t.Errorf("Split Down kept its keys: %q", got)
 	}
-	if !tt.HasText("⇧⌘D was Split Down’s: it has none now.") {
+	if !tt.HasText(actions.Glyphs(accel) + " was Split Down’s: it has none now.") {
 		t.Errorf("no word of the conflict; texts %q", tt.Texts())
 	}
-	if saved := settings.Load(); saved.Shortcuts["pane.split.right"] != "CmdOrCtrl+Shift+D" {
+	if saved := settings.Load(); saved.Shortcuts["pane.split.right"] != accel {
 		t.Errorf("not saved: %v", saved.Shortcuts)
 	}
 	shot(t, tt, "settings-keyboard-recorded")
@@ -270,7 +277,7 @@ func TestSettingsSearch(t *testing.T) {
 	a.ss.page = "general"
 	tt := ui.NewTester(a.settingsView, 820, 640)
 	tt.Frame()
-	tt.Key(ui.Super, ui.KeyF)
+	tt.Key(ui.Cmd, ui.KeyF)
 	tt.Frame()
 	tt.Type("font-size")
 	for range 3 {

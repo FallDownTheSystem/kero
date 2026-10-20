@@ -5,7 +5,7 @@ description: Kero is a terminal for coding agents. Sessions keep running when yo
 
 # Introduction
 
-Kero is a macOS terminal built for working with coding agents. You run Claude Code, Codex, a dev server or a test watcher in its own **session**. Kero groups sessions by project in a sidebar that shows which are working, which need you and which are done.
+Kero is a terminal for macOS, Windows and Linux built for working with coding agents. You run Claude Code, Codex, a dev server or a test watcher in its own **session**. Kero groups sessions by project in a sidebar that shows which are working, which need you and which are done.
 
 ## Sessions that outlive the window
 

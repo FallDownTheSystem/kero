@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -759,7 +759,7 @@ func (a *App) openLink(id, link string) bool {
 		return false
 	}
 	path := lineSuffix.ReplaceAllString(link, "")
-	if strings.HasPrefix(path, "~/") {
+	if strings.HasPrefix(path, "~/") || runtime.GOOS == "windows" && strings.HasPrefix(path, `~`) {
 		path = filepath.Join(proto.Home(), path[2:])
 	}
 	if !filepath.IsAbs(path) {
@@ -770,7 +770,7 @@ func (a *App) openLink(id, link string) bool {
 	if _, err := os.Stat(path); err != nil {
 		return false
 	}
-	exec.Command("/usr/bin/open", path).Start()
+	openPath(path)
 	return true
 }
 

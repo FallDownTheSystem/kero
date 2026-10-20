@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -21,6 +22,7 @@ import (
 	"golang.org/x/term"
 
 	"kero/internal/cli"
+	"kero/internal/clilink"
 	"kero/internal/daemon"
 	"kero/internal/proto"
 )
@@ -45,6 +47,13 @@ func main() {
 			if real, err := filepath.EvalSymlinks(exe); err == nil {
 				if i := strings.Index(real, ".app/Contents/MacOS/"); i >= 0 {
 					if exec.Command("/usr/bin/open", real[:i+4]).Run() == nil {
+						return
+					}
+				}
+				// On Windows the command is a copy of the app's executable
+				// (package clilink), which knows what it is a copy of.
+				if bin := filepath.Dir(real); runtime.GOOS == "windows" && strings.EqualFold(bin, filepath.Join(proto.Dir(), "bin")) {
+					if app := clilink.Target(bin); app != "" && exec.Command(app).Start() == nil {
 						return
 					}
 				}
@@ -84,22 +93,16 @@ func runApp() {
 		a.savePrefs()
 	})
 	mygo.App.WhenReady(func() {
-		a.win = mygo.NewWindow(mygo.WindowOptions{
-			Title:          "Kero",
-			Width:          1180,
-			Height:         760,
-			MinWidth:       560,
-			MinHeight:      360,
-			StateKey:       "main",
-			TitleBarStyle:  mygo.TitleBarHiddenInset,
-			TitleBarHeight: topBar,
-			// The lights' buttons are 16 tall, and MyGo puts them a DIP
-			// above the position: centered on barMid, as the sidebar's
-			// buttons and the panes' headers are.
-			TrafficLightPosition: &mygo.Point{X: 18, Y: barMid - 7},
-			Vibrancy:             vibrancyFor(a.set),
-			Content:              ui.View(a.view),
-		})
+		a.win = mygo.NewWindow(framed(mygo.WindowOptions{
+			Title:     "Kero",
+			Width:     1180,
+			Height:    760,
+			MinWidth:  560,
+			MinHeight: 360,
+			StateKey:  "main",
+			Vibrancy:  vibrancyFor(a.set),
+			Content:   ui.View(a.view),
+		}))
 		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.reportView() }) })
 		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
 		a.connect()
@@ -126,33 +129,6 @@ func (a *App) newSessionIn(dir string) {
 			}
 			a.addPending(s)
 			a.selectSession(s.ID)
-		})
-	}()
-}
-
-// installCLI links /usr/local/bin/kero to this executable, asking for an
-// administrator's password when the directory needs it.
-func (a *App) installCLI() {
-	exe, err := os.Executable()
-	if err != nil {
-		a.toast(err.Error())
-		return
-	}
-	go func() {
-		const link = "/usr/local/bin/kero"
-		os.Remove(link)
-		err := os.Symlink(exe, link)
-		if err != nil {
-			script := fmt.Sprintf(`do shell script "mkdir -p /usr/local/bin && ln -sf %s %s" with administrator privileges`,
-				strings.ReplaceAll(fmt.Sprintf("%q", exe), `\`, `\\`), link)
-			err = exec.Command("/usr/bin/osascript", "-e", script).Run()
-		}
-		a.update(func() {
-			if err != nil {
-				a.toast("Couldn’t install the command line tool")
-				return
-			}
-			a.toast("Installed the kero command in /usr/local/bin")
 		})
 	}()
 }

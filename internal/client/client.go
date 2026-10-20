@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 
 	"kero/internal/proto"
@@ -66,8 +65,8 @@ func StartDaemon() error {
 	cmd := exec.Command(exe, "__kerod")
 	cmd.Dir = proto.Home()
 	cmd.Stdout, cmd.Stderr = logf, logf
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	if err := cmd.Start(); err != nil {
+	cmd, err = startDetached(cmd)
+	if err != nil {
 		return err
 	}
 	go cmd.Wait() // reap it, should it exit while we run

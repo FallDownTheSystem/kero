@@ -1,7 +1,11 @@
 package main
 
 import (
+	"runtime"
+	"strings"
+
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
 	"kero/internal/proto"
@@ -116,12 +120,20 @@ func (a *App) items(menu string, groups ...[]string) []*mygo.MenuItem {
 func (a *App) menu() *mygo.Menu {
 	appMenu := []*mygo.MenuItem{{Role: mygo.RoleAbout}, mygo.Separator(), a.item("settings.open"), a.item("cli.install"),
 		mygo.Separator(), {Role: mygo.RoleHide}, {Role: mygo.RoleHideOthers}, {Role: mygo.RoleUnhide}, mygo.Separator(),
-		{Label: "Quit " + mygo.App.Name(), Accelerator: "CmdOrCtrl+Q", ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
+		{Label: "Quit " + mygo.App.Name(), Accelerator: quitKeys, ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 		a.item("app.quitAll")}
+	// The app menu is macOS's: MyGo leaves it out elsewhere, with its items'
+	// shortcuts, so they go in a menu of Kero's there, without macOS's own.
+	kero := &mygo.MenuItem{Role: mygo.RoleAppMenu, Submenu: appMenu}
+	if runtime.GOOS != "darwin" {
+		kero = &mygo.MenuItem{Label: "Kero", Submenu: []*mygo.MenuItem{a.item("settings.open"), a.item("cli.install"), mygo.Separator(),
+			{Label: "Quit", Accelerator: quitKeys, ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
+			a.item("app.quitAll")}}
+	}
 	view := append(a.items("View", []string{"sidebar.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})
 	return mygo.NewMenu([]*mygo.MenuItem{
-		{Role: mygo.RoleAppMenu, Submenu: appMenu},
+		kero,
 		{Label: "Session", Submenu: a.items("Session",
 			[]string{"session.new", "session.newHome", "project.open"},
 			[]string{"palette.open", "session.attention", "session.next", "session.previous"},
@@ -136,3 +148,52 @@ func (a *App) menu() *mygo.Menu {
 		{Role: mygo.RoleWindowMenu},
 	})
 }
+
+// keys is an action's shortcut as the menus show it, "" when it has none.
+func (a *App) keys(id string) string {
+	act, _ := actions.Find(id)
+	return actions.Glyphs(actions.Keys(act, a.set.Shortcuts))
+}
+
+// tip is a button's tooltip: what it does, with its action's shortcut.
+func (a *App) tip(title, id string) string {
+	if k := a.keys(id); k != "" {
+		return title + " (" + k + ")"
+	}
+	return title
+}
+
+// menuShortcut shows an action's shortcut by a context menu's item.
+func (a *App) menuShortcut(it *ui.MenuItem, id string) *ui.MenuItem {
+	act, _ := actions.Find(id)
+	parts := strings.Split(actions.Keys(act, a.set.Shortcuts), "+")
+	var mods ui.Modifiers
+	for _, p := range parts[:len(parts)-1] {
+		switch strings.ToLower(p) {
+		case "cmdorctrl", "commandorcontrol":
+			mods |= ui.Cmd
+		case "cmd", "command", "super", "meta", "win":
+			mods |= ui.Super
+		case "ctrl", "control":
+			mods |= ui.Ctrl
+		case "alt", "option":
+			mods |= ui.Alt
+		case "shift":
+			mods |= ui.Shift
+		}
+	}
+	for k, name := range keyNames {
+		if strings.EqualFold(name, parts[len(parts)-1]) {
+			return it.Shortcut(mods, k)
+		}
+	}
+	return it
+}
+
+// quitKeys quits the app: Control+Q is the terminal's on Windows and Linux.
+var quitKeys = func() string {
+	if runtime.GOOS == "darwin" {
+		return "CmdOrCtrl+Q"
+	}
+	return "Ctrl+Shift+Q"
+}()
