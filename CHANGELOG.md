@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.4
+
+- Terminals show the cursor chosen in Settings, its shape and whether it
+  blinks, rather than always a blinking block.
+
 ## 2.0.3
 
 - An agent sitting at its prompt no longer shows as needing you, as Claude
