@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
@@ -118,7 +119,7 @@ func (a *App) items(menu string, groups ...[]string) []*mygo.MenuItem {
 }
 
 func (a *App) menu() *mygo.Menu {
-	appMenu := []*mygo.MenuItem{{Role: mygo.RoleAbout}, mygo.Separator(), a.item("settings.open"), a.item("cli.install"),
+	appMenu := []*mygo.MenuItem{{Role: mygo.RoleAbout}, updater.MenuItem(), mygo.Separator(), a.item("settings.open"), a.item("cli.install"),
 		mygo.Separator(), {Role: mygo.RoleHide}, {Role: mygo.RoleHideOthers}, {Role: mygo.RoleUnhide}, mygo.Separator(),
 		{Label: "Quit " + mygo.App.Name(), Accelerator: quitKeys, ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 		a.item("app.quitAll")}
@@ -126,7 +127,7 @@ func (a *App) menu() *mygo.Menu {
 	// shortcuts, so they go in a menu of Kero's there, without macOS's own.
 	kero := &mygo.MenuItem{Role: mygo.RoleAppMenu, Submenu: appMenu}
 	if runtime.GOOS != "darwin" {
-		kero = &mygo.MenuItem{Label: "Kero", Submenu: []*mygo.MenuItem{a.item("settings.open"), a.item("cli.install"), mygo.Separator(),
+		kero = &mygo.MenuItem{Label: "Kero", Submenu: []*mygo.MenuItem{a.item("settings.open"), a.item("cli.install"), updater.MenuItem(), mygo.Separator(),
 			{Label: "Quit", Accelerator: quitKeys, ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 			a.item("app.quitAll")}}
 	}

@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater/native"
 	"github.com/egoist/mygo/ui"
 	"golang.org/x/term"
 
@@ -67,6 +68,8 @@ func runApp() {
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
+	// Updates from Kero's GitHub releases, in a window of native UI.
+	mygo.Use(native.Plugin)
 	a := newApp()
 	loadFonts()
 	mygo.Theme.SetSource(mygo.ThemeSource(a.set.Appearance))
