@@ -1,12 +1,12 @@
 import { onCleanup, onMount } from 'solid-js';
 
-// A cloud of glowing points that morphs, in 3D, through a prompt, Kero's
-// frog, a sphere, a double helix, a torus and a cube. Each morph bursts
-// outward and spins the whole cloud once; the cursor scatters points, and
-// a click skips to the next shape. A few points wear Kero's status colors,
-// and the frog wears its own.
+// A cloud of glowing points that gathers into Kero's frog, then morphs, in
+// 3D, into a prompt and back, over and over. Each morph bursts outward and
+// spins the whole cloud once; the cursor scatters points, and a click skips
+// to the other shape. A few points wear Kero's status colors, and the frog
+// wears its own.
 
-const SHAPES = ['prompt', 'frog', 'sphere', 'helix', 'torus', 'cube'] as const;
+const SHAPES = ['frog', 'prompt'] as const;
 type Shape = (typeof SHAPES)[number];
 
 const HOLD = 3.4; // seconds a shape holds
@@ -53,25 +53,25 @@ export default function ParticleMorph() {
 
     const sprites = COLORS.map(glowSprite);
     const targets = new Map<Shape, Float32Array>();
-    for (const s of SHAPES) if (s !== 'prompt' && s !== 'frog') targets.set(s, build(s, N, rand));
-    // Until the font loads, the prompt is a sphere; until the icon loads,
-    // so is the frog.
-    targets.set('prompt', targets.get('sphere')!);
-    targets.set('frog', targets.get('sphere')!);
+    // Until the icon loads, the frog is a scattered haze; until the font
+    // loads, so is the prompt.
+    const haze = buildHaze(N, rand);
+    targets.set('frog', haze);
+    targets.set('prompt', haze);
     // Each shape's colors: the frog's own once loaded, else each point's.
     const tints = new Map<Shape, Uint8Array>();
     const tintOf = (s: Shape) => tints.get(s) ?? color;
 
     const pos = new Float32Array(N * 3);
     const from = new Float32Array(N * 3);
-    pos.set(targets.get('prompt')!);
+    pos.set(haze);
     const ox = new Float32Array(N);
     const oy = new Float32Array(N);
 
     let index = 0;
-    let to = targets.get('prompt')!;
-    let fromTint = color;
-    let toTint = color;
+    let to: Float32Array = haze;
+    let fromTint: Uint8Array = color;
+    let toTint: Uint8Array = color;
     let morphing = false;
     let stageStart = 0;
     let spin = 0; // completed spins, in turns
@@ -119,7 +119,7 @@ export default function ParticleMorph() {
           spin += 1;
           pos.set(to);
         }
-      } else if (!reduced && elapsed > HOLD) {
+      } else if (!reduced && elapsed > HOLD && tints.has('frog')) {
         next();
       }
 
@@ -256,12 +256,6 @@ export default function ParticleMorph() {
           morphing = true;
           stageStart = now;
         }
-        if (reduced) {
-          pos.set(prompt);
-          to = prompt;
-          morphing = false;
-          draw(0);
-        }
       });
 
     const icon = new Image();
@@ -270,6 +264,15 @@ export default function ParticleMorph() {
       if (!frog) return;
       targets.set('frog', frog.points);
       tints.set('frog', frog.tints);
+      if (reduced) {
+        // Without motion, the frog stands still.
+        pos.set(frog.points);
+        to = frog.points;
+        toTint = frog.tints;
+        morphing = false;
+        draw(0);
+        return;
+      }
       if (SHAPES[index] === 'frog') {
         to = frog.points;
         toTint = frog.tints;
@@ -306,66 +309,18 @@ export default function ParticleMorph() {
 
 // ---------- Shapes, each about a unit in radius ----------
 
-function build(shape: Exclude<Shape, 'prompt'>, n: number, rand: () => number) {
+// A haze of points scattered through a ball, which the frog gathers from.
+function buildHaze(n: number, rand: () => number) {
   const out = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
-    const k = i * 3;
-    let x = 0;
-    let y = 0;
-    let z = 0;
-    if (shape === 'sphere') {
-      // A Fibonacci lattice.
-      const yy = 1 - (2 * (i + 0.5)) / n;
-      const r = Math.sqrt(1 - yy * yy);
-      const a = i * 2.399963229728653;
-      x = Math.cos(a) * r;
-      y = yy;
-      z = Math.sin(a) * r;
-    } else if (shape === 'helix') {
-      const u = rand();
-      const a = u * Math.PI * 6;
-      const yy = (u - 0.5) * 2.4;
-      if (i % 7 === 0) {
-        // A rung between the strands.
-        const s = rand() * 2 - 1;
-        x = Math.cos(a) * 0.5 * s;
-        z = Math.sin(a) * 0.5 * s;
-      } else {
-        const off = i % 2 ? Math.PI : 0;
-        x = Math.cos(a + off) * 0.5;
-        z = Math.sin(a + off) * 0.5;
-      }
-      x += (rand() - 0.5) * 0.04;
-      z += (rand() - 0.5) * 0.04;
-      y = yy;
-    } else if (shape === 'torus') {
-      const u = rand() * Math.PI * 2;
-      const v = rand() * Math.PI * 2;
-      const r = 0.32;
-      const R = 0.78;
-      x = (R + r * Math.cos(v)) * Math.cos(u);
-      y = r * Math.sin(v);
-      z = (R + r * Math.cos(v)) * Math.sin(u);
-    } else {
-      // A cube: its edges drawn bold, its faces dusted.
-      const s = 0.68;
-      if (i % 3 !== 0) {
-        const axis = Math.floor(rand() * 3);
-        const a = (rand() < 0.5 ? -1 : 1) * s;
-        const b = (rand() < 0.5 ? -1 : 1) * s;
-        const c = (rand() * 2 - 1) * s;
-        [x, y, z] = axis === 0 ? [c, a, b] : axis === 1 ? [a, c, b] : [a, b, c];
-      } else {
-        const face = Math.floor(rand() * 6);
-        const a = (rand() * 2 - 1) * s;
-        const b = (rand() * 2 - 1) * s;
-        const c = (face % 2 ? -1 : 1) * s;
-        [x, y, z] = face < 2 ? [c, a, b] : face < 4 ? [a, c, b] : [a, b, c];
-      }
-    }
-    out[k] = x;
-    out[k + 1] = y;
-    out[k + 2] = z;
+    // Uniform in a ball: a random direction, a radius by the cube root.
+    const u = rand() * 2 - 1;
+    const a = rand() * Math.PI * 2;
+    const r = 1.5 * Math.cbrt(rand());
+    const q = Math.sqrt(1 - u * u);
+    out[i * 3] = r * q * Math.cos(a);
+    out[i * 3 + 1] = r * u;
+    out[i * 3 + 2] = r * q * Math.sin(a);
   }
   return out;
 }
