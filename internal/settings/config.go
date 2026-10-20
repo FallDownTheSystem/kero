@@ -106,7 +106,7 @@ var keys = []key{
 		[]string{"current", "project", "home"}, []string{"current", "project", "home"}),
 	boolKey("confirm-close", "ask before closing a pane a program runs in", func(s *Settings) *bool { return &s.ConfirmClose }),
 	boolKey("restore-sessions", "start sessions again after kerod restarts, as after a reboot", func(s *Settings) *bool { return &s.RestoreSessions }),
-	boolKey("resume-agents", "as sessions start again, resume the conversation of the Claude Code or Codex each pane ran", func(s *Settings) *bool { return &s.ResumeAgents }),
+	boolKey("resume-agents", "as sessions start again, resume the conversation of the coding agent each pane ran", func(s *Settings) *bool { return &s.ResumeAgents }),
 
 	choiceKey("window-theme", "the app's appearance", func(s *Settings) *string { return &s.Appearance }, "system", "light", "dark"),
 	mapChoice("background", "the window's wash", func(s *Settings) *string { return &s.Background },

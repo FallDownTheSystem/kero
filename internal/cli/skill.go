@@ -91,7 +91,7 @@ func skillCmd(args []string) error {
 			fmt.Printf("%-8s skill  %-9s %s\n", name, skillState(dirs[name]), proto.ShortDir(dirs[name]))
 		}
 		for _, h := range hooks {
-			fmt.Printf("%-8s hook   %-9s %s\n", h.agent, h.state(), proto.ShortDir(h.file))
+			fmt.Printf("%-8s hook   %-9s %s\n", h.name(), h.state(), proto.ShortDir(h.path()))
 		}
 		return nil
 	case "setup", "remove":
@@ -115,26 +115,34 @@ func skillCmd(args []string) error {
 		for _, h := range hooks {
 			switch {
 			case f.set["dry"]:
-				fmt.Printf("would %s the hook in %s (%s)\n", sub, proto.ShortDir(h.file), h.agent)
+				fmt.Printf("would %s the hook in %s (%s)\n", sub, proto.ShortDir(h.path()), h.name())
 			case sub == "remove":
 				if err := h.remove(); err != nil {
 					return err
 				}
-				fmt.Printf("removed the hook from %s\n", proto.ShortDir(h.file))
+				fmt.Printf("removed the hook from %s\n", proto.ShortDir(h.path()))
 			default:
 				if err := h.install(); err != nil {
 					return err
 				}
-				fmt.Printf("installed the hook in %s (%s)\n", proto.ShortDir(h.file), h.agent)
+				fmt.Printf("installed the hook in %s (%s)\n", proto.ShortDir(h.path()), h.name())
 			}
 		}
 		if sub == "setup" && !f.set["dry"] && len(hooks) > 0 {
-			fmt.Println("\nAgents started from now on in Kero learn which session they're in." +
-				"\nClaude Code runs hooks only in folders you trust; Codex asks you to approve a new hook with /hooks.")
+			fmt.Println("\nAgents started from now on in Kero learn which session they're in.")
+			for _, h := range hooks {
+				if note := map[string]string{
+					"claude":   "Claude Code runs hooks only in folders you trust.",
+					"codex":    "Codex asks you to approve a new hook: run /hooks in it.",
+					"opencode": "OpenCode's background service loads plugins as it starts: run `opencode service restart` when no session is busy.",
+				}[h.name()]; note != "" {
+					fmt.Println(note)
+				}
+			}
 		}
 		return nil
 	}
-	return usageErr("kero skill setup|show|status|remove [--agent claude|codex|agents] [--dry-run]")
+	return usageErr("kero skill setup|show|status|remove [--agent claude|codex|pi|opencode|agents] [--dry-run]")
 }
 
 func sortedKeys(m map[string]string) []string {
@@ -164,11 +172,11 @@ func writeSkill(dir string) error {
 	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillGuide), 0o644)
 }
 
-// hooksFor returns the hooks that go with an --agent: Codex's with the
-// shared skill of Codex, OpenCode and Pi.
-func hooksFor(agent string) []agentHook {
+// hooksFor returns the hooks that go with an --agent: Codex's, Pi's and
+// OpenCode's with the skill they share.
+func hooksFor(agent string) []integration {
 	switch agent {
-	case "", "claude", "codex", "agents":
+	case "", "claude", "codex", "pi", "opencode", "agents":
 		return agentHooks(agent)
 	}
 	return nil

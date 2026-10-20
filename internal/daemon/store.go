@@ -40,8 +40,8 @@ type savedPane struct {
 	// Agent is the agent's session that ran in it, to resume.
 	Agent   *proto.AgentSession `json:"agent,omitempty"`
 	Created int64               `json:"created"`
-	Cols    int      `json:"cols"`
-	Rows    int      `json:"rows"`
+	Cols    int                 `json:"cols"`
+	Rows    int                 `json:"rows"`
 }
 
 func (d *Daemon) statePath() string { return filepath.Join(d.dir, "state.json") }
@@ -199,6 +199,8 @@ func resumeCommand(a *proto.AgentSession) []string {
 		return []string{"claude", "--resume", a.ID}
 	case "codex":
 		return []string{"codex", "resume", a.ID}
+	case "pi", "opencode":
+		return []string{a.Agent, "--session", a.ID}
 	}
 	return nil
 }

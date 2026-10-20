@@ -47,7 +47,7 @@ Sessions run in **kerod**, a daemon that the app starts on demand. Kero is a win
 - Quitting Kero leaves every session running.
 - Opening Kero again shows every session as it was, scrollback included.
 - After kerod itself restarts, such as after a reboot, Kero starts your sessions again in their directories. Turn this off with `restore-sessions = false`.
-- A pane that was running Claude Code or Codex resumes its conversation, as `claude --resume` or `codex resume` would, once [Kero's skill](./agents.md#install-the-skill) is set up for that agent. Other programs don't start again unasked: their pane comes back at a shell. Turn this off with `resume-agents = false`.
+- A pane that was running Claude Code, Codex, Pi or OpenCode resumes its conversation, as the agent's own resume option would, once [Kero's skill](./agents.md#install-the-skill) is set up for that agent. Other programs don't start again unasked: their pane comes back at a shell. Turn this off with `resume-agents = false`.
 
 ```sh
 kero daemon status       # is kerod running?

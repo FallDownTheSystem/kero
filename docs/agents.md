@@ -16,9 +16,20 @@ kero skill setup
 This installs two things:
 
 - A **skill** that teaches agents the CLI. Claude Code reads it from `~/.claude/skills/kero`; Codex, OpenCode and other agents from `~/.agents/skills/kero`.
-- A **hook** that runs as Claude Code or Codex starts a session. It tells the agent which Kero session and pane it's in, so it doesn't spend time finding out, and has it name an unnamed session after its task, such as `fix-login-redirect`, so you don't have to. It also tells Kero the agent's own session, so that after kerod restarts, as after a reboot, the agent [picks up its conversation](./sessions.md#kerod). Kero adds it to `~/.claude/settings.json` and `~/.codex/hooks.json` (or under `CLAUDE_CONFIG_DIR` and `CODEX_HOME`) and leaves the rest of each file as it was.
+- A **hook** that runs as an agent starts a session. It tells the agent which Kero session and pane it's in, so it doesn't spend time finding out, and has it name an unnamed session after its task, such as `fix-login-redirect`, so you don't have to. It also tells Kero the agent's own session, so that after kerod restarts, as after a reboot, the agent [picks up its conversation](./sessions.md#kerod).
 
-Pass `--agent claude` or `--agent codex` to set up one agent only. The skill comes from your Kero binary, so run `kero skill setup` again after updating Kero. `kero skill status` tells you whether each part is current.
+The hook goes where each agent looks for one, for the agents you have installed:
+
+| Agent       | Where the hook goes                                   |
+| ----------- | ----------------------------------------------------- |
+| Claude Code | A `SessionStart` hook in `~/.claude/settings.json`     |
+| Codex       | A `SessionStart` hook in `~/.codex/hooks.json`         |
+| Pi          | An extension, `~/.pi/agent/extensions/kero.ts`         |
+| OpenCode    | A plugin, `~/.config/opencode/plugins/kero`            |
+
+Kero follows `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR` and `XDG_CONFIG_HOME` when they move an agent's files, and leaves the rest of each settings file as it was.
+
+Pass `--agent` with `claude`, `codex`, `pi` or `opencode` to set up one agent only. The skill comes from your Kero binary, so run `kero skill setup` again after updating Kero. `kero skill status` tells you whether each part is current.
 
 ```sh
 kero skill status    # what's installed, and whether it's current
@@ -30,6 +41,9 @@ The hook works only in agent sessions started after setup, and agents may ask fi
 
 - **Claude Code** runs hooks only in folders you trust.
 - **Codex** asks you to approve a new hook: approve Kero's with `/hooks`.
+- **OpenCode** loads plugins as its background service starts: run `opencode service restart` once, when no session is busy.
+
+OpenCode runs an agent's commands in its background service rather than in the pane, so they don't have `KERO_SESSION` and `KERO_PANE`. Kero tells the agent its pane instead, for it to name as the target. For the same reason, `kero report` from an OpenCode agent doesn't reach its pane.
 
 Outside Kero, the hook does nothing.
 

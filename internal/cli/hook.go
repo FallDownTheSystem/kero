@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"kero/internal/client"
 	"kero/internal/clilink"
@@ -26,6 +28,9 @@ func hookCmd(args []string) error {
 	agent := ""
 	if len(args) > 0 {
 		agent = args[0]
+	}
+	if agent == "context" && len(args) >= 3 {
+		return contextCmd(args[1], args[2], len(args) > 3 && args[3] == "wait")
 	}
 	pane := os.Getenv("KERO_PANE")
 	var in struct {
@@ -51,18 +56,57 @@ func hookCmd(args []string) error {
 	}
 	out := map[string]any{"hookSpecificOutput": map[string]string{
 		"hookEventName":     "SessionStart",
-		"additionalContext": hookContext(c, pane, os.Getenv("KERO_SESSION")),
+		"additionalContext": hookContext(c, pane, os.Getenv("KERO_SESSION"), false),
 	}}
 	return json.NewEncoder(os.Stdout).Encode(out)
 }
 
+// contextCmd prints what to tell the agent of an agent's session, for an
+// agent whose commands run away from its pane, as OpenCode's do in its
+// service: nothing when no pane runs that session. wait gives a pane that
+// runs the agent a moment to tell its session.
+func contextCmd(agent, session string, wait bool) error {
+	c, err := client.Connect(true)
+	if err != nil {
+		return nil
+	}
+	defer c.Close()
+	for deadline := time.Now().Add(1500 * time.Millisecond); ; time.Sleep(150 * time.Millisecond) {
+		var st proto.State
+		if c.Call("state", nil, &st) != nil {
+			return nil
+		}
+		pending := false
+		for _, s := range st.Sessions {
+			for _, p := range s.Panes {
+				if a := p.AgentSession; a != nil && a.Agent == agent && a.ID == session {
+					fmt.Println(hookContext(c, p.ID, s.ID, true))
+					return nil
+				}
+				pending = pending || p.Agent == agent && (p.AgentSession == nil || p.AgentSession.ID != session)
+			}
+		}
+		if !wait || !pending || time.Now().After(deadline) {
+			return nil
+		}
+	}
+}
+
 // hookContext is what the hook tells an agent in pane, of session sid;
-// c is kerod, nil when it is unreachable.
-func hookContext(c *client.Client, pane, sid string) string {
+// c is kerod, nil when it is unreachable. away tells an agent whose
+// commands don't run in its pane, and don't have its variables.
+func hookContext(c *client.Client, pane, sid string, away bool) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "You are running in Kero, a terminal for coding agents: session %s, pane %s ($KERO_SESSION and $KERO_PANE). "+
-		"The `kero` command (see the kero skill) runs things beside you, such as a dev server, tests or another agent, "+
-		"and tells the user what you are doing.", sid, pane)
+	if away {
+		fmt.Fprintf(&b, "You are running in Kero, a terminal for coding agents: session %s, pane %s. "+
+			"The `kero` command (see the kero skill) runs things beside you, such as a dev server, tests or another agent. "+
+			"Your commands don't run in your pane and don't have $KERO_SESSION and $KERO_PANE: give kero your pane as the target, "+
+			"as in `kero split %s --down -- npm run dev`.", sid, pane, pane)
+	} else {
+		fmt.Fprintf(&b, "You are running in Kero, a terminal for coding agents: session %s, pane %s ($KERO_SESSION and $KERO_PANE). "+
+			"The `kero` command (see the kero skill) runs things beside you, such as a dev server, tests or another agent, "+
+			"and tells the user what you are doing.", sid, pane)
+	}
 	if c == nil {
 		return b.String()
 	}
@@ -88,6 +132,16 @@ func hookContext(c *client.Client, pane, sid string) string {
 	return b.String()
 }
 
+// integration is what kero installs in an agent, beside its skill, to
+// hook it into Kero: a hook in its settings, or a plugin of its own.
+type integration interface {
+	name() string // the agent, as `kero hook` takes it
+	path() string // where it goes
+	state() string
+	install() error
+	remove() error
+}
+
 // agentHook is a hook kero installs in an agent's settings: a SessionStart
 // command running `kero hook <agent>`.
 type agentHook struct {
@@ -95,14 +149,26 @@ type agentHook struct {
 	file  string // the JSON file holding the agent's hooks
 }
 
+func (h agentHook) name() string { return h.agent }
+func (h agentHook) path() string { return h.file }
+
+// kero is the kero command of Kero's own directory (package clilink),
+// which stays where it is as Kero updates.
+func kero() string {
+	exe := filepath.Join(proto.Dir(), "bin", "kero")
+	if runtime.GOOS == "windows" {
+		exe += ".exe"
+	}
+	return exe
+}
+
 // command is the hook's command line: the kero command of Kero's own
 // directory (package clilink), which stays where it is as Kero updates.
 func (h agentHook) command() string {
-	exe := filepath.Join(proto.Dir(), "bin", "kero")
 	if runtime.GOOS == "windows" {
-		return `"` + exe + `.exe" hook ` + h.agent
+		return `"` + kero() + `" hook ` + h.agent
 	}
-	return "'" + strings.ReplaceAll(exe, "'", `'\''`) + "' hook " + h.agent
+	return "'" + strings.ReplaceAll(kero(), "'", `'\''`) + "' hook " + h.agent
 }
 
 // ours tells kero's hook commands, of this kero or another's.
@@ -151,7 +217,13 @@ func (h agentHook) each(settings object, fn func(command string)) {
 // install puts the hook in the agent's settings, in place of kero's
 // others, keeping the rest of the file as it is.
 func (h agentHook) install() error {
-	// The command the hook runs, should kerod not have made it yet.
+	linkCLI()
+	return h.edit(true)
+}
+
+// linkCLI makes the kero command that hooks and plugins run, should kerod
+// not have made it yet.
+func linkCLI() {
 	if exe, err := os.Executable(); err == nil {
 		if real, err := filepath.EvalSymlinks(exe); err == nil {
 			exe = real
@@ -161,7 +233,6 @@ func (h agentHook) install() error {
 			clilink.Link(exe, bin)
 		}
 	}
-	return h.edit(true)
 }
 
 // remove takes kero's hooks out of the agent's settings.
@@ -248,30 +319,121 @@ func (h agentHook) edit(add bool) error {
 	return writeFileAtomic(h.file, pretty.Bytes())
 }
 
-// agentHooks returns the hooks of the agents kero has hooks for: Claude
-// Code's, and Codex's when it is installed (or named).
-func agentHooks(agent string) []agentHook {
-	claude := os.Getenv("CLAUDE_CONFIG_DIR")
-	if claude == "" {
-		claude = filepath.Join(proto.Home(), ".claude")
+// agentPlugin is a plugin kero installs for an agent: files of its own,
+// in a directory the agent loads plugins from.
+type agentPlugin struct {
+	agent string
+	dir   string            // where the agent loads it from
+	files map[string]string // by name in dir: the asset (package agents)
+	own   bool              // dir is the plugin's alone, to remove with it
+}
+
+//go:embed agents
+var agentAssets embed.FS
+
+func (p agentPlugin) name() string { return p.agent }
+
+func (p agentPlugin) path() string {
+	if p.own || len(p.files) != 1 {
+		return p.dir
 	}
-	codex := os.Getenv("CODEX_HOME")
-	if codex == "" {
-		codex = filepath.Join(proto.Home(), ".codex")
+	for name := range p.files {
+		return filepath.Join(p.dir, name)
 	}
-	var out []agentHook
-	switch agent {
-	case "", "claude":
-		out = append(out, agentHook{"claude", filepath.Join(claude, "settings.json")})
-	}
-	switch agent {
-	case "", "agents":
-		if st, err := os.Stat(codex); err != nil || !st.IsDir() {
-			break
+	return p.dir
+}
+
+// content is a file as kero writes it: the asset, with the kero command
+// it runs.
+func (p agentPlugin) content(asset string) []byte {
+	b, _ := agentAssets.ReadFile(asset)
+	return bytes.ReplaceAll(b, []byte("__KERO__"), marshal(kero()))
+}
+
+func (p agentPlugin) state() string {
+	same, there := 0, 0
+	for name, asset := range p.files {
+		b, err := os.ReadFile(filepath.Join(p.dir, name))
+		if err != nil {
+			continue
 		}
-		fallthrough
-	case "codex":
-		out = append(out, agentHook{"codex", filepath.Join(codex, "hooks.json")})
+		there++
+		if bytes.Equal(b, p.content(asset)) {
+			same++
+		}
+	}
+	switch {
+	case same == len(p.files):
+		return "current"
+	case there == 0:
+		return "missing"
+	}
+	return "outdated"
+}
+
+func (p agentPlugin) install() error {
+	linkCLI()
+	if err := os.MkdirAll(p.dir, 0o755); err != nil {
+		return err
+	}
+	for name, asset := range p.files {
+		if err := writeFileAtomic(filepath.Join(p.dir, name), p.content(asset)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p agentPlugin) remove() error {
+	for name := range p.files {
+		if err := os.Remove(filepath.Join(p.dir, name)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	if p.own {
+		os.Remove(p.dir) // if nothing else is in it
+	}
+	return nil
+}
+
+// agentHooks returns what kero installs to hook agents into Kero: for
+// Claude Code, and for Codex, Pi and OpenCode when they are installed (or
+// named).
+func agentHooks(agent string) []integration {
+	home := proto.Home()
+	dirOf := func(env string, def ...string) string {
+		if d := os.Getenv(env); d != "" {
+			return d
+		}
+		return filepath.Join(append([]string{home}, def...)...)
+	}
+	claude := dirOf("CLAUDE_CONFIG_DIR", ".claude")
+	codex := dirOf("CODEX_HOME", ".codex")
+	pi := dirOf("PI_CODING_AGENT_DIR", ".pi", "agent")
+	opencode := filepath.Join(dirOf("XDG_CONFIG_HOME", ".config"), "opencode")
+	installed := func(dir string) bool {
+		st, err := os.Stat(dir)
+		return err == nil && st.IsDir()
+	}
+	all := []struct {
+		agent, dir string
+		it         integration
+	}{
+		{"claude", claude, agentHook{"claude", filepath.Join(claude, "settings.json")}},
+		{"codex", codex, agentHook{"codex", filepath.Join(codex, "hooks.json")}},
+		{"pi", pi, agentPlugin{agent: "pi", dir: filepath.Join(pi, "extensions"), files: map[string]string{"kero.ts": "agents/pi.ts"}}},
+		{"opencode", opencode, agentPlugin{agent: "opencode", dir: filepath.Join(opencode, "plugins", "kero"), own: true, files: map[string]string{
+			"package.json": "agents/opencode/package.json", "index.js": "agents/opencode/index.js", "tui.js": "agents/opencode/tui.js",
+		}}},
+	}
+	var out []integration
+	for _, a := range all {
+		switch {
+		case agent == a.agent,
+			a.agent == "claude" && agent == "",
+			a.agent != "claude" && (agent == "" || agent == "agents") && installed(a.dir):
+			out = append(out, a.it)
+		}
 	}
 	return out
 }

@@ -460,7 +460,7 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 			toggle(c.Key("restore"), &s.RestoreSessions, pal)
 		})
 		if s.RestoreSessions {
-			settingRow(c, pal, "Resume agents", "Claude Code and Codex pick up their conversation where it was, once Kero’s skill is set up for them in Agents.", func() {
+			settingRow(c, pal, "Resume agents", "Claude Code, Codex, Pi and OpenCode pick up their conversation where it was, once Kero’s skill is set up for them in Agents.", func() {
 				toggle(c.Key("resume"), &s.ResumeAgents, pal)
 			})
 		}
@@ -798,7 +798,7 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			}
 		})
 	})
-	settingsGroup(c, pal, "Skills for agents", "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells Claude Code and Codex, as they start, which session they’re in.", func() {
+	settingsGroup(c, pal, "Skills for agents", "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells them, as they start, which session they’re in.", func() {
 		for _, st := range cli.SkillStates() {
 			name := map[string]string{"claude": "Claude Code", "agents": "Codex, OpenCode, Pi"}[st.Agent]
 			detail := map[string]string{"current": "Installed", "outdated": "Installed, from an older Kero", "missing": "Not installed"}[st.State] + " · " + proto.ShortDir(st.Dir)

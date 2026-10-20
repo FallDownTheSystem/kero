@@ -123,3 +123,58 @@ func TestHookRefusesBadSettings(t *testing.T) {
 		t.Fatalf("changed: %s", got)
 	}
 }
+
+// Pi's and OpenCode's plugins go in when the agent is installed, run
+// Kero's own kero command, and come out whole.
+func TestAgentPlugins(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("KERO_HOME", filepath.Join(home, "kero"))
+	for _, env := range []string{"CLAUDE_CONFIG_DIR", "CODEX_HOME", "PI_CODING_AGENT_DIR", "XDG_CONFIG_HOME"} {
+		t.Setenv(env, "")
+	}
+	names := func() (out []string) {
+		for _, it := range agentHooks("") {
+			out = append(out, it.name())
+		}
+		return
+	}
+	if got := strings.Join(names(), ","); got != "claude" {
+		t.Fatalf("with no agents installed: %s", got)
+	}
+	os.MkdirAll(filepath.Join(home, ".pi", "agent"), 0o755)
+	os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o755)
+	if got := strings.Join(names(), ","); got != "claude,pi,opencode" {
+		t.Fatalf("with Pi and OpenCode: %s", got)
+	}
+	for _, it := range agentHooks("agents") {
+		if it.state() != "missing" {
+			t.Fatalf("%s: %s before install", it.name(), it.state())
+		}
+		if err := it.install(); err != nil {
+			t.Fatal(err)
+		}
+		if it.state() != "current" {
+			t.Fatalf("%s: %s after install", it.name(), it.state())
+		}
+		p := it.(agentPlugin)
+		for name := range p.files {
+			b := read(t, filepath.Join(p.dir, name))
+			if strings.Contains(b, "__KERO__") || name != "package.json" && !strings.Contains(b, filepath.Join(home, "kero", "bin", "kero")) {
+				t.Fatalf("%s/%s runs no kero:\n%s", it.name(), name, b)
+			}
+		}
+		if err := it.remove(); err != nil {
+			t.Fatal(err)
+		}
+		if it.state() != "missing" {
+			t.Fatalf("%s: %s after remove", it.name(), it.state())
+		}
+	}
+	if _, err := os.Stat(filepath.Join(home, ".config", "opencode", "plugins", "kero")); !os.IsNotExist(err) {
+		t.Fatal("OpenCode's plugin directory stayed")
+	}
+	if _, err := os.Stat(filepath.Join(home, ".pi", "agent", "extensions")); err != nil {
+		t.Fatal("Pi's extensions directory went with Kero's extension")
+	}
+}

@@ -20,7 +20,7 @@ var settingsIndex = []searchEntry{
 	{"general", "New sessions start in", "new-session-directory folder current project home tab"},
 	{"general", "Ask before closing a running program", "confirm-close quit kill"},
 	{"general", "Restore sessions after a restart", "restore-sessions reboot persist"},
-	{"general", "Resume agents", "resume-agents claude codex conversation restore reboot"},
+	{"general", "Resume agents", "resume-agents claude codex pi opencode conversation restore reboot"},
 	{"general", "Open Kero at login", "startup launch login items"},
 	{"general", "Version", "updates check for updates software update about"},
 	{"general", "Check for updates automatically", "updates automatic background daily"},
