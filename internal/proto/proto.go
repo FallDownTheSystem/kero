@@ -22,7 +22,7 @@ import (
 
 // Version changes whenever the protocol does: a client refuses a daemon of
 // another version, which it offers to restart.
-const Version = 3
+const Version = 4
 
 // Hello opens a connection.
 type Hello struct {
@@ -144,6 +144,9 @@ type Pane struct {
 	ProcessDir string `json:"processDir,omitempty"`
 	// Agent names the coding agent running in the foreground, when known.
 	Agent string `json:"agent,omitempty"`
+	// Runtime names the interpreter of a foreground script, as "node",
+	// when Process is the script's name.
+	Runtime string `json:"runtime,omitempty"`
 	// Shell is the name of the pane's shell, as "fish".
 	Shell string `json:"shell,omitempty"`
 

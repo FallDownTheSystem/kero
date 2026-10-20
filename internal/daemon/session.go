@@ -287,7 +287,7 @@ func (s *pane) tick(now time.Time) bool {
 	changed := false
 	pg := s.proc.Foreground()
 	s.fgPGID = pg
-	proc, agent := "", ""
+	proc, agent, runtime := "", "", ""
 	if pg != 0 && pg != s.shellPID {
 		proc = procName(pg)
 		args := procArgs(pg)
@@ -295,6 +295,7 @@ func (s *pane) tick(now time.Time) bool {
 		if proc == "node" || proc == "bun" || proc == "python" || proc == "python3" || proc == "deno" {
 			// A script: name it by the script, as "codex", not "node".
 			if len(args) > 1 {
+				runtime = strings.TrimSuffix(proc, "3")
 				proc = strings.TrimSuffix(filepath.Base(args[1]), filepath.Ext(args[1]))
 			}
 		}
@@ -311,8 +312,8 @@ func (s *pane) tick(now time.Time) bool {
 			s.d.save()
 		}
 	}
-	if proc != s.info.Process || agent != s.info.Agent {
-		s.info.Process, s.info.Agent = proc, agent
+	if proc != s.info.Process || agent != s.info.Agent || runtime != s.info.Runtime {
+		s.info.Process, s.info.Agent, s.info.Runtime = proc, agent, runtime
 		s.seen, s.looked = "", false
 		changed = true
 	}
@@ -577,7 +578,7 @@ func (s *pane) exited(proc *ptyProc) {
 	s.proc = nil
 	s.dropLive()
 	s.info.ExitCode = code
-	s.info.Process, s.info.Agent, s.info.PID = "", "", 0
+	s.info.Process, s.info.Agent, s.info.Runtime, s.info.PID = "", "", "", 0
 	if code == 0 {
 		s.mu.Unlock()
 		s.d.removePane(s.info.ID)
