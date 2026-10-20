@@ -329,26 +329,6 @@ button {
   color: var(--text-3);
 }
 
-.eyebrow--brand {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.eyebrow--brand span:first-child {
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  text-transform: none;
-  font-size: 14px;
-}
-
-.eyebrow__sep {
-  width: 1px;
-  height: 12px;
-  background: currentColor;
-  opacity: 0.6;
-}
-
 /* ---------- Buttons ---------- */
 
 .actions {
@@ -436,10 +416,6 @@ button {
   justify-content: center;
   gap: 24px;
   padding: 72px 48px;
-}
-
-.hero__copy .eyebrow {
-  margin-bottom: 4px;
 }
 
 .hero__copy .actions {

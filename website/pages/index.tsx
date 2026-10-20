@@ -43,11 +43,6 @@ export default function HomePage() {
       {/* Hero */}
       <section class="wrapper hero">
         <div class="hero__copy">
-          <p class="eyebrow eyebrow--brand">
-            <span>Kero</span>
-            <span class="eyebrow__sep" />
-            <span>for coding agents</span>
-          </p>
           <h1 class="display">
             Run your agents.
             <br />
