@@ -263,7 +263,7 @@ func (a *App) event(cl *client.Client, m proto.Message) {
 		}
 		title := n.Title
 		if title == "" {
-			title = s.DisplayName()
+			title = s.DisplayName(a.set.SessionName)
 		}
 		a.showNotification(n.Session, title, n.Body)
 	}
@@ -333,17 +333,17 @@ func (a *App) notify(first bool) {
 		var title, body string
 		switch {
 		case s.Status == proto.Waiting && a.set.NotifyWaiting:
-			title, body = locales.NotifyNeedsYouTitle(s.DisplayName()), s.Message
+			title, body = locales.NotifyNeedsYouTitle(s.DisplayName(a.set.SessionName)), s.Message
 			if body == "" {
 				body = locales.NotifyWaitingBody()
 			}
 		case s.Status == proto.Failed && a.set.NotifyFailed:
-			title, body = locales.NotifyFailedTitle(s.DisplayName()), s.Message
+			title, body = locales.NotifyFailedTitle(s.DisplayName(a.set.SessionName)), s.Message
 			if body == "" {
 				body = locales.NotifyFailedBody(s.PaneName())
 			}
 		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
-			title, body = locales.NotifyDoneTitle(s.DisplayName()), s.Message
+			title, body = locales.NotifyDoneTitle(s.DisplayName(a.set.SessionName)), s.Message
 			if body == "" {
 				body = locales.NotifyDoneBody(s.Agent, proto.ShortDir(s.WorkDir()))
 			}
@@ -372,7 +372,7 @@ func (a *App) updateTitle() {
 	}
 	title := "Kero"
 	if s := a.session(a.selected); s != nil {
-		title = s.DisplayName()
+		title = s.DisplayName(a.set.SessionName)
 	}
 	a.win.SetTitle(title)
 }
@@ -953,7 +953,7 @@ func (a *App) closeSession(id string, ask bool) {
 		return
 	}
 	if ask && a.set.ConfirmClose && busy(s) {
-		name := s.DisplayName()
+		name := s.DisplayName(a.set.SessionName)
 		a.confirm = &confirmation{
 			open:    true,
 			title:   locales.ConfirmCloseTitle(name),
@@ -995,14 +995,14 @@ func (a *App) startRename(id string) {
 	if s == nil {
 		return
 	}
-	a.renaming, a.renamingProject, a.renameBuf, a.renameFrames = id, "", s.DisplayName(), 0
+	a.renaming, a.renamingProject, a.renameBuf, a.renameFrames = id, "", s.DisplayName(a.set.SessionName), 0
 }
 
 func (a *App) commitRename() {
 	id, name := a.renaming, strings.TrimSpace(a.renameBuf)
 	a.renaming = ""
 	s := a.session(id)
-	if s == nil || name == s.DisplayName() {
+	if s == nil || name == s.DisplayName(a.set.SessionName) {
 		a.focusTerminal()
 		return
 	}

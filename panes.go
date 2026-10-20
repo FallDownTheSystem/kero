@@ -373,7 +373,7 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			}
 			title, size := p.PaneName(), float32(13.5)
 			if !multi {
-				title, size = s.DisplayName(), 14
+				title, size = s.DisplayName(a.set.SessionName), 14
 			}
 			name := ui.Text(c, title).FontSize(size).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").Shrink(1).MinWidth(30)
 			if multi && !focused && !dragging {
