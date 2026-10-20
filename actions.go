@@ -10,6 +10,8 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 // run runs one of the app's actions, from a menu, the palette or
@@ -81,7 +83,7 @@ func (a *App) run(id string, args map[string]string) {
 func (a *App) item(id string) *mygo.MenuItem {
 	act, _ := actions.Find(id)
 	return &mygo.MenuItem{
-		Label:       act.Title,
+		Label:       actionTitle(id),
 		Accelerator: a.accelerator(act),
 		Click: func(*mygo.MenuItem, *mygo.Window) {
 			// Closing is the window's in front: Settings closes itself.
@@ -92,6 +94,48 @@ func (a *App) item(id string) *mygo.MenuItem {
 			a.update(func() { a.run(id, nil) })
 		},
 	}
+}
+
+// actionTitles are the actions' titles in the language the app shows;
+// an Action's Title stays English, for `kero actions`.
+var actionTitles = map[string]func() string{
+	"settings.open":     locales.ActionSettings,
+	"cli.install":       locales.ActionInstallCli,
+	"app.quitAll":       locales.ActionQuitAll,
+	"session.new":       locales.ActionNewSession,
+	"session.newHome":   locales.ActionNewSessionHome,
+	"project.open":      locales.ActionOpenProject,
+	"palette.open":      locales.ActionGoToSession,
+	"session.attention": locales.ActionJumpToAttention,
+	"session.next":      locales.ActionNextSession,
+	"session.previous":  locales.ActionPreviousSession,
+	"session.rename":    locales.ActionRenameSession,
+	"pane.restart":      locales.ActionRestartPane,
+	"pane.close":        locales.ActionClose,
+	"session.close":     locales.ActionCloseSession,
+	"pane.split.right":  locales.ActionSplitRight,
+	"pane.split.down":   locales.ActionSplitDown,
+	"pane.zoom":         locales.ActionZoomPane,
+	"pane.next":         locales.ActionNextPane,
+	"pane.previous":     locales.ActionPreviousPane,
+	"pane.left":         locales.ActionPaneLeft,
+	"pane.right":        locales.ActionPaneRight,
+	"pane.up":           locales.ActionPaneAbove,
+	"pane.down":         locales.ActionPaneBelow,
+	"sidebar.toggle":    locales.ActionToggleSidebar,
+	"text.bigger":       locales.ActionBigger,
+	"text.smaller":      locales.ActionSmaller,
+	"text.reset":        locales.ActionActualSize,
+}
+
+// actionTitle is an action's title as the menus, the palette and
+// Settings show it.
+func actionTitle(id string) string {
+	if t, ok := actionTitles[id]; ok {
+		return t()
+	}
+	act, _ := actions.Find(id)
+	return act.Title
 }
 
 // accelerator is an action's shortcut in the menus: none while the user
@@ -121,31 +165,31 @@ func (a *App) items(menu string, groups ...[]string) []*mygo.MenuItem {
 func (a *App) menu() *mygo.Menu {
 	appMenu := []*mygo.MenuItem{{Role: mygo.RoleAbout}, updater.MenuItem(), mygo.Separator(), a.item("settings.open"), a.item("cli.install"),
 		mygo.Separator(), {Role: mygo.RoleHide}, {Role: mygo.RoleHideOthers}, {Role: mygo.RoleUnhide}, mygo.Separator(),
-		{Label: "Quit " + mygo.App.Name(), Accelerator: quitKeys, ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
+		{Label: locales.MenuQuitApp(mygo.App.Name()), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 		a.item("app.quitAll")}
 	// The app menu is macOS's: MyGo leaves it out elsewhere, with its items'
 	// shortcuts, so they go in a menu of Kero's there, without macOS's own.
 	kero := &mygo.MenuItem{Role: mygo.RoleAppMenu, Submenu: appMenu}
 	if runtime.GOOS != "darwin" {
 		kero = &mygo.MenuItem{Label: "Kero", Submenu: []*mygo.MenuItem{a.item("settings.open"), a.item("cli.install"), updater.MenuItem(), mygo.Separator(),
-			{Label: "Quit", Accelerator: quitKeys, ToolTip: "Sessions keep running", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
+			{Label: locales.MenuQuit(), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 			a.item("app.quitAll")}}
 	}
 	view := append(a.items("View", []string{"sidebar.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})
 	return mygo.NewMenu([]*mygo.MenuItem{
 		kero,
-		{Label: "Session", Submenu: a.items("Session",
+		{Label: locales.MenuSession(), Submenu: a.items("Session",
 			[]string{"session.new", "session.newHome", "project.open"},
 			[]string{"palette.open", "session.attention", "session.next", "session.previous"},
 			[]string{"session.rename", "pane.restart"},
 			[]string{"pane.close", "session.close"})},
 		{Role: mygo.RoleEditMenu},
-		{Label: "Pane", Submenu: a.items("Pane",
+		{Label: locales.MenuPane(), Submenu: a.items("Pane",
 			[]string{"pane.split.right", "pane.split.down"},
 			[]string{"pane.zoom"},
 			[]string{"pane.next", "pane.previous", "pane.left", "pane.right", "pane.up", "pane.down"})},
-		{Label: "View", Submenu: view},
+		{Label: locales.MenuView(), Submenu: view},
 		{Role: mygo.RoleWindowMenu},
 	})
 }

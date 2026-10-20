@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 // cliLinks are where installCLI puts the kero command, and where Settings
@@ -43,10 +45,10 @@ func (a *App) installCLI() {
 		}
 		a.update(func() {
 			if err != nil {
-				a.toast("Couldn’t install the command line tool")
+				a.toast(locales.CliInstallFailed())
 				return
 			}
-			a.toast("Installed the kero command in " + proto.ShortDir(filepath.Dir(link)))
+			a.toast(locales.CliInstalledIn(proto.ShortDir(filepath.Dir(link))))
 		})
 	}()
 }

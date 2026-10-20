@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
+
+	"kero/locales"
 )
 
 // kero's form controls, as macOS 27 draws its own: a pop-up button, its
@@ -166,7 +167,7 @@ type searchMenu struct {
 // through: typing filters them, the arrows move, Return chooses and
 // Escape closes. With custom set, a query no option is offers itself, as
 // custom labels it: "Use “%s”". choose gets the choice.
-func (a *App) searchPopup(c *ui.Context, key, value string, options []string, width float32, custom string, pal *palette, choose func(string)) {
+func (a *App) searchPopup(c *ui.Context, key, value string, options []string, width float32, custom func(string) string, pal *palette, choose func(string)) {
 	if a.ss.menus == nil {
 		a.ss.menus = map[string]*searchMenu{}
 	}
@@ -192,7 +193,7 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		// open: a backdrop under it takes the wheel, so the page does not
 		// scroll, and a press, which closes the menu and goes no further.
 		ui.Overlay(c, func() {
-			back := ui.ButtonBase(c.Key(key + "-back")).Absolute().Left(0).Top(0).Right(0).Bottom(0).Label("Close the menu")
+			back := ui.ButtonBase(c.Key(key + "-back")).Absolute().Left(0).Top(0).Right(0).Bottom(0).Label(locales.CloseTheMenu())
 			if back.Clicked() {
 				m.open = false
 			}
@@ -219,9 +220,9 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 			exact = exact || strings.ToLower(o) == q
 		}
 		labels := slices.Clone(shown)
-		if custom != "" && q != "" && !exact {
+		if custom != nil && q != "" && !exact {
 			shown = append(shown, strings.TrimSpace(m.query))
-			labels = append(labels, fmt.Sprintf(custom, strings.TrimSpace(m.query)))
+			labels = append(labels, custom(strings.TrimSpace(m.query)))
 		}
 		m.hi = min(max(m.hi, 0), max(len(shown)-1, 0))
 		pick := func(i int) {
@@ -239,7 +240,7 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		frame.Children(func() {
 			ui.Icon(c, searchIcon).Size(12, 12).TextColor(pal.textFaint).Shrink(0)
 			in = ui.TextInputBase(c.Key("q"), &m.query).AutoFocus().Grow(1).MinWidth(0).FontSize(13).
-				Placeholder("Search").Label("Search")
+				Placeholder(locales.CommonSearch()).Label(locales.CommonSearch())
 		})
 		field(c, frame, in.Focused(), pal)
 		in.OnChange(func() { m.hi, m.reveal = 0, true })
@@ -247,7 +248,7 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		in.OnShortcut(0, ui.KeyUp, func() { m.hi, m.reveal = max(m.hi-1, 0), true })
 		in.OnSubmit(func() { pick(m.hi) })
 		if len(shown) == 0 {
-			ui.Text(c, "No Results").FontSize(13).TextColor(pal.textFaint).Padding(6, 12)
+			ui.Text(c, locales.CommonNoResults()).FontSize(13).TextColor(pal.textFaint).Padding(6, 12)
 			return
 		}
 		reveal := m.reveal

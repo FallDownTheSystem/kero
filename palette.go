@@ -10,6 +10,8 @@ import (
 	"kero/internal/actions"
 
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 // paletteState is the command palette's: a field that finds sessions and
@@ -55,17 +57,17 @@ func (a *App) paletteItems() []paletteItem {
 	var cmds []paletteItem
 	for _, act := range actions.All {
 		id := act.ID
-		cmds = append(cmds, paletteItem{title: strings.TrimSuffix(act.Title, "…"), keys: actions.Glyphs(actions.Keys(act, a.set.Shortcuts)),
+		cmds = append(cmds, paletteItem{title: strings.TrimSuffix(actionTitle(act.ID), "…"), keys: actions.Glyphs(actions.Keys(act, a.set.Shortcuts)),
 			run: func() { a.run(id, nil) }})
 	}
 	for _, page := range settingsPages {
 		id := page.id
-		cmds = append(cmds, paletteItem{title: "Settings: " + page.title, run: func() { a.openSettings(id) }})
+		cmds = append(cmds, paletteItem{title: locales.PaletteSettingsPage(page.title()), run: func() { a.openSettings(id) }})
 	}
-	cmds = append(cmds, paletteItem{title: "Restart Background Service", detail: "Sessions start again where they were", run: a.restartDaemon})
+	cmds = append(cmds, paletteItem{title: locales.PaletteRestartService(), detail: locales.PaletteRestartServiceDetail(), run: a.restartDaemon})
 	for _, p := range a.st.Projects {
 		id := p.ID
-		cmds = append(cmds, paletteItem{title: "New Session in " + p.Name, detail: proto.ShortDir(p.Dir), run: func() { a.newSession(id) }})
+		cmds = append(cmds, paletteItem{title: locales.NewSessionIn(p.Name), detail: proto.ShortDir(p.Dir), run: func() { a.newSession(id) }})
 	}
 	return append(items, cmds...)
 }
@@ -127,10 +129,10 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 	ui.DialogBase(c.Key("palette"), &a.pal.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay).Justify(ui.Start).Padding(84, 0, 0, 0)
 		floating(panel.Width(600).MaxHeight(460).Radius(14).Background(pal.popover), pal).Clip().
-			Label("Go to Session")
+			Label(locales.PaletteLabel())
 		ui.Row(c).Height(50).Shrink(0).Padding(0, 16).Gap(10).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, searchIcon).Size(16, 16).TextColor(pal.textMuted)
-			in := ui.TextInputBase(c.Key("q"), &a.pal.query).Grow(1).FontSize(15).Placeholder("Go to session or run a command…").AutoFocus()
+			in := ui.TextInputBase(c.Key("q"), &a.pal.query).Grow(1).FontSize(15).Placeholder(locales.PalettePlaceholder()).AutoFocus()
 			if in.Changed() {
 				a.pal.index = 0
 			}
@@ -147,13 +149,13 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 		list := ui.Scroll(c.Key("results")).Grow(1).MinHeight(0).Padding(6).TrackScroll(&a.pal.scroll)
 		list.Children(func() {
 			if len(items) == 0 {
-				ui.Text(c, "No matches").FontSize(13).TextColor(pal.textFaint).Padding(12, 12)
+				ui.Text(c, locales.PaletteNoMatches()).FontSize(13).TextColor(pal.textFaint).Padding(12, 12)
 			}
 			lastKind := true
 			for i, it := range items {
 				isSession := it.session != nil
 				if i > 0 && isSession != lastKind && a.pal.query == "" {
-					ui.Text(c, "Commands").FontSize(11.5).FontWeight(600).TextColor(pal.textFaint).Padding(10, 10, 4, 10)
+					ui.Text(c, locales.PaletteCommands()).FontSize(11.5).FontWeight(600).TextColor(pal.textFaint).Padding(10, 10, 4, 10)
 				}
 				lastKind = isSession
 				row := ui.Row(c.Key(i)).Height(38).Padding(0, 10).Gap(10).AlignItems(ui.Center).Radius(8)
@@ -202,7 +204,7 @@ func (a *App) confirmView(c *ui.Context, pal *palette) {
 		ui.Text(c, cf.title).FontSize(15).FontWeight(650).TextColor(pal.text)
 		ui.Text(c, cf.detail).FontSize(13).TextColor(pal.textMuted).LineHeight(1.4)
 		ui.Row(c).Gap(8).Justify(ui.End).Margin(14, 0, 0, 0).Children(func() {
-			if button(c, "cancel", "Cancel", "esc", false, pal) {
+			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				cf.open = false
 			}
 			if button(c, "ok", cf.action, "↩", true, pal) || c.Shortcut(0, ui.KeyEnter) {
@@ -242,7 +244,7 @@ func (a *App) shortcuts(c *ui.Context) {
 	}
 	if a.copyText != "" {
 		c.WriteClipboard(a.copyText)
-		c.Toast("Copied")
+		c.Toast(locales.ToastCopied())
 		a.copyText = ""
 	}
 }

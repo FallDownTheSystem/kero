@@ -10,6 +10,8 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 const (
@@ -223,8 +225,8 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 		if runtime.GOOS == "darwin" {
 			ui.Spacer(c)
 		}
-		iconButton(c, "hide-sidebar", sidebarIcon, a.tip("Hide Sidebar", "sidebar.toggle"), pal, a.toggleSidebar)
-		iconButton(c, "new-session", plusIcon, a.tip("New Session", "session.new"), pal, func() { a.newSession("") })
+		iconButton(c, "hide-sidebar", sidebarIcon, a.tip(locales.SidebarHide(), "sidebar.toggle"), pal, a.toggleSidebar)
+		iconButton(c, "new-session", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
 	})
 	ui.Scroll(c.Key("sessions")).Grow(1).Padding(0, 10, 16, 10).Children(func() {
 		if !a.loaded {
@@ -235,7 +237,7 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 			a.groupView(c, pal, g, gi, &n)
 		}
 		if len(a.st.Sessions) == 0 && a.conn == connReady {
-			ui.Text(c, "No sessions").FontSize(12.5).TextColor(pal.textFaint).Padding(8, 10)
+			ui.Text(c, locales.SidebarNoSessions()).FontSize(12.5).TextColor(pal.textFaint).Padding(8, 10)
 		}
 	})
 	a.sidebarFooter(c, pal)
@@ -262,24 +264,24 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 	}
 	pointerTooltip(c, hdr, "tip-project-"+id, proto.ShortDir(g.project.Dir))
 	hdr.ContextMenu(func(m *ui.Menu) {
-		if m.Item("New Session").Chosen() {
+		if m.Item(locales.ActionNewSession()).Chosen() {
 			a.newSession(id)
 		}
-		label := "Collapse"
+		label := locales.SidebarCollapse()
 		if collapsed {
-			label = "Expand"
+			label = locales.SidebarExpand()
 		}
 		if m.Item(label).Chosen() {
 			a.toggleProject(id)
 		}
 		m.Separator()
-		if m.Item("Close Project…").Disabled(id == "").Chosen() {
+		if m.Item(locales.SidebarCloseProjectMenu()).Disabled(id == "").Chosen() {
 			name, count := g.project.Name, len(g.sessions)
 			a.confirm = &confirmation{
 				open:    true,
-				title:   fmt.Sprintf("Close “%s”?", name),
-				detail:  fmt.Sprintf("This ends its %d sessions, with what runs in them.", count),
-				action:  "Close Project",
+				title:   locales.ConfirmCloseTitle(name),
+				detail:  locales.ConfirmCloseProjectDetail(count),
+				action:  locales.SidebarCloseProject(),
 				destroy: true,
 				run:     func() { a.call("project.close", proto.IDParams{ID: id}, nil) },
 			}
@@ -293,10 +295,10 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 		chev.Rotate(turn).Opacity(chev.Animate("shown", b2f(hovered || collapsed), 120*time.Millisecond))
 		ui.Spacer(c)
 		if needs > 0 {
-			ui.Textf(c, "%d needs you", needs).FontSize(12.5).FontWeight(500).TextColor(pal.attention).SingleLine()
+			ui.Text(c, locales.SidebarNeedsYou(needs)).FontSize(12.5).FontWeight(500).TextColor(pal.attention).SingleLine()
 		}
 		if hovered {
-			b := ui.ButtonBase(c.Key("add")).Size(20, 20).Radius(5).Center().TextColor(pal.textMuted).Label("New Session in " + g.project.Name).Tooltip("New Session")
+			b := ui.ButtonBase(c.Key("add")).Size(20, 20).Radius(5).Center().TextColor(pal.textMuted).Label(locales.NewSessionIn(g.project.Name)).Tooltip(locales.ActionNewSession())
 			if b.Hovered() {
 				b.Background(pal.rowHover).TextColor(pal.text)
 			}
@@ -381,7 +383,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 		if cmd && index <= 9 {
 			ui.Text(c, actions.Glyphs(fmt.Sprintf("CmdOrCtrl+%d", index))).FontSize(12).TextColor(pal.textMuted).FontFeatures("tnum").SingleLine()
 		} else {
-			ui.Text(c, proto.Ago(s.Since, c.Now())).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum").SingleLine()
+			ui.Text(c, ago(s.Since, c.Now())).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum").SingleLine()
 		}
 		statusIconP(c, pal, s.Status, s.Unread, s.Progress, 15)
 	})
@@ -400,20 +402,20 @@ func (a *App) renameStarted(c *ui.Context) bool {
 
 func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	id := s.ID
-	if a.menuShortcut(m.Item("Rename"), "session.rename").Chosen() {
+	if a.menuShortcut(m.Item(locales.SessionRename()), "session.rename").Chosen() {
 		a.startRename(id)
 	}
 	if s.Status == proto.Exited {
-		if m.Item("Restart").Chosen() {
+		if m.Item(locales.CommonRestart()).Chosen() {
 			a.restartSession(id)
 		}
 	}
 	if s.Unread {
-		if m.Item("Mark as Read").Chosen() {
+		if m.Item(locales.SessionMarkRead()).Chosen() {
 			a.call("view", proto.ViewParams{ID: id}, func(error) { a.viewSent = nil; a.reportView() })
 		}
 	}
-	m.Submenu("Move to Project", func(m *ui.Menu) {
+	m.Submenu(locales.SessionMoveToProject(), func(m *ui.Menu) {
 		for _, p := range a.st.Projects {
 			if m.Item(p.Name).Checked(p.ID == s.Project).Disabled(p.ID == s.Project).Chosen() {
 				pid := p.ID
@@ -422,17 +424,17 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 		}
 	})
 	m.Separator()
-	if m.Item("Copy Session ID").Chosen() {
+	if m.Item(locales.SessionCopyId()).Chosen() {
 		a.copyText = id
 	}
-	if m.Item("Copy Directory").Disabled(s.Dir == "").Chosen() {
+	if m.Item(locales.SessionCopyDirectory()).Disabled(s.Dir == "").Chosen() {
 		a.copyText = s.Dir
 	}
-	if m.Item("Reveal in " + fileManager).Disabled(s.Dir == "").Chosen() {
+	if m.Item(locales.SessionRevealIn(fileManager())).Disabled(s.Dir == "").Chosen() {
 		a.openLink(id, s.Dir)
 	}
 	m.Separator()
-	if a.menuShortcut(m.Item("Close Session"), "session.close").Chosen() {
+	if a.menuShortcut(m.Item(locales.ActionCloseSession()), "session.close").Chosen() {
 		a.defer_(func() { a.closeSession(id, true) })
 	}
 }
@@ -444,9 +446,9 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 // none.
 func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 	ui.Row(c).Height(36).Shrink(0).Padding(0, 12, 4, 12).Gap(2).AlignItems(ui.Center).DragWindow().Children(func() {
-		iconButton(c, "open-project", folderIcon, a.tip("Open Project…", "project.open"), pal, a.openProject)
-		iconButton(c, "palette", searchIcon, a.tip("Go to Session…", "palette.open"), pal, a.openPalette)
-		iconButton(c, "settings", gearIcon, a.tip("Settings", "settings.open"), pal, func() { a.openSettings("") })
+		iconButton(c, "open-project", folderIcon, a.tip(locales.ActionOpenProject(), "project.open"), pal, a.openProject)
+		iconButton(c, "palette", searchIcon, a.tip(locales.ActionGoToSession(), "palette.open"), pal, a.openPalette)
+		iconButton(c, "settings", gearIcon, a.tip(locales.SettingsTitle(), "settings.open"), pal, func() { a.openSettings("") })
 		ui.Spacer(c)
 		switch a.conn {
 		case connReady:
@@ -456,13 +458,13 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 			waiting := func(s *proto.Session) bool { return s.Status == proto.Waiting }
 			working := func(s *proto.Session) bool { return s.Status == proto.Working }
 			done := func(s *proto.Session) bool { return s.Status == proto.Idle && s.Unread }
-			a.footerChip(c, pal, proto.Waiting, false, waiting, pal.attention, "%d session needs you", "%d sessions need you", a.tip("Go to it", "session.attention"), a.jumpToAttention)
-			a.footerChip(c, pal, proto.Working, false, working, pal.textMuted, "%d session working", "%d sessions working", "Go to it", nil)
-			a.footerChip(c, pal, proto.Idle, true, done, pal.textMuted, "%d session done, unseen", "%d sessions done, unseen", "Go to it", nil)
+			a.footerChip(c, pal, proto.Waiting, false, waiting, pal.attention, locales.FooterNeedsYou, a.tip(locales.FooterGoToIt(), "session.attention"), a.jumpToAttention)
+			a.footerChip(c, pal, proto.Working, false, working, pal.textMuted, locales.FooterWorking, locales.FooterGoToIt(), nil)
+			a.footerChip(c, pal, proto.Idle, true, done, pal.textMuted, locales.FooterDone, locales.FooterGoToIt(), nil)
 		case connConnecting:
-			a.footerNote(c, pal, pal.textFaint, "Connecting…")
+			a.footerNote(c, pal, pal.textFaint, locales.StatusConnecting())
 		default:
-			a.footerNote(c, pal, pal.danger, "Disconnected")
+			a.footerNote(c, pal, pal.danger, locales.StatusDisconnected())
 		}
 	})
 }
@@ -471,7 +473,7 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 // icon and the count, in fg; a click goes to the next of them, by jump,
 // or else after the one shown. one and many word its label and tooltip,
 // as "%d session needs you". It shows nothing while none is.
-func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bool, is func(*proto.Session) bool, fg ui.Color, one, many, hint string, jump func()) {
+func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bool, is func(*proto.Session) bool, fg ui.Color, say func(int) string, hint string, jump func()) {
 	n := 0
 	for i := range a.st.Sessions {
 		if is(&a.st.Sessions[i]) {
@@ -481,10 +483,7 @@ func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bo
 	if n == 0 {
 		return
 	}
-	words := fmt.Sprintf(many, n)
-	if n == 1 {
-		words = fmt.Sprintf(one, n)
-	}
+	words := say(n)
 	b := ui.ButtonBase(c.Key("chip-"+string(st))).Height(24).Padding(0, 8, 0, 6).Gap(5).Radius(12).AlignItems(ui.Center).
 		Label(words).Tooltip(words + " · " + hint)
 	if b.Hovered() {
@@ -506,13 +505,13 @@ func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bo
 // runs another.
 func (a *App) restartChip(c *ui.Context, pal *palette) {
 	b := ui.ButtonBase(c.Key("chip-restart")).Height(24).Padding(0, 8, 0, 8).Gap(6).Radius(12).AlignItems(ui.Center).
-		Label("Restart Service").Tooltip("Kero was updated: restart the background service to run the new version")
+		Label(locales.CommonRestartService()).Tooltip(locales.UpdateRestartTip())
 	if b.Hovered() {
 		b.Background(pal.rowHover)
 	}
 	b.Children(func() {
 		ui.Box(c).Size(6, 6).Radius(3).Background(pal.attention)
-		ui.Text(c, "Restart Service").FontSize(12).FontWeight(500).TextColor(pal.attention).SingleLine()
+		ui.Text(c, locales.CommonRestartService()).FontSize(12).FontWeight(500).TextColor(pal.attention).SingleLine()
 	})
 	if b.Clicked() {
 		a.offerRestart()
@@ -524,8 +523,28 @@ func (a *App) footerNote(c *ui.Context, pal *palette, dot ui.Color, label string
 	ui.Row(c).Gap(7).Padding(0, 6).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Size(6, 6).Radius(3).Background(dot)
 		ui.Text(c, label).FontSize(12).TextColor(pal.textFaint).SingleLine().
-			Tooltip("Sessions run in kerod, in the background: they keep running when you quit kero.")
+			Tooltip(locales.FooterServiceTip())
 	})
+}
+
+// ago is how long ago a time in Unix milliseconds was, shortly, as
+// proto.Ago writes it, in the language the app shows.
+func ago(ms int64, now time.Time) string {
+	if ms == 0 {
+		return ""
+	}
+	d := now.Sub(time.UnixMilli(ms))
+	switch {
+	case d < time.Minute:
+		return locales.AgoNow()
+	case d < time.Hour:
+		return locales.AgoMinutes(int(d / time.Minute))
+	case d < 24*time.Hour:
+		return locales.AgoHours(int(d / time.Hour))
+	case d < 7*24*time.Hour:
+		return locales.AgoDays(int(d / (24 * time.Hour)))
+	}
+	return locales.AgoWeeks(int(d / (7 * 24 * time.Hour)))
 }
 
 // statusIcon draws a session's status, as the sidebar shows it: a ring
@@ -541,15 +560,15 @@ func statusIconP(c *ui.Context, pal *palette, st proto.Status, unread bool, prog
 	box := ui.Box(c).Size(size, size).Shrink(0)
 	switch {
 	case st == proto.Working:
-		box.Label("Working")
+		box.Label(locales.StatusWorking())
 	case st == proto.Waiting:
-		box.Label("Needs you")
+		box.Label(locales.StatusNeedsYou())
 	case st == proto.Exited:
-		box.Label("Exited")
+		box.Label(locales.StatusExited())
 	case st == proto.Failed:
-		box.Label("Failed")
+		box.Label(locales.StatusFailed())
 	case unread:
-		box.Label("Done")
+		box.Label(locales.StatusDone())
 	}
 	box.Draw(func(p *ui.Painter, r ui.Rect) {
 		cx, cy := r.X+r.W/2, r.Y+r.H/2
@@ -637,8 +656,8 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 		ui.Row(c).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, left).DragWindow().Children(func() {
 			if shown < 0.5 {
 				ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-					iconButton(c, "show-sidebar", sidebarIcon, a.tip("Show Sidebar", "sidebar.toggle"), pal, a.toggleSidebar)
-					iconButton(c, "new-session-2", plusIcon, a.tip("New Session", "session.new"), pal, func() { a.newSession("") })
+					iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
+					iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
 				})
 			}
 			ui.Text(c, "Kero").FontSize(14).FontWeight(600).TextColor(pal.text)
@@ -648,14 +667,12 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 		ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 			switch {
 			case a.conn == connVersion:
-				a.message(c, pal, "Kero was updated",
-					"The background service that runs your sessions is from another version. Restart it: your sessions start again where they were, with their history.",
-					"Restart Service", a.restartDaemon)
+				a.message(c, pal, locales.UpdatedTitle(), locales.UpdatedDetail(), locales.CommonRestartService(), a.restartDaemon)
 			case a.conn == connFailed && a.cl == nil:
-				a.message(c, pal, "Can’t reach kerod", a.connErr, "Try Again", func() { a.retries = 0; a.conn = connConnecting; a.connect() })
+				a.message(c, pal, locales.ConnCantReach(), a.connErr, locales.CommonTryAgain(), func() { a.retries = 0; a.conn = connConnecting; a.connect() })
 			case !a.loaded:
 				ui.Column(c).Fill().Center().Children(func() {
-					ui.Spinner(c).Label("Connecting")
+					ui.Spinner(c).Label(locales.StatusConnectingLabel())
 				})
 			default:
 				a.emptyState(c, pal)
@@ -682,19 +699,19 @@ func (a *App) emptyState(c *ui.Context, pal *palette) {
 		ui.Box(c).Size(52, 52).Radius(14).Center().Background(pal.chip).TextColor(pal.textMuted).Margin(0, 0, 18, 0).Children(func() {
 			ui.Icon(c, terminalIcon).Size(26, 26)
 		})
-		ui.Text(c, "Start a session").FontSize(19).FontWeight(650).TextColor(pal.text)
-		ui.Text(c, "Sessions keep running in the background — quit Kero and come back to everything just as you left it.").
+		ui.Text(c, locales.EmptyTitle()).FontSize(19).FontWeight(650).TextColor(pal.text)
+		ui.Text(c, locales.EmptyDetail()).
 			FontSize(13.5).TextColor(pal.textMuted).MaxWidth(380).TextAlign(ui.Center).LineHeight(1.45).Margin(8, 0, 22, 0)
 		ui.Row(c).Gap(10).Children(func() {
-			if button(c, "empty-new", "New Session", a.keys("session.new"), true, pal) {
+			if button(c, "empty-new", locales.ActionNewSession(), a.keys("session.new"), true, pal) {
 				a.newSession("")
 			}
-			if button(c, "empty-open", "Open Project…", a.keys("project.open"), false, pal) {
+			if button(c, "empty-open", locales.ActionOpenProject(), a.keys("project.open"), false, pal) {
 				a.openProject()
 			}
 		})
 		ui.Column(c).Margin(40, 0, 0, 0).Padding(14, 16).Gap(6).Radius(10).Background(pal.chip).MaxWidth(420).Children(func() {
-			ui.Text(c, "For agents").FontSize(11.5).FontWeight(600).TextColor(pal.textMuted)
+			ui.Text(c, locales.EmptyForAgents()).FontSize(11.5).FontWeight(600).TextColor(pal.textMuted)
 			ui.Text(c, "kero new -n review -- claude\nkero prompt review \"run the tests and fix them\"\nkero wait review && kero read review").
 				Font("monospace").FontSize(12).TextColor(pal.text).LineHeight(1.5).Selectable()
 		})

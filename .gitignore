@@ -3,3 +3,4 @@
 mygo_windows_*.syso
 node_modules/
 .DS_Store
+/kero

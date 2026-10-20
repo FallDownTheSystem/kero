@@ -6,19 +6,21 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+
+	"kero/locales"
 )
 
 // fileManager is the system's file manager, as buttons that show a file
 // in it name it.
-var fileManager = func() string {
+func fileManager() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "Finder"
+		return locales.FileManagerFinder()
 	case "windows":
-		return "File Explorer"
+		return locales.FileManagerExplorer()
 	}
-	return "Files"
-}()
+	return locales.FileManagerFiles()
+}
 
 // openPath opens a file or folder in the app that opens it.
 func openPath(path string) { mygo.Shell.OpenPath(path) }
@@ -79,13 +81,13 @@ func windowControls(c *ui.Context, pal *palette, w *mygo.Window) {
 		return
 	}
 	ui.Row(c.Key("window-controls")).Gap(2).AlignItems(ui.Center).Shrink(0).Margin(0, 0, 0, 6).Children(func() {
-		iconButton(c, "minimize", minimizeIcon, "Minimize", pal, w.Minimize)
+		iconButton(c, "minimize", minimizeIcon, locales.WindowMinimize(), pal, w.Minimize)
 		// The system's maximize button for the pointer, which brings
 		// Windows 11's snap layouts as it rests there: no tooltip over them.
 		maximized := w.IsMaximized()
-		label, svg := "Maximize", maximizeIcon
+		label, svg := locales.WindowMaximize(), maximizeIcon
 		if maximized {
-			label, svg = "Restore Down", restoreIcon
+			label, svg = locales.WindowRestore(), restoreIcon
 		}
 		m := ui.ButtonBase(c.Key("maximize")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(label).MaximizeButton()
 		if m.Pressed() {
@@ -101,7 +103,7 @@ func windowControls(c *ui.Context, pal *palette, w *mygo.Window) {
 				w.Maximize()
 			}
 		}
-		b := ui.ButtonBase(c.Key("close-window")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label("Close").Tooltip("Close")
+		b := ui.ButtonBase(c.Key("close-window")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.CommonClose()).Tooltip(locales.CommonClose())
 		if b.Hovered() || b.Pressed() {
 			b.Background(pal.danger).TextColor(ui.RGB(255, 255, 255))
 		}

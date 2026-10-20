@@ -8,6 +8,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 const paneGap = 8 // between panes, where the divider is
@@ -273,7 +275,7 @@ func (a *App) dropPreview(c *ui.Context, pal *palette, target string, zone dropZ
 		zoneSwap:  {0, 0, 100, 100},
 	}[zone]
 	label, glyph := map[dropZone]string{
-		zoneLeft: "Split Left", zoneRight: "Split Right", zoneUp: "Split Up", zoneDown: "Split Down", zoneSwap: "Swap Panes",
+		zoneLeft: locales.PaneSplitLeft(), zoneRight: locales.ActionSplitRight(), zoneUp: locales.PaneSplitUp(), zoneDown: locales.ActionSplitDown(), zoneSwap: locales.PaneSwap(),
 	}[zone], splitRightIcon
 	if zone == zoneUp || zone == zoneDown {
 		glyph = splitDownIcon
@@ -343,15 +345,15 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 	h.Children(func() {
 		if top && left && shown < 0.5 {
 			ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-				iconButton(c, "show-sidebar", sidebarIcon, a.tip("Show Sidebar", "sidebar.toggle"), pal, a.toggleSidebar)
-				iconButton(c, "new-session-2", plusIcon, a.tip("New Session", "session.new"), pal, func() { a.newSession("") })
+				iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
+				iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
 			})
 		}
 		// The title is the pane's handle: dragged, it takes the pane to
 		// another place in the session.
 		grip := ui.Row(c.Key("grip")).Gap(8).AlignItems(ui.Center).Shrink(1).MinWidth(0).Height(28).Padding(0, 8).Margin(0, 0, 0, -8).Radius(8)
 		if multi {
-			grip.Drag(paneDrag{s.ID, p.ID}).Tooltip("Drag to move this pane")
+			grip.Drag(paneDrag{s.ID, p.ID}).Tooltip(locales.PaneDragTip())
 			dragging = grip.Dragging()
 			switch {
 			case dragging:
@@ -400,17 +402,17 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			if !show {
 				return
 			}
-			iconButton(c, "split-r", splitRightIcon, a.tip("Split Right", "pane.split.right"), pal, func() { a.splitPane(s, p.ID, "right") })
-			iconButton(c, "split-d", splitDownIcon, a.tip("Split Down", "pane.split.down"), pal, func() { a.splitPane(s, p.ID, "down") })
+			iconButton(c, "split-r", splitRightIcon, a.tip(locales.ActionSplitRight(), "pane.split.right"), pal, func() { a.splitPane(s, p.ID, "right") })
+			iconButton(c, "split-d", splitDownIcon, a.tip(locales.ActionSplitDown(), "pane.split.down"), pal, func() { a.splitPane(s, p.ID, "down") })
 			if multi {
 				sid, pid := s.ID, p.ID
 				zoom := func() { a.defer_(func() { a.zoomPane(a.session(sid), pid) }) }
 				if s.Zoomed == p.ID {
-					iconButton(c, "zoom", unzoomIcon, a.tip("Show All Panes", "pane.zoom"), pal, zoom)
+					iconButton(c, "zoom", unzoomIcon, a.tip(locales.PaneShowAll(), "pane.zoom"), pal, zoom)
 				} else {
-					iconButton(c, "zoom", zoomIcon, a.tip("Zoom Pane", "pane.zoom"), pal, zoom)
+					iconButton(c, "zoom", zoomIcon, a.tip(locales.ActionZoomPane(), "pane.zoom"), pal, zoom)
 				}
-				iconButton(c, "close", closeIcon, a.tip("Close Pane", "pane.close"), pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
+				iconButton(c, "close", closeIcon, a.tip(locales.PaneClose(), "pane.close"), pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
 			}
 		})
 		if top && right {
@@ -425,10 +427,10 @@ func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
 	case proto.Waiting:
 		msg := p.Message
 		if msg == "" {
-			msg = map[string]string{"permission": "Needs your permission", "question": "Has a question", "auth": "Needs you to sign in"}[p.Kind]
+			msg = map[string]string{"permission": locales.PaneNeedsPermission(), "question": locales.PaneHasQuestion(), "auth": locales.PaneNeedsSignIn()}[p.Kind]
 		}
 		if msg == "" {
-			msg = "Needs you"
+			msg = locales.StatusNeedsYou()
 		}
 		chip(c, pal, pal.attnSoft, pal.attention, func() {
 			statusIcon(c, pal, p.Status, p.Unread, 11)
@@ -437,7 +439,7 @@ func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
 	case proto.Working:
 		chip(c, pal, pal.chip, pal.textMuted, func() {
 			statusIconP(c, pal, p.Status, false, p.Progress, 11)
-			label := proto.Ago(p.Since, c.Now())
+			label := ago(p.Since, c.Now())
 			if p.Progress >= 0 {
 				label = itoa(p.Progress) + "%"
 			}
@@ -451,15 +453,15 @@ func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
 			statusIcon(c, pal, p.Status, true, 11)
 			msg := p.Message
 			if msg == "" {
-				msg = "Failed"
+				msg = locales.StatusFailed()
 			}
 			ui.Text(c, msg).FontSize(12).FontWeight(500).SingleLine().Ellipsis("…").MaxWidth(320)
 		})
 	case proto.Exited:
 		chip(c, pal, pal.danger.Alpha(0.1), pal.danger, func() {
-			ui.Text(c, "Exited "+itoa(p.ExitCode)).FontSize(12).FontWeight(500).SingleLine()
+			ui.Text(c, locales.PaneExited(itoa(p.ExitCode))).FontSize(12).FontWeight(500).SingleLine()
 		})
-		if button(c, "restart-"+p.ID, "Restart", "", false, pal) {
+		if button(c, "restart-"+p.ID, locales.CommonRestart(), "", false, pal) {
 			a.restartSession(p.ID)
 		}
 	case proto.Idle:
@@ -473,7 +475,7 @@ func (a *App) paneChips(c *ui.Context, pal *palette, p *proto.Pane) {
 	if p.Process != "" && p.Status != proto.Exited {
 		chip(c, pal, pal.chip, pal.textMuted, func() {
 			ui.Text(c, p.Process).FontSize(12).SingleLine()
-		}).Tooltip("Running in the foreground")
+		}).Tooltip(locales.PaneForegroundTip())
 	}
 }
 
@@ -495,7 +497,7 @@ func (a *App) paneTerminal(c *ui.Context, pal *palette, s *proto.Session, p *pro
 				a.setFocus(s, p.ID)
 			}
 		case e != nil && e.err != "":
-			a.message(c, pal, "Can’t show this pane", e.err, "Try Again", func() {
+			a.message(c, pal, locales.PaneCantShow(), e.err, locales.CommonTryAgain(), func() {
 				a.dropTerm(p.ID)
 				a.ensureTerm(p.ID)
 			})
@@ -503,7 +505,7 @@ func (a *App) paneTerminal(c *ui.Context, pal *palette, s *proto.Session, p *pro
 			// Attaching takes a moment for a long scrollback: a spinner
 			// only once it is a noticeable one.
 			if e != nil && time.Since(e.started) > 250*time.Millisecond {
-				ui.Column(c).Fill().Center().Children(func() { ui.Spinner(c).Label("Attaching") })
+				ui.Column(c).Fill().Center().Children(func() { ui.Spinner(c).Label(locales.PaneAttaching()) })
 			} else {
 				c.After(260 * time.Millisecond)
 			}
@@ -580,9 +582,9 @@ func (a *App) closePane(s *proto.Session, pane string, ask bool) {
 		sid := s.ID
 		a.confirm = &confirmation{
 			open:    true,
-			title:   "Close this pane?",
-			detail:  p.Process + " is still running in it. Closing the pane ends it.",
-			action:  "Close Pane",
+			title:   locales.ConfirmClosePaneTitle(),
+			detail:  locales.ConfirmClosePaneDetail(p.Process),
+			action:  locales.PaneClose(),
 			destroy: true,
 			run: func() {
 				if s := a.session(sid); s != nil {

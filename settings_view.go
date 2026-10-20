@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/plugins/updater"
@@ -23,23 +24,26 @@ import (
 	"kero/internal/proto"
 	"kero/internal/settings"
 	"kero/internal/shell"
+
+	"kero/locales"
 )
 
 // settingsPage is a page of the Settings window.
 type settingsPage struct {
-	id, title string
-	icon      *ui.SVG
+	id    string
+	title func() string
+	icon  *ui.SVG
 }
 
 var settingsPages = []settingsPage{
-	{"general", "General", glyph("f7-gear-alt")},
-	{"appearance", "Appearance", glyph("f7-paintbrush")},
-	{"terminal", "Terminal", terminalIcon},
-	{"shell", "Shell", glyph("f7-chevron-left-slash-chevron-right")},
-	{"notifications", "Notifications", glyph("f7-bell")},
-	{"keyboard", "Keyboard", glyph("f7-keyboard")},
-	{"agents", "Agents", glyph("f7-sparkles")},
-	{"advanced", "Advanced", glyph("f7-slider-horizontal-3")},
+	{"general", locales.PageGeneral, glyph("f7-gear-alt")},
+	{"appearance", locales.PageAppearance, glyph("f7-paintbrush")},
+	{"terminal", locales.PageTerminal, terminalIcon},
+	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right")},
+	{"notifications", locales.PageNotifications, glyph("f7-bell")},
+	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard")},
+	{"agents", locales.PageAgents, glyph("f7-sparkles")},
+	{"advanced", locales.PageAdvanced, glyph("f7-slider-horizontal-3")},
 }
 
 // settingsState is what the Settings window keeps besides the settings.
@@ -91,7 +95,7 @@ func (a *App) openSettings(page string) {
 	a.refreshAgents()
 	a.refreshService()
 	a.setWin = mygo.NewWindow(framed(mygo.WindowOptions{
-		Title: "Settings", Width: 820, Height: 620, MinWidth: 700, MinHeight: 480,
+		Title: locales.SettingsTitle(), Width: 820, Height: 620, MinWidth: 700, MinHeight: 480,
 		StateKey: "settings",
 		Vibrancy: vibrancyFor(a.set),
 		Content:  ui.View(a.settingsView),
@@ -129,7 +133,7 @@ func (a *App) refreshAgents() {
 // refreshService asks kerod how it is, off the main thread.
 func (a *App) refreshService() {
 	go func() {
-		line := "Not running"
+		line := locales.SvcNotRunning()
 		if c, err := client.Connect(true); err == nil {
 			var st proto.State
 			c.Call("state", nil, &st)
@@ -138,9 +142,9 @@ func (a *App) refreshService() {
 				panes += len(s.Panes)
 			}
 			up := time.Since(time.UnixMilli(c.Welcome.Started)).Round(time.Minute)
-			line = fmt.Sprintf("Running (pid %d) for %s · %d sessions, %d panes", c.Welcome.PID, durationWords(up), len(st.Sessions), panes)
+			line = locales.SvcRunning(strconv.Itoa(c.Welcome.PID), durationWords(up), len(st.Sessions), panes)
 			if c.Welcome.App != mygo.App.Version() {
-				line += " · still an earlier Kero: restart it to update"
+				line += locales.SvcStale()
 			}
 			c.Close()
 		}
@@ -156,13 +160,13 @@ func (a *App) refreshService() {
 func durationWords(d time.Duration) string {
 	switch {
 	case d < time.Minute:
-		return "under a minute"
+		return locales.DurUnderMinute()
 	case d < time.Hour:
-		return fmt.Sprintf("%d min", int(d.Minutes()))
+		return locales.DurMinutes(int(d.Minutes()))
 	case d < 48*time.Hour:
-		return fmt.Sprintf("%.0f h", d.Hours())
+		return locales.DurHours(int(math.Round(d.Hours())))
 	}
-	return fmt.Sprintf("%d days", int(d.Hours()/24))
+	return locales.DurDays(int(d.Hours() / 24))
 }
 
 func (a *App) settingsView(c *ui.Context) {
@@ -192,10 +196,10 @@ func (a *App) settingsView(c *ui.Context) {
 				}
 			}
 			if found != nil && len(found) == 0 {
-				ui.Text(c, "No Results").FontSize(13).TextColor(pal.textFaint).Padding(8, 10)
+				ui.Text(c, locales.CommonNoResults()).FontSize(13).TextColor(pal.textFaint).Padding(8, 10)
 			}
 			ui.Spacer(c)
-			link := ui.ButtonBase(c.Key("open-config")).Padding(6, 10).Gap(6).Radius(7).AlignItems(ui.Center).Label("Open the config file")
+			link := ui.ButtonBase(c.Key("open-config")).Padding(6, 10).Gap(6).Radius(7).AlignItems(ui.Center).Label(locales.SettingsOpenConfigLabel())
 			fg := pal.textMuted
 			if link.Hovered() {
 				fg = pal.text
@@ -203,7 +207,7 @@ func (a *App) settingsView(c *ui.Context) {
 			}
 			link.TextColor(fg).Tooltip(proto.ShortDir(settings.Path())).Children(func() {
 				ui.Icon(c, glyph("f7-chevron-left-slash-chevron-right")).Size(13, 13)
-				ui.Text(c, "Open config file").FontSize(12.5).SingleLine()
+				ui.Text(c, locales.SettingsOpenConfig()).FontSize(12.5).SingleLine()
 			})
 			if link.Clicked() {
 				a.openConfig()
@@ -260,7 +264,7 @@ func (a *App) settingsView(c *ui.Context) {
 						Material(glass.ScrollEdge{Hard: true, Background: pal.card})
 					edge.Opacity(edge.Animate("on", b2f(edgeOn), 160*time.Millisecond))
 					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).AlignItems(ui.Center).Padding(0, 10, 0, 24).DragWindow().Children(func() {
-						ui.Text(c, page.title).FontSize(15).FontWeight(650).TextColor(pal.text)
+						ui.Text(c, page.title()).FontSize(15).FontWeight(650).TextColor(pal.text)
 						ui.Spacer(c)
 						windowControls(c, pal, a.setWin)
 					})
@@ -315,10 +319,10 @@ func (a *App) settingsSearch(c *ui.Context, pal *palette) {
 	frame.Children(func() {
 		ui.Icon(c, searchIcon).Size(13, 13).TextColor(pal.textFaint).Shrink(0)
 		in = ui.TextInputBase(c.Key("in"), &a.ss.query).Bind(&a.ss.searchRef).Grow(1).MinWidth(0).FontSize(13).
-			Placeholder("Search").Label("Search settings")
+			Placeholder(locales.CommonSearch()).Label(locales.SettingsSearchLabel())
 		in.OnShortcut(0, ui.KeyEscape, func() { a.ss.query = "" })
 		if a.ss.query != "" {
-			x := ui.ButtonBase(c.Key("clear")).Size(16, 16).Radius(8).Center().Shrink(0).Label("Clear the search").
+			x := ui.ButtonBase(c.Key("clear")).Size(16, 16).Radius(8).Center().Shrink(0).Label(locales.SettingsClearSearch()).
 				Background(pal.textFaint.Alpha(0.55)).TextColor(pal.card)
 			if x.Hovered() {
 				x.Background(pal.textMuted)
@@ -357,7 +361,7 @@ func (a *App) settingsNav(c *ui.Context, pal *palette, p settingsPage) {
 		if sel {
 			ic.TextColor(pal.accent)
 		}
-		ui.Text(c, p.title).FontSize(13.5).TextColor(pal.text).SingleLine()
+		ui.Text(c, p.title()).FontSize(13.5).TextColor(pal.text).SingleLine()
 	})
 }
 
@@ -449,28 +453,28 @@ func segmented(c *ui.Context, key string, value *string, ids, labels []string) {
 
 func (a *App) generalPage(c *ui.Context, pal *palette) {
 	s := &a.set
-	settingsGroup(c, pal, "Sessions", "Sessions keep running in the background when Kero quits; "+a.tip("Quit and End All Sessions", "app.quitAll")+" ends them.", func() {
-		settingRow(c, pal, "New sessions start in", "", func() {
-			segmented(c, "newdir", &s.NewSessionDir, []string{"current", "project", "home"}, []string{"Current Folder", "Project", "Home"})
+	settingsGroup(c, pal, locales.SetSessions(), locales.SetSessionsDetail(a.tip(strings.TrimSuffix(actionTitle("app.quitAll"), "…"), "app.quitAll")), func() {
+		settingRow(c, pal, locales.SetNewSessionsStartIn(), "", func() {
+			segmented(c, "newdir", &s.NewSessionDir, []string{"current", "project", "home"}, []string{locales.SetDirCurrent(), locales.SetDirProject(), locales.SetDirHome()})
 		})
-		settingRow(c, pal, "Ask before closing a running program", "When a pane or session you close has a program other than the shell running.", func() {
+		settingRow(c, pal, locales.SetAskBeforeClosing(), locales.SetAskBeforeClosingDetail(), func() {
 			toggle(c.Key("confirm"), &s.ConfirmClose, pal)
 		})
-		settingRow(c, pal, "Restore sessions after a restart", "If the background service stops, as when the Mac restarts, sessions start again in their folders, under their history.", func() {
+		settingRow(c, pal, locales.SetRestoreSessions(), locales.SetRestoreSessionsDetail(), func() {
 			toggle(c.Key("restore"), &s.RestoreSessions, pal)
 		})
 		if s.RestoreSessions {
-			settingRow(c, pal, "Resume agents", "Claude Code, Codex, Pi and OpenCode pick up their conversation where it was, once Kero’s skill is set up for them in Agents.", func() {
+			settingRow(c, pal, locales.SetResumeAgents(), locales.SetResumeAgentsDetail(), func() {
 				toggle(c.Key("resume"), &s.ResumeAgents, pal)
 			})
 		}
 	})
-	settingsGroup(c, pal, "Startup", "", func() {
-		settingRow(c, pal, "Open Kero at login", "", func() {
+	settingsGroup(c, pal, locales.SetStartup(), "", func() {
+		settingRow(c, pal, locales.SetOpenAtLogin(), "", func() {
 			toggle(c.Key("login"), &a.ss.loginOpen, pal).OnChange(func() {
 				if err := mygo.App.SetOpenAtLogin(a.ss.loginOpen); err != nil {
 					a.ss.loginOpen = !a.ss.loginOpen
-					a.ss.toast = "Couldn’t change it: " + err.Error()
+					a.ss.toast = locales.SetLoginFailed(err.Error())
 				}
 			})
 		})
@@ -483,22 +487,22 @@ func (a *App) updatesGroup(c *ui.Context, pal *palette) {
 	version := "Kero " + mygo.App.Version()
 	switch {
 	case !u.enabled:
-		version += " · this copy can’t update itself"
+		version += locales.SetVersionNoUpdate()
 	case u.lastChecked.IsZero():
-		version += " · not checked yet"
+		version += locales.SetVersionNotChecked()
 	default:
-		version += " · last checked " + durationWords(time.Since(u.lastChecked)) + " ago"
+		version += locales.SetVersionLastChecked(durationWords(time.Since(u.lastChecked)))
 	}
-	settingsGroup(c, pal, "Updates", "", func() {
-		settingRow(c, pal, "Version", version, func() {
-			if button(c, "check-updates", "Check for Updates", "", false, pal) {
+	settingsGroup(c, pal, locales.SetUpdates(), "", func() {
+		settingRow(c, pal, locales.SetVersion(), version, func() {
+			if button(c, "check-updates", locales.SetCheckForUpdates(), "", false, pal) {
 				updater.CheckForUpdates()
 			}
 		})
-		settingRow(c, pal, "Check for updates automatically", "Once a day, while Kero is open.", func() {
+		settingRow(c, pal, locales.SetAutoCheck(), locales.SetAutoCheckDetail(), func() {
 			toggle(c.Key("auto-check"), &u.automatic, pal).OnChange(func() { updater.SetAutomaticChecks(u.automatic) })
 		})
-		settingRow(c, pal, "Download and install updates automatically", "They take effect the next time Kero opens.", func() {
+		settingRow(c, pal, locales.SetAutoInstall(), locales.SetAutoInstallDetail(), func() {
 			toggle(c.Key("auto-download"), &u.download, pal).OnChange(func() { updater.SetAutomaticDownloads(u.download) })
 		})
 	})
@@ -507,21 +511,50 @@ func (a *App) updatesGroup(c *ui.Context, pal *palette) {
 func (a *App) appearancePage(c *ui.Context, pal *palette) {
 	s := &a.set
 	settingsGroup(c, pal, "", "", func() {
-		settingRow(c, pal, "Appearance", "", func() {
-			segmented(c, "appearance", &s.Appearance, []string{"system", "light", "dark"}, []string{"System", "Light", "Dark"})
+		settingRow(c, pal, locales.SetAppearance(), "", func() {
+			segmented(c, "appearance", &s.Appearance, []string{"system", "light", "dark"}, []string{locales.SetThemeSystem(), locales.SetThemeLight(), locales.SetThemeDark()})
 		})
-		settingRow(c, pal, "Translucent window", "Let the desktop show through the window’s background.", func() {
+		settingRow(c, pal, locales.SetLanguage(), "", func() {
+			popup(c, "language", &s.Language, append([]string{"system"}, settings.Languages...), languageName, 180, pal)
+		})
+		settingRow(c, pal, locales.SetTranslucent(), locales.SetTranslucentDetail(), func() {
 			toggle(c.Key("vibrancy"), &s.Vibrancy, pal)
 		})
 	})
 	ui.Column(c).Gap(8).Children(func() {
-		groupTitle(c, pal, "Background")
+		groupTitle(c, pal, locales.SetBackground())
 		ui.Row(c).Gap(12).Wrap().Children(func() {
 			for _, b := range settings.Backgrounds {
-				a.backgroundTile(c, pal, b.ID, b.Name)
+				a.backgroundTile(c, pal, b.ID, backgroundName(b.ID, b.Name))
 			}
 		})
 	})
+}
+
+// languageName names a language in itself, as "简体中文", so that whoever
+// reads it finds theirs; "system" in the language the app shows.
+func languageName(tag string) string {
+	if tag == "system" {
+		return locales.SetLanguageSystem()
+	}
+	return i18n.Autonym(tag)
+}
+
+// localeTag is the tag of a language setting for App.SetLocale: "" follows
+// the system's languages.
+func localeTag(language string) string {
+	if language == "system" {
+		return ""
+	}
+	return language
+}
+
+// backgroundName is a wash's name in the language the app shows.
+func backgroundName(id, name string) string {
+	if t, ok := map[string]func() string{"rex": locales.BgPetal, "mist": locales.BgMist, "meadow": locales.BgMeadow, "dusk": locales.BgDusk, "plain": locales.BgPlain}[id]; ok {
+		return t()
+	}
+	return name
 }
 
 // backgroundTile previews a wash, choosing it on a click.
@@ -564,8 +597,8 @@ var fontChoices = []string{"JetBrains Mono Nerd Font", "System", "SF Mono", "Men
 func (a *App) terminalPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	a.terminalPreview(c, pal)
-	settingsGroup(c, pal, "Text", "", func() {
-		settingRow(c, pal, "Font", "JetBrains Mono with Nerd Fonts’ icons comes with Kero. Any installed monospaced font works; names separated by commas are tried in order.", func() {
+	settingsGroup(c, pal, locales.SetText(), "", func() {
+		settingRow(c, pal, locales.SetFont(), locales.SetFontDetail(), func() {
 			// The picker's names for the settings' values: "" is kero's
 			// font, "monospace" the system's.
 			family := s.FontFamily
@@ -573,23 +606,23 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			case "":
 				family = "JetBrains Mono Nerd Font"
 			case "monospace":
-				family = "System"
+				family = locales.SetFontSystem()
 			}
-			opts := fontChoices
+			opts := append([]string{fontChoices[0], locales.SetFontSystem()}, fontChoices[2:]...)
 			if !slices.Contains(opts, family) {
 				opts = append([]string{family}, opts...)
 			}
-			a.searchPopup(c, "font", family, opts, 240, "Use “%s”", pal, func(v string) {
+			a.searchPopup(c, "font", family, opts, 240, locales.SetUseFont, pal, func(v string) {
 				switch v {
 				case "JetBrains Mono Nerd Font":
 					v = ""
-				case "System":
+				case locales.SetFontSystem():
 					v = "monospace"
 				}
 				a.set.FontFamily = v
 			})
 		})
-		settingRow(c, pal, "Size", a.keys("text.bigger")+" and "+a.keys("text.smaller")+" change it too.", func() {
+		settingRow(c, pal, locales.SetSize(), locales.SetSizeDetail(a.keys("text.bigger"), a.keys("text.smaller")), func() {
 			sizes := []float32{10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28}
 			if !slices.Contains(sizes, s.FontSize) {
 				sizes = append(sizes, s.FontSize)
@@ -597,52 +630,52 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			}
 			popup(c, "size", &s.FontSize, sizes, func(v float32) string { return strconv.FormatFloat(float64(v), 'f', -1, 32) + " pt" }, 90, pal)
 		})
-		settingRow(c, pal, "Line height", "", func() {
+		settingRow(c, pal, locales.SetLineHeight(), "", func() {
 			v := float64(s.LineHeight)
 			slider(c, "lh", &v, 1, 2, 160, pal).OnChange(func() { a.set.LineHeight = float32(int(v*100+0.5)) / 100 })
 			ui.Textf(c, "%.2f×", s.LineHeight).FontSize(12.5).TextColor(pal.textMuted).Width(40).FontFeatures("tnum")
 		})
-		settingRow(c, pal, "Weight", "", func() {
+		settingRow(c, pal, locales.SetWeight(), "", func() {
 			popup(c, "weight", &s.FontWeight, []int{300, 400, 500, 600}, func(w int) string {
-				return map[int]string{300: "Light", 400: "Regular", 500: "Medium", 600: "Semibold"}[w]
+				return map[int]string{300: locales.SetWeightLight(), 400: locales.SetWeightRegular(), 500: locales.SetWeightMedium(), 600: locales.SetWeightSemibold()}[w]
 			}, 140, pal)
 		})
-		settingRow(c, pal, "Ligatures", "Join characters as the font draws them, as => and !=.", func() {
+		settingRow(c, pal, locales.SetLigatures(), locales.SetLigaturesDetail(), func() {
 			toggle(c.Key("liga"), &s.Ligatures, pal)
 		})
-		settingRow(c, pal, "Thicken text", "A heavier stroke, as Ghostty’s font-thicken.", func() {
+		settingRow(c, pal, locales.SetThicken(), locales.SetThickenDetail(), func() {
 			toggle(c.Key("thicken"), &s.Thicken, pal)
 		})
 	})
 	themes := append([]string{"kero"}, terminal.GhosttyThemes()...)
-	settingsGroup(c, pal, "Colors", "Ghostty’s themes, and your own in ~/.config/ghostty/themes.", func() {
-		settingRow(c, pal, "Light windows", "", func() {
-			a.searchPopup(c, "light", s.LightTheme, themes, 240, "", pal, func(v string) { a.set.LightTheme = v })
+	settingsGroup(c, pal, locales.SetColors(), locales.SetColorsDetail(), func() {
+		settingRow(c, pal, locales.SetLightWindows(), "", func() {
+			a.searchPopup(c, "light", s.LightTheme, themes, 240, nil, pal, func(v string) { a.set.LightTheme = v })
 		})
-		settingRow(c, pal, "Dark windows", "", func() {
-			a.searchPopup(c, "dark", s.DarkTheme, themes, 240, "", pal, func(v string) { a.set.DarkTheme = v })
+		settingRow(c, pal, locales.SetDarkWindows(), "", func() {
+			a.searchPopup(c, "dark", s.DarkTheme, themes, 240, nil, pal, func(v string) { a.set.DarkTheme = v })
 		})
 	})
-	settingsGroup(c, pal, "Cursor", "", func() {
-		settingRow(c, pal, "Shape", "Programs may change it.", func() {
-			segmented(c, "cursor", &s.Cursor, []string{"block", "bar", "underline"}, []string{"Block", "Bar", "Underline"})
+	settingsGroup(c, pal, locales.SetCursor(), "", func() {
+		settingRow(c, pal, locales.SetShape(), locales.SetShapeDetail(), func() {
+			segmented(c, "cursor", &s.Cursor, []string{"block", "bar", "underline"}, []string{locales.SetCursorBlock(), locales.SetCursorBar(), locales.SetCursorUnderline()})
 		})
-		settingRow(c, pal, "Blink", "", func() { toggle(c.Key("blink"), &s.CursorBlink, pal) })
+		settingRow(c, pal, locales.SetBlink(), "", func() { toggle(c.Key("blink"), &s.CursorBlink, pal) })
 	})
-	settingsGroup(c, pal, "Input", "", func() {
-		settingRow(c, pal, "Option is Meta", "Option sends Alt to programs, as for Emacs and readline, instead of typing accents.", func() {
+	settingsGroup(c, pal, locales.SetInput(), "", func() {
+		settingRow(c, pal, locales.SetOptionMeta(), locales.SetOptionMetaDetail(), func() {
 			toggle(c.Key("optalt"), &s.OptionAsAlt, pal)
 		})
-		settingRow(c, pal, "Copy on select", "What you select goes to the clipboard.", func() {
+		settingRow(c, pal, locales.SetCopyOnSelect(), locales.SetCopyOnSelectDetail(), func() {
 			toggle(c.Key("cos"), &s.CopyOnSelect, pal)
 		})
-		settingRow(c, pal, "Right click", "", func() {
+		settingRow(c, pal, locales.SetRightClick(), "", func() {
 			popup(c, "rc", &s.RightClick, []string{"menu", "paste", "copyOrPaste"}, func(id string) string {
-				return map[string]string{"menu": "Shows a menu", "paste": "Pastes", "copyOrPaste": "Copies, or pastes"}[id]
+				return map[string]string{"menu": locales.SetRightClickMenu(), "paste": locales.SetRightClickPaste(), "copyOrPaste": locales.SetRightClickCopyOrPaste()}[id]
 			}, 170, pal)
 		})
-		settingRow(c, pal, "Programs reading the clipboard", "As with OSC 52: agents asking for what you copied.", func() {
-			segmented(c, "clip", &s.Clipboard, []string{"ask", "allow", "deny"}, []string{"Ask", "Allow", "Deny"})
+		settingRow(c, pal, locales.SetClipboardRead(), locales.SetClipboardReadDetail(), func() {
+			segmented(c, "clip", &s.Clipboard, []string{"ask", "allow", "deny"}, []string{locales.SetAsk(), locales.SetAllow(), locales.SetDeny()})
 		})
 	})
 }
@@ -684,8 +717,8 @@ func (a *App) terminalPreview(c *ui.Context, pal *palette) {
 func (a *App) shellPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	login := shell.Login()
-	settingsGroup(c, pal, "Shell", "Changes apply to panes started after them.", func() {
-		settingRow(c, pal, "Shell", "Empty: your login shell, "+proto.ShortDir(login)+".", func() {
+	settingsGroup(c, pal, locales.SetShellGroup(), locales.SetShellGroupDetail(), func() {
+		settingRow(c, pal, locales.SetShell(), locales.SetShellDetail(proto.ShortDir(login)), func() {
 			if !a.ss.shellEditing {
 				a.ss.shellDraft = s.Shell
 			}
@@ -697,27 +730,27 @@ func (a *App) shellPage(c *ui.Context, pal *palette) {
 				a.set.Shell = strings.TrimSpace(a.ss.shellDraft)
 			}
 		})
-		settingRow(c, pal, "Scrollback", "How much output each pane keeps, also while no window shows it.", func() {
+		settingRow(c, pal, locales.SetScrollback(), locales.SetScrollbackDetail(), func() {
 			sizes := []int{0, 1, 4, 16, 64}
 			if !slices.Contains(sizes, s.Scrollback) {
 				sizes = append(sizes, s.Scrollback)
 			}
 			popup(c, "sb", &s.Scrollback, sizes, func(mb int) string {
 				if mb == 0 {
-					return "None"
+					return locales.CommonNone()
 				}
 				return strconv.Itoa(mb) + " MB"
 			}, 130, pal)
 		})
 	})
-	settingsGroup(c, pal, "Environment", "Added to every pane’s, over what kero sets (TERM, KERO_SESSION…).", func() {
+	settingsGroup(c, pal, locales.SetEnvironment(), locales.SetEnvironmentDetail(), func() {
 		for i, kv := range s.Env {
 			k, v, _ := strings.Cut(kv, "=")
 			ui.Row(c.Key("env"+strconv.Itoa(i))).Padding(8, 0).Gap(10).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, k).Font("monospace").FontSize(12.5).FontWeight(600).TextColor(pal.text)
 				ui.Text(c, v).Font("monospace").FontSize(12.5).TextColor(pal.textMuted).Grow(1).SingleLine().Ellipsis("…").MinWidth(0)
 				idx := i
-				iconButton(c, "rm", closeIcon, "Remove", pal, func() {
+				iconButton(c, "rm", closeIcon, locales.CommonRemove(), pal, func() {
 					a.set.Env = slices.Delete(slices.Clone(a.set.Env), idx, idx+1)
 				})
 			})
@@ -730,7 +763,7 @@ func (a *App) shellPage(c *ui.Context, pal *palette) {
 				}
 			}
 			textField(c, "env-new", &a.ss.envDraft, "NAME=value", 0, pal).Font("monospace").OnSubmit(addEnv)
-			if button(c, "env-add", "Add", "", false, pal) {
+			if button(c, "env-add", locales.CommonAdd(), "", false, pal) {
 				addEnv()
 			}
 		})
@@ -741,30 +774,30 @@ func (a *App) notificationsPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	note := ""
 	if !mygo.NotificationsSupported() {
-		note = "This build can’t post notifications: macOS shows those of packaged apps only."
+		note = locales.SetNotifyUnpackaged()
 	}
-	settingsGroup(c, pal, "Notify me when", note, func() {
-		settingRow(c, pal, "A session needs me", "A program asks something, rings the bell, or reports it is blocked.", func() {
+	settingsGroup(c, pal, locales.SetNotifyWhen(), note, func() {
+		settingRow(c, pal, locales.SetNotifyWaiting(), locales.SetNotifyWaitingDetail(), func() {
 			toggle(c.Key("nw"), &s.NotifyWaiting, pal)
 		})
-		settingRow(c, pal, "An agent finishes", "While you look at another session, or another app.", func() {
+		settingRow(c, pal, locales.SetNotifyDone(), locales.SetNotifyDoneDetail(), func() {
 			toggle(c.Key("nd"), &s.NotifyDone, pal)
 		})
-		settingRow(c, pal, "A program fails", "One that reports an error (OSC 7501).", func() {
+		settingRow(c, pal, locales.SetNotifyFailed(), locales.SetNotifyFailedDetail(), func() {
 			toggle(c.Key("nf"), &s.NotifyFailed, pal)
 		})
 	})
-	settingsGroup(c, pal, "How", "", func() {
-		settingRow(c, pal, "Play a sound", "", func() { toggle(c.Key("ns"), &s.NotifySound, pal) })
-		settingRow(c, pal, "Badge the Dock icon", "With the number of sessions that need you.", func() { toggle(c.Key("nb"), &s.DockBadge, pal) })
-		settingRow(c, pal, "Bounce the Dock icon", "Once, when a session comes to need you.", func() { toggle(c.Key("nbo"), &s.BounceDock, pal) })
+	settingsGroup(c, pal, locales.SetHow(), "", func() {
+		settingRow(c, pal, locales.SetPlaySound(), "", func() { toggle(c.Key("ns"), &s.NotifySound, pal) })
+		settingRow(c, pal, locales.SetDockBadge(), locales.SetDockBadgeDetail(), func() { toggle(c.Key("nb"), &s.DockBadge, pal) })
+		settingRow(c, pal, locales.SetDockBounce(), locales.SetDockBounceDetail(), func() { toggle(c.Key("nbo"), &s.BounceDock, pal) })
 	})
-	if button(c, "test-notif", "Send a Test Notification", "", false, pal) {
-		n := mygo.NewNotification(mygo.NotificationOptions{Title: "Kero", Body: "Notifications work.", Silent: !s.NotifySound})
+	if button(c, "test-notif", locales.SetTestNotification(), "", false, pal) {
+		n := mygo.NewNotification(mygo.NotificationOptions{Title: "Kero", Body: locales.SetTestNotificationBody(), Silent: !s.NotifySound})
 		go func() {
 			if err := n.Show(); err != nil {
 				a.update(func() {
-					a.ss.toast = "Couldn’t notify: " + err.Error()
+					a.ss.toast = locales.SetNotifyError(err.Error())
 					if a.setWin != nil {
 						a.setWin.Invalidate()
 					}
@@ -776,21 +809,21 @@ func (a *App) notificationsPage(c *ui.Context, pal *palette) {
 
 func (a *App) agentsPage(c *ui.Context, pal *palette) {
 	s := &a.set
-	settingsGroup(c, pal, "Remote Control", "", func() {
-		settingRow(c, pal, "Let commands drive this window", "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette.", func() {
+	settingsGroup(c, pal, locales.SetRemoteControl(), "", func() {
+		settingRow(c, pal, locales.SetRemoteControlRow(), locales.SetRemoteControlDetail(), func() {
 			toggle(c.Key("remote"), &s.RemoteControl, pal)
 		})
 	})
 	codeBlock(c, pal, "kero do pane.split.down\nkero do session.attention\nkero actions        # what kero do runs")
-	settingsGroup(c, pal, "Command line tool", "Inside Kero, every pane has the kero command on its PATH already.", func() {
-		detail := "Not installed: other terminals don’t know the kero command."
+	settingsGroup(c, pal, locales.SetCli(), locales.SetCliDetail(), func() {
+		detail := locales.SetCliNotInstalled()
 		if a.ss.cliPath != "" {
 			detail = a.ss.cliPath
 		}
-		settingRow(c, pal, "kero in your terminal", detail, func() {
-			label := "Install"
+		settingRow(c, pal, locales.SetCliRow(), detail, func() {
+			label := locales.CommonInstall()
 			if a.ss.cliPath != "" {
-				label = "Reinstall"
+				label = locales.CommonReinstall()
 			}
 			if button(c, "cli", label, "", a.ss.cliPath == "", pal) {
 				a.installCLI()
@@ -798,21 +831,21 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			}
 		})
 	})
-	settingsGroup(c, pal, "Skills for agents", "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells them, as they start, which session they’re in.", func() {
+	settingsGroup(c, pal, locales.SetSkills(), locales.SetSkillsDetail(), func() {
 		for _, st := range cli.SkillStates() {
 			name := map[string]string{"claude": "Claude Code", "agents": "Codex, OpenCode, Pi"}[st.Agent]
-			detail := map[string]string{"current": "Installed", "outdated": "Installed, from an older Kero", "missing": "Not installed"}[st.State] + " · " + proto.ShortDir(st.Dir)
+			detail := map[string]string{"current": locales.SetSkillInstalled(), "outdated": locales.SetSkillOutdated(), "missing": locales.SetSkillMissing()}[st.State] + " · " + proto.ShortDir(st.Dir)
 			settingRow(c, pal, name, detail, func() {
 				agent := st.Agent
-				if st.State != "missing" && button(c, "rm-"+agent, "Remove", "", false, pal) {
+				if st.State != "missing" && button(c, "rm-"+agent, locales.CommonRemove(), "", false, pal) {
 					if err := cli.RemoveSkill(agent); err != nil {
 						a.toastIn(c, err.Error())
 					}
 				}
 				if st.State != "current" {
-					label := "Install"
+					label := locales.CommonInstall()
 					if st.State == "outdated" {
-						label = "Update"
+						label = locales.CommonUpdate()
 					}
 					if button(c, "in-"+agent, label, "", true, pal) {
 						if err := cli.InstallSkill(agent); err != nil {
@@ -823,7 +856,7 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			})
 		}
 	})
-	settingsGroup(c, pal, "Program status", "Programs report what they do with OSC 7501, Superlogical’s program status protocol: the sidebar shows it, and notifies you.", nil)
+	settingsGroup(c, pal, locales.SetProgramStatus(), locales.SetProgramStatusDetail(), nil)
 	codeBlock(c, pal, "kero report working \"Deploying\" --progress 40\nkero report blocked \"Approve the migration?\" --kind permission\nkero report done \"Deployed\"")
 }
 
@@ -833,13 +866,13 @@ func codeBlock(c *ui.Context, pal *palette, code string) {
 }
 
 func (a *App) advancedPage(c *ui.Context, pal *palette) {
-	settingsGroup(c, pal, "Configuration", "Every setting here is a line of this file, as Ghostty’s: edit it in any editor, and what you save applies at once. kero config show lists every key.", func() {
-		settingRow(c, pal, "Config file", proto.ShortDir(settings.Path()), func() {
-			if button(c, "reveal-config", "Show in "+fileManager, "", false, pal) {
+	settingsGroup(c, pal, locales.SetConfiguration(), locales.SetConfigurationDetail(), func() {
+		settingRow(c, pal, locales.SetConfigFile(), proto.ShortDir(settings.Path()), func() {
+			if button(c, "reveal-config", locales.CommonShowIn(fileManager()), "", false, pal) {
 				a.ensureConfig()
 				revealPath(settings.Path())
 			}
-			if button(c, "edit-config", "Open", "", true, pal) {
+			if button(c, "edit-config", locales.CommonOpen(), "", true, pal) {
 				a.openConfig()
 			}
 		})
@@ -850,13 +883,13 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 			})
 		}
 	})
-	settingsGroup(c, pal, "Background service", "kerod runs your sessions: quitting kero leaves it running.", func() {
+	settingsGroup(c, pal, locales.SetBackgroundService(), locales.SetBackgroundServiceDetail(), func() {
 		settingRow(c, pal, "kerod", a.ss.service, func() {
-			if button(c, "svc-restart", "Restart", "", false, pal) {
+			if button(c, "svc-restart", locales.CommonRestart(), "", false, pal) {
 				a.confirm = &confirmation{
-					open: true, title: "Restart the background service?",
-					detail: "Every pane’s program ends; the shells start again in their folders, under their history.",
-					action: "Restart", destroy: true,
+					open: true, title: locales.ConfirmRestartServiceTitle(),
+					detail: locales.RestartServiceDetail(),
+					action: locales.CommonRestart(), destroy: true,
 					run: func() { a.restartDaemon(); time.AfterFunc(2*time.Second, func() { a.update(a.refreshService) }) },
 				}
 				if a.win != nil {
@@ -864,22 +897,22 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 				}
 			}
 		})
-		settingRow(c, pal, "Log", proto.ShortDir(filepath.Join(proto.Dir(), "kerod.log")), func() {
-			if button(c, "log", "Show", "", false, pal) {
+		settingRow(c, pal, locales.SetLog(), proto.ShortDir(filepath.Join(proto.Dir(), "kerod.log")), func() {
+			if button(c, "log", locales.CommonShow(), "", false, pal) {
 				revealPath(filepath.Join(proto.Dir(), "kerod.log"))
 			}
 		})
 	})
-	settingsGroup(c, pal, "Data", "Settings, sessions and their scrollback.", func() {
-		settingRow(c, pal, "Folder", proto.ShortDir(proto.Dir()), func() {
-			if button(c, "reveal", "Show in "+fileManager, "", false, pal) {
+	settingsGroup(c, pal, locales.SetData(), locales.SetDataDetail(), func() {
+		settingRow(c, pal, locales.SetFolder(), proto.ShortDir(proto.Dir()), func() {
+			if button(c, "reveal", locales.CommonShowIn(fileManager()), "", false, pal) {
 				openPath(proto.Dir())
 			}
 		})
-		settingRow(c, pal, "Reset all settings", "Back to how Kero comes, shortcuts included.", func() {
-			if button(c, "reset", "Reset…", "", false, pal) {
+		settingRow(c, pal, locales.SetReset(), locales.SetResetDetail(), func() {
+			if button(c, "reset", locales.SetResetButton(), "", false, pal) {
 				a.confirm = &confirmation{
-					open: true, title: "Reset all settings?", detail: "Your sessions stay.", action: "Reset", destroy: true,
+					open: true, title: locales.SetResetTitle(), detail: locales.SetResetConfirmDetail(), action: locales.SetResetAction(), destroy: true,
 					run: func() { a.applySettings(settings.Default()) },
 				}
 				if a.win != nil {
@@ -911,8 +944,8 @@ func (a *App) toastIn(c *ui.Context, msg string) { c.Toast(msg) }
 
 func (a *App) keyboardPage(c *ui.Context, pal *palette) {
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-		textField(c, "kb-search", &a.ss.filter, "Search actions or shortcuts", 0, pal)
-		if len(a.set.Shortcuts) > 0 && button(c, "kb-reset", "Restore Defaults", "", false, pal) {
+		textField(c, "kb-search", &a.ss.filter, locales.SetKeyboardSearch(), 0, pal)
+		if len(a.set.Shortcuts) > 0 && button(c, "kb-reset", locales.SetRestoreDefaults(), "", false, pal) {
 			a.set.Shortcuts = nil
 			a.ss.notice = ""
 		}
@@ -926,9 +959,9 @@ func (a *App) keyboardPage(c *ui.Context, pal *palette) {
 		var acts []actions.Action
 		for _, act := range actions.All {
 			keys := actions.Glyphs(actions.Keys(act, a.set.Shortcuts))
-			found := q == "" || strings.Contains(strings.ToLower(act.Title), q) || strings.Contains(strings.ToLower(keys), q) || strings.Contains(act.ID, q)
+			found := q == "" || strings.Contains(strings.ToLower(actionTitle(act.ID)), q) || strings.Contains(strings.ToLower(act.Title), q) || strings.Contains(strings.ToLower(keys), q) || strings.Contains(act.ID, q)
 			if searchHits != nil {
-				found = found && searchHits[strings.TrimSuffix(act.Title, "…")]
+				found = found && searchHits[strings.TrimSuffix(actionTitle(act.ID), "…")]
 			}
 			if act.Menu == menu && found {
 				acts = append(acts, act)
@@ -937,26 +970,23 @@ func (a *App) keyboardPage(c *ui.Context, pal *palette) {
 		if len(acts) == 0 {
 			continue
 		}
-		title := menu
-		if menu == "Kero" {
-			title = "App"
-		}
+		title := map[string]func() string{"Kero": locales.MenuApp, "Session": locales.MenuSession, "Pane": locales.MenuPane, "View": locales.MenuView}[menu]()
 		settingsGroup(c, pal, title, "", func() {
 			for _, act := range acts {
 				a.shortcutRow(c, pal, act)
 			}
 		})
 	}
-	ui.Text(c, "Click a shortcut, then type the new one. Delete removes it; Escape keeps it.").FontSize(12).TextColor(pal.textFaint).Padding(0, 4)
+	ui.Text(c, locales.SetKeyboardHelp()).FontSize(12).TextColor(pal.textFaint).Padding(0, 4)
 }
 
 func (a *App) shortcutRow(c *ui.Context, pal *palette, act actions.Action) {
 	keys := actions.Keys(act, a.set.Shortcuts)
 	_, custom := a.set.Shortcuts[act.ID]
 	ui.Row(c.Key(act.ID)).Padding(7, 0).Gap(10).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, strings.TrimSuffix(act.Title, "…")).FontSize(13.5).TextColor(pal.text).Grow(1).SingleLine()
+		ui.Text(c, strings.TrimSuffix(actionTitle(act.ID), "…")).FontSize(13.5).TextColor(pal.text).Grow(1).SingleLine()
 		if custom && keys != act.Keys {
-			b := ui.ButtonBase(c.Key("undo")).Size(22, 22).Radius(6).Center().TextColor(pal.textFaint).Label("Use the default, " + actions.Glyphs(act.Keys)).Tooltip("Default: " + actions.Glyphs(act.Keys))
+			b := ui.ButtonBase(c.Key("undo")).Size(22, 22).Radius(6).Center().TextColor(pal.textFaint).Label(locales.SetUseDefault(actions.Glyphs(act.Keys))).Tooltip(locales.SetDefaultKeys(actions.Glyphs(act.Keys)))
 			if b.Hovered() {
 				b.Background(pal.rowHover).TextColor(pal.text)
 			}
@@ -969,7 +999,7 @@ func (a *App) shortcutRow(c *ui.Context, pal *palette, act actions.Action) {
 			}
 		}
 		recording := a.ss.recording == act.ID
-		chip := ui.ButtonBase(c.Key("keys")).Height(26).MinWidth(84).Padding(0, 10).Radius(7).Center().Label("Shortcut for " + act.Title)
+		chip := ui.ButtonBase(c.Key("keys")).Height(26).MinWidth(84).Padding(0, 10).Radius(7).Center().Label(locales.SetShortcutFor(strings.TrimSuffix(actionTitle(act.ID), "…")))
 		bg := pal.control
 		switch {
 		case recording:
@@ -997,9 +1027,9 @@ func (a *App) shortcutRow(c *ui.Context, pal *palette, act actions.Action) {
 		chip.Children(func() {
 			switch {
 			case recording:
-				ui.Text(c, "Type a shortcut").FontSize(12.5).TextColor(pal.accent).SingleLine()
+				ui.Text(c, locales.SetTypeShortcut()).FontSize(12.5).TextColor(pal.accent).SingleLine()
 			case keys == "":
-				ui.Text(c, "None").FontSize(12.5).TextColor(pal.textFaint).SingleLine()
+				ui.Text(c, locales.CommonNone()).FontSize(12.5).TextColor(pal.textFaint).SingleLine()
 			default:
 				ui.Text(c, actions.Glyphs(keys)).FontSize(13).TextColor(pal.text).SingleLine().FontFeatures("tnum")
 			}
@@ -1022,12 +1052,12 @@ func (a *App) setRecording(id string) {
 }
 
 // shortcutNeeds tells what a shortcut needs, typed without it.
-var shortcutNeeds = func() string {
+func shortcutNeeds() string {
 	if runtime.GOOS == "darwin" {
-		return "A shortcut needs ⌘, ⌃ or ⌥, unless it is a function key."
+		return locales.SetShortcutNeedsMac()
 	}
-	return "A shortcut needs Ctrl or Alt, unless it is a function key."
-}()
+	return locales.SetShortcutNeedsPc()
+}
 
 // recordKey takes a key typed for a shortcut, reporting whether it took it.
 func (a *App) recordKey(act actions.Action, mods ui.Modifiers, key ui.Key) bool {
@@ -1045,7 +1075,7 @@ func (a *App) recordKey(act actions.Action, mods ui.Modifiers, key ui.Key) bool 
 		return false // a modifier alone, or a key menus can't take
 	}
 	if mods&(ui.Super|ui.Ctrl|ui.Alt) == 0 && !strings.HasPrefix(name, "F") {
-		a.ss.notice = shortcutNeeds
+		a.ss.notice = shortcutNeeds()
 		return true
 	}
 	var parts []string
@@ -1081,7 +1111,7 @@ func (a *App) setShortcut(id, accel string) {
 		for _, other := range actions.All {
 			if other.ID != id && strings.EqualFold(actions.Keys(other, sc), accel) {
 				sc[other.ID] = ""
-				a.ss.notice = fmt.Sprintf("%s was %s’s: it has none now.", actions.Glyphs(accel), strings.TrimSuffix(other.Title, "…"))
+				a.ss.notice = locales.SetShortcutTaken(actions.Glyphs(accel), strings.TrimSuffix(actionTitle(other.ID), "…"))
 			}
 		}
 	}

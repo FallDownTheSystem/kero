@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -23,6 +22,8 @@ import (
 	"kero/internal/client"
 	"kero/internal/proto"
 	"kero/internal/settings"
+
+	"kero/locales"
 )
 
 // connState is how the app stands with kerod.
@@ -298,19 +299,19 @@ func (a *App) notify(first bool) {
 		var title, body string
 		switch {
 		case s.Status == proto.Waiting && a.set.NotifyWaiting:
-			title, body = s.DisplayName()+" needs you", s.Message
+			title, body = locales.NotifyNeedsYouTitle(s.DisplayName()), s.Message
 			if body == "" {
-				body = "Waiting for your answer"
+				body = locales.NotifyWaitingBody()
 			}
 		case s.Status == proto.Failed && a.set.NotifyFailed:
-			title, body = s.DisplayName()+" failed", s.Message
+			title, body = locales.NotifyFailedTitle(s.DisplayName()), s.Message
 			if body == "" {
-				body = s.PaneName() + " stopped with an error"
+				body = locales.NotifyFailedBody(s.PaneName())
 			}
 		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
-			title, body = s.DisplayName()+" is done", s.Message
+			title, body = locales.NotifyDoneTitle(s.DisplayName()), s.Message
 			if body == "" {
-				body = fmt.Sprintf("%s finished in %s", s.Agent, proto.ShortDir(s.Dir))
+				body = locales.NotifyDoneBody(s.Agent, proto.ShortDir(s.Dir))
 			}
 		default:
 			continue
@@ -395,7 +396,7 @@ func (a *App) groups() []group {
 		}
 		gs = append(gs, g)
 	}
-	other := group{project: proto.Project{ID: "", Name: "Other"}}
+	other := group{project: proto.Project{ID: "", Name: locales.SidebarOtherProject()}}
 	for i := range a.st.Sessions {
 		if !known[a.st.Sessions[i].Project] {
 			other.sessions = append(other.sessions, &a.st.Sessions[i])
@@ -608,7 +609,7 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 		// A selection copied as it ends shows nothing else: say so.
 		OnCopy: func(_ string, by terminal.CopySource) {
 			if by == terminal.CopySelect {
-				a.toast("Copied to clipboard")
+				a.toast(locales.ToastCopiedToClipboard())
 				if a.win != nil {
 					a.win.Invalidate()
 				}
@@ -646,7 +647,7 @@ func (a *App) apply(s settings.Settings, save bool) {
 	a.set, a.applied = s, s.Clone()
 	if save {
 		if err := settings.Save(s); err != nil {
-			a.toast("Couldn’t save the settings: " + err.Error())
+			a.toast(locales.ToastSaveSettingsFailed(err.Error()))
 		}
 	}
 	font := old.FontFamily != s.FontFamily || old.FontSize != s.FontSize || old.FontWeight != s.FontWeight ||
@@ -680,6 +681,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 	if old.Appearance != s.Appearance && a.win != nil {
 		// Only in the running app: before it runs, the call waits for it.
 		mygo.Theme.SetSource(mygo.ThemeSource(s.Appearance))
+	}
+	if old.Language != s.Language && a.win != nil {
+		mygo.App.SetLocale(localeTag(s.Language))
 	}
 	if old.Vibrancy != s.Vibrancy && a.win != nil {
 		a.win.SetVibrancy(vibrancyFor(s))
@@ -736,7 +740,7 @@ func (a *App) reloadConfig() {
 			a.apply(cur, false)
 		}
 		if changed && len(problems) > 0 {
-			a.toast(fmt.Sprintf("Your config has %d problem(s): see Settings › Advanced", len(problems)))
+			a.toast(locales.ToastConfigProblems(len(problems)))
 		}
 		if a.setWin != nil {
 			a.setWin.Invalidate()
@@ -857,8 +861,8 @@ func (a *App) openProject() {
 	cl, win := a.cl, a.win
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
-			Parent: win, Title: "Open Project", Directory: true, ButtonLabel: "Open",
-			Message: "Choose a folder: its sessions are grouped under its name.",
+			Parent: win, Title: locales.OpenProjectTitle(), Directory: true, ButtonLabel: locales.CommonOpen(),
+			Message: locales.OpenProjectMessage(),
 		})
 		if err != nil || len(paths) == 0 {
 			return
@@ -897,9 +901,9 @@ func (a *App) closeSession(id string, ask bool) {
 		name := s.DisplayName()
 		a.confirm = &confirmation{
 			open:    true,
-			title:   fmt.Sprintf("Close “%s”?", name),
-			detail:  fmt.Sprintf("%s is still running in it. Closing the session ends it.", s.Process),
-			action:  "Close Session",
+			title:   locales.ConfirmCloseTitle(name),
+			detail:  locales.ConfirmCloseSessionDetail(s.Process),
+			action:  locales.ActionCloseSession(),
 			destroy: true,
 			run:     func() { a.closeSession(id, false) },
 		}
@@ -1003,7 +1007,7 @@ func (a *App) jumpToAttention() {
 		a.jumpTo(func(s *proto.Session) bool { return s.Unread }) {
 		return
 	}
-	a.toast("Nothing needs you")
+	a.toast(locales.ToastNothingNeedsYou())
 }
 
 func (a *App) toggleSidebar() {
@@ -1024,9 +1028,9 @@ func (a *App) quitAndEnd() {
 	n := len(a.st.Sessions)
 	a.confirm = &confirmation{
 		open:    true,
-		title:   "Quit and end all sessions?",
-		detail:  fmt.Sprintf("Kero keeps sessions running when it quits. This ends all %d of them, with what runs in them.", n),
-		action:  "End Sessions and Quit",
+		title:   locales.ConfirmQuitAllTitle(),
+		detail:  locales.ConfirmQuitAllDetail(n),
+		action:  locales.ConfirmQuitAllAction(),
 		destroy: true,
 		run: func() {
 			cl := a.cl
@@ -1060,20 +1064,15 @@ func (a *App) offerRestart() {
 		a.restartDaemon()
 		return
 	}
-	was := "an earlier version"
+	was := locales.RestartEarlierVersion()
 	if a.daemonApp != "" {
 		was = a.daemonApp
 	}
-	running := "A program is running in 1 session"
-	if n > 1 {
-		running = fmt.Sprintf("Programs are running in %d sessions", n)
-	}
 	a.confirm = &confirmation{
-		open:  true,
-		title: "Restart the background service?",
-		detail: fmt.Sprintf("The service that runs your sessions is still Kero %s, and this is Kero %s. %s: restarting ends them, and sessions start again where they were, with their history.",
-			was, mygo.App.Version(), running),
-		action:  "Restart Service",
+		open:    true,
+		title:   locales.ConfirmRestartServiceTitle(),
+		detail:  locales.RestartStaleDetail(was, mygo.App.Version(), locales.RestartRunning(n)),
+		action:  locales.CommonRestartService(),
 		destroy: true,
 		run:     a.restartDaemon,
 	}

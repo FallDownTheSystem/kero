@@ -11,6 +11,8 @@ import (
 
 	"kero/internal/clilink"
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 // cliBin is the directory of the kero command, which kerod keeps and
@@ -32,10 +34,10 @@ func (a *App) installCLI() {
 		}
 		a.update(func() {
 			if err != nil {
-				a.toast("Couldn’t install the command line tool")
+				a.toast(locales.CliInstallFailed())
 				return
 			}
-			a.toast("Added the kero command to your PATH: new terminals have it")
+			a.toast(locales.CliAddedToPath())
 		})
 	}()
 }

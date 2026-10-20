@@ -26,6 +26,7 @@ type Settings struct {
 
 	// Appearance
 	Appearance string `json:"appearance"` // "system", "light" or "dark"
+	Language   string `json:"language"`   // "system", or one of Languages
 	Background string `json:"background"` // a wash, see Backgrounds
 	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
 
@@ -74,6 +75,7 @@ func Default() Settings {
 		ResumeAgents:    true,
 		QuitConfirm:     true,
 		Appearance:      "system",
+		Language:        "system",
 		Background:      "rex",
 		Vibrancy:        true,
 		FontSize:        13,
@@ -94,6 +96,10 @@ func Default() Settings {
 		RemoteControl:   true,
 	}
 }
+
+// Languages are the languages the app is written in, as the catalogs of
+// kero/locales name them.
+var Languages = []string{"en", "zh-Hans"}
 
 // Backgrounds are the washes the window can show.
 var Backgrounds = []struct{ ID, Name string }{
@@ -230,6 +236,7 @@ func (s *Settings) normalize() {
 	}
 	oneOf(&s.NewSessionDir, d.NewSessionDir, "current", "project", "home")
 	oneOf(&s.Appearance, d.Appearance, "system", "light", "dark")
+	oneOf(&s.Language, d.Language, append([]string{"system"}, Languages...)...)
 	oneOf(&s.Cursor, d.Cursor, "block", "bar", "underline")
 	oneOf(&s.Clipboard, d.Clipboard, "ask", "allow", "deny")
 	oneOf(&s.RightClick, d.RightClick, "menu", "paste", "copyOrPaste")
