@@ -1,16 +1,21 @@
 import { onCleanup, onMount } from 'solid-js';
 
-// A cloud of glowing points that morphs, in 3D, through a prompt, a
-// sphere, a double helix, a torus and a cube. Each morph bursts outward
-// and spins the whole cloud once; the cursor scatters points, and a click
-// skips to the next shape. A few points wear Kero's status colors.
+// A cloud of glowing points that morphs, in 3D, through a prompt, Kero's
+// frog, a sphere, a double helix, a torus and a cube. Each morph bursts
+// outward and spins the whole cloud once; the cursor scatters points, and
+// a click skips to the next shape. A few points wear Kero's status colors,
+// and the frog wears its own.
 
-const SHAPES = ['prompt', 'sphere', 'helix', 'torus', 'cube'] as const;
+const SHAPES = ['prompt', 'frog', 'sphere', 'helix', 'torus', 'cube'] as const;
 type Shape = (typeof SHAPES)[number];
 
 const HOLD = 3.4; // seconds a shape holds
 const MORPH = 2.0; // seconds a morph takes
-const COLORS = ['#c3ec74', '#f5b84a', '#7cc7ff'];
+// Lime, then the status colors (waiting, done), then the frog's belly,
+// cheeks and, dimmer so its lines stand out, its body.
+const COLORS = ['#c3ec74', '#f5b84a', '#7cc7ff', '#e6dc8e', '#ff9f98', '#6f8f36'];
+// Shapes drawn flat, which turn less while they hold so they face you.
+const FLAT = new Set<string>(['prompt', 'frog']);
 
 export default function ParticleMorph() {
   let host!: HTMLDivElement;
@@ -48,9 +53,14 @@ export default function ParticleMorph() {
 
     const sprites = COLORS.map(glowSprite);
     const targets = new Map<Shape, Float32Array>();
-    for (const s of SHAPES) if (s !== 'prompt') targets.set(s, build(s, N, rand));
-    // Until the font loads, the prompt is a sphere.
+    for (const s of SHAPES) if (s !== 'prompt' && s !== 'frog') targets.set(s, build(s, N, rand));
+    // Until the font loads, the prompt is a sphere; until the icon loads,
+    // so is the frog.
     targets.set('prompt', targets.get('sphere')!);
+    targets.set('frog', targets.get('sphere')!);
+    // Each shape's colors: the frog's own once loaded, else each point's.
+    const tints = new Map<Shape, Uint8Array>();
+    const tintOf = (s: Shape) => tints.get(s) ?? color;
 
     const pos = new Float32Array(N * 3);
     const from = new Float32Array(N * 3);
@@ -60,15 +70,20 @@ export default function ParticleMorph() {
 
     let index = 0;
     let to = targets.get('prompt')!;
+    let fromTint = color;
+    let toTint = color;
     let morphing = false;
     let stageStart = 0;
     let spin = 0; // completed spins, in turns
     let now = 0;
+    let wobble = 0.3; // how far the cloud sways, eased per shape
 
     const next = () => {
       index = (index + 1) % SHAPES.length;
       from.set(pos);
+      fromTint = toTint;
       to = targets.get(SHAPES[index])!;
+      toTint = tintOf(SHAPES[index]);
       morphing = true;
       stageStart = now;
     };
@@ -109,8 +124,9 @@ export default function ParticleMorph() {
       }
 
       const turn = morphing ? easeInOut(progress) : 0;
-      const rotY = (spin + turn) * Math.PI * 2 + 0.55 * Math.sin(t * 0.42);
-      const rotX = 0.18 + 0.22 * Math.sin(t * 0.31);
+      wobble += ((FLAT.has(SHAPES[index]) ? 0.16 : 1) - wobble) * 0.04;
+      const rotY = (spin + turn) * Math.PI * 2 + 0.55 * wobble * Math.sin(t * 0.42);
+      const rotX = (0.18 + 0.22 * Math.sin(t * 0.31)) * wobble;
       const cy = Math.cos(rotY);
       const sy = Math.sin(rotY);
       const cx = Math.cos(rotX);
@@ -126,11 +142,13 @@ export default function ParticleMorph() {
         let x: number;
         let y: number;
         let z: number;
+        let tint = toTint[i];
         if (morphing) {
           // Each point leaves on its own beat, bursts out and swirls in.
           const local = clamp01((progress - delay[i] * 0.35) / 0.65);
           const e = easeInOut(local);
           const burst = Math.sin(Math.PI * e);
+          if (e < 0.5) tint = fromTint[i];
           x = from[k] + (to[k] - from[k]) * e;
           y = from[k + 1] + (to[k + 1] - from[k + 1]) * e;
           z = from[k + 2] + (to[k + 2] - from[k + 2]) * e;
@@ -184,8 +202,8 @@ export default function ParticleMorph() {
 
         const depth = clamp01((z2 + 1.4) / 2.8);
         ctx.globalAlpha = 0.25 + 0.75 * (1 - depth);
-        const size = (color[i] ? 7 : 5.5) * scale * scale;
-        ctx.drawImage(sprites[color[i]], px - size / 2, py - size / 2, size, size);
+        const size = (tint === 1 || tint === 2 ? 7 : tint >= 3 ? 4.6 : 5.5) * scale * scale;
+        ctx.drawImage(sprites[tint], px - size / 2, py - size / 2, size, size);
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
@@ -245,6 +263,25 @@ export default function ParticleMorph() {
           draw(0);
         }
       });
+
+    const icon = new Image();
+    icon.onload = () => {
+      const frog = buildFrog(icon, N, rand);
+      if (!frog) return;
+      targets.set('frog', frog.points);
+      tints.set('frog', frog.tints);
+      if (SHAPES[index] === 'frog') {
+        to = frog.points;
+        toTint = frog.tints;
+        if (!morphing) {
+          from.set(pos);
+          fromTint = color;
+          morphing = true;
+          stageStart = now;
+        }
+      }
+    };
+    icon.src = '/icon.png';
 
     draw(0);
     start();
@@ -362,6 +399,79 @@ function buildPrompt(n: number, rand: () => number) {
     out[i * 3 + 2] = (rand() - 0.5) * 0.22;
   }
   return out;
+}
+
+// The frog of Kero's icon, as a line drawing in light: the outline of its
+// silhouette, its eyes and its mouth in bright lime, where most points go;
+// its body dim, its belly and cheeks in their colors. The eyes stay dark
+// inside their rims, as in the icon.
+function buildFrog(img: HTMLImageElement, n: number, rand: () => number) {
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  if (!g) return null;
+  g.drawImage(img, 0, 0, size, size);
+  // The frog sits in the icon's lower right.
+  const x0 = Math.round(size * 0.32);
+  const y0 = Math.round(size * 0.43);
+  const cw = Math.round(size * 0.92) - x0;
+  const ch = Math.round(size * 0.92) - y0;
+  const data = g.getImageData(x0, y0, cw, ch).data;
+
+  // Each pixel: 0 dark, 1 body, 3 belly, 4 cheek.
+  const kind = new Uint8Array(cw * ch);
+  for (let i = 0; i < cw * ch; i++) {
+    const r = data[i * 4];
+    const gr = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    const a = data[i * 4 + 3];
+    if (a < 200 || 0.299 * r + 0.587 * gr + 0.114 * b < 110) continue;
+    kind[i] = r - gr > 35 ? 4 : r > 232 && b > 135 ? 3 : 1;
+  }
+  // A dark pixel next to a light one is a line: the outline, an eye's rim,
+  // the mouth.
+  const lit = (x: number, y: number) => x >= 0 && y >= 0 && x < cw && y < ch && kind[y * cw + x] !== 0;
+  const pts: number[] = [];
+  const tint: number[] = [];
+  const add = (x: number, y: number, t: number, times: number) => {
+    for (let k = 0; k < times; k++) {
+      pts.push(x, y);
+      tint.push(t);
+    }
+  };
+  for (let y = 0; y < ch; y++) {
+    for (let x = 0; x < cw; x++) {
+      const k = kind[y * cw + x];
+      if (k === 0) {
+        if (lit(x - 1, y) || lit(x + 1, y) || lit(x, y - 1) || lit(x, y + 1) || lit(x - 2, y) || lit(x + 2, y) || lit(x, y - 2) || lit(x, y + 2)) {
+          add(x, y, 0, 6);
+        }
+      } else if (k === 1) {
+        if ((x + y) % 3 === 0) add(x, y, 5, 1);
+      } else if (k === 3) {
+        if ((x + y) % 2 === 0) add(x, y, 3, 1);
+      } else {
+        add(x, y, 4, 3);
+      }
+    }
+  }
+  if (pts.length === 0) return null;
+
+  const half = Math.max(cw, ch) / 2;
+  const points = new Float32Array(n * 3);
+  const tints = new Uint8Array(n);
+  const count = tint.length;
+  for (let i = 0; i < n; i++) {
+    const j = Math.floor(rand() * count);
+    const x = ((pts[j * 2] - cw / 2) / half) * 1.4;
+    const y = ((pts[j * 2 + 1] - ch / 2) / half) * 1.4;
+    points[i * 3] = x;
+    points[i * 3 + 1] = y;
+    points[i * 3 + 2] = -0.3 * Math.sqrt(Math.max(0, 1 - (x * x + y * y) / 2)) + (rand() - 0.5) * 0.02;
+    tints[i] = tint[j];
+  }
+  return { points, tints };
 }
 
 // ---------- Helpers ----------
