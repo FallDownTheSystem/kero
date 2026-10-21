@@ -67,7 +67,9 @@ func (a *App) focusTerminal() {
 }
 
 // panes shows a session's panes in their layout: the zoomed one alone.
-func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session) {
+// right tells that they reach the window's right edge, which the side
+// panel takes while it shows.
+func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, right bool) {
 	multi := len(s.Panes) > 1
 	if z := s.PaneByID(s.Zoomed); z != nil || s.Layout == nil || !multi {
 		p := z
@@ -75,11 +77,11 @@ func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32,
 			p = s.FocusPane()
 		}
 		if p != nil {
-			a.paneCard(c, pal, bar, shown, s, p, true, true, true, multi)
+			a.paneCard(c, pal, bar, shown, s, p, true, true, right, multi)
 		}
 		return
 	}
-	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", true, true, true)
+	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", true, true, right)
 }
 
 func (a *App) layoutNode(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, l *proto.Layout, path string, top, left, right bool) {
@@ -133,21 +135,30 @@ func (a *App) divider(c *ui.Context, pal *palette, s *proto.Session, l *proto.La
 		})
 	}
 	if dx, dy, ok := d.Dragged(); ok {
+		// The ratio shares out the room the panes take, the split's less
+		// the divider's.
 		b := a.paneRef(key).Bounds(c)
-		size, delta := b.W, dx
+		size, delta := b.W-paneGap, dx
 		if !l.Row {
-			size, delta = b.H, dy
+			size, delta = b.H-paneGap, dy
 		}
 		if size > 0 {
-			r := l.Ratio
-			if r <= 0 || r >= 1 {
-				r = 0.5
+			// The ratio goes on past its bounds, unclamped, so the divider
+			// comes back as the pointer comes back to it.
+			if a.layoutDrag.split != key {
+				r := l.Ratio
+				if r <= 0 || r >= 1 {
+					r = 0.5
+				}
+				a.layoutDrag.session, a.layoutDrag.split, a.layoutDrag.ratio = s.ID, key, r
 			}
-			l.Ratio = math.Min(math.Max(r+float64(delta/size), 0.12), 0.88)
-			a.layoutDirty = s.ID
+			a.layoutDrag.ratio += float64(delta / size)
+			l.Ratio = math.Min(math.Max(a.layoutDrag.ratio, 0.12), 0.88)
 		}
-	} else if a.layoutDirty == s.ID && !d.Pressed() {
-		a.layoutDirty = ""
+	} else if a.layoutDrag.split == key && !d.Pressed() {
+		// Only the divider dragged saves the layout: another of the same
+		// session would save it every frame of the drag.
+		a.layoutDrag.session, a.layoutDrag.split = "", ""
 		a.call("layout", proto.LayoutParams{Session: s.ID, Layout: s.Layout.Clone()}, nil)
 	}
 	if d.DoubleClicked() {
@@ -392,6 +403,9 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 				ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
 			}
 		})
+		if p.Git != nil {
+			a.gitChip(c, pal, s, p)
+		}
 		// The header's empty stretch moves the window, as a title bar
 		// does, and zooms it on a double click: the header around it
 		// takes clicks, which focus the pane.
