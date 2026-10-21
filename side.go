@@ -71,11 +71,8 @@ type changesState struct {
 	files     map[string]*sideFile
 	collapsed map[string]bool
 	focus     *sideFile
-	// scrolls are the lists' scroll positions, by scope, and scrolledY
-	// each one's as the frame before laid it out.
-	scrolls   map[string]*ui.ScrollState
-	scrolledY map[string]float32
-	stuck     string // the file whose header stays at the top, "" for none
+	// places are the lists' places, by scope.
+	places map[string]*ui.ListState
 }
 
 // sideFile is a changed file's diff since a base.
@@ -359,71 +356,74 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		if !held {
 			a.syncFiles(c, scope, pane, res.Files)
 		}
-		if ch.scrolls == nil {
-			ch.scrolls, ch.scrolledY = map[string]*ui.ScrollState{}, map[string]float32{}
+		if ch.places == nil {
+			ch.places = map[string]*ui.ListState{}
 		}
-		st := ch.scrolls[scope]
-		if st == nil {
-			st = &ui.ScrollState{}
-			ch.scrolls[scope] = st
+		ls := ch.places[scope]
+		if ls == nil {
+			ls = &ui.ListState{}
+			ch.places[scope] = ls
 		}
-		// Clipped: the sticky header the next file's pushes up goes under
-		// the list's top edge, not over the summary above it.
-		box := ui.Column(c.Key("files-" + scope)).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Clip()
+		// A file is two rows: its header, then its diff while unfolded,
+		// which scrolls under the header as the list pins it at the top,
+		// until the next file's header pushes it out, as the files of a
+		// pull request do.
+		var rows []changeRow
+		for _, f := range res.Files {
+			rows = append(rows, changeRow{f: f})
+			if ch.files[scope+"|"+f.Path] != nil && !a.fileCollapsed(scope, f) {
+				rows = append(rows, changeRow{f: f, diff: true})
+			}
+		}
+		ls.Header = func(i int) bool { return !rows[i].diff }
+		ls.Key = func(i int) any { return changeKey{rows[i].f.Path, rows[i].diff} }
+		box := ui.Column(c.Key("files-" + scope)).Grow(1).MinHeight(0).AlignItems(ui.Stretch)
 		box.Opacity(box.Animate("held", 1-0.45*b2f(held), 120*time.Millisecond))
 		box.Children(func() {
-			var secs []section
-			// The scroll bar runs below the sticky header, not under it.
-			files := ui.Scroll(c.Key("scroll")).Grow(1).MinHeight(0).Padding(0, 0, 16, 0).TrackScroll(st).ScrollbarInsets(stickyH, 0, 0, 0)
-			files.Children(func() {
-				for _, f := range res.Files {
-					secs = append(secs, a.fileSection(c, pal, s, scope, res.Root, f, width))
+			// The scroll bar runs below the header pinned at the top, not
+			// under it.
+			ui.List(c.Key("rows"), ls, len(rows), func(i int) {
+				r := rows[i]
+				if r.diff {
+					a.fileDiff(c, pal, s, scope, r.f, width)
+					return
 				}
-			})
-			a.stickyHeader(c, pal, scope, res.Root, st, files.Bounds(), secs)
+				// Opaque, over the diff scrolling under it; a folded file's
+				// with the room below its section.
+				gap := float32(sectionGap)
+				if i+1 < len(rows) && rows[i+1].diff {
+					gap = 0
+				}
+				ui.Column(c).FillWidth().AlignItems(ui.Stretch).Padding(0, 0, gap, 0).Background(pal.card).Children(func() {
+					a.fileHeader(c, pal, scope, res.Root, r.f, func() {
+						// Folding it as the list pins it brings it back where
+						// it stays: at the top.
+						ls.ScrollIntoView(i)
+					})
+				})
+			}).Grow(1).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
 		})
 	}
 }
 
-// section is a file's section of the list, as the frame before laid it
-// out.
-type section struct {
-	f proto.GitFile
-	b ui.Rect
+// changeRow is a row of the list of changes: a file's header, or its
+// diff; changeKey what it is, as the list keeps a row's state by.
+type changeRow struct {
+	f    proto.GitFile
+	diff bool
 }
 
-// stickyH is the height of a file's header, which stickyHeader keeps.
-const stickyH = 32
-
-// stickyHeader keeps the header of the file whose diff runs past the
-// list's top at the top, over its diff, until the next file's header
-// pushes it out, as the files of a pull request do.
-func (a *App) stickyHeader(c *ui.Context, pal *palette, scope, root string, st *ui.ScrollState, view ui.Rect, secs []section) {
-	ch := &a.side.changes
-	// The sections are where the frame before laid them out: where the
-	// list is scrolled to since, they are too.
-	dy := st.Y - ch.scrolledY[scope]
-	ch.scrolledY[scope] = st.Y
-	ch.stuck = ""
-	const h = stickyH
-	for _, sc := range secs {
-		y := sc.b.Y - dy
-		if sc.b.H == 0 || y >= view.Y || y+sc.b.H <= view.Y+1 {
-			continue
-		}
-		f := sc.f
-		ch.stuck = f.Path
-		top := min(0, y+sc.b.H-(view.Y+h))
-		ui.Box(c.Key("sticky")).Absolute().Top(top).Left(0).Right(0).Background(pal.card).Children(func() {
-			a.fileHeader(c, pal, scope, root, f, func() {
-				// Folding it from here brings its header back where it
-				// stays: at the top of the list.
-				st.Y += y - view.Y
-			})
-		})
-		return
-	}
+type changeKey struct {
+	path string
+	diff bool
 }
+
+// stickyH is the height of a file's header, which the list pins at its
+// top; sectionGap the room below each file's section.
+const (
+	stickyH    = 32
+	sectionGap = 6
+)
 
 // syncFiles keeps the diffs of a list's files: it asks for the text of
 // each file shown that has none yet, a few at a time, and again of one
@@ -480,18 +480,12 @@ func (a *App) fileCollapsed(scope string, f proto.GitFile) bool {
 	return f.Binary || f.Added+f.Removed > 600
 }
 
-// fileSection is a changed file: its header, then its diff. It returns
-// its section as the frame before laid it out.
-func (a *App) fileSection(c *ui.Context, pal *palette, s *proto.Session, scope, root string, f proto.GitFile, width float32) section {
+// fileDiff is a changed file's diff, under its header, or why it shows
+// none.
+func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, scope string, f proto.GitFile, width float32) {
 	ch := &a.side.changes
 	sf := ch.files[scope+"|"+f.Path]
-	collapsed := a.fileCollapsed(scope, f)
-	sec := ui.Column(c.Key(f.Path)).Shrink(0).AlignItems(ui.Stretch).Margin(0, 0, 6, 0)
-	sec.Children(func() {
-		a.fileHeader(c, pal, scope, root, f, nil)
-		if collapsed || sf == nil {
-			return
-		}
+	ui.Column(c).FillWidth().AlignItems(ui.Stretch).Padding(4, 0, sectionGap, 0).Children(func() {
 		switch {
 		case sf.err != "" && sf.d == nil:
 			a.sectionNote(c, pal, locales.ChangesCantRead()+": "+sf.err)
@@ -503,13 +497,12 @@ func (a *App) fileSection(c *ui.Context, pal *palette, s *proto.Session, scope, 
 			ui.Column(c.Key("loading")).Height(48).Center().Children(func() { ui.Spinner(c) })
 		default:
 			a.diffOptions(c, pal, s, sf, width)
-			diff := editor.DiffView(c.Key("diff"), sf.d).Margin(4, 0, 0, 0)
+			diff := editor.DiffView(c.Key("diff"), sf.d)
 			if diff.FocusWithin() {
 				ch.focus = sf
 			}
 		}
 	})
-	return section{f: f, b: sec.Bounds()}
 }
 
 // fileHeader is a changed file's header: its change, its name and folder
