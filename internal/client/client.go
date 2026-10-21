@@ -17,14 +17,27 @@ import (
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/detach"
 	"kero/internal/proto"
+	"kero/internal/service"
 )
 
 // ErrVersion is returned when the daemon running speaks another protocol,
 // as after kero was updated: it has to be restarted.
 var ErrVersion = errors.New("kerod is of another version")
 
-// Dial connects to the daemon, starting it unless noStart.
+// Dialer opens connections to a kerod: this machine's, through its socket
+// (Local), or a host's, as streams of a remote connection (remote.Conn).
+type Dialer interface {
+	Dial() (net.Conn, error)
+}
+
+// Local is this machine's kerod, which a dial starts unless NoStart.
+type Local struct{ NoStart bool }
+
+func (l Local) Dial() (net.Conn, error) { return dial(l.NoStart) }
+
+// dial connects to the daemon, starting it unless noStart.
 func dial(noStart bool) (net.Conn, error) {
 	sock := proto.SocketPath()
 	conn, err := net.Dial("unix", sock)
@@ -50,9 +63,13 @@ func dial(noStart bool) (net.Conn, error) {
 	}
 }
 
-// StartDaemon starts kerod in the background: this executable, in a
+// StartDaemon starts kerod in the background: the service, when kerod
+// runs as one (kero daemon install-service), else this executable, in a
 // session of its own, so that it outlives whoever started it.
 func StartDaemon() error {
+	if service.Installed() && service.Start() == nil {
+		return nil
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		return err
@@ -68,7 +85,7 @@ func StartDaemon() error {
 	cmd := exec.Command(exe, "__kerod")
 	cmd.Dir = proto.Home()
 	cmd.Stdout, cmd.Stderr = logf, logf
-	cmd, err = startDetached(cmd)
+	cmd, err = detach.Start(cmd)
 	if err != nil {
 		return err
 	}
@@ -82,7 +99,7 @@ func handshake(conn net.Conn, hello proto.Hello) (proto.Welcome, *bufio.Reader, 
 		return proto.Welcome{}, nil, err
 	}
 	r := bufio.NewReaderSize(conn, 64<<10)
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(15 * time.Second))
 	line, err := r.ReadBytes('\n')
 	conn.SetReadDeadline(time.Time{})
 	if err != nil {
@@ -133,9 +150,13 @@ type response struct {
 	err    error
 }
 
-// Connect opens a control connection, starting the daemon unless noStart.
-func Connect(noStart bool) (*Client, error) {
-	conn, err := dial(noStart)
+// Connect opens a control connection to this machine's kerod, starting it
+// unless noStart.
+func Connect(noStart bool) (*Client, error) { return ConnectVia(Local{NoStart: noStart}) }
+
+// ConnectVia opens a control connection through d.
+func ConnectVia(d Dialer) (*Client, error) {
+	conn, err := d.Dial()
 	if err != nil {
 		return nil, err
 	}
@@ -273,8 +294,11 @@ type Stream struct {
 // Attach opens a session's stream. What reads from it gets frames of the
 // session's terminal (proto.FrameOutput), the first of them at the size of
 // Welcome.
-func Attach(id string) (*Stream, error) {
-	conn, err := dial(true)
+func Attach(id string) (*Stream, error) { return AttachVia(Local{NoStart: true}, id) }
+
+// AttachVia opens a session's stream through d.
+func AttachVia(d Dialer, id string) (*Stream, error) {
+	conn, err := d.Dial()
 	if err != nil {
 		return nil, err
 	}

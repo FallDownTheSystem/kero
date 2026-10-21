@@ -6,12 +6,15 @@ package settings
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 
 	"kero/internal/proto"
+	"kero/internal/remote"
 )
 
 // Settings are the user's choices. The zero value of a field is never a
@@ -70,6 +73,36 @@ type Settings struct {
 
 	// Keyboard: accelerators by action, over the defaults; "" unbinds.
 	Shortcuts map[string]string `json:"shortcuts,omitempty"`
+
+	// Hosts are other machines' kerods, which the app shows beside this
+	// one's and the CLI reaches with -H.
+	Hosts []Host `json:"hosts,omitempty"`
+	// Listen are kerod's network listeners, for clients on other machines
+	// (tailnet://:7373, tailnet-serve://), and ListenAllow who may connect
+	// besides the machine's owner: tailnet logins, tag:name, or *.
+	Listen      []string `json:"listen,omitempty"`
+	ListenAllow []string `json:"listenAllow,omitempty"`
+}
+
+// Host is a machine whose kerod the app shows: its name, and its address
+// (package remote).
+type Host struct {
+	Name string `json:"name"`
+	Addr string `json:"addr"`
+	// RemoteControl lets the host's programs drive the app, as kero focus
+	// and kero do, which remote-control lets this machine's: off unless the
+	// user trusts the host with it.
+	RemoteControl bool `json:"remoteControl,omitempty"`
+}
+
+// Host returns the host of a name, else nil.
+func (s *Settings) Host(name string) *Host {
+	for i := range s.Hosts {
+		if strings.EqualFold(s.Hosts[i].Name, name) {
+			return &s.Hosts[i]
+		}
+	}
+	return nil
 }
 
 // Default returns the settings of a new install.
@@ -223,6 +256,9 @@ func (s Settings) Clone() Settings { return clone(s) }
 
 func clone(s Settings) Settings {
 	s.Env = append([]string(nil), s.Env...)
+	s.Hosts = slices.Clone(s.Hosts)
+	s.Listen = slices.Clone(s.Listen)
+	s.ListenAllow = slices.Clone(s.ListenAllow)
 	if s.Shortcuts != nil {
 		m := make(map[string]string, len(s.Shortcuts))
 		for k, v := range s.Shortcuts {
@@ -276,4 +312,32 @@ func (s *Settings) normalize() {
 	if s.DarkTheme == "" {
 		s.DarkTheme = d.DarkTheme
 	}
+}
+
+// ParseHost reads a host as the configuration's host key writes it:
+// name=address, then its options: remote-control.
+func ParseHost(line string) (Host, error) {
+	name, rest, ok := strings.Cut(strings.TrimSpace(line), "=")
+	name = strings.TrimSpace(name)
+	fields := strings.Fields(rest)
+	if !ok || len(fields) == 0 {
+		return Host{}, fmt.Errorf("%q is not name=address", line)
+	}
+	if !remote.ValidName(name) {
+		return Host{}, fmt.Errorf("%q can't name a host: use letters, digits, dots and dashes (and not local)", name)
+	}
+	a, err := remote.ParseAddr(fields[0])
+	if err != nil {
+		return Host{}, err
+	}
+	h := Host{Name: name, Addr: a.String()}
+	for _, o := range fields[1:] {
+		switch o {
+		case "remote-control":
+			h.RemoteControl = true
+		default:
+			return Host{}, fmt.Errorf("%s: no option %q (remote-control)", name, o)
+		}
+	}
+	return h, nil
 }

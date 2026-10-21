@@ -526,5 +526,374 @@
   },
   "changesExpandUp": "Expand Up",
   "changesExpandDown": "Expand Down",
-  "changesExpandAll": "Expand All"
+  "changesExpandAll": "Expand All",
+  "pageHosts": "Hosts",
+  "hostThisComputer": "This Computer",
+  "hostNotConnected": "Not connected to {host}",
+  "@hostNotConnected": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostReconnect": "Reconnect",
+  "hostReconnectTo": "Reconnect to {host}",
+  "@hostReconnectTo": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostReconnecting": "Reconnecting…",
+  "hostReconnectingTo": "Reconnecting to {host}…",
+  "@hostReconnectingTo": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostCantConnect": "Can't connect to {host}",
+  "@hostCantConnect": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostNotInstalled": "Kero isn't installed on {host}",
+  "@hostNotInstalled": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostRefused": "{host} refused the connection",
+  "@hostRefused": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostAuthHint": "Kero signs in with your SSH keys and agent, and never asks for a password. To trust a host's key, run ssh {address} once in a terminal.",
+  "@hostAuthHint": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "hostAbout": "Kero {version} on {platform} · {hostname}, as {user}",
+  "@hostAbout": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "platform": {
+        "type": "String"
+      },
+      "hostname": {
+        "type": "String"
+      },
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "hostConnected": "Connected: Kero {version} on {platform} · {hostname}, as {user}",
+  "@hostConnected": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "platform": {
+        "type": "String"
+      },
+      "hostname": {
+        "type": "String"
+      },
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "hostSessions": "{count, plural, one {# session} other {# sessions}}",
+  "@hostSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hostCopyAddress": "Copy Address",
+  "hostSettings": "Host Settings…",
+  "hostRemove": "Remove Host…",
+  "hostRemoveTitle": "Remove {host}?",
+  "@hostRemoveTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostRemoveDetail": "Its sessions keep running on {host}. Add the host again to see them.",
+  "@hostRemoveDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostInstall": "Install Kero…",
+  "hostInstalling": "Installing Kero on {host}…",
+  "@hostInstalling": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostInstalled": "Installed Kero on {host}",
+  "@hostInstalled": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostInstallFailed": "Couldn't install Kero on {host}: {error}",
+  "@hostInstallFailed": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "hostUpdateAction": "Update Kero on {host}…",
+  "@hostUpdateAction": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostUpdateTitle": "Update Kero on {host} to {version}?",
+  "@hostUpdateTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "hostUpdateDetail": "Kero then restarts its service on {host}. Sessions there start again where they were, with their history, and the programs running in them end.",
+  "@hostUpdateDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostUpdating": "Updating Kero on {host}…",
+  "@hostUpdating": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostUpdated": "{host} runs Kero {version}",
+  "@hostUpdated": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "hostUpdateDev": "A development build of Kero can't update a host. Run a released Kero, or update the host with kero daemon update there.",
+  "hostVersionTitle": "Kero on {host} is another version",
+  "@hostVersionTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostVersionDetail": "{host} runs Kero {version}, and this app is Kero {app}. Update Kero there to see and start its sessions here.",
+  "@hostVersionDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "hostDesktopDetail": "{host} runs the Kero app, version {version}, and this is Kero {app}. Update Kero on {host}, then restart its service.",
+  "@hostDesktopDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "hostRestartAction": "Restart Service on {host}…",
+  "@hostRestartAction": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostRestartTitle": "Restart the service on {host}?",
+  "@hostRestartTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostRestartDetail": "Sessions on {host} start again where they were, with their history, and the programs running in them end.",
+  "@hostRestartDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostRestarting": "Restarting the service on {host}…",
+  "@hostRestarting": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostStaleTip": "The service on {host} still runs Kero {was}, and Kero {version} is installed there: restart it to run the new version.",
+  "@hostStaleTip": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "was": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "hostNoSuchFile": "There's no {path} on {host}",
+  "@hostNoSuchFile": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "pasteNotAFile": "Kero pastes files into a pane on another machine, not folders: {name}",
+  "@pasteNotAFile": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pasteTooLarge": "Kero pastes at most {size} MB into a pane on another machine",
+  "@pasteTooLarge": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      }
+    }
+  },
+  "pasteUploading": "Copying to {host}…",
+  "@pasteUploading": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "pickerTitle": "Open Project on {host}",
+  "@pickerTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "pickerPlaceholder": "Filter folders, or type a path: ~/code",
+  "pickerShowHidden": "Show Hidden",
+  "pickerHideHidden": "Hide Hidden",
+  "pickerNoFolders": "No folders",
+  "pickerHint": "↩ go in · {open} open the folder chosen · ⌫ up",
+  "@pickerHint": {
+    "placeholders": {
+      "open": {
+        "type": "String"
+      }
+    }
+  },
+  "setHosts": "Hosts",
+  "setHostsDetail": "Other machines whose sessions show in the sidebar after this computer's. Kero reaches them over SSH with your keys and agent, through WSL, or through kerod's listener on your tailnet, and kero -H <name> drives them from the command line.",
+  "setHostsNone": "No hosts",
+  "setHostsNoneDetail": "Add a machine you reach with ssh. If Kero isn't installed there, Kero offers to install it.",
+  "setHostAdd": "Add a Host",
+  "setHostAddDetail": "me@devbox or ssh://me@devbox:2222 over SSH, as ssh takes it with your ~/.ssh/config; wsl://Ubuntu for a WSL distribution; http://devbox:7373 or https://devbox.tail1234.ts.net for kerod's tailnet listener.",
+  "setHostAddressPlaceholder": "me@devbox",
+  "setHostNamePlaceholder": "Name: {name}",
+  "@setHostNamePlaceholder": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "setHostNameTaken": "There's a host named {name} already",
+  "@setHostNameTaken": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "setHostNeedsAddress": "Type the host's address",
+  "setHostRemoteControl": "Remote Control",
+  "setHostRemoteControlDetail": "Let programs on {host} show sessions and run the app's actions (kero focus, kero do)",
+  "@setHostRemoteControlDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "setHostSettingsSplit": "A host's own settings",
+  "setHostSettingsSplitDetail": "The shell, environment, scrollback and session restore of a host's sessions come from its own configuration: run kero config edit on the host. Appearance, keyboard and notifications are this app's.",
+  "setShellThisComputer": "These apply to this computer's sessions. Each host's come from its own configuration (Settings › Hosts)."
 }

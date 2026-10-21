@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"kero/internal/proto"
+	"kero/internal/remote"
 )
 
 // call runs a control method. Methods taking a pane take a session too,
@@ -406,6 +407,40 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		return d.gitRevert(p)
+
+	case "fs.list":
+		var p proto.FSListParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsList(p)
+
+	case "fs.stat":
+		var p proto.FSStatParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsStat(p), nil
+
+	case "fs.read":
+		var p proto.FSReadParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsRead(p)
+
+	case "paste.file":
+		var p proto.PasteFileParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return pasteFile(p)
+
+	case "host.info":
+		return remote.LocalInfo(""), nil
+
+	case "clients":
+		return d.clientList(), nil
 
 	case "shutdown":
 		d.mu.Lock()

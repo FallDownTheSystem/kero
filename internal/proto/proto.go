@@ -34,6 +34,12 @@ type Hello struct {
 	Session string `json:"session,omitempty"`
 	Cols    int    `json:"cols,omitempty"`
 	Rows    int    `json:"rows,omitempty"`
+	// Who connects, which `kero __bridge` adds to the Hello of a remote
+	// client's stream, for `kero clients`: the SSH client's address, how it
+	// came (ssh, wsl), and what the client said it is (MuxHello.Client).
+	Peer   string `json:"peer,omitempty"`
+	Via    string `json:"via,omitempty"`
+	Client string `json:"client,omitempty"`
 }
 
 // Welcome answers a Hello.

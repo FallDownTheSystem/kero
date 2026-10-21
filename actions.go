@@ -26,13 +26,18 @@ func (a *App) run(id string, args map[string]string) {
 	case "app.quitAll":
 		a.quitAndEnd()
 	case "session.new":
+		// A directory kero do names is of the host it runs on.
 		if dir := args["dir"]; dir != "" {
-			a.newSessionIn(dir)
+			a.newSessionIn(a.actionHost(), dir)
 		} else {
 			a.newSession(args["project"])
 		}
 	case "session.newHome":
-		a.newSessionIn(proto.Home())
+		if h := a.selectedHost(); h.remote() {
+			a.newSessionIn(h, "~")
+		} else {
+			a.newSessionIn(h, proto.Home())
+		}
 	case "project.open":
 		a.openProject()
 	case "palette.open":

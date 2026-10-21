@@ -6,6 +6,7 @@ import (
 	"errors"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
+	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
@@ -72,13 +74,13 @@ type termEntry struct {
 type App struct {
 	win *mygo.Window
 
-	cl        *client.Client
-	conn      connState
-	connErr   string
-	daemonApp string // the version of Kero that kerod runs
-	retries   int
-	st        proto.State
-	loaded    bool // a state came
+	// hosts are the kerods the app shows, this machine's first; st is
+	// what they hold, each host's sessions and projects after the one's
+	// before, and owner the host of each session, pane and project.
+	hosts  []*host
+	owner  map[string]*host
+	st     proto.State
+	loaded bool // a state came
 
 	prefs      prefs
 	set        settings.Settings // the user's settings: Settings' controls edit it
@@ -94,7 +96,6 @@ type App struct {
 		session, split string
 		ratio          float64 // where the pointer puts it, past its bounds
 	}
-	viewSent *string
 
 	active   bool
 	focused  bool
@@ -125,8 +126,12 @@ type App struct {
 	previewShown bool
 	arrived      map[string]bool
 	copyText     string
-	peek         peek      // the image a path Command hovers shows
-	side         sideState // the side panel, beside a session's panes
+	peek         peek // the image a path Command hovers shows
+	// from is the host whose program asked for the action being run (kero
+	// do), nil for the user's.
+	from   *host
+	picker folderPicker // the folders of a host, to open a project in
+	side   sideState    // the side panel, beside a session's panes
 }
 
 // confirmation is a question the app asks before something it cannot undo.
@@ -147,6 +152,7 @@ func newApp() *App {
 	a.ss.problems = settings.Problems()
 	a.applied = a.set.Clone()
 	a.selected = a.prefs.Selected
+	a.hosts = []*host{{conn: connConnecting}}
 	return a
 }
 
@@ -188,64 +194,17 @@ func (a *App) update(fn func()) {
 	}
 }
 
-// connect connects to kerod, starting it, and follows its state.
-func (a *App) connect() {
-	go func() {
-		cl, err := client.Connect(false)
-		a.update(func() {
-			if err != nil {
-				a.cl = nil
-				if errors.Is(err, client.ErrVersion) {
-					a.conn = connVersion
-					return
-				}
-				a.conn, a.connErr = connFailed, err.Error()
-				a.retries++
-				if a.retries < 4 {
-					// It may be starting, or restarting: try again.
-					time.AfterFunc(time.Duration(a.retries)*400*time.Millisecond, func() { a.update(a.connect) })
-				}
-				return
-			}
-			a.cl, a.conn, a.connErr, a.retries = cl, connReady, "", 0
-			a.daemonApp = cl.Welcome.App
-			cl.OnEvent(func(m proto.Message) { a.update(func() { a.event(cl, m) }) })
-			cl.Go("subscribe", nil, nil)
-			a.viewSent = nil
-			a.reportView()
-			go func() {
-				<-cl.Done()
-				a.update(func() { a.disconnected(cl) })
-			}()
-		})
-	}()
-}
-
-// disconnected follows kerod going away, as when it was restarted: the
-// terminals attached to it are done, and the app connects again.
-func (a *App) disconnected(cl *client.Client) {
-	if a.cl != cl {
-		return
-	}
-	a.cl = nil
-	a.conn = connConnecting
-	for id := range a.terms {
-		a.dropTerm(id)
-	}
-	time.AfterFunc(300*time.Millisecond, func() { a.update(a.connect) })
-}
-
-func (a *App) event(cl *client.Client, m proto.Message) {
-	if a.cl != cl {
+func (a *App) event(h *host, cl *client.Client, m proto.Message) {
+	if h.cl != cl {
 		return
 	}
 	switch m.Event {
 	case "state":
 		if m.State != nil {
-			a.setState(*m.State)
+			a.setState(h, *m.State)
 		}
 	case "select":
-		if !a.set.RemoteControl {
+		if !a.remoteControl(h) {
 			return
 		}
 		a.selectSession(m.Select)
@@ -255,11 +214,13 @@ func (a *App) event(cl *client.Client, m proto.Message) {
 			mygo.App.Focus()
 		}
 	case "action":
-		if !a.set.RemoteControl {
+		if !a.remoteControl(h) {
 			return
 		}
 		if act, ok := actions.Find(m.Action); ok && act.Remote {
+			a.from = h
 			a.run(act.ID, m.Args)
+			a.from = nil
 		}
 	case "notice":
 		// A program's own notification, as a terminal shows it: not
@@ -273,19 +234,27 @@ func (a *App) event(cl *client.Client, m proto.Message) {
 		if title == "" {
 			title = s.DisplayName(a.set.SessionName)
 		}
+		// A program on another machine says what it likes: the host's
+		// name says where it is.
+		if h.remote() {
+			title = h.name + ": " + title
+		}
 		a.showNotification(n.Session, title, n.Body)
 	}
 }
 
-func (a *App) setState(st proto.State) {
-	first := !a.loaded
+// setState takes a host's state.
+func (a *App) setState(h *host, st proto.State) {
+	first, hostFirst := !a.loaded, !h.loaded
+	h.loaded = true
 	// A divider dragged keeps the ratios it set, which the daemon hears of
 	// only once it is let go.
 	var dragged *proto.Layout
 	if s := a.session(a.layoutDrag.session); s != nil {
 		dragged = s.Layout
 	}
-	a.st, a.loaded = st, true
+	a.mergeState(h, st)
+	a.loaded = true
 	if s := a.session(a.layoutDrag.session); s != nil && s.Layout.SameShape(dragged) {
 		s.Layout = dragged
 	}
@@ -302,13 +271,13 @@ func (a *App) setState(st proto.State) {
 		}
 	}
 	if a.session(a.selected) == nil {
-		ids := a.visibleOrder()
-		if len(ids) == 0 {
+		// The session shown last may be of a host still connecting.
+		if ids := a.visibleOrder(); len(ids) == 0 && a.allLoaded() {
 			a.selected = ""
-		} else {
+		} else if len(ids) > 0 && (a.selected == "" || a.allLoaded()) {
 			a.selectSession(ids[0])
 		}
-	} else if first {
+	} else if first || hostFirst && a.hostOf(a.selected) == h {
 		a.selectSession(a.selected)
 	}
 	a.notify(first)
@@ -350,19 +319,19 @@ func (a *App) notify(first bool) {
 		var title, body string
 		switch {
 		case s.Status == proto.Waiting && a.set.NotifyWaiting:
-			title, body = locales.NotifyNeedsYouTitle(s.DisplayName(a.set.SessionName)), s.Message
+			title, body = locales.NotifyNeedsYouTitle(a.hostedName(s)), s.Message
 			if body == "" {
 				body = locales.NotifyWaitingBody()
 			}
 		case s.Status == proto.Failed && a.set.NotifyFailed:
-			title, body = locales.NotifyFailedTitle(s.DisplayName(a.set.SessionName)), s.Message
+			title, body = locales.NotifyFailedTitle(a.hostedName(s)), s.Message
 			if body == "" {
 				body = locales.NotifyFailedBody(s.PaneName())
 			}
 		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
-			title, body = locales.NotifyDoneTitle(s.DisplayName(a.set.SessionName)), s.Message
+			title, body = locales.NotifyDoneTitle(a.hostedName(s)), s.Message
 			if body == "" {
-				body = locales.NotifyDoneBody(s.Agent, proto.ShortDir(s.WorkDir()))
+				body = locales.NotifyDoneBody(s.Agent, a.hostOf(s.ID).shortDir(s.WorkDir()))
 			}
 		default:
 			continue
@@ -389,7 +358,7 @@ func (a *App) updateTitle() {
 	}
 	title := "Kero"
 	if s := a.session(a.selected); s != nil {
-		title = s.DisplayName(a.set.SessionName)
+		title = a.hostedName(s)
 	}
 	a.win.SetTitle(title)
 }
@@ -417,16 +386,43 @@ func (a *App) project(id string) *proto.Project {
 
 // group is a project with its sessions, as the sidebar lists them.
 type group struct {
+	host     *host
 	project  proto.Project
 	sessions []*proto.Session
 }
 
+// key is what the group's collapse is remembered by: its project's id,
+// and for the sessions of no project, its host's.
+func (g group) key() string {
+	if g.project.ID == "" {
+		return "other:" + g.host.name
+	}
+	return g.project.ID
+}
+
+// hostKey is what a remote host's collapse in the sidebar is remembered
+// by.
+func hostKey(h *host) string { return "host:" + h.name }
+
+// groups returns the projects of every host, as the sidebar lists them.
 func (a *App) groups() []group {
+	var gs []group
+	for _, h := range a.hosts {
+		gs = append(gs, a.hostGroups(h)...)
+	}
+	return gs
+}
+
+// hostGroups returns a host's projects, with their sessions.
+func (a *App) hostGroups(h *host) []group {
 	var gs []group
 	known := map[string]bool{}
 	for _, p := range a.st.Projects {
+		if a.hostOf(p.ID) != h {
+			continue
+		}
 		known[p.ID] = true
-		g := group{project: p}
+		g := group{host: h, project: p}
 		for i := range a.st.Sessions {
 			if a.st.Sessions[i].Project == p.ID {
 				g.sessions = append(g.sessions, &a.st.Sessions[i])
@@ -434,10 +430,10 @@ func (a *App) groups() []group {
 		}
 		gs = append(gs, g)
 	}
-	other := group{project: proto.Project{ID: "", Name: locales.SidebarOtherProject()}}
+	other := group{host: h, project: proto.Project{ID: "", Name: locales.SidebarOtherProject()}}
 	for i := range a.st.Sessions {
-		if !known[a.st.Sessions[i].Project] {
-			other.sessions = append(other.sessions, &a.st.Sessions[i])
+		if s := &a.st.Sessions[i]; !known[s.Project] && a.hostOf(s.ID) == h {
+			other.sessions = append(other.sessions, s)
 		}
 	}
 	if len(other.sessions) > 0 {
@@ -446,13 +442,19 @@ func (a *App) groups() []group {
 	return gs
 }
 
+// collapsed reports whether a group's sessions are hidden in the sidebar:
+// its project's, or its host's.
+func (a *App) collapsed(g group) bool {
+	return a.prefs.Collapsed[g.key()] || g.host.remote() && a.prefs.Collapsed[hostKey(g.host)]
+}
+
 // visibleOrder returns the sessions in the sidebar's order, those of
 // collapsed projects left out unless selected.
 func (a *App) visibleOrder() []string {
 	var ids []string
 	for _, g := range a.groups() {
 		for _, s := range g.sessions {
-			if !a.prefs.Collapsed[g.project.ID] || s.ID == a.selected {
+			if !a.collapsed(g) || s.ID == a.selected {
 				ids = append(ids, s.ID)
 			}
 		}
@@ -481,21 +483,24 @@ func (a *App) selectSession(id string) {
 	}
 }
 
-// reportView tells kerod which session the user looks at, which it then
-// never marks unread.
+// reportView tells each host's kerod which of its sessions the user looks
+// at, which it then never marks unread.
 func (a *App) reportView() {
-	if a.cl == nil {
-		return
+	shown := a.selectedHost()
+	for _, h := range a.hosts {
+		if h.cl == nil {
+			continue
+		}
+		id := ""
+		if a.active && a.focused && h == shown {
+			id = a.selected
+		}
+		if h.viewSent != nil && *h.viewSent == id {
+			continue
+		}
+		h.viewSent = &id
+		h.cl.Go("view", proto.ViewParams{ID: id}, nil)
 	}
-	id := ""
-	if a.active && a.focused {
-		id = a.selected
-	}
-	if a.viewSent != nil && *a.viewSent == id {
-		return
-	}
-	a.viewSent = &id
-	a.cl.Go("view", proto.ViewParams{ID: id}, nil)
 }
 
 // touch moves a terminal to the front of those kept attached, dropping
@@ -538,13 +543,15 @@ func (g *gated) Read(p []byte) (int, error) {
 
 // ensureTerm attaches a terminal to a session, unless one is.
 func (a *App) ensureTerm(id string) {
-	if a.terms[id] != nil || a.conn != connReady {
+	h := a.hostOf(id)
+	if a.terms[id] != nil || h.conn != connReady {
 		return
 	}
 	e := &termEntry{started: time.Now()}
 	a.terms[id] = e
+	dialer := h.dialer()
 	go func() {
-		stream, err := client.Attach(id)
+		stream, err := client.AttachVia(dialer, id)
 		if err != nil {
 			a.update(func() {
 				if a.terms[id] == e {
@@ -646,6 +653,8 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 			return true
 		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
+		// Files and images pasted into a pane of another machine go there.
+		OnPaste: func(d transfer.Data) bool { return a.remotePaste(id, d) },
 		// A selection copied as it ends shows nothing else: say so.
 		OnCopy: func(_ string, by terminal.CopySource) {
 			if by == terminal.CopySelect {
@@ -737,6 +746,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 	if old.DockBadge != s.DockBadge {
 		a.notify(true)
 	}
+	if !slices.Equal(old.Hosts, s.Hosts) && a.win != nil {
+		a.syncHosts()
+	}
 	if a.win != nil {
 		a.win.Invalidate()
 	}
@@ -807,6 +819,11 @@ func (a *App) openLink(id, link string) bool {
 	if strings.Contains(link, "://") {
 		return false
 	}
+	if h := a.hostOf(id); h.remote() {
+		// A path of another machine is never a file of this one.
+		a.openRemotePath(h, id, link)
+		return true
+	}
 	path := a.resolvePath(id, link)
 	if path == "" {
 		return false
@@ -850,11 +867,21 @@ func (a *App) workDir(id string) string {
 
 // --- actions ---
 
-func (a *App) call(method string, params any, done func(err error)) {
-	if a.cl == nil {
+// call calls a method of the kerod that has id: a session's, a pane's or
+// a project's, toasting a failure unless done takes it.
+func (a *App) call(id, method string, params any, done func(err error)) {
+	a.callOn(a.hostOf(id), method, params, done)
+}
+
+// callOn calls a method of a host's kerod.
+func (a *App) callOn(h *host, method string, params any, done func(err error)) {
+	if h.cl == nil {
+		if done != nil {
+			done(errors.New(locales.HostNotConnected(h.label())))
+		}
 		return
 	}
-	a.cl.Go(method, params, func(err error) {
+	h.cl.Go(method, params, func(err error) {
 		if done != nil || err != nil {
 			a.update(func() {
 				if done != nil {
@@ -871,13 +898,23 @@ func (a *App) toast(msg string) { a.pendingToast = msg }
 
 // newSession starts a session in a project: in the directory of the
 // session shown when it is the project's, as a terminal's new tab does,
-// else the project's.
+// else the project's. With no project, it is the shown session's host's.
 func (a *App) newSession(projectID string) {
-	if a.cl == nil {
+	h := a.selectedHost()
+	if projectID != "" {
+		h = a.hostOf(projectID)
+	}
+	a.newSessionOn(h, projectID)
+}
+
+// newSessionOn starts a session on a host, in a project of its, "" for
+// the one of the session shown there, else the first.
+func (a *App) newSessionOn(h *host, projectID string) {
+	if h.cl == nil {
 		return
 	}
 	p := proto.CreateParams{Project: projectID}
-	if cur := a.session(a.selected); cur != nil {
+	if cur := a.session(a.selected); cur != nil && a.hostOf(cur.ID) == h {
 		if projectID == "" || cur.Project == projectID {
 			p.Project, p.After = cur.Project, cur.ID
 			if a.set.NewSessionDir == "current" {
@@ -886,13 +923,26 @@ func (a *App) newSession(projectID string) {
 		}
 		p.Cols, p.Rows = cur.Cols, cur.Rows
 	}
+	home := proto.Home()
+	if h.remote() {
+		home = "~" // the host's, as kerod there takes it
+	}
 	if a.set.NewSessionDir == "home" {
-		p.Dir = proto.Home()
+		p.Dir = home
 	}
-	if p.Project == "" && len(a.st.Projects) == 0 {
-		p.Dir = proto.Home()
+	if p.Project == "" && len(a.projectsOf(h)) == 0 {
+		p.Dir = home
 	}
-	cl := a.cl
+	a.create(h, p, "")
+}
+
+// create starts a session on a host, and shows it, opening the project
+// expand in the sidebar.
+func (a *App) create(h *host, p proto.CreateParams, expand string) {
+	cl := h.cl
+	if cl == nil {
+		return
+	}
 	go func() {
 		var s proto.Session
 		err := cl.Call("create", p, &s)
@@ -901,32 +951,42 @@ func (a *App) newSession(projectID string) {
 				a.toast(err.Error())
 				return
 			}
+			if expand != "" {
+				delete(a.prefs.Collapsed, expand)
+			}
 			// The state with it may come after the answer.
-			a.addPending(s)
+			a.addPending(h, s)
 			a.selectSession(s.ID)
 		})
 	}()
 }
 
-// addPending puts a session just created into the state until the
-// daemon's comes with it.
-func (a *App) addPending(s proto.Session) {
+// addPending puts a session just created into the state until its host's
+// comes with it.
+func (a *App) addPending(h *host, s proto.Session) {
 	if a.session(s.ID) != nil {
 		return
 	}
+	a.own(h, s)
 	a.st.Sessions = append(a.st.Sessions, s)
 	if a.project(s.Project) == nil {
-		a.st.Projects = append(a.st.Projects, proto.Project{ID: s.Project, Name: filepath.Base(s.Dir), Dir: s.Dir})
+		a.st.Projects = append(a.st.Projects, proto.Project{ID: s.Project, Name: path.Base(filepath.ToSlash(s.Dir)), Dir: s.Dir})
 	}
 }
 
 // openProject asks for a folder, and starts a session there, in its
-// project.
+// project: of this machine, with the system's dialog, or of the shown
+// session's host, which the app lists.
 func (a *App) openProject() {
-	if a.cl == nil {
+	if h := a.selectedHost(); h.remote() {
+		a.openProjectOn(h)
 		return
 	}
-	cl, win := a.cl, a.win
+	h := a.local()
+	if h.cl == nil {
+		return
+	}
+	win := a.win
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
 			Parent: win, Title: locales.OpenProjectTitle(), Directory: true, ButtonLabel: locales.CommonOpen(),
@@ -935,21 +995,27 @@ func (a *App) openProject() {
 		if err != nil || len(paths) == 0 {
 			return
 		}
+		a.update(func() { a.openProjectAt(h, paths[0]) })
+	}()
+}
+
+// openProjectAt starts a session in a folder of a host, in its project.
+func (a *App) openProjectAt(h *host, dir string) {
+	cl := h.cl
+	if cl == nil {
+		return
+	}
+	go func() {
 		var p proto.Project
-		if err := cl.Call("project.create", proto.ProjectParams{Dir: paths[0]}, &p); err != nil {
+		if err := cl.Call("project.create", proto.ProjectParams{Dir: dir}, &p); err != nil {
 			a.update(func() { a.toast(err.Error()) })
 			return
 		}
-		var s proto.Session
-		err = cl.Call("create", proto.CreateParams{Project: p.ID, Dir: paths[0]}, &s)
 		a.update(func() {
-			if err != nil {
-				a.toast(err.Error())
-				return
+			if h.remote() {
+				delete(a.prefs.Collapsed, hostKey(h))
 			}
-			delete(a.prefs.Collapsed, p.ID)
-			a.addPending(s)
-			a.selectSession(s.ID)
+			a.create(h, proto.CreateParams{Project: p.ID, Dir: dir}, p.ID)
 		})
 	}()
 }
@@ -977,6 +1043,7 @@ func (a *App) closeSession(id string, ask bool) {
 		}
 		return
 	}
+	h := a.hostOf(id)
 	if id == a.selected {
 		// The next session takes its place, else the one before.
 		ids := a.visibleOrder()
@@ -996,11 +1063,11 @@ func (a *App) closeSession(id string, ask bool) {
 		a.dropTerm(p.ID)
 	}
 	a.st.Sessions = slices.DeleteFunc(a.st.Sessions, func(x proto.Session) bool { return x.ID == id })
-	a.call("close", proto.IDParams{ID: id}, nil)
+	a.callOn(h, "close", proto.IDParams{ID: id}, nil)
 }
 
 func (a *App) restartSession(id string) {
-	a.call("restart", proto.IDParams{ID: id}, nil)
+	a.call(id, "restart", proto.IDParams{ID: id}, nil)
 }
 
 func (a *App) startRename(id string) {
@@ -1020,7 +1087,7 @@ func (a *App) commitRename() {
 		return
 	}
 	s.Name = name // at once; the daemon's state follows
-	a.call("rename", proto.RenameParams{ID: id, Name: name}, nil)
+	a.call(id, "rename", proto.RenameParams{ID: id, Name: name}, nil)
 	a.focusTerminal()
 	a.updateTitle()
 }
@@ -1039,7 +1106,7 @@ func (a *App) commitProjectRename() {
 	for i := range a.st.Projects {
 		if p := &a.st.Projects[i]; p.ID == id && name != "" && name != p.Name {
 			p.Name = name // at once; the daemon's state follows
-			a.call("project.rename", proto.ProjectParams{ID: id, Name: name}, nil)
+			a.call(id, "project.rename", proto.ProjectParams{ID: id, Name: name}, nil)
 		}
 	}
 	a.focusTerminal()
@@ -1049,7 +1116,7 @@ func (a *App) moveSession(id, project string) {
 	if s := a.session(id); s != nil {
 		s.Project = project
 	}
-	a.call("move", proto.MoveParams{ID: id, Project: project, Index: -1}, nil)
+	a.call(id, "move", proto.MoveParams{ID: id, Project: project, Index: -1}, nil)
 }
 
 func (a *App) selectOffset(d int) {
@@ -1066,8 +1133,6 @@ func (a *App) selectOffset(d int) {
 	a.selectSession(ids[i])
 }
 
-// jumpToAttention goes to the next session that needs the user, after the
-// one shown, else to the next with something unseen.
 // jumpTo goes to the next session that want takes, after the one shown,
 // in the sidebar's order, opening its project, and reports whether there
 // was one.
@@ -1083,6 +1148,9 @@ func (a *App) jumpTo(want func(*proto.Session) bool) bool {
 		id := ids[(i+k+len(ids))%len(ids)]
 		if s := a.session(id); s != nil && id != a.selected && want(s) {
 			delete(a.prefs.Collapsed, s.Project)
+			if h := a.hostOf(id); h.remote() {
+				delete(a.prefs.Collapsed, hostKey(h))
+			}
 			a.selectSession(id)
 			return true
 		}
@@ -1090,6 +1158,8 @@ func (a *App) jumpTo(want func(*proto.Session) bool) bool {
 	return false
 }
 
+// jumpToAttention goes to the next session that needs the user, after the
+// one shown, else to the next with something unseen.
 func (a *App) jumpToAttention() {
 	if a.jumpTo(func(s *proto.Session) bool { return s.Status == proto.Waiting }) ||
 		a.jumpTo(func(s *proto.Session) bool { return s.Unread }) {
@@ -1111,9 +1181,10 @@ func (a *App) toggleProject(id string) {
 	a.savePrefs()
 }
 
-// quitAndEnd ends every session and kerod, then quits.
+// quitAndEnd ends every session of this machine, and its kerod, then
+// quits: other machines' keep running.
 func (a *App) quitAndEnd() {
-	n := len(a.st.Sessions)
+	n := len(a.sessionsOf(a.local()))
 	a.confirm = &confirmation{
 		open:    true,
 		title:   locales.ConfirmQuitAllTitle(),
@@ -1121,7 +1192,7 @@ func (a *App) quitAndEnd() {
 		action:  locales.ConfirmQuitAllAction(),
 		destroy: true,
 		run: func() {
-			cl := a.cl
+			cl := a.local().cl
 			go func() {
 				if cl != nil {
 					cl.Call("shutdown", nil, nil)
@@ -1135,26 +1206,20 @@ func (a *App) quitAndEnd() {
 // daemonStale reports whether kerod runs another version of Kero than
 // this one, as after an update: it speaks the protocol, but runs the code
 // of before until it restarts.
-func (a *App) daemonStale() bool {
-	return a.conn == connReady && a.daemonApp != mygo.App.Version()
-}
+func (a *App) daemonStale() bool { return a.local().stale() }
 
 // offerRestart restarts kerod into this version of Kero, asking first
 // while programs run in sessions, as the restart ends them.
 func (a *App) offerRestart() {
-	n := 0
-	for i := range a.st.Sessions {
-		if busy(&a.st.Sessions[i]) {
-			n++
-		}
-	}
+	h := a.local()
+	n := a.busyCount(h)
 	if n == 0 {
 		a.restartDaemon()
 		return
 	}
 	was := locales.RestartEarlierVersion()
-	if a.daemonApp != "" {
-		was = a.daemonApp
+	if h.daemonApp != "" {
+		was = h.daemonApp
 	}
 	a.confirm = &confirmation{
 		open:    true,
@@ -1166,15 +1231,29 @@ func (a *App) offerRestart() {
 	}
 }
 
-// restartDaemon restarts kerod, as when it is of another version: its
-// sessions start again where they were, with their scrollback.
+// busyCount counts a host's sessions whose programs a restart of its
+// kerod would end.
+func (a *App) busyCount(h *host) int {
+	n := 0
+	for _, s := range a.sessionsOf(h) {
+		if busy(&s) {
+			n++
+		}
+	}
+	return n
+}
+
+// restartDaemon restarts this machine's kerod, as when it is of another
+// version: its sessions start again where they were, with their
+// scrollback.
 func (a *App) restartDaemon() {
-	a.conn = connConnecting
+	h := a.local()
+	h.conn = connConnecting
 	go func() {
 		err := stopDaemon()
 		a.update(func() {
 			if err != nil {
-				a.conn, a.connErr = connFailed, err.Error()
+				h.conn, h.err = connFailed, err.Error()
 				return
 			}
 			a.connect()

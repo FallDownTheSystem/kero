@@ -1,0 +1,464 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
+
+	"kero/internal/proto"
+	"kero/internal/remote"
+
+	"kero/locales"
+)
+
+var (
+	hostIcon    = glyph("f7-desktopcomputer")
+	reloadIcon  = glyph("f7-arrow-clockwise")
+	updateIcon  = glyph("f7-arrow-down-circle")
+	networkIcon = glyph("f7-globe")
+)
+
+// hostSection is a remote host in the sidebar: its header, which tells
+// how the app stands with it, then its projects, or what keeps them from
+// showing.
+func (a *App) hostSection(c *ui.Context, pal *palette, h *host, top float32, gi *int, n *int) {
+	collapsed := a.prefs.Collapsed[hostKey(h)]
+	a.hostHeader(c, pal, h, top, collapsed)
+	groups := a.hostGroups(h)
+	if collapsed {
+		// The session shown stays in view.
+		for _, g := range groups {
+			for _, s := range g.sessions {
+				if s.ID == a.selected {
+					a.sessionRow(c, pal, s, n)
+				}
+			}
+		}
+		return
+	}
+	if h.conn != connReady && h.conn != connConnecting || h.busy != "" {
+		a.hostNote(c, pal, h)
+	}
+	for i, g := range groups {
+		// The first right under the header.
+		a.groupView(c, pal, g, min(i, 1), n)
+		*gi++
+	}
+	if len(groups) == 0 && h.loaded && h.conn == connReady && h.busy == "" {
+		ui.Text(c, locales.SidebarNoSessions()).FontSize(12.5).TextColor(pal.textFaint).Padding(4, 10)
+	}
+}
+
+// hostHeader is a remote host's name, with how the app stands with it: a
+// dot while it connects or failed to, a chip when Kero there wants
+// updating; a click folds it.
+func (a *App) hostHeader(c *ui.Context, pal *palette, h *host, top float32, collapsed bool) {
+	hdr := ui.Row(c.Key("host-"+h.name)).Height(30).Margin(top, 0, 2, 0).Padding(0, 6, 0, 8).Gap(7).AlignItems(ui.Center).Radius(6)
+	hovered := hdr.Hovered()
+	if hdr.Clicked() {
+		a.toggleProject(hostKey(h))
+	}
+	pointerTooltip(c, hdr, "tip-host-"+h.name, a.hostTip(h))
+	hdr.ContextMenu(func(m *ui.Menu) { a.hostMenu(m, h) })
+	hdr.Children(func() {
+		ui.Icon(c, hostIcon).Size(14, 14).TextColor(pal.textMuted).Shrink(0)
+		ui.Text(c, h.name).FontSize(13).FontWeight(650).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+		chev := ui.Icon(c, chevronIcon).Size(11, 11).TextColor(pal.textFaint)
+		turn := chev.AnimateTo("turn", 90*(1-b2f(collapsed)), ui.Snappy)
+		chev.Rotate(turn).Opacity(chev.Animate("shown", b2f(hovered || collapsed), 120*time.Millisecond))
+		ui.Spacer(c)
+		switch {
+		case h.busy != "":
+			ui.Spinner(c).Size(12, 12)
+		case h.conn == connConnecting && h.loaded:
+			a.hostDot(c, pal, pal.attention, locales.HostReconnecting())
+		case h.conn == connConnecting:
+			a.hostDot(c, pal, pal.textFaint, locales.StatusConnecting())
+		case h.conn == connFailed:
+			a.hostDot(c, pal, pal.danger, a.hostProblem(h))
+		case h.conn == connVersion || h.behind():
+			b := ui.ButtonBase(c.Key("update")).Height(22).Padding(0, 7).Gap(5).Radius(11).AlignItems(ui.Center).
+				Label(locales.HostUpdateAction(h.name)).Tooltip(a.hostVersionDetail(h))
+			if b.Hovered() {
+				b.Background(pal.rowHover)
+			}
+			b.Children(func() {
+				ui.Box(c).Size(6, 6).Radius(3).Background(pal.attention)
+				ui.Text(c, locales.CommonUpdate()).FontSize(12).FontWeight(500).TextColor(pal.attention).SingleLine()
+			})
+			if b.Clicked() {
+				a.offerHostUpdate(h)
+			}
+		case h.stale():
+			b := ui.ButtonBase(c.Key("restart")).Height(22).Padding(0, 7).Gap(5).Radius(11).AlignItems(ui.Center).
+				Label(locales.HostRestartAction(h.name)).Tooltip(locales.HostStaleTip(h.name, h.daemonApp, h.info.Kero))
+			if b.Hovered() {
+				b.Background(pal.rowHover)
+			}
+			b.Children(func() {
+				ui.Box(c).Size(6, 6).Radius(3).Background(pal.attention)
+				ui.Text(c, locales.CommonRestart()).FontSize(12).FontWeight(500).TextColor(pal.attention).SingleLine()
+			})
+			if b.Clicked() {
+				a.offerHostRestart(h)
+			}
+		}
+		if hovered && h.conn == connReady {
+			b := ui.ButtonBase(c.Key("add")).Size(20, 20).Radius(5).Center().TextColor(pal.textMuted).
+				Label(locales.NewSessionIn(h.name)).Tooltip(locales.ActionNewSession())
+			if b.Hovered() {
+				b.Background(pal.rowHover).TextColor(pal.text)
+			}
+			b.Children(func() { ui.Icon(c, plusIcon).Size(13, 13) })
+			if b.Clicked() {
+				a.newSessionOn(h, "")
+			}
+		}
+	})
+}
+
+// hostDot says how the app stands with a host: a dot, and its words as
+// the tooltip.
+func (a *App) hostDot(c *ui.Context, pal *palette, col ui.Color, label string) {
+	ui.Box(c).Size(7, 7).Radius(3.5).Background(col).Shrink(0).Margin(0, 4, 0, 0).Label(label).Tooltip(label)
+}
+
+// hostTip tells what a host is: its address, and Kero there.
+func (a *App) hostTip(h *host) string {
+	tip := h.addr.String()
+	if i := h.info; i.OS != "" {
+		tip += "\n" + locales.HostAbout(i.Kero, i.OS+"/"+i.Arch, i.Hostname, i.User)
+	}
+	if h.conn == connFailed {
+		tip += "\n" + h.err
+	}
+	return tip
+}
+
+// hostProblem words why the app can't reach a host.
+func (a *App) hostProblem(h *host) string {
+	switch {
+	case errors.Is(h.errKind, remote.ErrNotInstalled):
+		return locales.HostNotInstalled(h.name)
+	case errors.Is(h.errKind, remote.ErrAuth):
+		return locales.HostRefused(h.name)
+	}
+	return locales.HostCantConnect(h.name)
+}
+
+// hostNote says, under a host's header, what keeps its sessions from
+// showing, and what to do about it.
+func (a *App) hostNote(c *ui.Context, pal *palette, h *host) {
+	ui.Column(c.Key("note-"+h.name)).Margin(0, 0, 6, 0).Padding(8, 10).Gap(6).Radius(8).Background(pal.chip).Children(func() {
+		var title, detail string
+		switch {
+		case h.busy == "install":
+			title = locales.HostInstalling(h.name)
+		case h.busy == "update":
+			title = locales.HostUpdating(h.name)
+		case h.busy == "restart":
+			title = locales.HostRestarting(h.name)
+		case h.conn == connVersion:
+			title, detail = locales.HostVersionTitle(h.name), a.hostVersionDetail(h)
+		default:
+			title, detail = a.hostProblem(h), h.err
+			if errors.Is(h.errKind, remote.ErrAuth) && h.addr.Scheme == "ssh" {
+				detail += "\n" + locales.HostAuthHint(h.addr.String())
+			}
+		}
+		ui.Text(c, title).FontSize(12.5).FontWeight(600).TextColor(pal.text)
+		if detail != "" {
+			ui.Text(c, detail).FontSize(12).TextColor(pal.textMuted).LineHeight(1.35).Selectable()
+		}
+		if h.busy != "" {
+			return
+		}
+		ui.Row(c).Gap(6).Margin(2, 0, 0, 0).Children(func() {
+			switch {
+			case h.conn == connVersion:
+				if smallButton(c, "update", locales.CommonUpdate(), true, pal) {
+					a.offerHostUpdate(h)
+				}
+			case errors.Is(h.errKind, remote.ErrNotInstalled):
+				if smallButton(c, "install", locales.HostInstall(), true, pal) {
+					a.installOnHost(h)
+				}
+			}
+			if h.conn == connFailed && smallButton(c, "retry", locales.CommonTryAgain(), !errors.Is(h.errKind, remote.ErrNotInstalled), pal) {
+				a.reconnectHost(h)
+			}
+		})
+	})
+}
+
+// smallButton is a button for a sidebar's note.
+func smallButton(c *ui.Context, key, label string, primary bool, pal *palette) bool {
+	b := ui.ButtonBase(c.Key(key)).Height(24).Padding(0, 10).Radius(6).AlignItems(ui.Center).Label(label)
+	bg, fg := pal.control, pal.text
+	if primary {
+		bg, fg = pal.accent, ui.Hex("#ffffff")
+	}
+	if b.Hovered() {
+		bg = bg.Mix(pal.text, 0.06)
+	}
+	b.Background(bg).TextColor(fg).Children(func() {
+		ui.Text(c, label).FontSize(12).FontWeight(500).SingleLine()
+	})
+	return b.Clicked()
+}
+
+// hostMenu is a host header's context menu.
+func (a *App) hostMenu(m *ui.Menu, h *host) {
+	ready := h.conn == connReady
+	if m.Item(locales.ActionNewSession()).Disabled(!ready).Chosen() {
+		a.newSessionOn(h, "")
+	}
+	if m.Item(locales.ActionOpenProject()).Disabled(!ready).Chosen() {
+		a.openProjectOn(h)
+	}
+	m.Separator()
+	if m.Item(locales.HostReconnect()).Chosen() {
+		a.reconnectHost(h)
+	}
+	if m.Item(locales.HostRestartAction(h.name)).Disabled(h.rc == nil || h.busy != "").Chosen() {
+		a.offerHostRestart(h)
+	}
+	if h.info.Server || h.conn == connVersion {
+		if m.Item(locales.HostUpdateAction(h.name)).Disabled(h.rc == nil || h.busy != "" || !released(mygo.App.Version())).Chosen() {
+			a.offerHostUpdate(h)
+		}
+	}
+	if errors.Is(h.errKind, remote.ErrNotInstalled) {
+		if m.Item(locales.HostInstall()).Disabled(h.busy != "").Chosen() {
+			a.installOnHost(h)
+		}
+	}
+	m.Separator()
+	if m.Item(locales.HostCopyAddress()).Chosen() {
+		a.copyText = h.addr.String()
+	}
+	if m.Item(locales.HostSettings()).Chosen() {
+		a.openSettings("hosts")
+	}
+	if m.Item(locales.HostRemove()).Chosen() {
+		a.confirmRemoveHost(h)
+	}
+}
+
+// reconnectHost connects to a host again, now, with a new connection.
+func (a *App) reconnectHost(h *host) {
+	a.dropTerms(h)
+	if h.cl != nil {
+		h.cl.Close()
+		h.cl = nil
+	}
+	if h.rc != nil {
+		h.rc.Close()
+		h.rc = nil
+	}
+	h.retries, h.err, h.errKind = 0, "", nil
+	h.conn = connConnecting
+	a.connectHost(h)
+}
+
+// confirmRemoveHost removes a host from Settings › Hosts, which leaves its
+// sessions running there.
+func (a *App) confirmRemoveHost(h *host) {
+	name := h.name
+	a.confirm = &confirmation{
+		open:    true,
+		title:   locales.HostRemoveTitle(name),
+		detail:  locales.HostRemoveDetail(name),
+		action:  locales.CommonRemove(),
+		destroy: true,
+		run:     func() { a.removeHost(name) },
+	}
+}
+
+func (a *App) removeHost(name string) {
+	s := a.set.Clone()
+	var keep = s.Hosts[:0]
+	for _, h := range s.Hosts {
+		if !strings.EqualFold(h.Name, name) {
+			keep = append(keep, h)
+		}
+	}
+	s.Hosts = keep
+	a.applySettings(s)
+}
+
+// installOnHost installs Kero on a host the app reaches over SSH or WSL,
+// as Kero's install script does, then connects.
+func (a *App) installOnHost(h *host) {
+	version := mygo.App.Version()
+	if !released(version) {
+		version = ""
+	}
+	cmd, err := remote.InstallCommand(h.addr, version, true)
+	if err != nil {
+		a.toast(err.Error())
+		return
+	}
+	h.busy = "install"
+	gen := h.gen
+	go func() {
+		out, err := cmd.CombinedOutput()
+		a.update(func() {
+			h.busy = ""
+			if err != nil {
+				msg := strings.TrimSpace(string(out))
+				if i := strings.LastIndex(msg, "\n"); i >= 0 {
+					msg = msg[i+1:]
+				}
+				if msg == "" {
+					msg = err.Error()
+				}
+				a.toast(locales.HostInstallFailed(h.name, msg))
+				return
+			}
+			a.toast(locales.HostInstalled(h.name))
+			if h.gen == gen {
+				a.reconnectHost(h)
+			}
+		})
+	}()
+}
+
+// hostVersionDetail says how Kero on a host differs from this app.
+func (a *App) hostVersionDetail(h *host) string {
+	v := h.info.Kero
+	if h.daemonApp != "" {
+		v = h.daemonApp
+	}
+	if !h.info.Server {
+		return locales.HostDesktopDetail(h.name, v, mygo.App.Version())
+	}
+	return locales.HostVersionDetail(h.name, v, mygo.App.Version())
+}
+
+// offerHostUpdate updates the server build of Kero on a host to this
+// app's version, and restarts kerod there into it, asking first while
+// programs run in its sessions, which the restart ends.
+func (a *App) offerHostUpdate(h *host) {
+	if !h.info.Server {
+		a.toast(a.hostVersionDetail(h))
+		return
+	}
+	if !released(mygo.App.Version()) {
+		a.toast(locales.HostUpdateDev())
+		return
+	}
+	n := a.busyCount(h)
+	a.confirm = &confirmation{
+		open:   true,
+		title:  locales.HostUpdateTitle(h.name, mygo.App.Version()),
+		detail: withRunning(locales.HostUpdateDetail(h.name), n),
+		action: locales.CommonUpdate(),
+		run:    func() { a.hostRequest(h, "update") },
+	}
+}
+
+// offerHostRestart restarts kerod on a host, asking first while programs
+// run in its sessions.
+func (a *App) offerHostRestart(h *host) {
+	a.confirm = &confirmation{
+		open:    true,
+		title:   locales.HostRestartTitle(h.name),
+		detail:  withRunning(locales.HostRestartDetail(h.name), a.busyCount(h)),
+		action:  locales.CommonRestart(),
+		destroy: true,
+		run:     func() { a.hostRequest(h, "restart") },
+	}
+}
+
+// hostRequest asks a host to update Kero, then restart kerod into it, or
+// only to restart it; the app connects again as kerod comes back, its
+// sessions with it.
+func (a *App) hostRequest(h *host, what string) {
+	rc := h.rc
+	if rc == nil {
+		a.toast(locales.HostNotConnected(h.name))
+		return
+	}
+	h.busy = what
+	version := mygo.App.Version()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		var err error
+		if what == "update" {
+			err = rc.Host(ctx, proto.HostRequest{Kind: proto.KindUpdate, App: version})
+		}
+		if err == nil {
+			err = rc.Host(ctx, proto.HostRequest{Kind: proto.KindRestart})
+		}
+		a.update(func() {
+			h.busy = ""
+			if err != nil {
+				a.toast(fmt.Sprintf("%s: %v", h.name, err))
+				return
+			}
+			if what == "update" {
+				a.toast(locales.HostUpdated(h.name, version))
+			}
+			// Through the bridge, which stays, or through a new
+			// connection to the listener of the kerod that follows.
+			time.AfterFunc(time.Second, func() { a.update(func() { a.reconnectHost(h) }) })
+		})
+	}()
+}
+
+// openRemotePath opens what a path printed in a remote pane names, which
+// the host tells: a folder in a new session there, a file in the editor
+// of the host, in a pane beside, as nothing of this machine is the host's.
+func (a *App) openRemotePath(h *host, id, link string) {
+	path := lineSuffix.ReplaceAllString(link, "")
+	cl := h.cl
+	if cl == nil {
+		return
+	}
+	base := a.workDir(id)
+	go func() {
+		var st proto.FSStat
+		err := cl.Call("fs.stat", proto.FSStatParams{Path: path, Base: base}, &st)
+		a.update(func() {
+			switch {
+			case err != nil:
+				a.toast(err.Error())
+			case !st.Exists:
+				a.toast(locales.HostNoSuchFile(h.name, path))
+			case st.Dir:
+				a.newSessionIn(h, st.Path)
+			default:
+				s := a.session(id)
+				if s == nil {
+					for i := range a.st.Sessions {
+						if a.st.Sessions[i].PaneByID(id) != nil {
+							s = &a.st.Sessions[i]
+						}
+					}
+				}
+				if s == nil {
+					return
+				}
+				// The host's editor, as its shell would run it.
+				p := proto.CreateParams{Split: id, Direction: "down", Command: []string{"sh", "-c", `exec ${VISUAL:-${EDITOR:-vi}} "$1"`, "sh", st.Path}}
+				a.splitWith(s, p)
+			}
+		})
+	}()
+}
+
+// withRunning adds to what a restart does how many sessions run programs
+// it ends, when any do.
+func withRunning(detail string, n int) string {
+	if n == 0 {
+		return detail
+	}
+	return detail + " " + locales.RestartRunning(n) + "."
+}

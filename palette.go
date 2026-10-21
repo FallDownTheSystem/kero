@@ -51,7 +51,11 @@ func (a *App) paletteItems() []paletteItem {
 			if s.Process != "" {
 				detail += " · " + s.Process
 			}
-			items = append(items, paletteItem{session: s, title: s.DisplayName(a.set.SessionName), detail: detail + " · " + proto.ShortDir(s.WorkDir()),
+			h := a.hostOf(id)
+			if h.remote() {
+				detail = h.name + " · " + detail
+			}
+			items = append(items, paletteItem{session: s, title: s.DisplayName(a.set.SessionName), detail: detail + " · " + h.shortDir(s.WorkDir()),
 				run: func() { delete(a.prefs.Collapsed, s.Project); a.selectSession(id) }})
 		}
 	}
@@ -68,7 +72,18 @@ func (a *App) paletteItems() []paletteItem {
 	cmds = append(cmds, paletteItem{title: locales.PaletteRestartService(), detail: locales.PaletteRestartServiceDetail(), run: a.restartDaemon})
 	for _, p := range a.st.Projects {
 		id := p.ID
-		cmds = append(cmds, paletteItem{title: locales.NewSessionIn(p.Name), detail: proto.ShortDir(p.Dir), run: func() { a.newSession(id) }})
+		h := a.hostOf(id)
+		detail := h.shortDir(p.Dir)
+		if h.remote() {
+			detail = h.name + " · " + detail
+		}
+		cmds = append(cmds, paletteItem{title: locales.NewSessionIn(p.Name), detail: detail, run: func() { a.newSession(id) }})
+	}
+	for _, h := range a.hosts[1:] {
+		cmds = append(cmds,
+			paletteItem{title: locales.NewSessionIn(h.name), detail: h.addr.String(), run: func() { a.newSessionOn(h, "") }},
+			paletteItem{title: locales.PickerTitle(h.name), detail: h.addr.String(), run: func() { a.openProjectOn(h) }},
+			paletteItem{title: locales.HostReconnectTo(h.name), detail: h.addr.String(), run: func() { a.reconnectHost(h) }})
 	}
 	return append(items, cmds...)
 }
@@ -228,7 +243,7 @@ func (a *App) confirmView(c *ui.Context, pal *palette) {
 
 // shortcuts are the window's keys that no menu item has.
 func (a *App) shortcuts(c *ui.Context) {
-	if a.pal.open || a.confirm != nil {
+	if a.pal.open || a.picker.open || a.confirm != nil {
 		return
 	}
 	keys := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8, ui.Key9}

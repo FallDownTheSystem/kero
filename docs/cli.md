@@ -114,7 +114,26 @@ kero config check                # report unknown keys and bad values
 kero projects                    # list projects
 kero skill setup                 # teach coding agents to use kero
 kero daemon status|stop|restart  # manage kerod
+kero daemon install-service      # run kerod with the machine (systemd, launchd)
+kero daemon serve                # run kerod in the foreground, for a service manager
+kero clients                     # who is connected to kerod
 ```
+
+## Other machines
+
+`-H <host>`, or `$KERO_HOST`, points any command at kerod on another machine: a host you added, or an address such as `me@devbox` or `wsl://Ubuntu`. See [Remote Hosts](./remote.md).
+
+```sh
+kero hosts                       # the hosts you added
+kero hosts add devbox me@devbox  # add one, which the app shows too
+kero hosts check devbox          # connect, and say how it went
+kero hosts install devbox        # install Kero there, over SSH
+kero -H devbox ls
+kero -H devbox new -n review -- claude
+kero -H devbox daemon update     # update Kero there to this one's version
+```
+
+Inside a pane, `kero` talks to the kerod of the machine the pane runs on, wherever the app is.
 
 ## Running app actions
 

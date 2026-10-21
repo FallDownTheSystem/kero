@@ -13,7 +13,9 @@ require (
 )
 
 require (
+	github.com/coder/websocket v1.8.14 // indirect
 	github.com/go-text/typesetting v0.3.5 // indirect
+	github.com/hashicorp/yamux v0.1.2 // indirect
 	golang.org/x/image v0.46.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )

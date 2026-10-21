@@ -98,3 +98,61 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
         run: go tool mygo build -platform "${{ matrix.platform }}" -upload
+
+  # The server build of Kero, for machines whose sessions the app shows
+  # (Settings › Hosts): kerod and the kero CLI without the app, with
+  # libghostty-vt, signed with the key of the app's updates, which its
+  # updates check (internal/update), and install-server.sh, of this
+  # version.
+  server:
+    needs: draft-release
+    name: Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Test the server's packages
+        run: go test ./internal/remote/ ./internal/update/ ./internal/settings/ ./internal/tailscale/
+      - name: Build
+        run: |
+          set -eu
+          version="$(jq -r .version mygo.json)"
+          mkdir -p build/server
+          go mod download github.com/egoist/mygo
+          manifest="$(go list -m -f '{{.Dir}}' github.com/egoist/mygo)/plugins/terminal/mygo-plugin.json"
+          for arch in amd64 arm64; do
+            stage="build/server/linux-$arch"
+            mkdir -p "$stage"
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
+              -ldflags "-s -w -X main.version=$version -X github.com/egoist/mygo.production=1" \
+              -o "$stage/kero" ./cmd/kero-server
+            url="$(jq -r ".libraries[] | select(.name == \"libghostty-vt\") | .files[\"linux-$arch\"].url" "$manifest")"
+            sum="$(jq -r ".libraries[] | select(.name == \"libghostty-vt\") | .files[\"linux-$arch\"].sha256" "$manifest")"
+            curl -fsSL "$url" -o "$stage/libghostty-vt.so"
+            echo "$sum  $stage/libghostty-vt.so" | sha256sum -c -
+            tar -C "$stage" -czf "build/server/kero-server-$version-linux-$arch.tar.gz" kero libghostty-vt.so
+          done
+          sed "s/@VERSION@/$version/" scripts/install-server.sh > build/server/install-server.sh
+      - name: Check that the build runs with no display
+        run: |
+          set -eu
+          dir="$(mktemp -d)"
+          tar -xzf build/server/kero-server-*-linux-amd64.tar.gz -C "$dir"
+          env -u DISPLAY -u WAYLAND_DISPLAY KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" version
+          env -u DISPLAY -u WAYLAND_DISPLAY KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" new -n check -- echo ok
+          sleep 1
+          env KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" read check | grep -q ok
+          env KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" daemon stop
+      - name: Sign
+        env:
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go run ./internal/update/sign build/server/*.tar.gz
+      - name: Upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$(jq -r .version mygo.json)"
+          gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
+            build/server/*.tar.gz build/server/*.tar.gz.sig build/server/*.tar.gz.sha256 build/server/install-server.sh

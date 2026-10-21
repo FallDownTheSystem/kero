@@ -1,9 +1,48 @@
 # Plan: Kero on remote servers
 
-Status: future plan, not started. Written 2026-10-20 after looking at Rex
-(superlogical.com/rex), which ships a Linux server mode, multi-user servers and
-remote access over Tailscale. Updated after 2.0 shipped for macOS, Windows
-and Linux.
+Status: Phases 1 and 2 are implemented (2026-10-22), with two changes to the
+plan below. Phases 3 and 4 are still to do. Written 2026-10-20 after looking
+at Rex (superlogical.com/rex), which ships a Linux server mode, multi-user
+servers and remote access over Tailscale. Updated after 2.0 shipped for macOS,
+Windows and Linux.
+
+## What shipped, and how it differs
+
+User docs: [docs/remote.md](../docs/remote.md).
+
+- **SSH and WSL are transports too, beside HTTP.** Herdr (herdrdev/herdr)
+  reaches machines only over SSH: `ssh host herdr remote-client-bridge` pipes
+  stdio to the remote daemon's socket. That needs nothing set up on the host
+  but the binary, so it's the easiest first step for most people. Kero does
+  the same with `kero __bridge`, and with `wsl.exe` for a WSL distribution.
+  The objections below to SSH as *the* transport still hold, so the tailnet
+  listeners are there for always-on servers, and are where an iOS client
+  would connect.
+- **One multiplexed connection, whatever the transport.** A connection opens
+  with a `mux` Hello, then carries yamux streams. Each stream is a local
+  socket connection as before (control or attach), so the protocol and
+  `proto.Version` are unchanged. Over HTTP, the connection is a WebSocket.
+  `MuxVersion` versions the mux layer alone, and the host streams
+  (`host.restart`, `host.update`) work across protocol versions, so the app
+  can always tell the user what's wrong and update the host.
+- **Compression is DEFLATE across the whole connection**, flushed on every
+  write, rather than of attach frames alone. The state, sent whole on every
+  change, compresses as well as the frames.
+- **Heartbeats** are yamux pings every 5 seconds, with a link that doesn't
+  answer for 10 seconds counted as dead, as Herdr does.
+- **Version skew:** the app offers **Update** for a server build of another
+  version. It installs the app's version, signed with the updates' key, then
+  restarts kerod after asking. It never updates on a reconnect.
+- **Listeners:** `tailnet://:port` (identity from tailscaled's whois) and
+  `tailnet-serve://` (Serve's headers, on a 0600 socket). Built-in tsnet is
+  not done: it would add Tailscale's whole client to kerod. Requests with an
+  `Origin`, or without Kero's header, are refused, so no web page can reach
+  kerod through a browser on the tailnet.
+- **Settings split:** documented and noted in Settings rather than edited
+  remotely. `kero config edit` on the host edits the host's.
+- Not done from Phase 2: image previews under the pointer for remote panes,
+  and uploading files dragged onto a remote pane (MyGo's terminal pastes
+  dropped paths itself; pasting them works).
 
 ## Goal
 

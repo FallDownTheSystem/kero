@@ -10,6 +10,7 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/proto"
+	"kero/internal/remote"
 )
 
 // kero's configuration is a file of lines `key = value`, as Ghostty's:
@@ -182,6 +183,60 @@ var keys = []key{
 	boolKey("dock-bounce", "once, when a session comes to need you", func(s *Settings) *bool { return &s.BounceDock }),
 
 	boolKey("remote-control", "kero do and kero focus drive the app", func(s *Settings) *bool { return &s.RemoteControl }),
+	{name: "host", doc: "another machine whose sessions the app shows, as name=address: [user@]host or ssh://… over SSH, wsl://distro, http(s)://… for kerod's tailnet listener; add remote-control after it to let its programs drive the app; repeat it", list: true,
+		get: func(s *Settings) []string {
+			var out []string
+			for _, h := range s.Hosts {
+				v := h.Name + "=" + h.Addr
+				if h.RemoteControl {
+					v += " remote-control"
+				}
+				out = append(out, v)
+			}
+			return out
+		},
+		set: func(s *Settings, v []string) error {
+			s.Hosts = nil
+			var bad []string
+			for _, line := range v {
+				h, err := ParseHost(line)
+				if err == nil && s.Host(h.Name) != nil {
+					err = fmt.Errorf("%q is named twice", h.Name)
+				}
+				if err != nil {
+					bad = append(bad, err.Error())
+					continue
+				}
+				s.Hosts = append(s.Hosts, h)
+			}
+			if bad != nil {
+				return fmt.Errorf("%s", strings.Join(bad, "; "))
+			}
+			return nil
+		}},
+	{name: "listen", doc: "let Kero on other machines reach this one's sessions: tailnet://:7373 on its Tailscale addresses, tailnet-serve:// for Tailscale Serve; repeat it", list: true,
+		get: func(s *Settings) []string { return slices.Clone(s.Listen) },
+		set: func(s *Settings, v []string) error {
+			s.Listen = nil
+			for _, l := range v {
+				if _, err := remote.ParseListen(l); err != nil {
+					return err
+				}
+				s.Listen = append(s.Listen, strings.TrimSpace(l))
+			}
+			return nil
+		}},
+	{name: "listen-allow", doc: "who besides this machine's owner may connect to a listener: a tailnet login, tag:name, or * for anyone on the tailnet; repeat it", list: true,
+		get: func(s *Settings) []string { return slices.Clone(s.ListenAllow) },
+		set: func(s *Settings, v []string) error {
+			s.ListenAllow = nil
+			for _, a := range v {
+				if a = strings.TrimSpace(a); a != "" {
+					s.ListenAllow = append(s.ListenAllow, a)
+				}
+			}
+			return nil
+		}},
 	boolKey("git-status", "show the git branch and changes of each session", func(s *Settings) *bool { return &s.GitStatus }),
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
 	{name: "keybind", doc: "<keys>=<action>, over the defaults, as cmd+shift+d=pane.split.down; <keys>=unbind frees keys; see kero actions", list: true,

@@ -43,6 +43,7 @@ var settingsPages = []settingsPage{
 	{"notifications", locales.PageNotifications, glyph("f7-bell")},
 	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard")},
 	{"agents", locales.PageAgents, glyph("f7-sparkles")},
+	{"hosts", locales.PageHosts, hostIcon},
 	{"advanced", locales.PageAdvanced, glyph("f7-slider-horizontal-3")},
 }
 
@@ -68,6 +69,7 @@ type settingsState struct {
 	menus        map[string]*searchMenu     // the search menus', by key
 	problems     []string                   // what the configuration file got wrong
 	scrolls      map[string]*ui.ScrollState // each page's, for its scroll edge
+	host         hostDraft                  // the Hosts page's form
 }
 
 // openSettings shows the Settings window, on a page.
@@ -255,6 +257,8 @@ func (a *App) settingsView(c *ui.Context) {
 								a.keyboardPage(c, pal)
 							case "agents":
 								a.agentsPage(c, pal)
+							case "hosts":
+								a.hostsPage(c, pal)
 							case "advanced":
 								a.advancedPage(c, pal)
 							}
@@ -730,7 +734,11 @@ func (a *App) terminalPreview(c *ui.Context, pal *palette) {
 func (a *App) shellPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	login := shell.Login()
-	settingsGroup(c, pal, locales.SetShellGroup(), locales.SetShellGroupDetail(), func() {
+	note := locales.SetShellGroupDetail()
+	if len(a.hosts) > 1 {
+		note += " " + locales.SetShellThisComputer()
+	}
+	settingsGroup(c, pal, locales.SetShellGroup(), note, func() {
 		settingRow(c, pal, locales.SetShell(), locales.SetShellDetail(proto.ShortDir(login)), func() {
 			if !a.ss.shellEditing {
 				a.ss.shellDraft = s.Shell

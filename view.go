@@ -113,6 +113,7 @@ func (a *App) view(c *ui.Context) {
 		})
 	})
 	a.paletteView(c, pal)
+	a.pickerView(c, pal)
 	a.confirmView(c, pal)
 	// A preview that showed no more fades in anew next time.
 	if !a.previewShown {
@@ -235,15 +236,26 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 		iconButton(c, "new-session", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
 	})
 	ui.Scroll(c.Key("sessions")).Grow(1).Padding(0, 10, 16, 10).Children(func() {
-		if !a.loaded {
-			return
+		n := 0  // the rows shown, for ⌘1–9 (Ctrl+1–9 elsewhere)
+		gi := 0 // the groups shown, the first of which sits higher
+		// This machine's projects first, unlabeled; then each host's,
+		// under its name.
+		if local := a.local(); local.loaded {
+			for _, g := range a.hostGroups(local) {
+				a.groupView(c, pal, g, gi, &n)
+				gi++
+			}
+			if len(a.st.Sessions) == 0 && local.conn == connReady && len(a.hosts) == 1 {
+				ui.Text(c, locales.SidebarNoSessions()).FontSize(12.5).TextColor(pal.textFaint).Padding(8, 10)
+			}
 		}
-		n := 0 // the rows shown, for ⌘1–9 (Ctrl+1–9 elsewhere)
-		for gi, g := range a.groups() {
-			a.groupView(c, pal, g, gi, &n)
-		}
-		if len(a.st.Sessions) == 0 && a.conn == connReady {
-			ui.Text(c, locales.SidebarNoSessions()).FontSize(12.5).TextColor(pal.textFaint).Padding(8, 10)
+		for _, h := range a.hosts[1:] {
+			top := float32(18)
+			if gi == 0 {
+				top = 2
+			}
+			gi++
+			a.hostSection(c, pal, h, top, &gi, &n)
 		}
 	})
 	a.sidebarFooter(c, pal)
@@ -251,8 +263,8 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 }
 
 func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
-	id := g.project.ID
-	collapsed := a.prefs.Collapsed[id]
+	id, key := g.project.ID, g.key()
+	collapsed := a.prefs.Collapsed[key]
 	needs := 0
 	for _, s := range g.sessions {
 		if s.Status == proto.Waiting {
@@ -263,23 +275,23 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 	if gi == 0 {
 		top = 2
 	}
-	hdr := ui.Row(c.Key("project-"+id)).Height(28).Margin(top, 0, 3, 0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Radius(6)
+	hdr := ui.Row(c.Key("project-"+key)).Height(28).Margin(top, 0, 3, 0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Radius(6)
 	hovered := hdr.Hovered()
 	renaming := id != "" && a.renamingProject == id
 	if hdr.Clicked() && !renaming {
-		a.toggleProject(id)
+		a.toggleProject(key)
 	}
-	pointerTooltip(c, hdr, "tip-project-"+id, proto.ShortDir(g.project.Dir))
+	pointerTooltip(c, hdr, "tip-project-"+key, g.host.shortDir(g.project.Dir))
 	hdr.ContextMenu(func(m *ui.Menu) {
 		if m.Item(locales.ActionNewSession()).Chosen() {
-			a.newSession(id)
+			a.newSessionOn(g.host, id)
 		}
 		label := locales.SidebarCollapse()
 		if collapsed {
 			label = locales.SidebarExpand()
 		}
 		if m.Item(label).Chosen() {
-			a.toggleProject(id)
+			a.toggleProject(key)
 		}
 		if m.Item(locales.SessionRename()).Disabled(id == "").Chosen() {
 			a.startProjectRename(id)
@@ -293,7 +305,7 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 				detail:  locales.ConfirmCloseProjectDetail(count),
 				action:  locales.SidebarCloseProject(),
 				destroy: true,
-				run:     func() { a.call("project.close", proto.IDParams{ID: id}, nil) },
+				run:     func() { a.call(id, "project.close", proto.IDParams{ID: id}, nil) },
 			}
 		}
 	})
@@ -324,7 +336,7 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 			}
 			b.Children(func() { ui.Icon(c, plusIcon).Size(13, 13) })
 			if b.Clicked() {
-				a.newSession(id)
+				a.newSessionOn(g.host, id)
 			}
 		}
 	})
@@ -362,13 +374,18 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 		bg = pal.rowHover
 	}
 	row.Background(row.AnimateColor("bg", bg, ui.Animation{Duration: 110 * time.Millisecond}))
+	// A session of a host the app lost shows as it was, faded, until the
+	// host is back.
+	if h := a.hostOf(s.ID); h.remote() && h.conn != connReady {
+		row.Opacity(0.55)
+	}
 	if (row.Pressed() || row.Clicked()) && !selected {
 		a.selectSession(s.ID)
 	}
 	if row.DoubleClicked() {
 		a.startRename(s.ID)
 	}
-	tip := proto.ShortDir(s.WorkDir())
+	tip := a.hostOf(s.ID).shortDir(s.WorkDir())
 	if s.Process != "" {
 		tip = s.Process + " · " + tip
 	}
@@ -441,11 +458,13 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	}
 	if s.Unread {
 		if m.Item(locales.SessionMarkRead()).Chosen() {
-			a.call("view", proto.ViewParams{ID: id}, func(error) { a.viewSent = nil; a.reportView() })
+			a.call(id, "view", proto.ViewParams{ID: id}, func(error) { a.hostOf(id).viewSent = nil; a.reportView() })
 		}
 	}
+	h := a.hostOf(id)
 	m.Submenu(locales.SessionMoveToProject(), func(m *ui.Menu) {
-		for _, p := range a.st.Projects {
+		// A session moves among its host's projects alone.
+		for _, p := range a.projectsOf(h) {
 			if m.Item(p.Name).Checked(p.ID == s.Project).Disabled(p.ID == s.Project).Chosen() {
 				pid := p.ID
 				a.defer_(func() { a.moveSession(id, pid) })
@@ -459,7 +478,7 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	if m.Item(locales.SessionCopyDirectory()).Disabled(s.WorkDir() == "").Chosen() {
 		a.copyText = s.WorkDir()
 	}
-	if m.Item(locales.SessionRevealIn(fileManager())).Disabled(s.WorkDir() == "").Chosen() {
+	if m.Item(locales.SessionRevealIn(fileManager())).Disabled(s.WorkDir() == "" || h.remote()).Chosen() {
 		a.openLink(id, s.WorkDir())
 	}
 	m.Separator()
@@ -479,7 +498,7 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 		iconButton(c, "palette", searchIcon, a.tip(locales.ActionGoToSession(), "palette.open"), pal, a.openPalette)
 		iconButton(c, "settings", gearIcon, a.tip(locales.SettingsTitle(), "settings.open"), pal, func() { a.openSettings("") })
 		ui.Spacer(c)
-		switch a.conn {
+		switch a.local().conn {
 		case connReady:
 			if a.daemonStale() {
 				a.restartChip(c, pal)
@@ -674,7 +693,11 @@ func statusIconP(c *ui.Context, pal *palette, st proto.Status, unread bool, prog
 
 func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) {
 	s := a.session(a.selected)
-	if s != nil && a.conn != connVersion && a.loaded {
+	h := a.local()
+	if s != nil {
+		h = a.hostOf(s.ID)
+	}
+	if s != nil && h.conn != connVersion && a.loaded {
 		if a.prefs.Side == "" {
 			a.panes(c, pal, bar, shown, s, true)
 			return
@@ -709,10 +732,12 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 		})
 		ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 			switch {
-			case a.conn == connVersion:
+			case h.conn == connVersion && h.remote():
+				a.message(c, pal, locales.HostVersionTitle(h.name), a.hostVersionDetail(h), locales.HostUpdateAction(h.name), func() { a.offerHostUpdate(h) })
+			case h.conn == connVersion:
 				a.message(c, pal, locales.UpdatedTitle(), locales.UpdatedDetail(), locales.CommonRestartService(), a.restartDaemon)
-			case a.conn == connFailed && a.cl == nil:
-				a.message(c, pal, locales.ConnCantReach(), a.connErr, locales.CommonTryAgain(), func() { a.retries = 0; a.conn = connConnecting; a.connect() })
+			case h.conn == connFailed && h.cl == nil && !h.remote():
+				a.message(c, pal, locales.ConnCantReach(), h.err, locales.CommonTryAgain(), func() { h.retries = 0; h.conn = connConnecting; a.connect() })
 			case !a.loaded:
 				ui.Column(c).Fill().Center().Children(func() {
 					ui.Spinner(c).Label(locales.StatusConnectingLabel())
