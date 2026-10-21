@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.10
+
+- Each pane's title shows the branch it works on and the lines its changes
+  add and remove since the last commit, `fix-login +40 −2`, and a merge or
+  rebase in progress; click it to open the changes panel. A session on a
+  branch other than the repository's default shows that branch in the
+  sidebar, and its tooltip how far it is ahead of or behind its upstream
+  and how many files changed.
+- The changes panel (Option-Command-G, Ctrl+Shift+G on Windows and Linux)
+  lists the files a session changed since its agent's last turn, since the
+  last commit, or since the branch left the default one, each with its diff
+  below it, which follows the file as it changes. Fold a file, resize the
+  panel, switch between unified and side-by-side diffs, and in Last Turn
+  revert a change or mark it kept.
+- `kero diff` prints a pane's changes as `git diff` does, untracked files
+  included; `--turn` and `--branch` choose what to compare against. `kero
+  status --json` and `kero ls --json` include each pane's branch and
+  changes.
+- Sessions in a worktree outside its repository join the repository's
+  project instead of starting one of their own.
+- `git-status = false` stops Kero running git in your repositories, and
+  `diff-layout` keeps the changes panel's diffs unified or side by side.
+
 ## 2.0.9
 
 - Only agents that show their work with a progress bar, as Kiro and
