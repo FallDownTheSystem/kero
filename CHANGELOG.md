@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.9
+
+- Only agents that show their work with a progress bar, as Kiro and
+  Qwen, turn their pane working by it: Neovim's language-server progress
+  no longer marks its pane as working.
+
 ## 2.0.8
 
 - Agents no longer rename the session they start in: an unnamed session
