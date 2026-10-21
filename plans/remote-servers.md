@@ -1,6 +1,6 @@
 # Plan: Kero on remote servers
 
-Status: Phases 1 and 2 are implemented (2026-10-22), with two changes to the
+Status: Phases 1 and 2 are implemented (2026-10-22), with the changes to the
 plan below. Phases 3 and 4 are still to do. Written 2026-10-20 after looking
 at Rex (superlogical.com/rex), which ships a Linux server mode, multi-user
 servers and remote access over Tailscale. Updated after 2.0 shipped for macOS,
@@ -40,9 +40,8 @@ User docs: [docs/remote.md](../docs/remote.md).
   kerod through a browser on the tailnet.
 - **Settings split:** documented and noted in Settings rather than edited
   remotely. `kero config edit` on the host edits the host's.
-- Not done from Phase 2: image previews under the pointer for remote panes,
-  and uploading files dragged onto a remote pane (MyGo's terminal pastes
-  dropped paths itself; pasting them works).
+- Not done from Phase 2: uploading files dragged onto a remote pane (MyGo's
+  terminal pastes dropped paths itself; pasting them works).
 
 ## Goal
 

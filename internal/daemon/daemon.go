@@ -144,6 +144,9 @@ func Run(opts Options) error {
 	d.viewed.Store(&empty)
 	lg.Printf("kerod %d started (Kero %s, pid %d, %s)", proto.Version, build.Version(), os.Getpid(), exe)
 	d.linkCLI()
+	// The listeners first: Tailscale Serve's socket takes a umask of its
+	// own, which no program kerod starts may get.
+	d.net = d.listen()
 	d.restore()
 
 	signal.Ignore(syscall.SIGHUP, syscall.SIGPIPE)
@@ -162,7 +165,6 @@ func Run(opts Options) error {
 	go d.saveLoop()
 	go d.tickLoop()
 	go d.git.loop()
-	d.net = d.listen()
 	uid := os.Getuid()
 	go func() {
 		for {
@@ -210,10 +212,9 @@ func (d *Daemon) successor() {
 }
 
 // underService reports whether a service manager runs kerod, which starts
-// it again as it exits: systemd's, or launchd's.
-func underService() bool {
-	return os.Getenv("INVOCATION_ID") != "" || strings.HasPrefix(os.Getenv("XPC_SERVICE_NAME"), "sh.kero.")
-}
+// it again as it exits: the unit and the agent of kero daemon
+// install-service say so.
+func underService() bool { return os.Getenv("KERO_SERVICE") == "1" }
 
 // localPeer names the process at the other end of the socket.
 func localPeer(c net.Conn) string {
@@ -434,7 +435,7 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 		switch {
 		case k == "CLAUDECODE", k == "TERM_PROGRAM", k == "TERM_PROGRAM_VERSION", k == "TERM_SESSION_ID",
 			k == "ITERM_SESSION_ID", k == "WINDOWID", k == "KITTY_WINDOW_ID", k == "LC_TERMINAL", k == "LC_TERMINAL_VERSION",
-			k == "KERO_SESSION", k == "KERO_PANE", k == "KERO_HOST", k == takeoverEnv, k == "MYGO_GHOSTTY_VT", k == "TMUX", k == "TMUX_PANE",
+			k == "KERO_SESSION", k == "KERO_PANE", k == "KERO_HOST", k == takeoverEnv, k == "KERO_SERVICE", k == "INVOCATION_ID", k == "MYGO_GHOSTTY_VT", k == "TMUX", k == "TMUX_PANE",
 			strings.HasPrefix(k, "CLAUDE_CODE_"), strings.HasPrefix(k, "GHOSTTY_"),
 			strings.HasPrefix(k, "VSCODE_"), strings.HasPrefix(k, "__CF"), k == "XPC_SERVICE_NAME":
 			continue
@@ -596,7 +597,7 @@ func (d *Daemon) serve(conn net.Conn, id identity) {
 	defer conn.Close()
 	r := bufio.NewReaderSize(conn, 64<<10)
 	conn.SetReadDeadline(time.Now().Add(15 * time.Second))
-	line, err := r.ReadBytes('\n')
+	line, err := proto.ReadLine(r, 64<<10)
 	if err != nil {
 		return
 	}
@@ -622,9 +623,10 @@ func (d *Daemon) serveHello(conn net.Conn, r *bufio.Reader, line []byte, id iden
 		return
 	}
 	// A bridge on this machine passes on a remote client's connection,
-	// telling who it is; a listener's own say is the only one of a
-	// connection it took.
-	if id.via == "unix" && hello.Via != "" {
+	// saying who it is, which kero clients shows as the bridge claims it:
+	// only a bridge's ways, ssh and wsl. A listener's own say is the only
+	// one of a connection it took.
+	if id.via == "unix" && (hello.Via == "ssh" || hello.Via == "wsl") {
 		id = identity{peer: hello.Peer, via: hello.Via, client: hello.Client}
 		if id.peer == "" {
 			id.peer = localPeer(conn)
@@ -738,7 +740,7 @@ func (d *Daemon) serveControl(conn net.Conn, r *bufio.Reader) {
 		}
 	}()
 	for {
-		line, err := r.ReadBytes('\n')
+		line, err := proto.ReadLine(r, proto.MaxLine)
 		if err != nil {
 			return
 		}

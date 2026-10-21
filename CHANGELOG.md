@@ -21,7 +21,7 @@
   https://github.com/egoist/kero/releases/latest/download/install-server.sh
   | sh`. The app offers to install it on a host that has no Kero, and to
   update it to the app's version, signed as the app's updates are.
-- `kero -H <host>` and `$KERO_HOST` run any command on a host; `kero
+- `kero -H <host>` and `$KERO_HOST` run commands on a host's sessions; `kero
   hosts` adds, checks and installs hosts; `kero clients` lists who is
   connected to kerod; `kero daemon install-service` runs kerod as a
   systemd user service or a launchd agent, and `kero daemon serve` in the

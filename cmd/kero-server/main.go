@@ -33,8 +33,12 @@ func main() {
 		}
 		return
 	}
-	if len(os.Args) < 2 || !cli.IsCommand(os.Args[1]) {
+	if len(os.Args) < 2 {
 		os.Exit(cli.Run([]string{"help"}))
+	}
+	if !cli.IsCommand(os.Args[1]) {
+		fmt.Fprintf(os.Stderr, "kero: unknown command %q (see kero help)\n", os.Args[1])
+		os.Exit(2)
 	}
 	os.Exit(cli.Run(os.Args[1:]))
 }

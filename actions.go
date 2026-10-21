@@ -17,6 +17,9 @@ import (
 // run runs one of the app's actions, from a menu, the palette or
 // `kero do`, on the main thread.
 func (a *App) run(id string, args map[string]string) {
+	if !a.fromMay(id, args) {
+		return
+	}
 	s := a.session(a.selected)
 	switch id {
 	case "settings.open":
@@ -27,13 +30,16 @@ func (a *App) run(id string, args map[string]string) {
 		a.quitAndEnd()
 	case "session.new":
 		// A directory kero do names is of the host it runs on.
-		if dir := args["dir"]; dir != "" {
+		switch dir := args["dir"]; {
+		case dir != "":
 			a.newSessionIn(a.actionHost(), dir)
-		} else {
+		case a.from != nil:
+			a.newSessionOn(a.from, args["project"])
+		default:
 			a.newSession(args["project"])
 		}
 	case "session.newHome":
-		if h := a.selectedHost(); h.remote() {
+		if h := a.actionHost(); h.remote() {
 			a.newSessionIn(h, "~")
 		} else {
 			a.newSessionIn(h, proto.Home())
@@ -267,3 +273,22 @@ var quitKeys = func() string {
 	}
 	return "Ctrl+Shift+Q"
 }()
+
+// fromMay reports whether an action another machine's program asked for
+// (kero do, a.from) may run: one that acts on a session acts on one of
+// that host's alone, never on this machine's, which a local agent's may;
+// one of the app, as Settings or the sidebar, may.
+func (a *App) fromMay(id string, args map[string]string) bool {
+	h := a.from
+	if h == nil || !h.remote() {
+		return true
+	}
+	switch {
+	case id == "session.new" || id == "session.newHome":
+		p := args["project"]
+		return p == "" || a.hostOf(p) == h
+	case strings.HasPrefix(id, "pane.") || id == "changes.toggle":
+		return a.session(a.selected) != nil && a.selectedHost() == h
+	}
+	return true
+}

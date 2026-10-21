@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -128,12 +131,19 @@ func transport(ctx context.Context, a Addr, client string) (io.ReadWriteCloser, 
 		if a.Scheme == "https" {
 			scheme = "wss"
 		}
+		if client == "" {
+			client = "Kero"
+		}
 		h := http.Header{}
 		h.Set(ClientHeader, client)
-		ws, resp, err := websocket.Dial(ctx, scheme+"://"+a.hostPort()+MuxPath, &websocket.DialOptions{
+		opts := &websocket.DialOptions{
 			HTTPHeader:      h,
 			CompressionMode: websocket.CompressionDisabled, // ours is across the mux
-		})
+		}
+		if a.Scheme == "http" {
+			opts.HTTPClient = &http.Client{Transport: &http.Transport{DialContext: dialTailnet}}
+		}
+		ws, resp, err := websocket.Dial(ctx, scheme+"://"+a.hostPort()+MuxPath, opts)
 		if err != nil {
 			if resp != nil && (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized) {
 				return nil, fmt.Errorf("%w: %s", ErrAuth, httpError(resp, err))
@@ -157,22 +167,30 @@ func httpError(resp *http.Response, err error) string {
 }
 
 // cmdConn is a program's standard input and output: ssh's or wsl.exe's,
-// running the bridge.
+// running the bridge. The program is waited for only once all it wrote
+// is read, or the connection closed: Wait closes the pipe it reads from,
+// and would drop what is still in it, as the bridge's last words.
 type cmdConn struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
 	stderr tail
-	done   chan struct{}
+	eof    chan struct{} // closed once stdout ended, or the connection closed
+	eofs   sync.Once
+	done   chan struct{} // closed once the program ended
 	once   sync.Once
 	err    error // the program's end, once done
 }
 
 func startBridge(cmd *exec.Cmd) (*cmdConn, error) {
-	c := &cmdConn{cmd: cmd, done: make(chan struct{})}
+	c := &cmdConn{cmd: cmd, eof: make(chan struct{}), done: make(chan struct{})}
 	hideWindow(cmd)
-	// Never a prompt: there is no one to answer.
-	cmd.Env = append(os.Environ(), "SSH_ASKPASS_REQUIRE=never")
+	// Never a prompt, as there is no one to answer; wsl.exe's errors in
+	// UTF-8, which it writes in UTF-16 otherwise.
+	cmd.Env = append(os.Environ(), "SSH_ASKPASS_REQUIRE=never", "WSL_UTF8=1")
+	// A program that keeps the pipes open after its own end, as a
+	// ProxyCommand's child, holds up nothing.
+	cmd.WaitDelay = 2 * time.Second
 	var err error
 	if c.stdin, err = cmd.StdinPipe(); err != nil {
 		return nil, err
@@ -188,23 +206,36 @@ func startBridge(cmd *exec.Cmd) (*cmdConn, error) {
 		return nil, err
 	}
 	go func() {
+		<-c.eof
 		c.err = cmd.Wait()
 		close(c.done)
 	}()
 	return c, nil
 }
 
-func (c *cmdConn) Read(p []byte) (int, error)  { return c.stdout.Read(p) }
+func (c *cmdConn) ended() { c.eofs.Do(func() { close(c.eof) }) }
+
+func (c *cmdConn) Read(p []byte) (int, error) {
+	n, err := c.stdout.Read(p)
+	if err != nil {
+		c.ended()
+	}
+	return n, err
+}
+
 func (c *cmdConn) Write(p []byte) (int, error) { return c.stdin.Write(p) }
 
+// Close ends the program: its standard input first, which ends the
+// bridge, then, should it linger, a kill.
 func (c *cmdConn) Close() error {
 	c.once.Do(func() {
 		c.stdin.Close()
 		select {
-		case <-c.done:
+		case <-c.eof:
 		case <-time.After(500 * time.Millisecond):
 			c.cmd.Process.Kill()
 		}
+		c.ended()
 	})
 	return nil
 }
@@ -212,6 +243,7 @@ func (c *cmdConn) Close() error {
 // failure explains why the program ended before the connection was up:
 // what it said last, as ssh's "Permission denied", and how it exited.
 func (c *cmdConn) failure() error {
+	c.ended()
 	select {
 	case <-c.done:
 	case <-time.After(3 * time.Second):
@@ -277,4 +309,52 @@ func (t *tail) last() string {
 		}
 	}
 	return ""
+}
+
+// Tailscale's addresses: what WireGuard encrypts, and Tailscale tells the
+// peer of.
+var tailnets = []netip.Prefix{netip.MustParsePrefix("100.64.0.0/10"), netip.MustParsePrefix("fd7a:115c:a1e0::/48")}
+
+// tailnetAddr reports whether an address is one plain HTTP may carry
+// Kero over: a tailnet peer's, or this machine's, as through a tunnel of
+// ssh -L.
+func tailnetAddr(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	if ip.IsLoopback() {
+		return true
+	}
+	for _, p := range tailnets {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// dialTailnet connects for an http:// address, only to a tailnet peer:
+// plain HTTP anywhere else, as to a name a LAN's DNS answers, would carry
+// what is typed in the clear to whoever answers.
+func dialTailnet(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+	if err != nil {
+		return nil, err
+	}
+	ips = slices.DeleteFunc(ips, func(ip netip.Addr) bool { return !tailnetAddr(ip) })
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("%s is not on your tailnet: Kero connects with plain http:// only to Tailscale addresses; use https:// or ssh", host)
+	}
+	var d net.Dialer
+	c, err := d.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
+	if err != nil {
+		return nil, err
+	}
+	if ap, err := netip.ParseAddrPort(c.RemoteAddr().String()); err != nil || !tailnetAddr(ap.Addr()) {
+		c.Close()
+		return nil, fmt.Errorf("%s is not on your tailnet: Kero connects with plain http:// only to Tailscale addresses; use https:// or ssh", addr)
+	}
+	return c, nil
 }

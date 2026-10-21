@@ -1,8 +1,9 @@
-// Package service runs kerod as a service of the user's, so that it
-// starts with the machine and keeps running with no one logged in: a
-// systemd user unit on Linux, with lingering, and a launchd agent on
-// macOS. `kero daemon install-service` installs it, as a server wants:
-// it runs `kero daemon serve`, which never exits for being idle.
+// Package service runs kerod as a service of the user's: a systemd user
+// unit on Linux, which lingering starts with the machine and keeps running
+// with no one logged in, and a launchd agent on macOS, which runs while
+// the user is logged in. `kero daemon install-service` installs it, as a
+// server wants: it runs `kero daemon serve`, which never exits for being
+// idle, with KERO_SERVICE=1, which tells kerod a manager starts it again.
 package service
 
 import (

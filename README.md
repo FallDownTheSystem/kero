@@ -18,6 +18,12 @@ Download Kero from the [releases page](https://github.com/egoist/kero/releases),
 kero new -n fix-login -- claude
 ```
 
+To run sessions on a Linux server, install the server build there, then add the machine in **Settings › Hosts**:
+
+```sh
+curl -fsSL https://github.com/egoist/kero/releases/latest/download/install-server.sh | sh
+```
+
 See the [docs](docs/index.md) for more.
 
 ## Prior art

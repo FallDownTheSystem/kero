@@ -418,7 +418,7 @@
   "pickerShowHidden": "显示隐藏项",
   "pickerHideHidden": "隐藏隐藏项",
   "pickerNoFolders": "没有文件夹",
-  "pickerHint": "↩ 进入 · {open} 打开所选文件夹 · ⌫ 上一级",
+  "pickerHint": "↩ 进入 · {open} 打开所选文件夹",
   "setHosts": "主机",
   "setHostsDetail": "其他机器的会话会显示在侧边栏中，排在这台电脑的会话之后。Kero 通过 SSH（使用你的密钥和 agent）、WSL 或 kerod 在 tailnet 上的监听来连接它们，命令行中可用 kero -H <名称> 操作它们。",
   "setHostsNone": "没有主机",
@@ -433,5 +433,12 @@
   "setHostRemoteControlDetail": "允许 {host} 上的程序显示会话并运行应用的操作（kero focus、kero do）",
   "setHostSettingsSplit": "主机自己的设置",
   "setHostSettingsSplitDetail": "主机上会话的 shell、环境变量、回滚和会话恢复来自该主机自己的配置：请在主机上运行 kero config edit。外观、键盘和通知是这个应用的设置。",
-  "setShellThisComputer": "这些设置作用于这台电脑的会话。每台主机的设置来自它自己的配置（设置 › 主机）。"
+  "setShellThisComputer": "这些设置作用于这台电脑的会话。每台主机的设置来自它自己的配置（设置 › 主机）。",
+  "confirmQuitAllHosts": "其他机器上的会话会继续运行。",
+  "hostInstallTitle": "在 {host} 上安装 Kero？",
+  "hostInstallDetail": "Kero 会在 {host} 上运行它的安装脚本：Kero 的服务器版本装在 ~/.local 中，kerod 作为你的服务在那里运行。",
+  "hostLinkRefused": "Kero 只打开 {host} 的网页链接，不打开 {scheme} 链接",
+  "hostManualDetail": "{host} 运行的是 Kero {version}，而这个应用是 Kero {app}。请按你安装时的方式更新 {host} 上的 Kero，然后重启它的服务。",
+  "hostNewerDetail": "{host} 运行的是 Kero {version}，比这个应用的 {app} 新。更新这个应用后，即可查看和启动该主机的会话。",
+  "hostSameAs": "这台主机的 kerod 就是 {other} 的，应用中已经显示"
 }

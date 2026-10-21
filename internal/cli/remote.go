@@ -25,29 +25,66 @@ import (
 )
 
 // splitHost takes the global -H/--host off the front of the arguments:
-// the host to act on, else $KERO_HOST, else "" for this machine.
-func splitHost(args []string) (string, []string, error) {
-	host := os.Getenv("KERO_HOST")
+// the host to act on, else $KERO_HOST, else "" for this machine; env
+// tells a host of $KERO_HOST's. Inside a pane, $KERO_HOST, which a
+// shell's profile may set, gives way to the pane's own machine.
+func splitHost(args []string) (host string, env bool, rest []string, err error) {
+	if os.Getenv("KERO_PANE") == "" {
+		host = os.Getenv("KERO_HOST")
+		env = host != ""
+	}
 	for len(args) > 0 {
 		a := args[0]
 		switch {
 		case a == "-H" || a == "--host":
 			if len(args) < 2 {
-				return "", nil, usageErr("%s needs a host: a name of kero hosts, or an address", a)
+				return "", false, nil, usageErr("%s needs a host: a name of kero hosts, or an address", a)
 			}
-			host, args = args[1], args[2:]
+			host, env, args = args[1], false, args[2:]
 		case strings.HasPrefix(a, "--host="):
-			host, args = strings.TrimPrefix(a, "--host="), args[1:]
+			host, env, args = strings.TrimPrefix(a, "--host="), false, args[1:]
 		case strings.HasPrefix(a, "-H") && len(a) > 2:
-			host, args = a[2:], args[1:]
+			host, env, args = a[2:], false, args[1:]
 		default:
 			if strings.EqualFold(host, "local") {
 				host = ""
 			}
-			return host, args, nil
+			return host, env, args, nil
 		}
 	}
-	return "", nil, usageErr("kero -H <host> <command> (see kero help)")
+	return "", false, nil, usageErr("kero -H <host> <command> (see kero help)")
+}
+
+// localOnly are the commands of this machine alone, which -H takes
+// nothing of.
+var localOnly = map[string]bool{"report": true, "actions": true, "skill": true, "hook": true, "config": true,
+	"hosts": true, "__bridge": true, "help": true, "--help": true, "-h": true}
+
+// onHost is the host the command acts on, "" for this machine: whose
+// panes $KERO_PANE and $KERO_SESSION name nothing on another.
+var onHost string
+
+// versionCmd prints the version of Kero, and of a host's.
+func versionCmd(host string) error {
+	v := build.Version()
+	if v == "" {
+		v = "dev"
+	}
+	if build.Server {
+		v += ", server build"
+	}
+	fmt.Printf("kero %s (protocol %d)\n", v, proto.Version)
+	if host == "" {
+		return nil
+	}
+	rc, err := dialHost(host)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	h := rc.Welcome.Host
+	fmt.Printf("%s: kero %s (protocol %d) on %s/%s\n", host, orDash(h.Kero), h.Version, h.OS, h.Arch)
+	return nil
 }
 
 // hostAddr is the address of a host: a saved host's, by name, else the
@@ -336,25 +373,24 @@ func bridge(args []string) error {
 			}
 			splice(s, conn)
 		},
-		Restart: restartLocal,
+		Restart: func() (func(), error) { return nil, restartLocal() },
+		// Done once the client is: the session's end, as when ssh's link
+		// dropped, can wait on a read of the standard input that only the
+		// end of the process ends.
+		Closed: func() { os.Exit(0) },
 	}
-	if build.Server {
+	if info.Updates {
+		dir := update.InstallDir()
+		// kerod starts from the install, as an update moves this one aside.
+		client.Exe = filepath.Join(dir, "kero")
 		srv.Update = func(app string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
-			return update.Install(ctx, app, installDir())
+			// Never back to an older Kero: the app asks for its own version.
+			return update.Install(ctx, app, dir, build.Version(), false)
 		}
 	}
 	return srv.Serve(stdio{})
-}
-
-// installDir is the directory of the server build that runs.
-func installDir() string {
-	exe, _ := os.Executable()
-	if real, err := filepath.EvalSymlinks(exe); err == nil {
-		exe = real
-	}
-	return filepath.Dir(exe)
 }
 
 // restartLocal restarts this machine's kerod into the Kero installed: its

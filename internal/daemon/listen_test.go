@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -79,7 +80,8 @@ func TestTailnetListener(t *testing.T) {
 	ts := &fakeTailscale{who: "alice@example.com"}
 	ts.serve(t)
 	d := testDaemon(t)
-	l := &listeners{d: d, allow: []string{"tag:ci"}}
+	// The test connects from loopback, as no peer of a tailnet does.
+	l := &listeners{d: d, allow: []string{"tag:ci"}, isLocal: func(netip.Addr) bool { return false }}
 	srv := httptest.NewServer(l.handler("tailnet"))
 	defer srv.Close()
 	host, port, _ := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))
@@ -111,11 +113,24 @@ func TestTailnetListener(t *testing.T) {
 		defer cancel()
 		return remote.Dial(ctx, addr, remote.Options{App: "test", Client: "the test"})
 	}
+	// From this machine itself, as another user's process could, whom
+	// tailscaled would take for the owner.
+	local := httptest.NewServer((&listeners{d: d}).handler("tailnet"))
+	defer local.Close()
+	_, lport, _ := net.SplitHostPort(strings.TrimPrefix(local.URL, "http://"))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if _, err := remote.Dial(ctx, remote.Addr{Scheme: "http", Host: host, Port: lport}, remote.Options{}); err == nil || !strings.Contains(err.Error(), "this machine itself") {
+		t.Errorf("a connection from this machine: %v", err)
+	}
+	cancel()
+
 	ts.set("mallory@example.com")
 	if _, err := dial(); err == nil || !strings.Contains(err.Error(), "mallory@example.com may not connect") {
 		t.Errorf("someone else connected: %v", err)
 	}
 	ts.set("")
+	forget := func() { l.mu.Lock(); l.whoCache = nil; l.mu.Unlock() }
+	forget()
 	if rc, err := dial(); err != nil {
 		t.Errorf("a device listen-allow lets in: %v", err)
 	} else {
@@ -123,6 +138,7 @@ func TestTailnetListener(t *testing.T) {
 	}
 
 	ts.set("alice@example.com")
+	forget()
 	rc, err := dial()
 	if err != nil {
 		t.Fatal(err)

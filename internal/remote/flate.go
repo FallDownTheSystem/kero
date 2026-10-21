@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"bufio"
 	"compress/flate"
 	"io"
 	"sync"
@@ -13,18 +14,23 @@ import (
 // times smaller.
 const deflate = "deflate"
 
-// flateConn compresses what goes through rwc both ways.
+// flateConn compresses what goes through rwc both ways. What it writes
+// goes out in one piece per write, through a buffer: the compressor hands
+// on a few hundred bytes at a time, each of which would be a write of
+// the transport of its own, a WebSocket message or a pipe's.
 type flateConn struct {
 	rwc io.ReadWriteCloser
 	r   io.ReadCloser
 	wmu sync.Mutex
+	bw  *bufio.Writer
 	w   *flate.Writer
 }
 
 func newFlateConn(rwc io.ReadWriteCloser) *flateConn {
+	bw := bufio.NewWriterSize(rwc, 64<<10)
 	// BestSpeed: the link is what is slow, not the machines.
-	w, _ := flate.NewWriter(rwc, flate.BestSpeed)
-	return &flateConn{rwc: rwc, r: flate.NewReader(rwc), w: w}
+	w, _ := flate.NewWriter(bw, flate.BestSpeed)
+	return &flateConn{rwc: rwc, r: flate.NewReader(rwc), bw: bw, w: w}
 }
 
 func (c *flateConn) Read(p []byte) (int, error) { return c.r.Read(p) }
@@ -33,10 +39,13 @@ func (c *flateConn) Write(p []byte) (int, error) {
 	c.wmu.Lock()
 	defer c.wmu.Unlock()
 	n, err := c.w.Write(p)
-	if err != nil {
-		return n, err
+	if err == nil {
+		err = c.w.Flush()
 	}
-	return n, c.w.Flush()
+	if err == nil {
+		err = c.bw.Flush()
+	}
+	return n, err
 }
 
 func (c *flateConn) Close() error {

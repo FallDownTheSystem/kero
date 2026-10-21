@@ -3,6 +3,7 @@ package remote
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -36,6 +37,9 @@ func ParseListen(s string) (Listen, error) {
 		l := Listen{Kind: "tailnet", Port: u.Port()}
 		if l.Port == "" {
 			l.Port = DefaultPort
+		}
+		if n, err := strconv.Atoi(l.Port); err != nil || n < 1 || n > 65535 {
+			return Listen{}, fmt.Errorf("%q: a port is 1 to 65535", s)
 		}
 		return l, nil
 	case "tailnet-serve":

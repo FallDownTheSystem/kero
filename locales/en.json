@@ -852,7 +852,7 @@
   "pickerShowHidden": "Show Hidden",
   "pickerHideHidden": "Hide Hidden",
   "pickerNoFolders": "No folders",
-  "pickerHint": "↩ go in · {open} open the folder chosen · ⌫ up",
+  "pickerHint": "↩ go in · {open} open the folder chosen",
   "@pickerHint": {
     "placeholders": {
       "open": {
@@ -895,5 +895,69 @@
   },
   "setHostSettingsSplit": "A host's own settings",
   "setHostSettingsSplitDetail": "The shell, environment, scrollback and session restore of a host's sessions come from its own configuration: run kero config edit on the host. Appearance, keyboard and notifications are this app's.",
-  "setShellThisComputer": "These apply to this computer's sessions. Each host's come from its own configuration (Settings › Hosts)."
+  "setShellThisComputer": "These apply to this computer's sessions. Each host's come from its own configuration (Settings › Hosts).",
+  "confirmQuitAllHosts": "Sessions on other machines keep running.",
+  "hostInstallTitle": "Install Kero on {host}?",
+  "@hostInstallTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostInstallDetail": "Kero runs its install script on {host}: the server build of Kero goes in ~/.local, and kerod runs as a service of yours there.",
+  "@hostInstallDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "hostLinkRefused": "Kero opens only web links of {host}, not {scheme} ones",
+  "@hostLinkRefused": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "scheme": {
+        "type": "String"
+      }
+    }
+  },
+  "hostManualDetail": "{host} runs Kero {version}, and this app is Kero {app}. Update Kero on {host} as you installed it, then restart its service.",
+  "@hostManualDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "hostNewerDetail": "{host} runs Kero {version}, newer than this app's {app}. Update this app to see and start the host's sessions.",
+  "@hostNewerDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "hostSameAs": "This host's kerod is {other}'s, which the app shows already",
+  "@hostSameAs": {
+    "placeholders": {
+      "other": {
+        "type": "String"
+      }
+    }
+  }
 }

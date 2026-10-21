@@ -6,8 +6,10 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -35,10 +37,13 @@ type listeners struct {
 	servers []*http.Server
 	sockets []string
 	closed  bool
-	// owner is the login of the machine's owner on the tailnet, as
-	// tailscaled last said, and when.
-	owner   string
-	ownerAt time.Time
+	// self is this machine on the tailnet, as tailscaled last said, and
+	// when; whoCache who connected from where.
+	self     tailscale.Self
+	selfAt   time.Time
+	whoCache map[string]cachedWho
+	// isLocal, for tests, tells the addresses of this machine.
+	isLocal func(netip.Addr) bool
 }
 
 // listen starts the network listeners.
@@ -155,22 +160,64 @@ func (l *listeners) serve(spec remote.Listen) {
 	l.start(ln, "tailnet-serve")
 }
 
-// ownerLogin is the login of the machine's owner on the tailnet, "" for a
-// tagged machine, which only listen-allow lets anyone in to.
-func (l *listeners) ownerLogin(ctx context.Context) string {
+// selfStatus is this machine on the tailnet, as tailscaled last said, at
+// most a minute ago: its owner's login, "" for a tagged machine, which
+// only listen-allow lets anyone in to, and its addresses.
+func (l *listeners) selfStatus(ctx context.Context) tailscale.Self {
 	l.mu.Lock()
-	owner, at := l.owner, l.ownerAt
+	self, at := l.self, l.selfAt
 	l.mu.Unlock()
 	if !at.IsZero() && time.Since(at) < time.Minute {
-		return owner
+		return self
 	}
-	if self, err := tailscale.Status(ctx); err == nil {
-		owner = self.Owner
+	if s, err := tailscale.Status(ctx); err == nil {
+		self = s
 		l.mu.Lock()
-		l.owner, l.ownerAt = owner, time.Now()
+		l.self, l.selfAt = s, time.Now()
 		l.mu.Unlock()
 	}
-	return owner
+	return self
+}
+
+// local reports whether a connection comes from this machine: from a
+// loopback address, or from one of its own Tailscale addresses, as any
+// process of any user here can connect from, which tailscaled would take
+// for the machine's owner. Such connections go through kerod's socket,
+// which tells its users apart.
+func (l *listeners) local(ctx context.Context, ip netip.Addr) bool {
+	if l.isLocal != nil {
+		return l.isLocal(ip)
+	}
+	ip = ip.Unmap()
+	return ip.IsLoopback() || ip.IsUnspecified() || slices.Contains(l.selfStatus(ctx).IPs, ip)
+}
+
+// whois tells who connects from an address, asking tailscaled once a
+// while for each address, so that a flood of requests spawns nothing.
+func (l *listeners) whois(ctx context.Context, addr string) (tailscale.Who, error) {
+	host, _, _ := net.SplitHostPort(addr)
+	l.mu.Lock()
+	c, ok := l.whoCache[host]
+	l.mu.Unlock()
+	if ok && time.Since(c.at) < 30*time.Second {
+		return c.who, nil
+	}
+	who, err := tailscale.WhoIs(ctx, addr)
+	if err != nil {
+		return who, err
+	}
+	l.mu.Lock()
+	if l.whoCache == nil || len(l.whoCache) > 1024 {
+		l.whoCache = map[string]cachedWho{}
+	}
+	l.whoCache[host] = cachedWho{who, time.Now()}
+	l.mu.Unlock()
+	return who, nil
+}
+
+type cachedWho struct {
+	who tailscale.Who
+	at  time.Time
 }
 
 // identify tells who a request comes from, and whether they may connect.
@@ -179,7 +226,14 @@ func (l *listeners) identify(r *http.Request, via string) (tailscale.Who, error)
 	var who tailscale.Who
 	switch via {
 	case "tailnet":
-		w, err := tailscale.WhoIs(ctx, r.RemoteAddr)
+		ap, err := netip.ParseAddrPort(r.RemoteAddr)
+		if err != nil {
+			return who, err
+		}
+		if l.local(ctx, ap.Addr()) {
+			return who, errors.New("a connection from this machine itself goes through kerod's socket, not the tailnet")
+		}
+		w, err := l.whois(ctx, r.RemoteAddr)
 		if err != nil {
 			return who, err
 		}
@@ -194,7 +248,7 @@ func (l *listeners) identify(r *http.Request, via string) (tailscale.Who, error)
 			return who, errors.New("Tailscale Serve did not say who connects: tagged devices connect to a tailnet:// listener")
 		}
 	}
-	if !tailscale.Allowed(who, l.ownerLogin(ctx), l.allow) {
+	if !tailscale.Allowed(who, l.selfStatus(ctx).Owner, l.allow) {
 		return who, errors.New(who.String() + " may not connect: the machine's owner lets them in with listen-allow")
 	}
 	return who, nil
@@ -251,12 +305,12 @@ func (d *Daemon) remoteServer(id identity) *remote.Server {
 		Restart: d.restart,
 		Log:     d.log,
 	}
-	if build.Server {
+	if build.Server && update.Managed(filepath.Dir(d.exe)) {
 		s.Update = func(app string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
 			d.log.Printf("updating to Kero %s, as %s asked", app, id.peer)
-			if err := update.Install(ctx, app, filepath.Dir(d.exe)); err != nil {
+			if err := update.Install(ctx, app, filepath.Dir(d.exe), build.Version(), false); err != nil {
 				d.log.Printf("update: %v", err)
 				return err
 			}
@@ -270,17 +324,15 @@ func (d *Daemon) remoteServer(id identity) *remote.Server {
 // saves the sessions, which the next kerod starts again, as after a
 // reboot, then ends; its service's manager, or its successor, starts the
 // next.
-func (d *Daemon) restart() error {
+func (d *Daemon) restart() (then func(), err error) {
 	d.log.Printf("restarting, as a client asked")
-	go func() {
-		// The answer goes first.
-		time.Sleep(300 * time.Millisecond)
+	// Once the answer is written.
+	return func() {
 		d.saveHistories(true)
 		d.saveState()
 		d.mu.Lock()
 		d.restarting = true
 		d.mu.Unlock()
 		d.stop()
-	}()
-	return nil
+	}, nil
 }

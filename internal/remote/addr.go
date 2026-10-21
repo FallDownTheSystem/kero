@@ -84,9 +84,17 @@ func ParseAddr(s string) (Addr, error) {
 	if u.Path != "" && u.Path != "/" {
 		return Addr{}, fmt.Errorf("%q: an address has no path", raw)
 	}
-	// Whatever ssh(1) would take for one of its options.
-	if strings.HasPrefix(a.Host, "-") || strings.HasPrefix(a.User, "-") {
-		return Addr{}, fmt.Errorf("%q is not a host", raw)
+	// Names of hosts and users as DNS and accounts have them, which no
+	// shell, and no ssh_config's %h or %r in a ProxyCommand, reads as
+	// anything else; nothing ssh(1) would take for one of its options.
+	if a.Host != "" && net.ParseIP(a.Host) == nil && !plainName(a.Host, "._-") || strings.HasPrefix(a.Host, "-") {
+		return Addr{}, fmt.Errorf("%q: a host is a name of letters, digits, dots and dashes, or an IP address", raw)
+	}
+	if a.User != "" && (!plainName(a.User, "._+-") || strings.HasPrefix(a.User, "-")) {
+		return Addr{}, fmt.Errorf("%q: a user is a name of letters, digits, dots and dashes", raw)
+	}
+	if a.Kero != "" && (!strings.HasPrefix(a.Kero, "/") || !plainName(a.Kero, "._+-/")) {
+		return Addr{}, fmt.Errorf("%q: kero= is an absolute path of letters, digits, dots, dashes and slashes", raw)
 	}
 	if a.Port != "" {
 		for _, r := range a.Port {
@@ -164,6 +172,17 @@ func ValidName(name string) bool {
 			ok = ok || r == '.' || r == '-' || r == '_'
 		}
 		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// plainName reports whether s holds only ASCII letters, digits and the
+// characters of extra.
+func plainName(s, extra string) bool {
+	for _, r := range s {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune(extra, r)) {
 			return false
 		}
 	}

@@ -66,9 +66,11 @@ type HostInfo struct {
 	// stream's Welcome, as it may run an older Kero until it restarts.
 	Kero    string `json:"kero,omitempty"`
 	Version int    `json:"version"`
-	// Server tells a server build of Kero, which updates itself
-	// (KindUpdate); a desktop app on the host updates as apps do.
-	Server bool `json:"server,omitempty"`
+	// Server tells a server build of Kero, and Updates one that
+	// install-server.sh installed, which updates itself (KindUpdate); a
+	// desktop app on the host updates as apps do.
+	Server  bool `json:"server,omitempty"`
+	Updates bool `json:"updates,omitempty"`
 	// Peer is who the host takes the client for: "alice@example.com", or
 	// the account a bridge runs as.
 	Peer string `json:"peer,omitempty"`

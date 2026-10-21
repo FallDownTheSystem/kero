@@ -139,8 +139,18 @@ func (e exitStatus) Error() string { return fmt.Sprintf("exit status %d", int(e)
 
 // Run runs a subcommand, returning the exit code.
 func Run(args []string) int {
-	host, args, err := splitHost(args)
+	host, env, args, err := splitHost(args)
+	if err == nil && host != "" && len(args) > 0 && localOnly[args[0]] {
+		// $KERO_HOST is for what acts on sessions: the rest is of this
+		// machine, as an agent's hook in a shell whose profile sets it.
+		if env {
+			host = ""
+		} else {
+			err = usageErr("kero %s is of this machine: run it on the host itself, without -H", args[0])
+		}
+	}
 	if err == nil {
+		onHost = host
 		err = run(args, host)
 	}
 	if err == nil {
@@ -210,28 +220,21 @@ func parse(args []string, valued, boolean map[string]string) (*flags, error) {
 
 func run(args []string, host string) error {
 	cmd, args := args[0], args[1:]
-	// What is of this machine alone.
-	if host != "" {
-		switch cmd {
-		case "report", "actions", "skill", "hook", "config", "hosts", "__bridge":
-			return usageErr("kero %s is of this machine: run it on the host itself, without -H", cmd)
-		}
-	}
 	switch cmd {
 	case "__bridge":
 		return bridge(args)
 	case "hosts":
 		return hostsCmd(args)
 	case "help", "--help", "-h":
-		fmt.Print(usage)
+		u := usage
+		if build.Server {
+			// No app to open.
+			u = strings.Replace(u, "  kero                          open the app\n", "", 1)
+		}
+		fmt.Print(u)
 		return nil
 	case "version", "--version":
-		v := build.Version()
-		if build.Server {
-			v += ", server build"
-		}
-		fmt.Printf("kero %s (protocol %d)\n", strings.TrimSpace(v), proto.Version)
-		return nil
+		return versionCmd(host)
 	case "daemon":
 		return daemonCmd(args, host)
 	case "report":
@@ -783,6 +786,10 @@ func repoPath(root, p string, remote bool) (string, error) {
 
 // current is the pane a command runs in, inside kero.
 func current() string {
+	// A pane of this machine names nothing on another.
+	if onHost != "" {
+		return ""
+	}
 	if p := os.Getenv("KERO_PANE"); p != "" {
 		return p
 	}
@@ -872,15 +879,18 @@ func daemonCmd(args []string, host string) error {
 		if real, err := filepath.EvalSymlinks(exe); err == nil {
 			exe = real
 		}
+		// A user's services stop as they log out, unless they linger: a
+		// service would then end kerod as an SSH bridge does, which a kerod
+		// of its own outlives. --no-linger takes it as it is.
+		if !f.set["no-linger"] {
+			if err := service.EnableLinger(); err != nil {
+				return fmt.Errorf("%v; without it kerod would stop as you log out (kero daemon install-service --no-linger installs it all the same)", err)
+			}
+		}
 		if err := service.Install(exe, StopDaemon); err != nil {
 			return err
 		}
 		fmt.Printf("kerod runs as a service: %s\n", service.Get().File)
-		if !f.set["no-linger"] {
-			if err := service.EnableLinger(); err != nil {
-				fmt.Fprintln(os.Stderr, "kero: it stops as you log out:", err)
-			}
-		}
 		return nil
 	case "uninstall-service":
 		if err := service.Uninstall(); err != nil {
@@ -909,7 +919,8 @@ func daemonCmd(args []string, host string) error {
 			fmt.Printf("Kero %s is installed\n", build.Version())
 			return nil
 		}
-		if err := update.Install(ctx, version, installDir()); err != nil {
+		// A version named is the user's to go back to.
+		if err := update.Install(ctx, version, update.InstallDir(), build.Version(), len(args) > 1); err != nil {
 			return err
 		}
 		fmt.Printf("installed Kero %s: kerod runs it as it restarts (kero daemon restart), its sessions with it\n", strings.TrimPrefix(version, "v"))

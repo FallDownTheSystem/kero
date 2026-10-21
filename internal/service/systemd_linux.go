@@ -26,12 +26,11 @@ func unit(exe string) string {
 [Unit]
 Description=Kero sessions (kerod)
 Documentation=https://github.com/egoist/kero/blob/main/docs/remote.md
-After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=simple
 ExecStart=%s daemon serve
+Environment=KERO_SERVICE=1
 Restart=always
 RestartSec=2
 # kerod saves its sessions as it stops, to start them again
@@ -69,23 +68,35 @@ func Install(exe string, stop func() error) error {
 	if _, err := exec.LookPath("systemctl"); err != nil {
 		return ErrUnsupported
 	}
+	if _, err := systemctl("show-environment"); err != nil {
+		return fmt.Errorf("no systemd user session to run kerod in: %w", err)
+	}
 	if err := os.MkdirAll(filepath.Dir(file()), 0o755); err != nil {
 		return err
 	}
 	if err := os.WriteFile(file(), []byte(unit(exe)), 0o644); err != nil {
 		return err
 	}
-	if _, err := systemctl("daemon-reload"); err != nil {
+	// A unit that does not run is none: Installed would tell otherwise.
+	undo := func(err error) error {
+		systemctl("disable", Name()+".service")
+		os.Remove(file())
+		systemctl("daemon-reload")
 		return err
 	}
+	if _, err := systemctl("daemon-reload"); err != nil {
+		return undo(err)
+	}
 	if _, err := systemctl("enable", Name()+".service"); err != nil {
-		return err
+		return undo(err)
 	}
 	if stop != nil {
 		stop()
 	}
-	_, err := systemctl("restart", Name()+".service")
-	return err
+	if _, err := systemctl("restart", Name()+".service"); err != nil {
+		return undo(err)
+	}
+	return nil
 }
 
 // EnableLinger keeps the user's services running while they are logged

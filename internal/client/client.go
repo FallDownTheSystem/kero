@@ -63,16 +63,29 @@ func dial(noStart bool) (net.Conn, error) {
 	}
 }
 
+// Exe is the executable StartDaemon runs, os.Executable's when empty: the
+// bridge sets it as it starts, as an update moves the install it runs
+// from aside, and os.Executable then names the old one.
+var Exe string
+
 // StartDaemon starts kerod in the background: the service, when kerod
-// runs as one (kero daemon install-service), else this executable, in a
-// session of its own, so that it outlives whoever started it.
+// runs as one (kero daemon install-service), else this executable (Exe),
+// in a session of its own, so that it outlives whoever started it.
 func StartDaemon() error {
-	if service.Installed() && service.Start() == nil {
+	// The service's, or none: a kerod beside it would hold the lock its
+	// manager starts the service's for, again and again.
+	if service.Installed() {
+		if err := service.Start(); err != nil {
+			return fmt.Errorf("kerod's service did not start: %w", err)
+		}
 		return nil
 	}
-	exe, err := os.Executable()
-	if err != nil {
-		return err
+	exe := Exe
+	if exe == "" {
+		var err error
+		if exe, err = os.Executable(); err != nil {
+			return err
+		}
 	}
 	if err := os.MkdirAll(proto.Dir(), 0o700); err != nil {
 		return err
@@ -100,7 +113,7 @@ func handshake(conn net.Conn, hello proto.Hello) (proto.Welcome, *bufio.Reader, 
 	}
 	r := bufio.NewReaderSize(conn, 64<<10)
 	conn.SetReadDeadline(time.Now().Add(15 * time.Second))
-	line, err := r.ReadBytes('\n')
+	line, err := proto.ReadLine(r, 64<<10)
 	conn.SetReadDeadline(time.Time{})
 	if err != nil {
 		return proto.Welcome{}, nil, err
@@ -193,7 +206,7 @@ func (c *Client) read(r *bufio.Reader) {
 		close(c.closed)
 	}()
 	for {
-		line, err := r.ReadBytes('\n')
+		line, err := proto.ReadLine(r, proto.MaxLine)
 		if err != nil {
 			return
 		}

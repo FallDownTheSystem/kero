@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"maps"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -204,7 +205,8 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 			a.setState(h, *m.State)
 		}
 	case "select":
-		if !a.remoteControl(h) {
+		// A host shows its own sessions, none of another machine.
+		if !a.remoteControl(h) || a.hostOf(m.Select) != h {
 			return
 		}
 		a.selectSession(m.Select)
@@ -271,12 +273,7 @@ func (a *App) setState(h *host, st proto.State) {
 		}
 	}
 	if a.session(a.selected) == nil {
-		// The session shown last may be of a host still connecting.
-		if ids := a.visibleOrder(); len(ids) == 0 && a.allLoaded() {
-			a.selected = ""
-		} else if len(ids) > 0 && (a.selected == "" || a.allLoaded()) {
-			a.selectSession(ids[0])
-		}
+		a.reselect()
 	} else if first || hostFirst && a.hostOf(a.selected) == h {
 		a.selectSession(a.selected)
 	}
@@ -308,6 +305,11 @@ func (a *App) notify(first bool) {
 	waiting := 0
 	for i := range a.st.Sessions {
 		s := &a.st.Sessions[i]
+		// A host the app lost shows its sessions as they were: what they
+		// say is old news, which tells nothing.
+		if h := a.hostOf(s.ID); h.remote() && h.conn != connReady {
+			continue
+		}
 		prev, seen := a.statuses[s.ID]
 		a.statuses[s.ID] = s.Status
 		if s.Status == proto.Waiting {
@@ -342,7 +344,7 @@ func (a *App) notify(first bool) {
 		a.showNotification(s.ID, title, body)
 	}
 	for id := range a.statuses {
-		if a.session(id) == nil {
+		if h := a.hostOf(id); a.session(id) == nil || h.remote() && h.conn != connReady {
 			delete(a.statuses, id)
 		}
 	}
@@ -392,9 +394,9 @@ type group struct {
 }
 
 // key is what the group's collapse is remembered by: its project's id,
-// and for the sessions of no project, its host's.
+// and for a remote host's sessions of no project, its host's.
 func (g group) key() string {
-	if g.project.ID == "" {
+	if g.project.ID == "" && g.host.remote() {
 		return "other:" + g.host.name
 	}
 	return g.project.ID
@@ -653,8 +655,6 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 			return true
 		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
-		// Files and images pasted into a pane of another machine go there.
-		OnPaste: func(d transfer.Data) bool { return a.remotePaste(id, d) },
 		// A selection copied as it ends shows nothing else: say so.
 		OnCopy: func(_ string, by terminal.CopySource) {
 			if by == terminal.CopySelect {
@@ -667,6 +667,11 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 	}
 	if a.set.CopyOnSelect {
 		o.CopyOnSelect = terminal.CopyOnSelectClipboard
+	}
+	// Files and images pasted into a pane of another machine go there; a
+	// local pane's paste reads only what it takes, as it did.
+	if a.hostOf(id).remote() {
+		o.OnPaste = func(d transfer.Data) bool { return a.remotePaste(id, d) }
 	}
 	return o
 }
@@ -816,13 +821,27 @@ var lineSuffix = regexp.MustCompile(`(:\d+){1,2}$`)
 // file paths printed in the session, relative to its directory, in the
 // app that opens them.
 func (a *App) openLink(id, link string) bool {
-	if strings.Contains(link, "://") {
-		return false
-	}
 	if h := a.hostOf(id); h.remote() {
+		// A link another machine's program printed opens here only as a
+		// web page; a file:// one, and any path, are the host's; any other,
+		// as of an app of this machine, does not open.
+		if u, err := url.Parse(link); err == nil && strings.Contains(link, "://") {
+			switch strings.ToLower(u.Scheme) {
+			case "http", "https":
+				return false
+			case "file":
+				a.openRemotePath(h, id, u.Path)
+			default:
+				a.toast(locales.HostLinkRefused(h.name, u.Scheme))
+			}
+			return true
+		}
 		// A path of another machine is never a file of this one.
 		a.openRemotePath(h, id, link)
 		return true
+	}
+	if strings.Contains(link, "://") {
+		return false
 	}
 	path := a.resolvePath(id, link)
 	if path == "" {
@@ -876,8 +895,12 @@ func (a *App) call(id, method string, params any, done func(err error)) {
 // callOn calls a method of a host's kerod.
 func (a *App) callOn(h *host, method string, params any, done func(err error)) {
 	if h.cl == nil {
+		// What the app showed at once comes back as the host does: say so.
+		err := errors.New(locales.HostNotConnected(h.label()))
 		if done != nil {
-			done(errors.New(locales.HostNotConnected(h.label())))
+			done(err)
+		} else {
+			a.toast(err.Error())
 		}
 		return
 	}
@@ -1188,7 +1211,7 @@ func (a *App) quitAndEnd() {
 	a.confirm = &confirmation{
 		open:    true,
 		title:   locales.ConfirmQuitAllTitle(),
-		detail:  locales.ConfirmQuitAllDetail(n),
+		detail:  quitAllDetail(n, len(a.hosts) > 1),
 		action:  locales.ConfirmQuitAllAction(),
 		destroy: true,
 		run: func() {
@@ -1259,4 +1282,14 @@ func (a *App) restartDaemon() {
 			a.connect()
 		})
 	}()
+}
+
+// quitAllDetail says what Quit and End All ends: this machine's sessions,
+// as other machines' keep running.
+func quitAllDetail(n int, hosts bool) string {
+	d := locales.ConfirmQuitAllDetail(n)
+	if hosts {
+		d += " " + locales.ConfirmQuitAllHosts()
+	}
+	return d
 }

@@ -4254,11 +4254,11 @@ func (msgs Messages) PickerNoFolders() string {
 	return Catalog.Format(msgs.locale, "pickerNoFolders", nil)
 }
 
-// PickerHint says "↩ go in · {open} open the folder chosen · ⌫ up"
+// PickerHint says "↩ go in · {open} open the folder chosen"
 // in the language the app shows.
 func PickerHint(open string) string { return In(i18n.Locale()).PickerHint(open) }
 
-// PickerHint says "↩ go in · {open} open the folder chosen · ⌫ up"
+// PickerHint says "↩ go in · {open} open the folder chosen"
 // in the language of msgs.
 func (msgs Messages) PickerHint(open string) string {
 	return Catalog.Format(msgs.locale, "pickerHint", map[string]any{"open": open})
@@ -4416,4 +4416,80 @@ func SetShellThisComputer() string { return In(i18n.Locale()).SetShellThisComput
 // in the language of msgs.
 func (msgs Messages) SetShellThisComputer() string {
 	return Catalog.Format(msgs.locale, "setShellThisComputer", nil)
+}
+
+// ConfirmQuitAllHosts says "Sessions on other machines keep running."
+// in the language the app shows.
+func ConfirmQuitAllHosts() string { return In(i18n.Locale()).ConfirmQuitAllHosts() }
+
+// ConfirmQuitAllHosts says "Sessions on other machines keep running."
+// in the language of msgs.
+func (msgs Messages) ConfirmQuitAllHosts() string {
+	return Catalog.Format(msgs.locale, "confirmQuitAllHosts", nil)
+}
+
+// HostInstallTitle says "Install Kero on {host}?"
+// in the language the app shows.
+func HostInstallTitle(host string) string { return In(i18n.Locale()).HostInstallTitle(host) }
+
+// HostInstallTitle says "Install Kero on {host}?"
+// in the language of msgs.
+func (msgs Messages) HostInstallTitle(host string) string {
+	return Catalog.Format(msgs.locale, "hostInstallTitle", map[string]any{"host": host})
+}
+
+// HostInstallDetail says "Kero runs its install script on {host}: the server build of Kero goes in ~/.local, and kerod runs as a service of you…"
+// in the language the app shows.
+func HostInstallDetail(host string) string { return In(i18n.Locale()).HostInstallDetail(host) }
+
+// HostInstallDetail says "Kero runs its install script on {host}: the server build of Kero goes in ~/.local, and kerod runs as a service of you…"
+// in the language of msgs.
+func (msgs Messages) HostInstallDetail(host string) string {
+	return Catalog.Format(msgs.locale, "hostInstallDetail", map[string]any{"host": host})
+}
+
+// HostLinkRefused says "Kero opens only web links of {host}, not {scheme} ones"
+// in the language the app shows.
+func HostLinkRefused(host string, scheme string) string {
+	return In(i18n.Locale()).HostLinkRefused(host, scheme)
+}
+
+// HostLinkRefused says "Kero opens only web links of {host}, not {scheme} ones"
+// in the language of msgs.
+func (msgs Messages) HostLinkRefused(host string, scheme string) string {
+	return Catalog.Format(msgs.locale, "hostLinkRefused", map[string]any{"host": host, "scheme": scheme})
+}
+
+// HostManualDetail says "{host} runs Kero {version}, and this app is Kero {app}. Update Kero on {host} as you installed it, then restart its s…"
+// in the language the app shows.
+func HostManualDetail(host string, version string, app string) string {
+	return In(i18n.Locale()).HostManualDetail(host, version, app)
+}
+
+// HostManualDetail says "{host} runs Kero {version}, and this app is Kero {app}. Update Kero on {host} as you installed it, then restart its s…"
+// in the language of msgs.
+func (msgs Messages) HostManualDetail(host string, version string, app string) string {
+	return Catalog.Format(msgs.locale, "hostManualDetail", map[string]any{"host": host, "version": version, "app": app})
+}
+
+// HostNewerDetail says "{host} runs Kero {version}, newer than this app's {app}. Update this app to see and start the host's sessions."
+// in the language the app shows.
+func HostNewerDetail(host string, version string, app string) string {
+	return In(i18n.Locale()).HostNewerDetail(host, version, app)
+}
+
+// HostNewerDetail says "{host} runs Kero {version}, newer than this app's {app}. Update this app to see and start the host's sessions."
+// in the language of msgs.
+func (msgs Messages) HostNewerDetail(host string, version string, app string) string {
+	return Catalog.Format(msgs.locale, "hostNewerDetail", map[string]any{"host": host, "version": version, "app": app})
+}
+
+// HostSameAs says "This host's kerod is {other}'s, which the app shows already"
+// in the language the app shows.
+func HostSameAs(other string) string { return In(i18n.Locale()).HostSameAs(other) }
+
+// HostSameAs says "This host's kerod is {other}'s, which the app shows already"
+// in the language of msgs.
+func (msgs Messages) HostSameAs(other string) string {
+	return Catalog.Format(msgs.locale, "hostSameAs", map[string]any{"other": other})
 }

@@ -8,13 +8,18 @@ import (
 
 	"github.com/egoist/mygo/transfer"
 
+	"kero/internal/client"
 	"kero/internal/proto"
 
 	"kero/locales"
 )
 
-// maxUpload bounds what a paste into a remote pane uploads.
-const maxUpload = 64 << 20
+// maxUpload bounds what a paste into a remote pane uploads, and maxFile
+// each file of it, as kerod takes them (paste.file).
+const (
+	maxUpload = 64 << 20
+	maxFile   = 32 << 20
+)
 
 // remotePaste takes a paste into a pane of another machine, where this
 // machine's paths mean nothing: the files and the image it holds go to
@@ -28,6 +33,10 @@ func (a *App) remotePaste(id string, d transfer.Data) bool {
 	files, _ := d.Files()
 	var image []byte
 	if len(files) == 0 {
+		// Text, as of cells copied with a picture of them, pastes as text.
+		if t, err := d.Read(transfer.Text); err == nil && len(t) > 0 {
+			return false
+		}
 		if b, err := d.Read(transfer.PNG); err == nil && len(b) > 0 {
 			image = b
 		}
@@ -35,11 +44,11 @@ func (a *App) remotePaste(id string, d transfer.Data) bool {
 	if len(files) == 0 && image == nil {
 		return false
 	}
-	cl := h.cl
-	if cl == nil {
+	if h.cl == nil {
 		a.toast(locales.HostNotConnected(h.name))
 		return true
 	}
+	dialer := h.dialer()
 	// What goes up: the image's bytes, or a file, read off the main
 	// thread.
 	type upload struct {
@@ -48,6 +57,10 @@ func (a *App) remotePaste(id string, d transfer.Data) bool {
 	}
 	var ups []upload
 	total := len(image)
+	if len(image) > maxFile {
+		a.toast(locales.PasteTooLarge(maxFile >> 20))
+		return true
+	}
 	if image != nil {
 		ups = append(ups, upload{name: "pasted-image.png", data: image})
 	}
@@ -58,8 +71,8 @@ func (a *App) remotePaste(id string, d transfer.Data) bool {
 			return true
 		}
 		total += int(st.Size())
-		if total > maxUpload {
-			a.toast(locales.PasteTooLarge(maxUpload >> 20))
+		if total > maxUpload || st.Size() > maxFile {
+			a.toast(locales.PasteTooLarge(maxFile >> 20))
 			return true
 		}
 		ups = append(ups, upload{name: filepath.Base(f), file: f})
@@ -68,6 +81,14 @@ func (a *App) remotePaste(id string, d transfer.Data) bool {
 		a.toast(locales.PasteUploading(h.name))
 	}
 	go func() {
+		// A connection of its own, so that a large file holds up none of
+		// the host's other calls, as the sidebar's.
+		cl, err := client.ConnectVia(dialer)
+		if err != nil {
+			a.update(func() { a.toast(fmt.Sprintf("%s: %v", h.name, err)) })
+			return
+		}
+		defer cl.Close()
 		var paths []string
 		for _, u := range ups {
 			data := u.data

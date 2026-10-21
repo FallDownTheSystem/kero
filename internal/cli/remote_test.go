@@ -21,20 +21,20 @@ func TestSplitHost(t *testing.T) {
 		// A -H after the command is the command's.
 		{[]string{"send", "x", "-H"}, "", []string{"send", "x", "-H"}},
 	} {
-		host, rest, err := splitHost(c.args)
+		host, _, rest, err := splitHost(c.args)
 		if err != nil || host != c.host || !slices.Equal(rest, c.rest) {
 			t.Errorf("%q: %q %q %v", c.args, host, rest, err)
 		}
 	}
 	t.Setenv("KERO_HOST", "build")
-	if host, _, _ := splitHost([]string{"ls"}); host != "build" {
+	if host, env, _, _ := splitHost([]string{"ls"}); host != "build" || !env {
 		t.Errorf("$KERO_HOST: %q", host)
 	}
-	if host, _, _ := splitHost([]string{"-H", "other", "ls"}); host != "other" {
+	if host, env, _, _ := splitHost([]string{"-H", "other", "ls"}); host != "other" || env {
 		t.Errorf("-H over $KERO_HOST: %q", host)
 	}
 	for _, bad := range [][]string{{"-H"}, {"-H", "build"}} {
-		if _, _, err := splitHost(bad); err == nil {
+		if _, _, _, err := splitHost(bad); err == nil {
 			t.Errorf("%q: no error", bad)
 		}
 	}
@@ -63,5 +63,28 @@ func TestRemoteRepoPath(t *testing.T) {
 	}
 	if _, err := repoPath("/srv/app", "/etc/passwd", true); err == nil {
 		t.Error("a path outside the worktree passes")
+	}
+}
+
+// Inside a pane, $KERO_HOST, which a profile may set, gives way to the
+// pane's machine; a command of this machine alone ignores it.
+func TestKeroHostScope(t *testing.T) {
+	t.Setenv("KERO_HOST", "build")
+	t.Setenv("KERO_PANE", "p1")
+	if host, _, _, _ := splitHost([]string{"ls"}); host != "" {
+		t.Errorf("inside a pane: %q", host)
+	}
+	if host, _, _, _ := splitHost([]string{"-H", "build", "ls"}); host != "build" {
+		t.Errorf("-H inside a pane: %q", host)
+	}
+	t.Setenv("KERO_PANE", "")
+	if !localOnly["hook"] || !localOnly["config"] || localOnly["ls"] {
+		t.Error("localOnly")
+	}
+	onHost = "build"
+	defer func() { onHost = "" }()
+	t.Setenv("KERO_PANE", "p1")
+	if current() != "" {
+		t.Error("a pane of this machine named on another")
 	}
 }

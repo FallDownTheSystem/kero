@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"kero/internal/update"
 )
@@ -27,11 +28,15 @@ func main() {
 		if err != nil {
 			fail(err)
 		}
-		sig, err := update.Sign(b, key)
+		version, goos, goarch, err := parseName(filepath.Base(path))
 		if err != nil {
 			fail(err)
 		}
-		if err := update.Verify(b, sig); err != nil {
+		sig, err := update.Sign(b, version, goos, goarch, key)
+		if err != nil {
+			fail(err)
+		}
+		if err := update.Verify(b, version, goos, goarch, sig); err != nil {
 			fail(fmt.Errorf("%s: the key is not the one Kero checks (update.PublicKey): %w", path, err))
 		}
 		sum := sha256.Sum256(b)
@@ -49,4 +54,21 @@ func main() {
 func fail(err error) {
 	fmt.Fprintln(os.Stderr, "sign:", err)
 	os.Exit(1)
+}
+
+// parseName reads the version and platform of an archive from its name,
+// as update.Asset writes it: kero-server-2.1.0-linux-amd64.tar.gz.
+func parseName(name string) (version, goos, goarch string, err error) {
+	rest, ok := strings.CutPrefix(name, "kero-server-")
+	rest, ok2 := strings.CutSuffix(rest, ".tar.gz")
+	parts := strings.Split(rest, "-")
+	if !ok || !ok2 || len(parts) < 3 {
+		return "", "", "", fmt.Errorf("%s is not named as update.Asset names archives", name)
+	}
+	n := len(parts)
+	version, goos, goarch = strings.Join(parts[:n-2], "-"), parts[n-2], parts[n-1]
+	if update.Asset(version, goos, goarch) != name || !update.ValidVersion(version) {
+		return "", "", "", fmt.Errorf("%s is not named as update.Asset names archives", name)
+	}
+	return version, goos, goarch, nil
 }

@@ -203,3 +203,82 @@ func TestPickerItems(t *testing.T) {
 	}
 	_ = fmt.Sprint()
 }
+
+// A split in a remote session is the host's at once, as its terminal
+// attaches there before the host's state says so.
+func TestRemoteSplitIsTheHosts(t *testing.T) {
+	a := testApp(t)
+	a.mergeState(a.local(), a.st)
+	h := withHost(t, a, "build")
+	s := *a.session("rs-build")
+	s.Panes = append(s.Panes, proto.Pane{ID: "split-pane"})
+	a.replaceSession(h, s)
+	if a.hostOf("split-pane") != h {
+		t.Error("the new pane of a remote split is this machine's")
+	}
+}
+
+// A host's program drives the app's actions only on that host's
+// sessions, never on this machine's.
+func TestRemoteActionsStayOnTheirHost(t *testing.T) {
+	a := testApp(t)
+	a.mergeState(a.local(), a.st)
+	h := withHost(t, a, "build")
+	a.selected = "s1" // this machine's
+	a.from = h
+	defer func() { a.from = nil }()
+	for _, id := range []string{"pane.restart", "pane.split.right", "pane.zoom", "changes.toggle"} {
+		if a.fromMay(id, nil) {
+			t.Errorf("%s from build ran on this machine's session", id)
+		}
+	}
+	if a.fromMay("session.new", map[string]string{"project": "p1"}) {
+		t.Error("build started a session in this machine's project")
+	}
+	if !a.fromMay("session.new", nil) || !a.fromMay("sidebar.toggle", nil) {
+		t.Error("an action of build's own refused")
+	}
+	a.selected = "rs-build"
+	if !a.fromMay("pane.split.right", nil) {
+		t.Error("build may not split its own session")
+	}
+	a.from = a.local()
+	a.selected = "rs-build"
+	if !a.fromMay("pane.split.right", nil) {
+		t.Error("this machine's kero do refused")
+	}
+}
+
+// A host newer than the app gets no Update, which would take it back.
+func TestHostVersions(t *testing.T) {
+	h := &host{name: "b", info: proto.HostInfo{Server: true, Updates: true, Kero: "9.0.0"}}
+	if h.behind() {
+		t.Error("a newer host is behind")
+	}
+	h.info.Kero = "0.1.0"
+	h.daemonApp = "0.1.0"
+	if h.stale() {
+		t.Error("kerod of the bridge's version is stale")
+	}
+	h.conn, h.daemonApp, h.info.Kero = connReady, "0.1.0", "0.2.0"
+	if !h.stale() {
+		t.Error("kerod older than the Kero installed is not stale")
+	}
+	h.daemonApp = "0.3.0"
+	if h.stale() {
+		t.Error("kerod newer than the bridge that answered is stale")
+	}
+}
+
+func TestPickerChosen(t *testing.T) {
+	a := testApp(t)
+	a.picker = folderPicker{open: true, host: a.local(), list: &proto.FSList{Dir: "/home/me", Parent: "/home", Entries: []proto.FSEntry{{Name: "api", Dir: true}}}}
+	items := a.pickerItems()
+	if got := a.pickerChosen(items); got != "/home/me" {
+		t.Errorf("with the parent chosen, Open opens %q", got)
+	}
+	a.picker.index = 1
+	if got := a.pickerChosen(items); got != "/home/me/api" {
+		t.Errorf("with api chosen, Open opens %q", got)
+	}
+}

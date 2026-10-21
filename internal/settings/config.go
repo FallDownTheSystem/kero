@@ -218,11 +218,16 @@ var keys = []key{
 		get: func(s *Settings) []string { return slices.Clone(s.Listen) },
 		set: func(s *Settings, v []string) error {
 			s.Listen = nil
+			var bad []string
 			for _, l := range v {
 				if _, err := remote.ParseListen(l); err != nil {
-					return err
+					bad = append(bad, err.Error())
+					continue
 				}
 				s.Listen = append(s.Listen, strings.TrimSpace(l))
+			}
+			if bad != nil {
+				return fmt.Errorf("%s", strings.Join(bad, "; "))
 			}
 			return nil
 		}},

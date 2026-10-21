@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
@@ -254,11 +256,11 @@ func (a *App) hostMenu(m *ui.Menu, h *host) {
 func (a *App) reconnectHost(h *host) {
 	a.dropTerms(h)
 	if h.cl != nil {
-		h.cl.Close()
+		go h.cl.Close()
 		h.cl = nil
 	}
 	if h.rc != nil {
-		h.rc.Close()
+		go h.rc.Close() // ssh takes a moment to end: never on the main thread
 		h.rc = nil
 	}
 	h.retries, h.err, h.errKind = 0, "", nil
@@ -278,6 +280,10 @@ func (a *App) confirmRemoveHost(h *host) {
 		destroy: true,
 		run:     func() { a.removeHost(name) },
 	}
+	// The question shows in the main window, as Settings may be in front.
+	if a.win != nil {
+		a.win.Focus()
+	}
 }
 
 func (a *App) removeHost(name string) {
@@ -292,9 +298,22 @@ func (a *App) removeHost(name string) {
 	a.applySettings(s)
 }
 
-// installOnHost installs Kero on a host the app reaches over SSH or WSL,
-// as Kero's install script does, then connects.
+// installOnHost asks, then installs Kero on a host the app reaches over
+// SSH or WSL, as Kero's install script does, and connects.
 func (a *App) installOnHost(h *host) {
+	a.confirm = &confirmation{
+		open:   true,
+		title:  locales.HostInstallTitle(h.name),
+		detail: locales.HostInstallDetail(h.name),
+		action: locales.CommonInstall(),
+		run:    func() { a.install(h) },
+	}
+	if a.win != nil {
+		a.win.Focus()
+	}
+}
+
+func (a *App) install(h *host) {
 	version := mygo.App.Version()
 	if !released(version) {
 		version = ""
@@ -305,11 +324,13 @@ func (a *App) installOnHost(h *host) {
 		return
 	}
 	h.busy = "install"
-	gen := h.gen
 	go func() {
 		out, err := cmd.CombinedOutput()
 		a.update(func() {
 			h.busy = ""
+			if !slices.Contains(a.hosts, h) {
+				return
+			}
 			if err != nil {
 				msg := strings.TrimSpace(string(out))
 				if i := strings.LastIndex(msg, "\n"); i >= 0 {
@@ -322,44 +343,53 @@ func (a *App) installOnHost(h *host) {
 				return
 			}
 			a.toast(locales.HostInstalled(h.name))
-			if h.gen == gen {
-				a.reconnectHost(h)
-			}
+			a.reconnectHost(h)
 		})
 	}()
 }
 
-// hostVersionDetail says how Kero on a host differs from this app.
+// hostVersionDetail says how Kero on a host differs from this app, and
+// what updates which.
 func (a *App) hostVersionDetail(h *host) string {
-	v := h.info.Kero
-	if h.daemonApp != "" {
-		v = h.daemonApp
+	v, app := h.kero(), mygo.App.Version()
+	switch {
+	case h.ahead():
+		return locales.HostNewerDetail(h.name, v, app)
+	case !h.info.Server:
+		return locales.HostDesktopDetail(h.name, v, app)
+	case !h.info.Updates:
+		return locales.HostManualDetail(h.name, v, app)
 	}
-	if !h.info.Server {
-		return locales.HostDesktopDetail(h.name, v, mygo.App.Version())
-	}
-	return locales.HostVersionDetail(h.name, v, mygo.App.Version())
+	return locales.HostVersionDetail(h.name, v, app)
 }
 
 // offerHostUpdate updates the server build of Kero on a host to this
-// app's version, and restarts kerod there into it, asking first while
-// programs run in its sessions, which the restart ends.
+// app's version, and restarts kerod there into it, asking first, as the
+// restart ends the programs in its sessions. A host newer than the app,
+// or one that updates otherwise, gets told what to do instead.
 func (a *App) offerHostUpdate(h *host) {
-	if !h.info.Server {
+	switch {
+	case h.ahead():
+		updater.CheckForUpdates()
 		a.toast(a.hostVersionDetail(h))
 		return
-	}
-	if !released(mygo.App.Version()) {
+	case !h.info.Updates:
+		a.toast(a.hostVersionDetail(h))
+		return
+	case !released(mygo.App.Version()):
 		a.toast(locales.HostUpdateDev())
 		return
 	}
-	n := a.busyCount(h)
 	a.confirm = &confirmation{
-		open:   true,
-		title:  locales.HostUpdateTitle(h.name, mygo.App.Version()),
-		detail: withRunning(locales.HostUpdateDetail(h.name), n),
-		action: locales.CommonUpdate(),
-		run:    func() { a.hostRequest(h, "update") },
+		open:    true,
+		title:   locales.HostUpdateTitle(h.name, mygo.App.Version()),
+		detail:  withRunning(locales.HostUpdateDetail(h.name), a.busyCount(h)),
+		action:  locales.CommonUpdate(),
+		destroy: true,
+		run:     func() { a.hostRequest(h, "update") },
+	}
+	if a.win != nil {
+		a.win.Focus()
 	}
 }
 
@@ -374,11 +404,14 @@ func (a *App) offerHostRestart(h *host) {
 		destroy: true,
 		run:     func() { a.hostRequest(h, "restart") },
 	}
+	if a.win != nil {
+		a.win.Focus()
+	}
 }
 
 // hostRequest asks a host to update Kero, then restart kerod into it, or
 // only to restart it; the app connects again as kerod comes back, its
-// sessions with it.
+// sessions with it, or, should it fail, as it stands.
 func (a *App) hostRequest(h *host, what string) {
 	rc := h.rc
 	if rc == nil {
@@ -399,8 +432,14 @@ func (a *App) hostRequest(h *host, what string) {
 		}
 		a.update(func() {
 			h.busy = ""
+			if !slices.Contains(a.hosts, h) {
+				return
+			}
 			if err != nil {
 				a.toast(fmt.Sprintf("%s: %v", h.name, err))
+				// kerod may have stopped all the same: the connection
+				// that disconnected waited for this.
+				a.reconnect(h)
 				return
 			}
 			if what == "update" {

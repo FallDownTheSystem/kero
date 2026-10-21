@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -79,6 +80,7 @@ func TestFSListAndStat(t *testing.T) {
 func TestPasteFile(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("TMPDIR", tmp)
+	t.Setenv("XDG_RUNTIME_DIR", "")
 	if runtime.GOOS == "windows" {
 		t.Setenv("TMP", tmp)
 		t.Setenv("TEMP", tmp)
@@ -87,8 +89,9 @@ func TestPasteFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(r.Path, pasteDir()) || filepath.Base(r.Path) != "shot one.png" {
-		t.Errorf("pasted at %s, not in %s", r.Path, pasteDir())
+	dir, _ := pasteDir()
+	if !strings.HasPrefix(r.Path, dir) || filepath.Base(r.Path) != "shot one.png" {
+		t.Errorf("pasted at %s, not in %s", r.Path, dir)
 	}
 	if b, _ := os.ReadFile(r.Path); string(b) != "png" {
 		t.Errorf("pasted %q", b)
@@ -108,5 +111,31 @@ func TestPasteFile(t *testing.T) {
 	}
 	if r, _ := pasteFile(proto.PasteFileParams{Name: "", Data: []byte("x")}); filepath.Base(r.Path) != "pasted" {
 		t.Errorf("a file of no name pasted as %s", r.Path)
+	}
+}
+
+// A paste directory someone else could reach is made private, or refused
+// when it is not the user's to make so.
+func TestPasteDirPrivate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permissions are Unix's")
+	}
+	tmp := t.TempDir()
+	t.Setenv("TMPDIR", tmp)
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	base := filepath.Join(tmp, fmt.Sprintf("kero-%d", os.Getuid()))
+	os.Mkdir(base, 0o777)
+	os.Chmod(base, 0o777)
+	if _, err := pasteDir(); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := os.Stat(base); st.Mode().Perm() != 0o700 {
+		t.Errorf("the base is %v", st.Mode().Perm())
+	}
+	// A link where the directory goes, as another user could plant.
+	os.RemoveAll(base)
+	os.Symlink(t.TempDir(), base)
+	if _, err := pasteDir(); err == nil {
+		t.Error("pasted through a link")
 	}
 }

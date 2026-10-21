@@ -22,9 +22,8 @@ func file() string {
 func domain() string { return fmt.Sprintf("gui/%d", os.Getuid()) }
 
 // plist is the agent that runs exe's kerod, at login and whenever it
-// ends.
+// ends. kerod logs to kerod.log itself.
 func plist(exe string) string {
-	log := filepath.Join(proto.Dir(), "kerod.log")
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Kero's daemon, which runs the sessions: written by kero daemon install-service. -->
@@ -46,11 +45,14 @@ func plist(exe string) string {
 	<string>Interactive</string>
 	<key>WorkingDirectory</key>
 	<string>%s</string>
-	<key>StandardErrorPath</key>
-	<string>%s</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>KERO_SERVICE</key>
+		<string>1</string>
+	</dict>
 </dict>
 </plist>
-`, label(), html.EscapeString(exe), html.EscapeString(proto.Home()), html.EscapeString(log))
+`, label(), html.EscapeString(exe), html.EscapeString(proto.Home()))
 }
 
 func launchctl(args ...string) error {
@@ -99,9 +101,9 @@ func Start() error {
 	return launchctl("bootstrap", domain(), file())
 }
 
-// Restart restarts the agent's kerod: it saves its sessions and starts
-// them again.
-func Restart() error { return launchctl("kickstart", "-k", domain()+"/"+label()) }
+// Restart restarts the agent's kerod: SIGTERM, on which it saves its
+// sessions and ends, which the agent's KeepAlive starts again.
+func Restart() error { return launchctl("kill", "SIGTERM", domain()+"/"+label()) }
 
 // Get tells how the agent stands.
 func Get() Status {

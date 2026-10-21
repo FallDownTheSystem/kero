@@ -521,8 +521,7 @@ func (a *App) paneTerminal(c *ui.Context, pal *palette, s *proto.Session, p *pro
 		case e != nil && e.term != nil:
 			ref := a.paneRef(p.ID)
 			terminal.View(c.Key("term"), e.term).Fill().Bind(ref)
-			// A path of another machine is none of this one's to preview.
-			if link, isPath, at := e.term.HoveredLink(); isPath && !a.hostOf(p.ID).remote() {
+			if link, isPath, at := e.term.HoveredLink(); isPath {
 				a.imagePeek(p.ID, link, at, ref.Bounds(c))
 			}
 			if ref.Focused(c) && a.focusOf(s) != p.ID {
@@ -536,8 +535,10 @@ func (a *App) paneTerminal(c *ui.Context, pal *palette, s *proto.Session, p *pro
 			h := a.hostOf(p.ID)
 			switch {
 			case h.conn == connConnecting || h.busy != "":
-				ui.Column(c).Fill().Center().Children(func() { ui.Spinner(c).Label(locales.HostReconnectingTo(h.name)) })
-				ui.Text(c, locales.HostReconnectingTo(h.name)).FontSize(12.5).TextColor(pal.textFaint).AlignSelf(ui.Center).Margin(0, 0, 24, 0)
+				ui.Column(c).Fill().Center().Gap(10).Children(func() {
+					ui.Spinner(c)
+					ui.Text(c, locales.HostReconnectingTo(h.name)).FontSize(12.5).TextColor(pal.textFaint)
+				})
 			default:
 				a.message(c, pal, a.hostProblem(h), h.err, locales.CommonTryAgain(), func() { a.reconnectHost(h) })
 			}
@@ -611,6 +612,8 @@ func (a *App) splitWith(s *proto.Session, p proto.CreateParams) {
 // replaceSession puts a session as kerod answered into the state, before
 // the state that has it comes.
 func (a *App) replaceSession(h *host, ns proto.Session) {
+	// Its new pane is the host's from now, as its terminal attaches there.
+	a.own(h, ns)
 	for i := range a.st.Sessions {
 		if a.st.Sessions[i].ID == ns.ID {
 			a.st.Sessions[i] = ns

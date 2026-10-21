@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"slices"
 	"time"
 
@@ -18,20 +19,23 @@ import (
 	"kero/internal/proto"
 )
 
-// Heartbeats: a ping every few seconds, and a link that answers none in
-// a few more is dead, so that a dropped connection, as a laptop's that
-// slept, shows as reconnecting within seconds.
+// Heartbeats: a ping every few seconds, and a link that answers none, or
+// takes no write, in a while more is dead, so that a dropped connection,
+// as a laptop's that slept, shows as reconnecting within seconds. A
+// stream's window stays small, so that the pings and the other streams'
+// frames, which wait behind a write of it, wait seconds at most on a slow
+// link, however much a stream sends.
 const (
 	pingEvery   = 5 * time.Second
-	pingTimeout = 10 * time.Second
+	pingTimeout = 20 * time.Second
+	maxWindow   = 256 << 10
 )
 
 func muxConfig(lg *log.Logger) *yamux.Config {
 	c := yamux.DefaultConfig()
 	c.KeepAliveInterval = pingEvery
 	c.ConnectionWriteTimeout = pingTimeout
-	// A stream's window grows to hold a screen's first frame at once.
-	c.MaxStreamWindowSize = 4 << 20
+	c.MaxStreamWindowSize = maxWindow
 	c.StreamOpenTimeout = 30 * time.Second
 	c.StreamCloseTimeout = time.Minute
 	c.LogOutput = nil
@@ -99,7 +103,9 @@ func Dial(ctx context.Context, a Addr, o Options) (*Conn, error) {
 // should it fail.
 func handshake(ctx context.Context, tr io.ReadWriteCloser, a Addr, o Options) (*Conn, error) {
 	fail := func(err error) (*Conn, error) {
-		if c, ok := tr.(*cmdConn); ok && ctx.Err() == nil {
+		// The program's end, rather than what a host that answered said,
+		// says why.
+		if c, ok := tr.(*cmdConn); ok && ctx.Err() == nil && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, os.ErrClosed)) {
 			err = c.failure()
 		}
 		tr.Close()
@@ -176,7 +182,7 @@ func (c *Conn) Open() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return st, nil
+	return stream{st}, nil
 }
 
 // Dial opens a stream, as client.Dialer does.
@@ -185,10 +191,12 @@ func (c *Conn) Dial() (net.Conn, error) { return c.Open() }
 // Done is closed once the connection ended.
 func (c *Conn) Done() <-chan struct{} { return c.sess.CloseChan() }
 
-// Close ends the connection, and every stream of it.
+// Close ends the connection, and every stream of it: the transport first,
+// which the session's reader waits on as it closes.
 func (c *Conn) Close() error {
+	err := c.tr.Close()
 	c.sess.Close()
-	return c.tr.Close()
+	return err
 }
 
 // Ping measures the round trip to the host.
@@ -225,6 +233,17 @@ func (c *Conn) Host(ctx context.Context, req proto.HostRequest) error {
 	return nil
 }
 
+// stream is a stream of a remote connection, whose Close wakes its own
+// reads too, as closing a socket does: a yamux stream closed goes on
+// reading until the other side closes it.
+type stream struct{ *yamux.Stream }
+
+func (s stream) Close() error {
+	err := s.Stream.Close()
+	s.Stream.SetReadDeadline(time.Now())
+	return err
+}
+
 // Server answers remote connections: the bridge's, and kerod's network
 // listeners'.
 type Server struct {
@@ -234,10 +253,13 @@ type Server struct {
 	// which s reads on from. mux is what the client said of itself.
 	Stream func(s net.Conn, hello []byte, mux proto.MuxHello)
 	// Restart and Update answer proto.KindRestart and KindUpdate; nil
-	// refuses them.
-	Restart func() error
+	// refuses them. What Restart returns to do runs once the answer is
+	// written: a kerod that restarts itself ends with it.
+	Restart func() (then func(), err error)
 	Update  func(app string) error
-	Log     *log.Logger
+	// Closed, when set, runs as the connection ends.
+	Closed func()
+	Log    *log.Logger
 }
 
 // Serve answers a remote connection until it ends.
@@ -277,14 +299,25 @@ func (s *Server) Serve(rwc io.ReadWriteCloser) error {
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
+	if s.Closed != nil {
+		go func() {
+			<-sess.CloseChan()
+			s.Closed()
+		}()
+	}
+	defer func() {
+		rwc.Close()
+		sess.Close()
+	}()
 	for {
 		st, err := sess.AcceptStream()
 		if err != nil {
 			if sess.IsClosed() {
 				return nil
 			}
-			return err
+			// A stream whose opening took too long to answer, on a slow
+			// link: the others go on.
+			continue
 		}
 		go s.stream(st, hello)
 	}
@@ -297,7 +330,7 @@ func (s *Server) stream(st *yamux.Stream, mux proto.MuxHello) {
 	line, err := readLine(br)
 	st.SetReadDeadline(time.Time{})
 	if err != nil {
-		st.Close()
+		stream{st}.Close()
 		return
 	}
 	var req proto.HostRequest
@@ -309,7 +342,7 @@ func (s *Server) stream(st *yamux.Stream, mux proto.MuxHello) {
 		}
 		b, _ := json.Marshal(r)
 		st.Write(append(b, '\n'))
-		st.Close()
+		stream{st}.Close()
 	}
 	switch req.Kind {
 	case proto.KindRestart:
@@ -317,21 +350,25 @@ func (s *Server) stream(st *yamux.Stream, mux proto.MuxHello) {
 			reply(errors.New("this host restarts kerod otherwise"))
 			return
 		}
-		reply(s.Restart())
+		then, err := s.Restart()
+		reply(err)
+		if then != nil {
+			then()
+		}
 	case proto.KindUpdate:
 		if s.Update == nil {
-			reply(errors.New("Kero on this host is the desktop app, which updates itself: update it there"))
+			reply(errors.New("Kero on this host updates as it was installed: update it there"))
 			return
 		}
 		reply(s.Update(req.App))
 	default:
-		s.Stream(&streamConn{Stream: st, r: br}, line, mux)
+		s.Stream(&streamConn{stream: stream{st}, r: br}, line, mux)
 	}
 }
 
 // streamConn is a stream whose first line was read already, through r.
 type streamConn struct {
-	*yamux.Stream
+	stream
 	r io.Reader
 }
 

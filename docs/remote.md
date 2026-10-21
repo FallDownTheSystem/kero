@@ -55,7 +55,9 @@ Kero looks for `kero` on the host in `~/.local/bin`, the desktop app's command l
 
 ### WSL
 
-On Windows, `wsl://Ubuntu` reaches the Kero installed in that WSL distribution, as SSH would. `wsl://` is the default distribution. Run the install script inside the distribution first.
+On Windows, `wsl://Ubuntu` reaches the Kero installed in that WSL distribution, as SSH would. `wsl://` is the default distribution. If Kero isn't installed there, Kero offers to install it, as it does over SSH.
+
+WSL may stop a distribution a while after its last program started from Windows ends, and kerod with it. Keep agents running by keeping the distribution up, for example with [systemd enabled](https://learn.microsoft.com/windows/wsl/systemd) and `kero daemon install-service` inside it.
 
 ### Tailscale
 
@@ -78,7 +80,7 @@ listen = tailnet-serve://
 tailscale serve --bg --https=443 unix:$HOME/.config/kero/serve.sock
 ```
 
-Then add the host as `https://devbox.tail1234.ts.net`.
+Then add the host as `https://devbox.tail1234.ts.net`. The socket is `serve.sock` in Kero's data folder: `~/.config/kero` on Linux, `~/Library/Application Support/kero` on macOS.
 
 To let others in besides the owner, list them with `listen-allow`: a tailnet login, `tag:ci` for tagged devices, or `*` for anyone on the tailnet. A tagged machine has no owner, so only `listen-allow` lets anyone in to it. Tailscale Serve doesn't tell kerod who tagged devices are: they connect to a `tailnet://` listener.
 
@@ -87,11 +89,11 @@ listen-allow = alice@example.com
 listen-allow = tag:ci
 ```
 
-kerod listens only when the configuration asks, and only on Tailscale. It refuses requests from web browsers, so a web page you visit can't reach it. Funnel's requests from the internet never get in. To keep it listening with the machine, run it as a service (below).
+kerod reads `listen` and `listen-allow` as it starts, so run `kero daemon restart` after changing them. It listens only when the configuration asks, and only on Tailscale. It refuses requests from web browsers, so a web page you visit can't reach it. Funnel's requests from the internet never get in. To keep it listening with the machine, run it as a service (below).
 
 ## Running kerod as a service
 
-On a server, run kerod as a service of your own, so that it starts with the machine and keeps your sessions running while no one is logged in. The install script does this for you on Linux:
+On a server, run kerod as a service of your own, so that it starts with the machine and keeps your sessions running while no one is logged in. The install script does this for you on Linux. On a Mac, the service is a launchd agent, which runs while you're logged in to the Mac, so keep a session logged in there.
 
 ```sh
 kero daemon install-service      # a systemd user unit, or a launchd agent on macOS
@@ -99,7 +101,7 @@ kero daemon status               # how it runs, and where it listens
 kero daemon uninstall-service
 ```
 
-On Linux this enables lingering (`loginctl enable-linger`), which keeps your services running after you log out. If your system asks an administrator for that, ask them to run `sudo loginctl enable-linger <you>`.
+On Linux this first enables lingering (`loginctl enable-linger`), which keeps your services running after you log out. Without it, a service would stop as your last SSH session ends, which a kerod started on demand outlives, so `install-service` refuses to go on without it. If your system asks an administrator for lingering, ask them to run `sudo loginctl enable-linger <you>`, or install the service anyway with `--no-linger`.
 
 `kero daemon serve` runs kerod in the foreground and logs to its standard error, for a service manager of your own. It never exits for being idle. `--listen` takes the place of the configuration's `listen` keys.
 
@@ -107,7 +109,7 @@ On Linux this enables lingering (`loginctl enable-linger`), which keeps your ser
 
 - **New sessions.** <kbd>⌘</kbd> <kbd>T</kbd> and **New Session** start a session on the host of the session you're looking at. Each host's header in the sidebar has its own **+** and menu.
 - **Open Project.** On a host, <kbd>⌘</kbd> <kbd>O</kbd> lists the host's folders instead of showing your computer's dialog. Type to filter, or type a path such as `~/code`. <kbd>↩</kbd> goes into a folder, and <kbd>⌘</kbd> <kbd>↩</kbd> or **Open** opens it as a project.
-- **Paths.** <kbd>⌘</kbd>-clicking a file path in a remote pane opens the file in the host's `$EDITOR`, in a pane below. A folder opens in a new session there. Kero never opens a file of your computer that happens to have the same path.
+- **Paths.** <kbd>⌘</kbd>-clicking a file path in a remote pane opens the file in the host's `$EDITOR`, in a pane below. A folder opens in a new session there. Kero never opens a file of your computer that happens to have the same path. Hovering an image's path with <kbd>⌘</kbd> previews the host's image.
 - **Pasting images and files.** Pasting an image or files into a remote pane copies them to a private temporary folder on the host and pastes their paths there, so agents that read image paths, such as Claude Code, keep working. Dragging files onto a remote pane still pastes your computer's paths.
 - **Agents.** Inside a remote pane, `kero` talks to that host's kerod, so the agent skill works there unchanged. Run `kero skill setup` on the host.
 - **Notifications.** A host's notifications and the window's title carry the host's name, so a remote program can't pass for a local one.
@@ -126,28 +128,32 @@ Appearance, keyboard and notifications are the app's. A host's shell, `env`, scr
 
 ## Versions and updates
 
-The app and a host can run different versions of Kero. When they're too far apart to talk, or the host runs an older release than the app, the host's header shows **Update**. It downloads the same version of Kero onto the host, checks it against the key Kero's own updates are signed with, and then restarts kerod there. Restarting starts the host's sessions again where they were, with their history, and the programs running in them end, so Kero asks first.
+The app and a host can run different versions of Kero. When the host runs an older release than the app, the host's header shows **Update**. It downloads the app's version of Kero onto the host, checks it against the key Kero's own updates are signed with, for that version and platform, and then restarts kerod there. Restarting starts the host's sessions again where they were, with their history, and the programs running in them end, so Kero asks first.
 
-Kero updates a host only when you ask, never on a reconnect. If a host runs the Kero desktop app rather than the server build, update it there.
+- Kero updates a host only when you ask, never on a reconnect, and never back to an older version.
+- When the host runs a newer Kero than the app, update the app instead (**Settings › General**).
+- Kero updates only an install of `install-server.sh`. If you installed Kero on the host another way, or it runs the Kero desktop app, update it the way you installed it.
 
 From the command line:
 
 ```sh
+kero -H devbox version           # this kero's version, and the host's
 kero -H devbox daemon status
 kero -H devbox daemon update     # to this kero's version
 kero -H devbox daemon restart
 kero daemon update               # on the host, to the latest release
+kero daemon update 2.1.0         # on the host, to a version, older ones too
 ```
 
 ## The command line
 
-`-H` (or `--host`), and `$KERO_HOST`, point any command at a host's kerod. It takes a host's name or an address.
+`-H` (or `--host`), before the command, points a command that acts on sessions at a host's kerod. It takes a host's name, an address, or `local` for this machine. `$KERO_HOST` does the same, except inside a pane, where `kero` acts on the pane's own machine. Commands of this machine alone, such as `kero config` and `kero hook`, ignore `$KERO_HOST`.
 
 ```sh
-kero hosts                       # the hosts you added
+kero hosts                       # the hosts you added (--json for JSON)
 kero hosts add build ci@build.lab --remote-control
-kero hosts check build           # connect, and say how it went
-kero hosts install build         # install Kero there, over SSH
+kero hosts check build           # connect, and say how it went; a name or an address
+kero hosts install build         # install Kero there, over SSH or WSL
 kero hosts remove build
 kero -H build ls
 kero -H build prompt review "run the tests and fix them"
@@ -162,6 +168,12 @@ host = build=ssh://ci@build.lab:2222 remote-control
 host = ubuntu=wsl://Ubuntu
 ```
 
+| Variable | What it does |
+| --- | --- |
+| `KERO_HOST` | The host commands act on, as `-H` |
+| `KERO_SSH` | The `ssh` program Kero runs, in place of the one on your `PATH` |
+| `KERO_RELEASES` | A mirror of Kero's releases, for `install-server.sh` and `kero daemon update` |
+
 ## Security
 
 - **A connection can do anything its account can,** including starting programs, as a local one can. Over SSH it's your own account, as SSH logs you in. Over Tailscale, only who the machine's owner lets in.
@@ -174,5 +186,4 @@ host = ubuntu=wsl://Ubuntu
 - The server build is for Linux on x86-64 and ARM64, with glibc 2.28 or later. On a Mac, the app's own kerod serves as a host: run `kero daemon install-service` there.
 - Windows machines can't be hosts yet.
 - Dragging files onto a remote pane pastes your computer's paths. Paste them instead.
-- Previews of images under the pointer show only for local panes.
 - One host has one account. Login servers, where several people reach their own accounts on one machine, are planned.

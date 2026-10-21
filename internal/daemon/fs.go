@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -116,17 +117,54 @@ func fsRead(p proto.FSReadParams) (proto.FSRead, error) {
 	return proto.FSRead{Data: b}, err
 }
 
-// maxPaste bounds a pasted file.
-const maxPaste = 64 << 20
+// maxPaste bounds a pasted file, which comes in a request of a control
+// connection, base64 (proto.MaxLine).
+const maxPaste = 32 << 20
 
 // pasteDir is where files pasted into panes go: a directory of the
-// user's alone, in the temporary directory, which the system empties.
-func pasteDir() string {
-	user := "kero"
+// user's alone, in $XDG_RUNTIME_DIR, else in the temporary directory,
+// which the system empties. Each level is made private, or checked to be:
+// a directory of the shared temporary one that someone else made, or that
+// others may write to, is refused.
+func pasteDir() (string, error) {
+	base := filepath.Join(os.TempDir(), "kero")
 	if uid := os.Getuid(); uid >= 0 {
-		user = fmt.Sprintf("kero-%d", uid)
+		base = filepath.Join(os.TempDir(), fmt.Sprintf("kero-%d", uid))
 	}
-	return filepath.Join(os.TempDir(), user, "paste")
+	if rt := os.Getenv("XDG_RUNTIME_DIR"); rt != "" {
+		if st, err := os.Stat(rt); err == nil && st.IsDir() {
+			base = filepath.Join(rt, "kero")
+		}
+	}
+	dir := filepath.Join(base, "paste")
+	for _, d := range []string{base, dir} {
+		if err := privateDir(d); err != nil {
+			return "", err
+		}
+	}
+	return dir, nil
+}
+
+// privateDir makes a directory only its user reaches, or checks that one
+// is: never through a link, never one of another user's.
+func privateDir(dir string) error {
+	st, err := os.Lstat(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		st, err = os.Lstat(dir)
+	}
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() || st.Mode()&os.ModeSymlink != 0 || !ownedByUser(st) {
+		return errors.New("the directory for pasted files is not yours alone: " + dir)
+	}
+	if runtime.GOOS != "windows" && st.Mode().Perm()&0o077 != 0 {
+		return os.Chmod(dir, 0o700)
+	}
+	return nil
 }
 
 // pasteFile puts a file pasted into a pane on this machine, where its
@@ -148,13 +186,9 @@ func pasteFile(p proto.PasteFileParams) (proto.PasteFile, error) {
 		}
 		return r
 	}, name)
-	dir := pasteDir()
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	dir, err := pasteDir()
+	if err != nil {
 		return proto.PasteFile{}, err
-	}
-	// The directory is the user's: one made by someone else is refused.
-	if st, err := os.Lstat(filepath.Dir(dir)); err != nil || !st.IsDir() || !ownedByUser(st) {
-		return proto.PasteFile{}, errors.New("the directory for pasted files is not yours: " + filepath.Dir(dir))
 	}
 	now := time.Now()
 	if entries, err := os.ReadDir(dir); err == nil {

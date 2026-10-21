@@ -162,19 +162,11 @@ func (a *App) pickerView(c *ui.Context, pal *palette) {
 			if c.Shortcut(0, ui.KeyUp) || c.Shortcut(ui.Ctrl, ui.KeyP) {
 				p.index = max(p.index-1, 0)
 			}
-			// Backspace in an empty field goes up, as in a file dialog.
-			if p.query == "" && in.Shortcut(0, ui.KeyBackspace) && p.list != nil && p.list.Parent != "" {
-				goTo = p.list.Parent
-			}
 			q := strings.TrimSpace(p.query)
 			switch {
 			case c.Shortcut(ui.Cmd, ui.KeyEnter):
 				// Opens the folder chosen, without going in.
-				if len(items) > 0 && !items[p.index].up {
-					openDir = items[p.index].path
-				} else if p.list != nil {
-					openDir = p.list.Dir
-				}
+				openDir = a.pickerChosen(items)
 			case in.Submitted() || c.Shortcut(0, ui.KeyEnter) || c.Shortcut(0, ui.KeyTab):
 				switch {
 				case isPathQuery(q):
@@ -223,8 +215,8 @@ func (a *App) pickerView(c *ui.Context, pal *palette) {
 			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				p.open = false
 			}
-			if button(c, "open", locales.CommonOpen(), "", true, pal) && p.list != nil {
-				openDir = p.list.Dir
+			if button(c, "open", locales.CommonOpen(), "", true, pal) {
+				openDir = a.pickerChosen(items)
 			}
 		})
 	})
@@ -241,4 +233,17 @@ func (a *App) pickerView(c *ui.Context, pal *palette) {
 			a.focusTerminal()
 		}
 	}
+}
+
+// pickerChosen is the folder Open opens: the one chosen in the list,
+// else, as with the parent chosen, the folder listed.
+func (a *App) pickerChosen(items []pickerItem) string {
+	p := &a.picker
+	if len(items) > 0 && !items[p.index].up {
+		return items[p.index].path
+	}
+	if p.list != nil {
+		return p.list.Dir
+	}
+	return ""
 }

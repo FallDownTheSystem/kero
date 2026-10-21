@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"strings"
 	"sync"
 	"testing"
@@ -45,7 +46,8 @@ func TestParseAddr(t *testing.T) {
 			t.Errorf("%q: read back %+v, %v", c.in, b, err)
 		}
 	}
-	for _, bad := range []string{"", "ftp://x", "-oProxyCommand=evil", "ssh://-x", "me:secret@host", "http://", "a b", "devbox/path", "http://x?kero=y", "host:port"} {
+	for _, bad := range []string{"", "ftp://x", "-oProxyCommand=evil", "ssh://-x", "me:secret@host", "http://", "a b", "devbox/path", "http://x?kero=y", "host:port",
+		"dev$(id)box", "ssh://a;b@host", "x@host's", "host?kero=relative/kero", "host?kero=/opt/it's/kero", "wsl://Ubuntu;rm"} {
 		if a, err := ParseAddr(bad); err == nil {
 			t.Errorf("%q read as %+v", bad, a)
 		}
@@ -83,7 +85,7 @@ func TestParseListen(t *testing.T) {
 			t.Errorf("%q: %+v, %v", in, got, err)
 		}
 	}
-	for _, bad := range []string{"tcp://:80", "tailnet://0.0.0.0:7373", "tailnet-serve://host/x", ":7373"} {
+	for _, bad := range []string{"tcp://:80", "tailnet://0.0.0.0:7373", "tailnet-serve://host/x", ":7373", "tailnet://:0", "tailnet://:99999"} {
 		if l, err := ParseListen(bad); err == nil {
 			t.Errorf("%q read as %+v", bad, l)
 		}
@@ -128,7 +130,7 @@ func echoServer(t *testing.T) *Server {
 			s.Write(append(b, '\n'))
 			io.Copy(s, s)
 		},
-		Restart: func() error { return nil },
+		Restart: func() (func(), error) { return nil, nil },
 		Update: func(app string) error {
 			if app == "bad" {
 				return errors.New("no such version")
@@ -233,7 +235,7 @@ func TestMuxRefusesHostRequests(t *testing.T) {
 	s.Restart, s.Update = nil, nil
 	c, _ := dialPipe(t, s, "")
 	defer c.Close()
-	if err := c.Host(context.Background(), proto.HostRequest{Kind: proto.KindUpdate, App: "2.0"}); err == nil || !strings.Contains(err.Error(), "desktop app") {
+	if err := c.Host(context.Background(), proto.HostRequest{Kind: proto.KindUpdate, App: "2.0"}); err == nil || !strings.Contains(err.Error(), "as it was installed") {
 		t.Errorf("update: %v", err)
 	}
 }
@@ -285,6 +287,17 @@ func TestFlateConn(t *testing.T) {
 		got := make([]byte, len(m))
 		if _, err := io.ReadFull(fb, got); err != nil || string(got) != m {
 			t.Fatalf("read %d bytes of %d: %v", len(got), len(m), err)
+		}
+	}
+}
+
+// Plain http:// carries Kero only to a tailnet peer, or through a tunnel
+// of this machine's.
+func TestTailnetAddr(t *testing.T) {
+	for ip, ok := range map[string]bool{"100.64.0.1": true, "100.127.255.254": true, "fd7a:115c:a1e0::1": true, "127.0.0.1": true, "::1": true,
+		"192.168.1.10": false, "10.0.0.1": false, "100.128.0.1": false, "8.8.8.8": false, "fe80::1": false} {
+		if got := tailnetAddr(netip.MustParseAddr(ip)); got != ok {
+			t.Errorf("tailnetAddr(%s) = %v", ip, got)
 		}
 	}
 }

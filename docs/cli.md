@@ -121,7 +121,7 @@ kero clients                     # who is connected to kerod
 
 ## Other machines
 
-`-H <host>`, or `$KERO_HOST`, points any command at kerod on another machine: a host you added, or an address such as `me@devbox` or `wsl://Ubuntu`. See [Remote Hosts](./remote.md).
+`-H <host>` before the command, or `$KERO_HOST`, points a command that acts on sessions at kerod on another machine: a host you added, or an address such as `me@devbox` or `wsl://Ubuntu`. See [Remote Hosts](./remote.md).
 
 ```sh
 kero hosts                       # the hosts you added

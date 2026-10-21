@@ -101,9 +101,8 @@ jobs:
 
   # The server build of Kero, for machines whose sessions the app shows
   # (Settings › Hosts): kerod and the kero CLI without the app, with
-  # libghostty-vt, signed with the key of the app's updates, which its
-  # updates check (internal/update), and install-server.sh, of this
-  # version.
+  # libghostty-vt, which install-server.sh installs and the server build
+  # updates itself from (internal/update).
   server:
     needs: draft-release
     name: Server
@@ -113,8 +112,8 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: Test the server's packages
-        run: go test ./internal/remote/ ./internal/update/ ./internal/settings/ ./internal/tailscale/
+      - name: Test
+        run: go test ./internal/...
       - name: Build
         run: |
           set -eu
@@ -132,19 +131,76 @@ jobs:
             sum="$(jq -r ".libraries[] | select(.name == \"libghostty-vt\") | .files[\"linux-$arch\"].sha256" "$manifest")"
             curl -fsSL "$url" -o "$stage/libghostty-vt.so"
             echo "$sum  $stage/libghostty-vt.so" | sha256sum -c -
-            tar -C "$stage" -czf "build/server/kero-server-$version-linux-$arch.tar.gz" kero libghostty-vt.so
+            # The marker of an install that updates itself (update.Marker).
+            : > "$stage/.kero-server"
+            tar -C "$stage" -czf "build/server/kero-server-$version-linux-$arch.tar.gz" kero libghostty-vt.so .kero-server
           done
           sed "s/@VERSION@/$version/" scripts/install-server.sh > build/server/install-server.sh
-      - name: Check that the build runs with no display
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server
+          path: |
+            build/server/*.tar.gz
+            build/server/install-server.sh
+
+  # Each archive as a user gets it: installed by install-server.sh, from
+  # a mirror of the release (KERO_RELEASES), run through the command's
+  # link with no display, on its own architecture.
+  server-check:
+    needs: server
+    name: Server (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, os: ubuntu-latest }
+          - { arch: arm64, os: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: server
+          path: build/server
+      - name: Install and run a session
         run: |
           set -eu
-          dir="$(mktemp -d)"
-          tar -xzf build/server/kero-server-*-linux-amd64.tar.gz -C "$dir"
-          env -u DISPLAY -u WAYLAND_DISPLAY KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" version
-          env -u DISPLAY -u WAYLAND_DISPLAY KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" new -n check -- echo ok
-          sleep 1
-          env KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" read check | grep -q ok
-          env KERO_HOME="$dir/home" KERO_CONFIG="$dir/config" "$dir/kero" daemon stop
+          version="$(jq -r .version mygo.json)"
+          rel="$RUNNER_TEMP/releases/v$version"
+          mkdir -p "$rel"
+          cp build/server/kero-server-*-linux-${{ matrix.arch }}.tar.gz "$rel/"
+          (cd "$rel" && for f in *.tar.gz; do sha256sum "$f" > "$f.sha256"; done)
+          export HOME="$RUNNER_TEMP/home" XDG_CACHE_HOME="$RUNNER_TEMP/cache"
+          mkdir -p "$HOME"
+          unset DISPLAY WAYLAND_DISPLAY
+          KERO_RELEASES="file://$RUNNER_TEMP/releases" sh build/server/install-server.sh --no-service
+          kero="$HOME/.local/bin/kero"
+          "$kero" version
+          "$kero" new -n check -- sh -c 'echo kero-ok'
+          for i in $(seq 40); do
+            "$kero" read check | grep -q kero-ok && break
+            [ "$i" = 40 ] && { "$kero" read check; cat "$HOME/.config/kero/kerod.log"; exit 1; }
+            sleep 0.25
+          done
+          "$kero" daemon stop
+          # libghostty-vt came with the archive: none was downloaded.
+          test ! -e "$XDG_CACHE_HOME/mygo/natives"
+
+  # Signed apart from the jobs that run what was built, with the key the
+  # app's updates are signed with, which the server build checks.
+  server-sign:
+    needs: server-check
+    name: Sign the server build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          name: server
+          path: build/server
       - name: Sign
         env:
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
@@ -156,3 +212,24 @@ jobs:
           tag="v$(jq -r .version mygo.json)"
           gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
             build/server/*.tar.gz build/server/*.tar.gz.sig build/server/*.tar.gz.sha256 build/server/install-server.sh
+
+  # A release without the server build would break install-server.sh's
+  # latest link, and the app's Install and Update of hosts: say so before
+  # it is published.
+  assets:
+    needs: [build, server-sign]
+    name: Check the release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          version="$(jq -r .version mygo.json)"
+          names="$(gh release view "v$version" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          for want in install-server.sh install.sh \
+            "kero-server-$version-linux-amd64.tar.gz" "kero-server-$version-linux-amd64.tar.gz.sig" \
+            "kero-server-$version-linux-arm64.tar.gz" "kero-server-$version-linux-arm64.tar.gz.sig"; do
+            echo "$names" | grep -qxF "$want" || { echo "::error::v$version has no $want"; exit 1; }
+          done

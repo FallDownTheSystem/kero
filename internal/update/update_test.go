@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -33,21 +35,73 @@ func TestPublicKeyIsTheApps(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
-	_, other, _ := ed25519.GenerateKey(rand.Reader)
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	archive := []byte("an archive")
-	sig, err := Sign(archive, base64.StdEncoding.EncodeToString(other))
+	sig, err := Sign(archive, "2.1.0", "linux", "amd64", base64.StdEncoding.EncodeToString(priv))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Signed, but not with Kero's key.
-	if err := Verify(archive, sig); err == nil {
+	if err := Verify(archive, "2.1.0", "linux", "amd64", sig); err == nil {
 		t.Error("an archive another key signed passes")
 	}
-	if err := Verify(archive, "not base64!"); err == nil {
+	// The signature is of the archive as that version for that platform.
+	msg := message(archive, "2.1.0", "linux", "amd64")
+	s, _ := base64.StdEncoding.DecodeString(sig)
+	if !ed25519.Verify(pub, msg, s) {
+		t.Fatal("Sign signs something else than message")
+	}
+	for _, other := range [][]byte{message(archive, "2.0.0", "linux", "amd64"), message(archive, "2.1.0", "linux", "arm64"), message([]byte("x"), "2.1.0", "linux", "amd64")} {
+		if ed25519.Verify(pub, other, s) {
+			t.Errorf("the signature passes for %s", other)
+		}
+	}
+	if err := Verify(archive, "2.1.0", "linux", "amd64", "not base64!"); err == nil {
 		t.Error("a bad signature passes")
 	}
-	if _, err := Sign(archive, "short"); err == nil {
+	if _, err := Sign(archive, "2.1.0", "linux", "amd64", "short"); err == nil {
 		t.Error("signed with a bad key")
+	}
+}
+
+func TestVersions(t *testing.T) {
+	for v, ok := range map[string]bool{"2.1.0": true, "2.1.0-beta.1": true, "10.0.12": true, "2.1": false, "../2.1.0": false, "2.1.0/x": false, "v2.1.0": false, "": false} {
+		if ValidVersion(v) != ok {
+			t.Errorf("ValidVersion(%q) = %v", v, !ok)
+		}
+	}
+	for _, c := range []struct {
+		a, b string
+		want int
+	}{
+		{"2.1.0", "2.1.0", 0}, {"2.0.11", "2.1.0", -1}, {"2.10.0", "2.9.9", 1}, {"2.1.0-beta", "2.1.0", -1},
+		{"2.1.0", "2.1.0-beta", 1}, {"v3.0.0", "2.99.0", 1}, {"2.1.0-a", "2.1.0-b", -1},
+	} {
+		if got := Compare(c.a, c.b); got != c.want {
+			t.Errorf("Compare(%s, %s) = %d", c.a, c.b, got)
+		}
+	}
+}
+
+// Only an install of install-server.sh updates itself, and never back to
+// an older Kero unless asked.
+func TestInstallRefuses(t *testing.T) {
+	dir := t.TempDir()
+	if err := Install(t.Context(), "2.1.0", dir, "2.0.0", false); err == nil {
+		t.Error("updated a directory without the marker")
+	}
+	os.WriteFile(filepath.Join(dir, Marker), nil, 0o644)
+	if runtime.GOOS != "linux" {
+		return
+	}
+	if err := Install(t.Context(), "2.0.0", dir, "2.1.0", false); err == nil || !strings.Contains(err.Error(), "newer") {
+		t.Errorf("went back to an older Kero: %v", err)
+	}
+	if err := Install(t.Context(), "../../x", dir, "2.1.0", true); err == nil {
+		t.Error("took a version that is none")
+	}
+	if err := Install(t.Context(), "2.1.0", dir, "2.1.0", false); err != nil {
+		t.Errorf("the version installed: %v", err)
 	}
 }
 
@@ -69,7 +123,7 @@ func TestReplace(t *testing.T) {
 	os.MkdirAll(dir, 0o755)
 	os.WriteFile(filepath.Join(dir, "kero"), []byte("old"), 0o755)
 	os.WriteFile(filepath.Join(dir, "stale.so"), []byte("old"), 0o644)
-	if err := Replace(tarball(t, map[string]string{"kero": "new", "libghostty-vt.so": "lib"}), dir); err != nil {
+	if err := Replace(tarball(t, map[string]string{"kero": "new", "libghostty-vt.so": "lib", Marker: ""}), dir); err != nil {
 		t.Fatal(err)
 	}
 	if b, _ := os.ReadFile(filepath.Join(dir, "kero")); string(b) != "new" {
@@ -84,7 +138,7 @@ func TestReplace(t *testing.T) {
 		}
 	}
 	// An archive without kero, or with a path out of it, changes nothing.
-	for _, bad := range []map[string]string{{"other": "x"}, {"kero": "x", "../escape": "x"}} {
+	for _, bad := range []map[string]string{{"other": "x"}, {"kero": "x"}, {"kero": "x", Marker: "", "../escape": "x"}} {
 		if err := Replace(tarball(t, bad), dir); err == nil {
 			t.Errorf("replaced with %v", bad)
 		}

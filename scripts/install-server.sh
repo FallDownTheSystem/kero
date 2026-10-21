@@ -9,23 +9,26 @@
 #   sh install-server.sh --uninstall
 #
 # The release workflow writes the version of its release in place of
-# @VERSION@.
+# @VERSION@. $KERO_RELEASES names a mirror of the releases, as kero daemon
+# update takes it.
 set -eu
 
 repo=egoist/kero
 version='@VERSION@'
 lib="$HOME/.local/lib/kero"
 bin="$HOME/.local/bin"
+# The file that tells an install of this script's, which updates itself.
+marker=.kero-server
 
 usage() {
 	cat <<EOF
 Usage: sh install-server.sh [--version VERSION] [--no-service] [--dry-run]
        sh install-server.sh --uninstall
 
-Installs the server build of Kero $version in $lib, the kero command in
-$bin, and runs kerod as a systemd user service (--no-service: kerod starts
-when Kero connects). --uninstall removes them, and leaves your sessions'
-settings and data in ~/.config/kero.
+Installs the server build of Kero in $lib, the kero command in $bin, and
+runs kerod as a systemd user service (--no-service: kerod starts as Kero
+connects). --uninstall removes them, and leaves your settings and data in
+~/.config/kero.
 EOF
 }
 
@@ -52,12 +55,9 @@ sha256() {
 	fi
 }
 
-run() {
-	if [ "$dry_run" = 1 ]; then
-		echo "would run: $*"
-	else
-		"$@"
-	fi
+# ours reports whether a path is a link to this install's kero.
+ours() {
+	[ -L "$1" ] && [ "$(readlink "$1")" = "$lib/kero" ]
 }
 
 uninstall() {
@@ -65,113 +65,137 @@ uninstall() {
 		"$lib/kero" daemon uninstall-service >/dev/null 2>&1 || true
 		"$lib/kero" daemon stop >/dev/null 2>&1 || true
 	fi
-	if [ -L "$bin/kero" ] && [ "$(readlink "$bin/kero")" = "$lib/kero" ]; then
-		rm -f "$bin/kero"
-	fi
+	for link in "$bin/kero" "$HOME/.config/kero/bin/kero"; do
+		if ours "$link"; then
+			rm -f "$link"
+		fi
+	done
 	rm -rf "$lib"
 	echo "Removed Kero from $lib. Your settings and data stay in ~/.config/kero."
 }
 
-service=1
-dry_run=0
-while [ $# -gt 0 ]; do
-	case "$1" in
-	--version)
-		[ $# -ge 2 ] || fail "--version needs a version"
-		version="${2#v}"
+main() {
+	service=1
+	dry_run=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--version)
+			[ $# -ge 2 ] || fail "--version needs a version"
+			version="${2#v}"
+			shift
+			;;
+		--version=*)
+			version="${1#--version=}"
+			version="${version#v}"
+			;;
+		--no-service) service=0 ;;
+		--dry-run) dry_run=1 ;;
+		--uninstall)
+			uninstall
+			return
+			;;
+		-h | --help)
+			usage
+			return
+			;;
+		*)
+			usage >&2
+			exit 2
+			;;
+		esac
 		shift
-		;;
-	--version=*)
-		version="${1#--version=}"
-		version="${version#v}"
-		;;
-	--no-service) service=0 ;;
-	--dry-run) dry_run=1 ;;
-	--uninstall)
-		uninstall
-		exit 0
-		;;
-	-h | --help)
-		usage
-		exit 0
-		;;
-	*)
-		usage >&2
-		exit 2
+	done
+
+	[ "$(uname -s)" = Linux ] || fail "the server build of Kero is for Linux; on a Mac, the app runs kerod (kero daemon install-service)"
+	[ "$(id -u)" != 0 ] || fail "run this as the user whose sessions Kero runs, not as root"
+	case "$(uname -m)" in
+	x86_64 | amd64) arch=amd64 ;;
+	aarch64 | arm64) arch=arm64 ;;
+	*) fail "Kero is not made for $(uname -m)" ;;
+	esac
+	case "$version" in
+	@*) # This script, run from the repository: the latest release.
+		version="$(fetch "https://api.github.com/repos/$repo/releases/latest" | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1)"
+		[ -n "$version" ] || fail "could not find Kero's latest release"
 		;;
 	esac
-	shift
-done
+	case "$version" in
+	*[!0-9A-Za-z.-]* | '') fail "$version is not a version of Kero" ;;
+	esac
 
-[ "$(uname -s)" = Linux ] || fail "the server build of Kero is for Linux; on a Mac, the app runs kerod (kero daemon install-service)"
-[ "$(id -u)" != 0 ] || fail "run this as the user whose sessions Kero runs, not as root"
-case "$(uname -m)" in
-x86_64 | amd64) arch=amd64 ;;
-aarch64 | arm64) arch=arm64 ;;
-*) fail "Kero is not made for $(uname -m)" ;;
-esac
-case "$version" in
-@*) # This script, run from the repository: the latest release.
-	version="$(fetch "https://api.github.com/repos/$repo/releases/latest" | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -n 1)"
-	[ -n "$version" ] || fail "could not find Kero's latest release"
-	;;
-esac
+	name="kero-server-$version-linux-$arch.tar.gz"
+	url="${KERO_RELEASES:-https://github.com/$repo/releases/download}/v$version/$name"
+	work="$(mktemp -d)"
+	staging="$lib.new"
+	trap 'rm -rf "$work" "$staging"' EXIT
+	trap 'exit 1' HUP INT TERM
 
-name="kero-server-$version-linux-$arch.tar.gz"
-url="https://github.com/$repo/releases/download/v$version/$name"
-work="$(mktemp -d)"
-staging="$lib.new"
-trap 'rm -rf "$work" "$staging"' EXIT
-trap 'exit 1' HUP INT TERM
+	echo "Downloading Kero $version for linux/$arch"
+	fetch "$url" >"$work/$name" || fail "could not download $url"
+	fetch "$url.sha256" >"$work/$name.sha256" || fail "could not download $url.sha256"
+	want="$(cut -d' ' -f1 <"$work/$name.sha256")"
+	[ "$(sha256 "$work/$name")" = "$want" ] || fail "$name is not the release's: its SHA-256 differs"
+	tar -tzf "$work/$name" >"$work/names" || fail "$name is not a .tar.gz archive"
+	if grep -Eq '^/|(^|/)\.\.(/|$)' "$work/names"; then
+		fail "$name holds files outside it"
+	fi
 
-echo "Downloading Kero $version for linux/$arch"
-fetch "$url" >"$work/$name" || fail "could not download $url"
-fetch "$url.sha256" >"$work/$name.sha256" || fail "could not download $url.sha256"
-want="$(cut -d' ' -f1 <"$work/$name.sha256")"
-[ "$(sha256 "$work/$name")" = "$want" ] || fail "$name is not the release's: its SHA-256 differs"
-tar -tzf "$work/$name" >"$work/names" || fail "$name is not a .tar.gz archive"
-if grep -Eq '^/|(^|/)\.\.(/|$)' "$work/names"; then
-	fail "$name holds files outside it"
-fi
+	if [ "$dry_run" = 1 ]; then
+		echo "would install Kero $version in $lib, link $bin/kero, and run kerod as a service: $service"
+		return
+	fi
 
-if [ "$dry_run" = 1 ]; then
-	echo "would install in $lib, link $bin/kero, and run kerod as a service: $service"
-	exit 0
-fi
+	upgrade=0
+	if [ -x "$lib/kero" ]; then
+		upgrade=1
+	fi
+	echo "Installing in $lib"
+	rm -rf "$staging"
+	mkdir -p "$staging"
+	tar -xzf "$work/$name" -C "$staging"
+	[ -x "$staging/kero" ] || fail "$name holds no kero"
+	"$staging/kero" version >/dev/null || fail "the kero of $name does not run here"
+	: >"$staging/$marker"
+	# The whole directory at once, so that no file of another version stays.
+	rm -rf "$lib.old"
+	if [ -d "$lib" ]; then
+		mv "$lib" "$lib.old"
+	fi
+	mkdir -p "$(dirname "$lib")"
+	mv "$staging" "$lib"
+	rm -rf "$lib.old"
 
-echo "Installing in $lib"
-rm -rf "$staging"
-mkdir -p "$staging"
-tar -xzf "$work/$name" -C "$staging"
-[ -x "$staging/kero" ] || fail "$name holds no kero"
-"$staging/kero" version >/dev/null || fail "the kero of $name does not run here"
-# The whole directory at once, so that no file of another version stays.
-rm -rf "$lib.old"
-if [ -d "$lib" ]; then
-	mv "$lib" "$lib.old"
-fi
-mkdir -p "$(dirname "$lib")"
-mv "$staging" "$lib"
-rm -rf "$lib.old"
+	mkdir -p "$bin"
+	if [ -e "$bin/kero" ] || [ -L "$bin/kero" ]; then
+		if ! ours "$bin/kero"; then
+			echo "Left $bin/kero as it is, which is not this install's. Kero reaches this machine with the address me@host?kero=$lib/kero"
+		fi
+	else
+		ln -s "$lib/kero" "$bin/kero"
+	fi
+	case ":$PATH:" in
+	*":$bin:"*) ;;
+	*) echo "Add $bin to your PATH to run kero, as in ~/.profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+	esac
 
-mkdir -p "$bin"
-if [ -e "$bin/kero" ] && ! [ -L "$bin/kero" ]; then
-	echo "Left $bin/kero as it is, which is not Kero's: run $lib/kero, or put it first on your PATH."
-else
-	ln -sf "$lib/kero" "$bin/kero"
-fi
-case ":$PATH:" in
-*":$bin:"*) ;;
-*) echo "Add $bin to your PATH to run kero, as in ~/.profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
-esac
+	unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/kerod.service"
+	if [ "$upgrade" = 1 ] && "$lib/kero" daemon status 2>/dev/null | grep -q '^kerod .* running'; then
+		# Never a restart unasked: it would end the programs of the sessions.
+		echo "kerod runs the version of before until it restarts: kero daemon restart (its sessions start again, the programs in them end)."
+	elif [ -f "$unit" ]; then
+		: # The service runs this install's kero as it starts.
+	elif [ "$service" = 1 ] && command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+		"$lib/kero" daemon install-service || echo "kerod does not run as a service: Kero starts it as it connects."
+	else
+		echo "kerod starts as Kero connects. To keep it running with the machine: kero daemon install-service"
+	fi
 
-if [ "$service" = 1 ] && command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
-	run "$lib/kero" daemon install-service || echo "kerod does not run as a service: Kero starts it as it connects."
-else
-	echo "kerod starts as Kero connects. To keep it running with the machine: kero daemon install-service"
-fi
+	echo
+	echo "Kero $version is installed. In Kero on your computer, add this machine in Settings › Hosts:"
+	echo "  $(id -un)@$(uname -n)"
+	echo "or from its command line: kero hosts add $(uname -n | cut -d. -f1) $(id -un)@$(uname -n)"
+}
 
-echo
-echo "Kero $version is installed. In Kero on your computer, add this machine in Settings › Hosts:"
-echo "  $(id -un)@$(uname -n)"
-echo "or from its command line: kero hosts add $(uname -n | cut -d. -f1) $(id -un)@$(uname -n)"
+# All of it read before any of it runs, as a download cut short could stop
+# anywhere.
+main "$@"
