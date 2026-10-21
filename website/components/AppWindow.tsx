@@ -4,7 +4,7 @@ import plusSvg from '../../icons/f7-plus.svg?raw';
 import folderSvg from '../../icons/f7-folder.svg?raw';
 import searchSvg from '../../icons/f7-search.svg?raw';
 import gearSvg from '../../icons/f7-gear-alt.svg?raw';
-import terminalSvg from '../../icons/ion-terminal-outline.svg?raw';
+import terminalSvg from '../../icons/meteor-terminal.svg?raw';
 import splitRightSvg from '../../icons/f7-square-split-2x1.svg?raw';
 import splitDownSvg from '../../icons/f7-square-split-1x2.svg?raw';
 import zoomSvg from '../../icons/f7-arrow-up-left-arrow-down-right.svg?raw';
