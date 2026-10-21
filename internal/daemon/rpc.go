@@ -180,8 +180,25 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if err != nil {
 			return nil, err
 		}
+		if pn.term == nil {
+			return nil, fmt.Errorf("pane %s is a browser, which takes no input", pn.info.ID)
+		}
 		pn.input([]byte(p.Data))
 		return true, nil
+
+	case "pane.page":
+		var p proto.PageParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		if p.URL == "" {
+			return nil, errors.New("pane.page: which page?")
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return true, pn.setPage(p.URL, p.Title)
 
 	case "read":
 		var p proto.ReadParams

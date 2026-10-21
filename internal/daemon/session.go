@@ -25,7 +25,9 @@ const idleHold = 700 * time.Millisecond
 
 // pane is a shell the daemon keeps running in a pseudo-terminal, with a
 // terminal emulator of its own (libghostty-vt, headless) that keeps its
-// screen and scrollback for the clients that attach later.
+// screen and scrollback for the clients that attach later; or a browser
+// (info.URL), which the app shows: it has neither, only its place in its
+// session and the page the app last told.
 type pane struct {
 	d   *Daemon
 	sid string // the session's it belongs to
@@ -105,6 +107,9 @@ func (h *headless) Close() error {
 func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 	s := &pane{d: d, sid: sid, info: info, clients: map[*attachment]struct{}{}, changed: make(chan struct{})}
 	s.info.Progress = -1
+	if s.info.Browser() {
+		return s, nil
+	}
 	if s.info.Cols <= 0 || s.info.Rows <= 0 {
 		s.info.Cols, s.info.Rows = 120, 36
 	}
@@ -457,6 +462,23 @@ func (s *pane) input(p []byte) {
 	}
 }
 
+// setPage keeps the page a browser pane shows, as the app told it.
+func (s *pane) setPage(url, title string) error {
+	s.mu.Lock()
+	if !s.info.Browser() {
+		s.mu.Unlock()
+		return fmt.Errorf("pane %s is no browser", s.info.ID)
+	}
+	changed := s.info.URL != url || s.info.Title != title
+	s.info.URL, s.info.Title = url, title
+	s.mu.Unlock()
+	if changed {
+		s.d.save()
+		s.d.changed()
+	}
+	return nil
+}
+
 // useTheme gives the panes, and those to come, a client's colors, which
 // programs asking about them get: Copilot CLI drew its input box dark on
 // a light background, as kerod's terminals answered with a dark theme.
@@ -474,7 +496,9 @@ func (d *Daemon) useTheme(t proto.Theme) {
 	}
 	d.mu.Unlock()
 	for _, p := range panes {
-		p.term.UseTheme(th)
+		if p.term != nil {
+			p.term.UseTheme(th)
+		}
 	}
 }
 
@@ -484,7 +508,7 @@ func (s *pane) resize(cols, rows, cellW, cellH int) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed {
+	if s.closed || s.term == nil {
 		return
 	}
 	if cellW > 0 && cellH > 0 && (cellW != s.cellW || cellH != s.cellH) {
@@ -524,7 +548,7 @@ func (s *pane) resize(cols, rows, cellW, cellH int) {
 func (s *pane) clear(what byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed {
+	if s.closed || s.term == nil {
 		return
 	}
 	switch what {
@@ -619,7 +643,7 @@ func (s *pane) exited(proc *ptyProc) {
 // restart starts a shell again in a session that exited.
 func (s *pane) restart() error {
 	s.mu.Lock()
-	if s.proc != nil {
+	if s.proc != nil || s.term == nil {
 		s.mu.Unlock()
 		return fmt.Errorf("session %s is running", s.info.ID)
 	}
@@ -664,7 +688,9 @@ func (s *pane) close() {
 			}
 		}()
 	}
-	s.term.Close()
+	if s.term != nil {
+		s.term.Close()
+	}
 }
 
 // attach registers a client, returning the first frame of its mirror,
@@ -673,7 +699,7 @@ func (s *pane) close() {
 func (s *pane) attach(c *attachment) (first []byte, cols, rows int, ok bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed {
+	if s.closed || s.term == nil {
 		return nil, 0, 0, false
 	}
 	m, err := s.term.NewMirror()
@@ -701,16 +727,22 @@ func (s *pane) detach(c *attachment) {
 func (s *pane) history(force bool) []byte {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed || !s.dirty && !force {
+	if s.closed || s.term == nil || !s.dirty && !force {
 		return nil
 	}
 	s.dirty = false
 	return s.term.History()
 }
 
-// readText returns the session's text: the screen, or with scrollback.
+// readText returns the session's text: the screen, or with scrollback; a
+// browser's is its page's title and URL.
 func (s *pane) readText(scrollback bool, lines int) string {
 	s.mu.Lock()
+	if s.term == nil {
+		text := strings.TrimSpace(s.info.Title + "\n" + s.info.URL)
+		s.mu.Unlock()
+		return text + "\n"
+	}
 	text := s.term.Text()
 	rows := s.info.Rows
 	s.mu.Unlock()

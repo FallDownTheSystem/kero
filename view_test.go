@@ -476,3 +476,83 @@ func TestNestedSplitKeys(t *testing.T) {
 		}
 	}
 }
+
+// A browser pane shows a toolbar over its page, as its header, with an
+// address bar that a blank page asks to type in and Open Location gives
+// the keyboard; it attaches no terminal.
+func TestBrowserPane(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", Dir: "/tmp", URL: proto.BlankURL, Status: proto.Idle, Progress: -1}
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	tt.Frame()
+	for _, text := range []string{locales.BrowserBlank()} {
+		if !tt.HasText(text) {
+			t.Errorf("no %q; texts %q", text, tt.Texts())
+		}
+	}
+	if a.terms["b"] != nil {
+		t.Error("a browser pane attached a terminal")
+	}
+	e := a.webs["b"]
+	if e == nil {
+		t.Fatal("no browser for pane b")
+	}
+	// A blank page's address bar takes the keyboard: what is typed there
+	// goes to the page, as a URL.
+	tt.Type("localhost:5173")
+	tt.Frame()
+	if e.address != "localhost:5173" {
+		t.Errorf("typed %q into the address bar", e.address)
+	}
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if e.url != "http://localhost:5173" {
+		t.Errorf("went to %q", e.url)
+	}
+
+	// Its toolbar is its header: no title over it, page's or other.
+	s = &a.st.Sessions[0]
+	s.Panes[1].Title = "Vite App"
+	tt.Frame()
+	if tt.HasText("Vite App") || tt.HasText("browser") || !tt.HasText(locales.BrowserAddress()) {
+		t.Errorf("a browser pane shows a title bar; texts %q", tt.Texts())
+	}
+	// Open Location gives the browser's address bar the keyboard, with
+	// what it holds to type over.
+	a.setFocus(s, "b")
+	a.run("browser.address", nil)
+	tt.Frame()
+	tt.Type("kero.sh")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if e.url != "https://kero.sh" {
+		t.Errorf("Open Location went to %q", e.url)
+	}
+	shot(t, tt, "browser")
+}
+
+// An address typed in the palette opens in a browser, first of what it
+// finds; words find the browser's actions, but open nothing.
+func TestPaletteOpensAddress(t *testing.T) {
+	a := testApp(t)
+	tt := ui.NewTester(a.view, 1100, 640)
+	a.openPalette()
+	tt.Frame()
+	tt.Type("localhost:5173")
+	tt.Frame()
+	// The palette's rows follow its label.
+	texts := tt.Texts()
+	rows := texts[slices.Index(texts, locales.PaletteLabel())+1:]
+	if len(rows) < 2 || rows[0] != locales.PaletteOpenInBrowser() || rows[1] != "http://localhost:5173" {
+		t.Fatalf("the address is not the first item; rows %q", rows)
+	}
+	a.pal.query = ""
+	tt.Frame()
+	tt.Type("web")
+	tt.Frame()
+	if tt.HasText(locales.PaletteOpenInBrowser()) || !tt.HasText(locales.ActionNewBrowser()) {
+		t.Errorf("words: texts %q", tt.Texts())
+	}
+}
