@@ -68,6 +68,10 @@ func (a *App) run(id string, args map[string]string) {
 		a.splitPane(s, "", "right")
 	case "pane.split.down":
 		a.splitPane(s, "", "down")
+	case "pane.browser":
+		a.openBrowser(args["url"])
+	case "browser.address":
+		a.focusAddress()
 	case "pane.zoom":
 		a.zoomPane(s, "")
 	case "pane.next":
@@ -131,6 +135,8 @@ var actionTitles = map[string]func() string{
 	"find.previous":     locales.ActionFindPrevious,
 	"pane.split.right":  locales.ActionSplitRight,
 	"pane.split.down":   locales.ActionSplitDown,
+	"pane.browser":      locales.ActionNewBrowser,
+	"browser.address":   locales.ActionOpenLocation,
 	"pane.zoom":         locales.ActionZoomPane,
 	"pane.next":         locales.ActionNextPane,
 	"pane.previous":     locales.ActionPreviousPane,
@@ -207,6 +213,7 @@ func (a *App) menu() *mygo.Menu {
 			a.items("Edit", []string{"find.open", "find.next", "find.previous"})...)},
 		{Label: locales.MenuPane(), Submenu: a.items("Pane",
 			[]string{"pane.split.right", "pane.split.down"},
+			[]string{"pane.browser", "browser.address"},
 			[]string{"pane.zoom"},
 			[]string{"pane.next", "pane.previous", "pane.left", "pane.right", "pane.up", "pane.down"})},
 		{Label: locales.MenuView(), Submenu: view},

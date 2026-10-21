@@ -24,6 +24,7 @@ kero ls                          # every session and its panes
 kero new -n api -d ~/code/api    # start a session, print its id
 kero new -- npm run dev          # start one running a command
 kero split --down -- npm test    # a pane beside this one
+kero split --url localhost:3000  # a browser pane showing a page
 kero rename api backend          # rename a session
 kero focus backend               # show it in the app
 kero close backend               # end a session (or, given a pane, the pane)
@@ -39,6 +40,7 @@ kero restart <pane>              # start an exited pane's shell again
 | `-d`, `--dir <dir>`         | Start it there (default: the current directory) |
 | `-f`, `--focus`             | Show it in the app                              |
 | `-w`, `--wait`              | Wait for its command to end, and exit with its status |
+| `-u`, `--url <url>`         | Open a browser showing the page instead of a shell |
 
 ## Typing and reading
 
@@ -123,6 +125,7 @@ kero daemon status|stop|restart  # manage kerod
 ```sh
 kero actions                     # list them
 kero do pane.split.right
+kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
 ```
 

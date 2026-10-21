@@ -95,7 +95,9 @@ func searchEntries(shortcuts map[string]string) []searchEntry {
 // actionWords find actions besides their titles: what one looks for an
 // action by when its title doesn't say it.
 var actionWords = map[string]string{
-	"changes.toggle": "git diff branch panel",
+	"changes.toggle":  "git diff branch panel",
+	"pane.browser":    "web page url preview localhost open",
+	"browser.address": "web url address go to",
 }
 
 // matches reports whether every word of a query is in a text.

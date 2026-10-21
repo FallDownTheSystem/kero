@@ -87,6 +87,7 @@ type App struct {
 	ss         settingsState
 	selected   string
 	terms      map[string]*termEntry
+	webs       map[string]*webEntry // browser panes' pages, by pane
 	lru        []string
 	refs       map[string]*ui.Handle // panes' terminals, and splits, by id
 	focus      map[string]string     // the pane the user is in, by session
@@ -145,7 +146,7 @@ type confirmation struct {
 }
 
 func newApp() *App {
-	a := &App{terms: map[string]*termEntry{}, statuses: map[string]proto.Status{}, active: true, focused: true,
+	a := &App{terms: map[string]*termEntry{}, webs: map[string]*webEntry{}, statuses: map[string]proto.Status{}, active: true, focused: true,
 		refs: map[string]*ui.Handle{}, focus: map[string]string{}, arrived: map[string]bool{}}
 	a.loadPrefs()
 	a.set = settings.Load()
@@ -304,6 +305,11 @@ func (a *App) setState(st proto.State) {
 	for id := range a.terms {
 		if !live[id] {
 			a.dropTerm(id)
+		}
+	}
+	for id := range a.webs {
+		if !live[id] {
+			a.dropWeb(id)
 		}
 	}
 	if a.session(a.selected) == nil {
@@ -543,7 +549,7 @@ func (g *gated) Read(p []byte) (int, error) {
 
 // ensureTerm attaches a terminal to a session, unless one is.
 func (a *App) ensureTerm(id string) {
-	if a.terms[id] != nil || a.conn != connReady {
+	if a.terms[id] != nil || a.conn != connReady || a.isBrowser(id) {
 		return
 	}
 	e := &termEntry{started: time.Now()}

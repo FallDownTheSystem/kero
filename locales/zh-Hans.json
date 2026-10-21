@@ -16,6 +16,8 @@
   "actionCloseSession": "关闭会话",
   "actionSplitRight": "向右拆分",
   "actionSplitDown": "向下拆分",
+  "actionNewBrowser": "新建浏览器面板",
+  "actionOpenLocation": "打开位置…",
   "actionZoomPane": "放大窗格",
   "actionFind": "查找…",
   "actionFindNext": "查找下一个",
@@ -130,6 +132,7 @@
   "paletteSettingsPage": "设置：{page}",
   "paletteRestartService": "重启后台服务",
   "paletteRestartServiceDetail": "会话会在原处重新开始",
+  "paletteOpenInBrowser": "在浏览器面板中打开",
   "paletteLabel": "前往会话",
   "palettePlaceholder": "前往会话或运行命令…",
   "paletteNoMatches": "没有匹配项",
@@ -373,5 +376,12 @@
   "changesUnmodified": "{count} 行未修改",
   "changesExpandUp": "向上展开",
   "changesExpandDown": "向下展开",
-  "changesExpandAll": "全部展开"
+  "changesExpandAll": "全部展开",
+  "browserCantShow": "无法显示该页面",
+  "browserBlank": "在上方输入网址或搜索内容",
+  "browserBack": "后退",
+  "browserForward": "前进",
+  "browserReload": "重新载入",
+  "browserStop": "停止",
+  "browserAddress": "网址或搜索"
 }

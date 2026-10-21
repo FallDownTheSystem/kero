@@ -211,8 +211,13 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 
 	dragging := false
 	card.Children(func() {
-		dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
-		a.paneTerminal(c, pal, s, p)
+		if p.Browser() {
+			// A browser's address bar is its header.
+			dragging = a.paneBrowser(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
+		} else {
+			dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
+			a.paneTerminal(c, pal, s, p)
+		}
 		if multi {
 			// The panes the user is not in fade, text and all.
 			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
@@ -390,11 +395,8 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		a.paneRef(p.ID).Focus()
 	}
 	h.Children(func() {
-		if top && left && shown < 0.5 {
-			ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-				iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
-				iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
-			})
+		if top && left {
+			a.sidebarButtons(c, pal, bar, shown)
 		}
 		// The title is the pane's handle: dragged, it takes the pane to
 		// another place in the session.
@@ -446,30 +448,47 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			gap.DragWindow()
 		}
 		a.paneChips(c, pal, p, !multi)
-		show := (hovered || focused && multi) && !dragging
-		ctl := ui.Row(c.Key("controls")).Gap(0).AlignItems(ui.Center)
-		ctl.Opacity(ctl.Animate("shown", b2f(show), 120*time.Millisecond)).Children(func() {
-			if !show {
-				return
-			}
-			iconButton(c, "split-r", splitRightIcon, a.tip(locales.ActionSplitRight(), "pane.split.right"), pal, func() { a.splitPane(s, p.ID, "right") })
-			iconButton(c, "split-d", splitDownIcon, a.tip(locales.ActionSplitDown(), "pane.split.down"), pal, func() { a.splitPane(s, p.ID, "down") })
-			if multi {
-				sid, pid := s.ID, p.ID
-				zoom := func() { a.defer_(func() { a.zoomPane(a.session(sid), pid) }) }
-				if s.Zoomed == p.ID {
-					iconButton(c, "zoom", unzoomIcon, a.tip(locales.PaneShowAll(), "pane.zoom"), pal, zoom)
-				} else {
-					iconButton(c, "zoom", zoomIcon, a.tip(locales.ActionZoomPane(), "pane.zoom"), pal, zoom)
-				}
-				iconButton(c, "close", closeIcon, a.tip(locales.PaneClose(), "pane.close"), pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
-			}
-		})
+		a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi)
 		if top && right {
 			windowControls(c, pal, a.win)
 		}
 	})
 	return dragging
+}
+
+// sidebarButtons are the sidebar's buttons, which the header at the
+// window's top left holds while the sidebar hides.
+func (a *App) sidebarButtons(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) {
+	if shown >= 0.5 {
+		return
+	}
+	ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
+		iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
+		iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
+	})
+}
+
+// paneControls are a header's buttons acting on its pane, which show while
+// the pointer is over it.
+func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, show, multi bool) {
+	ctl := ui.Row(c.Key("controls")).Gap(0).AlignItems(ui.Center)
+	ctl.Opacity(ctl.Animate("shown", b2f(show), 120*time.Millisecond)).Children(func() {
+		if !show {
+			return
+		}
+		iconButton(c, "split-r", splitRightIcon, a.tip(locales.ActionSplitRight(), "pane.split.right"), pal, func() { a.splitPane(s, p.ID, "right") })
+		iconButton(c, "split-d", splitDownIcon, a.tip(locales.ActionSplitDown(), "pane.split.down"), pal, func() { a.splitPane(s, p.ID, "down") })
+		if multi {
+			sid, pid := s.ID, p.ID
+			zoom := func() { a.defer_(func() { a.zoomPane(a.session(sid), pid) }) }
+			if s.Zoomed == p.ID {
+				iconButton(c, "zoom", unzoomIcon, a.tip(locales.PaneShowAll(), "pane.zoom"), pal, zoom)
+			} else {
+				iconButton(c, "zoom", zoomIcon, a.tip(locales.ActionZoomPane(), "pane.zoom"), pal, zoom)
+			}
+			iconButton(c, "close", closeIcon, a.tip(locales.PaneClose(), "pane.close"), pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
+		}
+	})
 }
 
 // paneChips says what the pane is doing. With several panes the title
@@ -582,14 +601,22 @@ func (a *App) paneTerminal(c *ui.Context, pal *palette, s *proto.Session, p *pro
 // --- pane actions ---
 
 func (a *App) splitPane(s *proto.Session, at, direction string) {
-	if a.cl == nil || s == nil {
+	if s == nil {
 		return
 	}
 	if at == "" {
 		at = a.focusOf(s)
 	}
-	p := proto.CreateParams{Split: at, Direction: direction}
-	if pane := s.PaneByID(at); pane != nil {
+	a.split(s, proto.CreateParams{Split: at, Direction: direction})
+}
+
+// split makes a pane beside another, as p asks, and puts the user in it.
+func (a *App) split(s *proto.Session, p proto.CreateParams) {
+	if a.cl == nil || s == nil {
+		return
+	}
+	direction := p.Direction
+	if pane := s.PaneByID(p.Split); pane != nil && !pane.Browser() {
 		p.Cols, p.Rows = pane.Cols, pane.Rows
 		if direction == "down" || direction == "up" {
 			p.Rows = max(p.Rows/2, 4)
@@ -614,7 +641,11 @@ func (a *App) splitPane(s *proto.Session, at, direction string) {
 				a.focus[ns.ID] = ns.Focus
 				a.ensureTerm(ns.Focus)
 				a.touch(ns.Focus)
-				a.paneRef(ns.Focus).Focus()
+				if !a.isBrowser(ns.Focus) {
+					// A browser takes the keyboard in its address bar, or
+					// its page once it has one.
+					a.paneRef(ns.Focus).Focus()
+				}
 			}
 		})
 	}()
@@ -683,6 +714,7 @@ func (a *App) closePane(s *proto.Session, pane string, ask bool) {
 		}
 	}
 	a.dropTerm(pane)
+	a.dropWeb(pane)
 	a.call("pane.close", proto.IDParams{ID: pane}, nil)
 	a.focusTerminal()
 }

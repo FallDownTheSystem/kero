@@ -33,12 +33,15 @@ Usage:
       -d, --dir <dir>             start it there (default: here)
       -f, --focus                 show it in the app
       -w, --wait                  wait for cmd to end, exit with its status
+      -u, --url <url>             a browser showing url, not a shell
   kero split [target] [options] [-- cmd…]
                                 start a pane beside a pane, printing its id
       --right (default), --down, --left, --up
       -r, --ratio <0..1>          the new pane's share (default 0.5)
       -d, --dir <dir>             start it there (default: the pane's)
       -w, --wait                  wait for cmd to end, exit with its status
+      -u, --url <url>             a browser showing url, not a shell, as
+                                  a dev server's page: localhost:3000
   kero send <target> <text…>    type text into a pane
       -e                          interpret \n \r \t \e \xHH escapes
       --enter                     press Enter after it
@@ -253,7 +256,8 @@ func run(args []string) error {
 
 	case "new":
 		f, err := parse(args,
-			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout"},
+			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout",
+				"u": "url", "url": "url"},
 			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
@@ -262,13 +266,16 @@ func run(args []string) error {
 		if f.set["wait"] && len(command) == 0 {
 			return usageErr("kero new --wait needs a command: kero new --wait -- cmd…")
 		}
+		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
+			return usageErr("kero new --url shows a page, and runs no command")
+		}
 		dir := f.vals["dir"]
 		if dir == "" && f.vals["project"] == "" {
 			dir, _ = os.Getwd()
 		}
 		var s proto.Session
 		if err := c.Call("create", proto.CreateParams{
-			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command,
+			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: f.vals["url"],
 			After: os.Getenv("KERO_SESSION"),
 		}, &s); err != nil {
 			return err
@@ -289,7 +296,7 @@ func run(args []string) error {
 		return nil
 
 	case "split":
-		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout"},
+		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout", "u": "url", "url": "url"},
 			map[string]string{"right": "right", "down": "down", "left": "left", "up": "up", "json": "json", "f": "focus", "focus": "focus", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
@@ -309,9 +316,12 @@ func run(args []string) error {
 		if f.set["wait"] && len(command) == 0 {
 			return usageErr("kero split --wait needs a command: kero split --wait -- cmd…")
 		}
+		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
+			return usageErr("kero split --url shows a page, and runs no command")
+		}
 		var s proto.Session
 		if err := c.Call("split", proto.CreateParams{Split: t.ref(), Direction: dir, Ratio: ratio,
-			Dir: f.vals["dir"], Command: command}, &s); err != nil {
+			Dir: f.vals["dir"], Command: command, URL: f.vals["url"]}, &s); err != nil {
 			return err
 		}
 		if f.set["focus"] {
@@ -817,9 +827,22 @@ func listSessions(st proto.State) {
 		}
 		return s
 	}
+	// A browser's program is the browser, and its place its page.
+	program := func(p proto.Pane) string {
+		if p.Browser() {
+			return "browser"
+		}
+		return orDash(p.Process)
+	}
+	where := func(p proto.Pane) string {
+		if p.Browser() {
+			return p.URL
+		}
+		return proto.ShortDir(p.WorkDir())
+	}
 	for _, s := range st.Sessions {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, names[s.Project], s.DisplayName(settings.Load().SessionName), status(s.Pane),
-			orDash(s.Process), proto.Ago(s.Since, now), proto.ShortDir(s.WorkDir()))
+			program(s.Pane), proto.Ago(s.Since, now), where(s.Pane))
 		if len(s.Panes) > 1 {
 			for _, p := range s.Panes {
 				mark := " "
@@ -827,7 +850,7 @@ func listSessions(st proto.State) {
 					mark = "›"
 				}
 				fmt.Fprintf(w, "  %s %s\t\t%s\t%s\t%s\t%s\t%s\n", mark, p.ID, p.PaneName(), status(p),
-					orDash(p.Process), proto.Ago(p.Since, now), proto.ShortDir(p.WorkDir()))
+					program(p), proto.Ago(p.Since, now), where(p))
 			}
 		}
 	}

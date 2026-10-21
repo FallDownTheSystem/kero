@@ -16,6 +16,8 @@
   "actionCloseSession": "Close Session",
   "actionSplitRight": "Split Right",
   "actionSplitDown": "Split Down",
+  "actionNewBrowser": "New Browser Pane",
+  "actionOpenLocation": "Open Location…",
   "actionZoomPane": "Zoom Pane",
   "actionFind": "Find…",
   "actionFindNext": "Find Next",
@@ -199,6 +201,7 @@
   "paletteSettingsPage": "Settings: {page}",
   "paletteRestartService": "Restart Background Service",
   "paletteRestartServiceDetail": "Sessions start again where they were",
+  "paletteOpenInBrowser": "Open in Browser Pane",
   "paletteLabel": "Go to Session",
   "palettePlaceholder": "Go to session or run a command…",
   "paletteNoMatches": "No matches",
@@ -528,5 +531,12 @@
   },
   "changesExpandUp": "Expand Up",
   "changesExpandDown": "Expand Down",
-  "changesExpandAll": "Expand All"
+  "changesExpandAll": "Expand All",
+  "browserCantShow": "Can’t show the page",
+  "browserBlank": "Type an address or a search above",
+  "browserBack": "Back",
+  "browserForward": "Forward",
+  "browserReload": "Reload",
+  "browserStop": "Stop",
+  "browserAddress": "Address or search"
 }

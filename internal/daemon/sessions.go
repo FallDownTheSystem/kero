@@ -226,15 +226,19 @@ func (d *Daemon) cleanDir(dir string) (string, error) {
 	return dir, nil
 }
 
-// startPane makes a pane and starts its shell.
+// startPane makes a pane and starts its shell; a browser's has none.
 func (d *Daemon) startPane(sid string, p proto.CreateParams, dir string) (*pane, error) {
 	now := time.Now().UnixMilli()
-	pn, err := newPane(d, sid, proto.Pane{
+	info := proto.Pane{
 		ID: newID(), Dir: dir, Command: p.Command, Status: proto.Idle, Since: now, Created: now,
 		Cols: p.Cols, Rows: p.Rows,
-	})
-	if err != nil {
-		return nil, err
+	}
+	if p.URL != "" {
+		info.URL, info.Command = proto.BrowserURL(p.URL), nil
+	}
+	pn, err := newPane(d, sid, info)
+	if err != nil || pn.info.Browser() {
+		return pn, err
 	}
 	if err := pn.start(p.Command, p.Env); err != nil {
 		pn.term.Close()
