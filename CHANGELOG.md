@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.8
+
+- Agents no longer rename the session they start in: an unnamed session
+  keeps showing its agent's own title, as "Duplicate spinner in pane
+  header", not a name in words joined by dashes.
+- Files dropped on a pane paste their paths quoted for the program's
+  shell, newlines and PowerShell's included.
+- Find in a pane highlights a match that wraps in from above the view.
+- A pane's scrollback stays whole as it reaches its limit, and a restored
+  pane keeps the blank rows at the bottom of its screen.
+
 ## 2.0.7
 
 - A split pane's title leads with its program's logo: Claude Code's,
