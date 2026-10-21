@@ -30,9 +30,6 @@ prefix works), or a session's name; a session stands for its focused pane.
     kero new -n review -- claude              # a session of its own
     kero new -n tests -d ~/code/app -- go test ./...
 
-Name a session after its task (` + "`kero rename $KERO_SESSION fix-login-redirect`" + `)
-so the user finds it in the sidebar.
-
 ## Drive it
 
     kero send <target> "some text" --enter    # type, then press Enter
