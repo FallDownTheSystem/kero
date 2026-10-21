@@ -54,11 +54,14 @@ type pane struct {
 	seen     detect.State
 	looked   bool
 	idleFrom time.Time
-	// osc finds OSC 7501 and 133 in the output; records are the programs'
-	// status reports (OSC 7501), by id, and reported tells that one came.
+	// osc finds OSC 7501, 133 and 9;4 in the output; records are the
+	// programs' status reports (OSC 7501), by id, and reported tells that
+	// one came; progress is the last OSC 9;4 after "9;", as "4;1;40",
+	// which only agents' rules read.
 	osc      oscScanner
 	records  map[string]proto.Record
 	reported bool
+	progress string
 	// awaiting tells that the command the pane started with runs, whose
 	// end its shell will tell (OSC 133;D, see shellArgs).
 	awaiting bool
@@ -307,12 +310,18 @@ func (s *pane) tick(now time.Time) bool {
 		// The program ended: its live reports go with it, and an agent's
 		// session is no more to resume.
 		s.dropLive()
+		s.progress = ""
 		if s.info.AgentSession != nil {
 			s.info.AgentSession = nil
 			s.d.save()
 		}
 	}
 	if proc != s.info.Process || agent != s.info.Agent || runtime != s.info.Runtime {
+		if s.info.Agent != "" && agent != s.info.Agent {
+			// Another agent starts from no progress; the first keeps what
+			// it showed before it was told.
+			s.progress = ""
+		}
 		s.info.Process, s.info.Agent, s.info.Runtime = proc, agent, runtime
 		s.seen, s.looked = "", false
 		changed = true
@@ -362,7 +371,7 @@ func (s *pane) look(now time.Time) bool {
 	s.looked = true
 	st, visible := detect.Idle, true
 	if detect.Known(s.info.Agent) {
-		r := detect.Detect(s.info.Agent, detect.Input{Screen: s.screen(), Title: s.info.Title})
+		r := detect.Detect(s.info.Agent, detect.Input{Screen: s.screen(), Title: s.info.Title, Progress: s.progress})
 		if r.Skip {
 			return false
 		}
