@@ -532,6 +532,9 @@ func (s *pane) clear(what byte) {
 		if !s.term.ClearScreen() {
 			return
 		}
+		if s.proc != nil {
+			s.proc.ClearScreen()
+		}
 	case proto.ClearScrollback:
 		s.term.ClearScrollback()
 	default:

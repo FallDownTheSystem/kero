@@ -90,6 +90,10 @@ func (p *ptyProc) Resize(cols, rows, cellW, cellH int) error {
 
 func (p *ptyProc) PID() int { return p.cmd.Process.Pid }
 
+// ClearScreen does nothing: a Unix terminal keeps no screen of its own,
+// and shells move the cursor relative to where it is.
+func (p *ptyProc) ClearScreen() {}
+
 // Close hangs up the terminal: its processes get SIGHUP.
 func (p *ptyProc) Close() error { return p.master.Close() }
 

@@ -184,6 +184,32 @@ func (p *ptyProc) Resize(cols, rows, _, _ int) error {
 
 func (p *ptyProc) PID() int { return p.pid }
 
+// ptySignalClearWindow is the signal that clears a console's screen and
+// scrollback above the cursor's line, which moves to the top, as
+// ClearPseudoConsole sends it; kernel32 has no ClearPseudoConsole.
+const ptySignalClearWindow = 2
+
+// ClearScreen clears the console's screen as the terminal's was
+// (Terminal.ClearScreen): the console draws with the cursor at absolute
+// rows, so with its prompt still on a lower row it would send the cursor
+// back there. The console takes the signal from Windows 11 24H2; an older
+// one ends at a signal it does not know, so it is left as it is.
+func (p *ptyProc) ClearScreen() {
+	if windows.RtlGetVersion().BuildNumber < 26100 {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.console == 0 {
+		return
+	}
+	// The HPCON points at the console's handles, its signal pipe first.
+	signal := **(**windows.Handle)(unsafe.Pointer(&p.console))
+	packet := [2]byte{ptySignalClearWindow, 0} // a little-endian uint16
+	var n uint32
+	windows.WriteFile(signal, packet[:], &n, nil)
+}
+
 // Close closes the console, which ends the processes attached to it, as a
 // hangup does. Read returns io.EOF once it wrote what it had.
 func (p *ptyProc) Close() error {
