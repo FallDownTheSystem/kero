@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.11
+
+- The changes panel no longer jumps to the bottom of the list the first
+  time a long file's diff scrolls into view, and the header of the file at
+  the top of the list stays there as a file is folded, rather than
+  vanishing for a moment. Only the diffs in view are built, so a long list
+  of changes scrolls as quickly as a short one.
+- On Windows 11 24H2 and later, clearing a pane clears the console's screen
+  too, so PowerShell's inline predictions no longer draw on the line the
+  prompt was on before.
+
 ## 2.0.10
 
 - Each pane's title shows the branch it works on and the lines its changes
