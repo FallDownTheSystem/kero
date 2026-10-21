@@ -68,6 +68,9 @@ type Settings struct {
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
 	DiffLayout string `json:"diffLayout"` // the changes panel's diffs: "auto", "unified" or "split"
 
+	// Browser
+	BlockAds bool `json:"blockAds"` // in browser panes, with EasyList and EasyPrivacy
+
 	// Keyboard: accelerators by action, over the defaults; "" unbinds.
 	Shortcuts map[string]string `json:"shortcuts,omitempty"`
 }
@@ -104,6 +107,7 @@ func Default() Settings {
 		RemoteControl:   true,
 		GitStatus:       true,
 		DiffLayout:      "auto",
+		BlockAds:        true,
 	}
 }
 

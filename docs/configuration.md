@@ -107,6 +107,12 @@ kero config check             # report unknown keys and bad values
 | `git-status`  | `true`  | Show each session's branch and [changes](./changes.md)                                            |
 | `diff-layout` | `auto`  | Diffs in the changes panel: `unified`, `split` (side by side), or `auto`, side by side once it's wide |
 
+## Browser
+
+| Key                 | Default | Description                                                                              |
+| ------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| `browser-block-ads` | `true`  | [Block ads and trackers](./panes.md#blocking-ads) in browser panes, with EasyList and EasyPrivacy |
+
 ## Keyboard
 
 `keybind` rebinds an action, as `<keys>=<action>`. Repeat it for each binding. Use `unbind` as the action to free keys.

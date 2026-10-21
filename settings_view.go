@@ -482,6 +482,11 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				[]string{locales.SetDiffAuto(), locales.ChangesUnified(), locales.ChangesSplit()})
 		})
 	})
+	settingsGroup(c, pal, locales.SetBrowser(), locales.SetBrowserDetail(), func() {
+		settingRow(c, pal, locales.SetBlockAds(), locales.SetBlockAdsDetail(), func() {
+			toggle(c.Key("browser-block-ads"), &s.BlockAds, pal)
+		})
+	})
 	settingsGroup(c, pal, locales.SetStartup(), "", func() {
 		settingRow(c, pal, locales.SetOpenAtLogin(), "", func() {
 			toggle(c.Key("login"), &a.ss.loginOpen, pal).OnChange(func() {

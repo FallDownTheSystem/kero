@@ -3766,6 +3766,46 @@ func (msgs Messages) SetDiffAuto() string {
 	return Catalog.Format(msgs.locale, "setDiffAuto", nil)
 }
 
+// SetBrowser says "Browser"
+// in the language the app shows.
+func SetBrowser() string { return In(i18n.Locale()).SetBrowser() }
+
+// SetBrowser says "Browser"
+// in the language of msgs.
+func (msgs Messages) SetBrowser() string {
+	return Catalog.Format(msgs.locale, "setBrowser", nil)
+}
+
+// SetBrowserDetail says "The pages of browser panes."
+// in the language the app shows.
+func SetBrowserDetail() string { return In(i18n.Locale()).SetBrowserDetail() }
+
+// SetBrowserDetail says "The pages of browser panes."
+// in the language of msgs.
+func (msgs Messages) SetBrowserDetail() string {
+	return Catalog.Format(msgs.locale, "setBrowserDetail", nil)
+}
+
+// SetBlockAds says "Block ads"
+// in the language the app shows.
+func SetBlockAds() string { return In(i18n.Locale()).SetBlockAds() }
+
+// SetBlockAds says "Block ads"
+// in the language of msgs.
+func (msgs Messages) SetBlockAds() string {
+	return Catalog.Format(msgs.locale, "setBlockAds", nil)
+}
+
+// SetBlockAdsDetail says "Blocks ads and trackers with the EasyList and EasyPrivacy filter lists, which Kero downloads and keeps up to date."
+// in the language the app shows.
+func SetBlockAdsDetail() string { return In(i18n.Locale()).SetBlockAdsDetail() }
+
+// SetBlockAdsDetail says "Blocks ads and trackers with the EasyList and EasyPrivacy filter lists, which Kero downloads and keeps up to date."
+// in the language of msgs.
+func (msgs Messages) SetBlockAdsDetail() string {
+	return Catalog.Format(msgs.locale, "setBlockAdsDetail", nil)
+}
+
 // ChangesUnmodified says "{count, plural, one {# unmodified line} other {# unmodified lines}}"
 // in the language the app shows.
 func ChangesUnmodified(count int) string { return In(i18n.Locale()).ChangesUnmodified(count) }

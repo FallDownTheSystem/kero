@@ -519,6 +519,10 @@
   "setDiffLayout": "Diffs",
   "setDiffLayoutDetail": "Auto shows diffs unified while the changes panel is narrow, and side by side once it's wide.",
   "setDiffAuto": "Auto",
+  "setBrowser": "Browser",
+  "setBrowserDetail": "The pages of browser panes.",
+  "setBlockAds": "Block ads",
+  "setBlockAdsDetail": "Blocks ads and trackers with the EasyList and EasyPrivacy filter lists, which Kero downloads and keeps up to date.",
   "changesUnmodified": "{count, plural, one {# unmodified line} other {# unmodified lines}}",
   "@changesUnmodified": {
     "placeholders": {

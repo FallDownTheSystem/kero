@@ -88,6 +88,7 @@ type App struct {
 	selected   string
 	terms      map[string]*termEntry
 	webs       map[string]*webEntry // browser panes' pages, by pane
+	ads        adBlock              // what their pages block
 	lru        []string
 	refs       map[string]*ui.Handle // panes' terminals, and splits, by id
 	focus      map[string]string     // the pane the user is in, by session
@@ -742,6 +743,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 	}
 	if old.DockBadge != s.DockBadge {
 		a.notify(true)
+	}
+	if old.BlockAds != s.BlockAds {
+		a.applyAdBlock()
 	}
 	if a.win != nil {
 		a.win.Invalidate()

@@ -57,3 +57,11 @@ From a shell, or an agent, open one with `--url`:
 kero split --url localhost:5173
 kero new --url https://github.com/egoist/kero/pulls
 ```
+
+### Blocking ads
+
+Browser panes block ads and trackers with the [EasyList](https://easylist.to) and EasyPrivacy filter lists, which Kero downloads the first time a browser pane opens and refreshes every week. Pages that open before the lists are ready get them as soon as they are, from their next load on.
+
+Kero blocks what WebKit's content blockers can: requests to ad and tracker servers, and the elements the lists hide. Filters that need a blocker's own scripts, such as those that hide elements by their text or rewrite what a page loads, are left out. A page on a domain the lists block doesn't open in a browser pane.
+
+To browse without blocking, turn off **Block ads** in Settings › General, or set `browser-block-ads = false` in the [configuration](./configuration.md#browser). Open pages keep what they loaded until they reload.
