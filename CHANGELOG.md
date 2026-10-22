@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.2
+
+- Settings › Hosts can share this computer with Kero on your other
+  machines: turn on **Let other machines connect**, and copy the address
+  it shows to add it there. kerod then listens on your tailnet, and only
+  your Tailscale account may connect. kerod now follows `listen` and
+  `listen-allow` in the config file as they change, without a restart,
+  and a listener turned off drops the connections it took.
+- Hosts can be edited in Settings › Hosts: a host renamed keeps its
+  connection and sessions, and one given another address connects again.
+  The page links to the guide to setting up hosts.
+- On Windows, a restored pane's shell starts under its history, rather
+  than drawing what you type at the top of the pane.
+
 ## 2.1.1
 
 - On Windows, the mouse wheel scrolls full-screen programs that take the
