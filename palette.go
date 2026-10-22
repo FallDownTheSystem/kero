@@ -62,6 +62,8 @@ func (a *App) paletteItems() []paletteItem {
 		}
 	}
 	var cmds []paletteItem
+	// Commands are found by their English names too, in any language.
+	en := locales.In("en")
 	// An address typed opens in a browser beside the pane the user is in.
 	if q := strings.TrimSpace(a.pal.query); proto.IsAddress(q) && a.session(a.selected) != nil {
 		cmds = append(cmds, paletteItem{title: locales.PaletteOpenInBrowser(), detail: proto.BrowserURL(q), top: true,
@@ -70,13 +72,14 @@ func (a *App) paletteItems() []paletteItem {
 	for _, act := range actions.All {
 		id := act.ID
 		cmds = append(cmds, paletteItem{title: strings.TrimSuffix(actionTitle(act.ID), "…"), keys: actions.Glyphs(actions.Keys(act, a.set.Shortcuts)),
-			words: actionWords[id], run: func() { a.run(id, nil) }})
+			words: act.Title + " " + actionWords[id], run: func() { a.run(id, nil) }})
 	}
 	for _, page := range settingsPages {
 		id := page.id
-		cmds = append(cmds, paletteItem{title: locales.PaletteSettingsPage(page.title()), run: func() { a.openSettings(id) }})
+		cmds = append(cmds, paletteItem{title: locales.PaletteSettingsPage(page.title()), words: "settings preferences " + id + " " + pageWords[id], run: func() { a.openSettings(id) }})
 	}
-	cmds = append(cmds, paletteItem{title: locales.PaletteRestartService(), detail: locales.PaletteRestartServiceDetail(), run: a.restartDaemon})
+	cmds = append(cmds, paletteItem{title: locales.PaletteRestartService(), detail: locales.PaletteRestartServiceDetail(),
+		words: en.PaletteRestartService() + " " + en.PaletteRestartServiceDetail(), run: a.restartDaemon})
 	for _, p := range a.st.Projects {
 		id := p.ID
 		h := a.hostOf(id)
@@ -84,13 +87,13 @@ func (a *App) paletteItems() []paletteItem {
 		if h.remote() {
 			detail = h.name + " · " + detail
 		}
-		cmds = append(cmds, paletteItem{title: locales.NewSessionIn(p.Name), detail: detail, run: func() { a.newSession(id) }})
+		cmds = append(cmds, paletteItem{title: locales.NewSessionIn(p.Name), detail: detail, words: en.NewSessionIn(p.Name), run: func() { a.newSession(id) }})
 	}
 	for _, h := range a.hosts[1:] {
 		cmds = append(cmds,
-			paletteItem{title: locales.NewSessionIn(h.name), detail: h.addr.String(), run: func() { a.newSessionOn(h, "") }},
-			paletteItem{title: locales.PickerTitle(h.name), detail: h.addr.String(), run: func() { a.openProjectOn(h) }},
-			paletteItem{title: locales.HostReconnectTo(h.name), detail: h.addr.String(), run: func() { a.reconnectHost(h) }})
+			paletteItem{title: locales.NewSessionIn(h.name), detail: h.addr.String(), words: en.NewSessionIn(h.name), run: func() { a.newSessionOn(h, "") }},
+			paletteItem{title: locales.PickerTitle(h.name), detail: h.addr.String(), words: en.PickerTitle(h.name), run: func() { a.openProjectOn(h) }},
+			paletteItem{title: locales.HostReconnectTo(h.name), detail: h.addr.String(), words: en.HostReconnectTo(h.name), run: func() { a.reconnectHost(h) }})
 	}
 	return append(items, cmds...)
 }
@@ -127,6 +130,30 @@ func fuzzy(query, s string) int {
 	return score*10 - len(r)
 }
 
+// keywords scores how well query finds words, a list of them: each of its
+// terms the start of one. Too many to match as letters in order, which
+// any query would.
+func keywords(query, words string) int {
+	terms := strings.Fields(strings.ToLower(query))
+	if len(terms) == 0 {
+		return -1
+	}
+	score := 0
+	for _, t := range terms {
+		best := -1
+		for _, w := range strings.Fields(strings.ToLower(words)) {
+			if strings.HasPrefix(w, t) {
+				best = max(best, fuzzy(t, w))
+			}
+		}
+		if best < 0 {
+			return -1
+		}
+		score += best
+	}
+	return score
+}
+
 func (a *App) paletteView(c *ui.Context, pal *palette) {
 	if !a.pal.open {
 		return
@@ -134,9 +161,7 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 	var items []paletteItem
 	for _, it := range a.paletteItems() {
 		sc := fuzzy(a.pal.query, it.title+" "+it.detail)
-		if w := fuzzy(a.pal.query, it.words); w > sc && it.words != "" {
-			sc = w
-		}
+		sc = max(sc, keywords(a.pal.query, it.words))
 		if t := fuzzy(a.pal.query, it.title); t >= 0 {
 			sc = max(sc, t+50)
 		}

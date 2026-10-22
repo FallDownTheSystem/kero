@@ -101,9 +101,53 @@ func searchEntries(shortcuts map[string]string) []searchEntry {
 // actionWords find actions besides their titles: what one looks for an
 // action by when its title doesn't say it.
 var actionWords = map[string]string{
-	"changes.toggle":  "git diff branch panel",
-	"pane.browser":    "web page url preview localhost open",
-	"browser.address": "web url address go to",
+	"settings.open":     "preferences options config configure",
+	"cli.install":       "kero command line shell path terminal",
+	"app.quitAll":       "exit quit kill stop end all sessions",
+	"session.new":       "create add tab terminal shell",
+	"session.newHome":   "create add tab terminal shell home directory ~",
+	"project.open":      "folder directory repo repository workspace add",
+	"palette.open":      "switch jump search find command palette",
+	"session.attention": "waiting blocked attention notification needs input agent",
+	"session.next":      "switch tab forward",
+	"session.previous":  "switch tab back backward",
+	"session.rename":    "name title label",
+	"pane.restart":      "rerun relaunch reload reset shell",
+	"pane.close":        "pane remove kill exit",
+	"session.close":     "remove kill exit end tab",
+	"find.open":         "search look up text grep",
+	"find.next":         "search again",
+	"find.previous":     "search again back",
+	"pane.split.right":  "vertical horizontal side by side new pane",
+	"pane.split.down":   "horizontal vertical below new pane",
+	"pane.browser":      "browser web page url preview localhost open",
+	"browser.address":   "browser web url address go to navigate",
+	"pane.zoom":         "maximize fullscreen focus expand",
+	"pane.next":         "switch focus forward",
+	"pane.previous":     "switch focus back backward",
+	"pane.left":         "focus move navigate",
+	"pane.right":        "focus move navigate",
+	"pane.up":           "focus move navigate above",
+	"pane.down":         "focus move navigate below",
+	"sidebar.toggle":    "show hide sidebar sessions list",
+	"changes.toggle":    "git diff branch panel changes",
+	"text.bigger":       "zoom in font size larger increase text",
+	"text.smaller":      "zoom out font size decrease text",
+	"text.reset":        "zoom reset font size default text",
+}
+
+// pageWords find Settings' pages in the palette besides their titles.
+var pageWords = map[string]string{
+	"general":       "preferences startup",
+	"appearance":    "theme color dark light font look",
+	"terminal":      "font cursor scrollback ghostty",
+	"shell":         "env environment variables path command",
+	"browser":       "web ad block adblock trackers privacy",
+	"notifications": "alerts sound badge dock notify",
+	"keyboard":      "shortcuts keybindings keys hotkeys",
+	"agents":        "claude codex ai skill cli remote control",
+	"hosts":         "remote ssh server machine tailscale wsl",
+	"advanced":      "config file daemon kerod log reset",
 }
 
 // matches reports whether every word of a query is in a text.
