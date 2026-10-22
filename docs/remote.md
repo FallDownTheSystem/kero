@@ -9,7 +9,20 @@ Kero can show sessions that run on other machines, such as a Linux dev box, a cl
 
 ## Quick start
 
-On the machine, install the server build of Kero. It needs no root or administrator, no display and no GTK. On Linux or macOS:
+A host is any machine with Kero on it. It can be another computer where you already use the Kero app, or a server that has no display.
+
+### A computer with the Kero app
+
+The app needs nothing installed beside it: its own kerod serves as the host. Pick how your other machines reach it:
+
+- **Over Tailscale.** In the app on the host, turn on **Settings › Hosts › Let other machines connect**. It shows the address to add elsewhere, such as `http://studio.tail1234.ts.net:7373`. See [Tailscale](#tailscale).
+- **Over SSH.** If the computer takes SSH logins (on a Mac, **System Settings › General › Sharing › Remote Login**), add it by the address you'd give `ssh`. Kero finds the app there on its own.
+
+Sessions on the host keep running while its app is closed, as they do on your own computer.
+
+### A server
+
+On a Linux box, a cloud VM or any machine without the app, install the server build of Kero. It needs no root or administrator, no display and no GTK. On Linux or macOS:
 
 ```sh
 curl -fsSL https://github.com/egoist/kero/releases/latest/download/install-server.sh | sh
@@ -21,7 +34,9 @@ On Windows, in PowerShell:
 irm https://github.com/egoist/kero/releases/latest/download/install-server.ps1 | iex
 ```
 
-On your computer, open **Settings › Hosts**, type the address you'd give `ssh`, such as `me@devbox`, and press **Add**. The host's projects appear in the sidebar with yours, each tagged with the host's name.
+### Adding the host
+
+On your computer, open **Settings › Hosts**, type the host's address, such as `me@devbox` for SSH or the address the host's app showed, and press **Add**. The host's projects appear in the sidebar with yours, each tagged with the host's name.
 
 The same from the command line:
 
@@ -49,7 +64,7 @@ Kero opens one connection per host and carries everything over it: the sidebar's
 
 ### SSH
 
-Over SSH, Kero runs `kero __bridge` on the host, which starts kerod there if it isn't running and passes the connection to it. There is nothing to set up on the host beyond installing Kero, and nothing listens on the network.
+Over SSH, Kero runs `kero __bridge` on the host, which starts kerod there if it isn't running and passes the connection to it. There is nothing to set up on the host beyond Kero itself, the app or the server build, and nothing listens on the network.
 
 Kero never prompts for anything over SSH, as there's no one to answer in the app:
 
@@ -57,7 +72,7 @@ Kero never prompts for anything over SSH, as there's no one to answer in the app
 - **A host you haven't connected to before** needs its key trusted first. Run `ssh me@devbox` once in a terminal.
 - **Password logins** aren't supported. Use a key.
 
-Kero looks for `kero` on the host in `~/.local/bin` (on Windows, `%LOCALAPPDATA%\Programs\kero-server`), the desktop app's command line tool and your `PATH`. If yours is elsewhere, name it in the address: `me@devbox?kero=/opt/kero/kero`, or on Windows `me@pc?kero=C:/kero/kero.exe`.
+Kero looks for `kero` on the host in `~/.local/bin` (on Windows, `%LOCALAPPDATA%\Programs\kero-server`), the desktop app and its command line tool, and your `PATH`. If yours is elsewhere, name it in the address: `me@devbox?kero=/opt/kero/kero`, or on Windows `me@pc?kero=C:/kero/kero.exe`.
 
 ### Windows hosts
 
@@ -73,7 +88,7 @@ WSL may stop a distribution a while after its last program started from Windows 
 
 ### Tailscale
 
-kerod can also listen on your tailnet, so that it needs no SSH at all. Tailscale tells kerod who connects, and by default only the Tailscale user who owns the machine gets in. In the app on the host, turn on **Settings › Hosts › Let other machines connect**, which shows the address to add elsewhere. Or add this to the configuration on the host:
+kerod can also listen on your tailnet, so that it needs no SSH at all. Tailscale tells kerod who connects, and by default only the Tailscale user who owns the machine gets in. On a host with the app, turn on **Settings › Hosts › Let other machines connect**, which shows the address to add elsewhere. On a server, or to set it by hand, add this to the configuration on the host:
 
 ```ini
 # ~/.config/kero/config on the host
@@ -105,7 +120,7 @@ kerod follows `listen` and `listen-allow` as they change, and a listener turned 
 
 ## Running kerod as a service
 
-On a server, run kerod as a service of your own, so that it starts with the machine and keeps your sessions running while no one is logged in. The install scripts do this for you. On a Mac, the service is a launchd agent, which runs while you're logged in to the Mac, so keep a session logged in there; the script installs it when you are. On Windows, it's a Task Scheduler task, which starts kerod as you log on.
+A host with the app starts kerod as the app opens, or as Kero connects over SSH. On a server, run kerod as a service of your own, so that it starts with the machine and keeps your sessions running while no one is logged in. The install scripts do this for you. On a Mac, the service is a launchd agent, which runs while you're logged in to the Mac, so keep a session logged in there; the script installs it when you are. On Windows, it's a Task Scheduler task, which starts kerod as you log on.
 
 ```sh
 kero daemon install-service      # a systemd user unit, a launchd agent on macOS, a task on Windows
@@ -197,6 +212,6 @@ host = ubuntu=wsl://Ubuntu
 
 ## Limits
 
-- The server build is for Linux, with glibc 2.28 or later, macOS and Windows 10 (1809) or later, on x86-64 and ARM64. On a Mac with the Kero app, the app's own kerod serves as a host too.
+- The server build is for Linux, with glibc 2.28 or later, macOS and Windows 10 (1809) or later, on x86-64 and ARM64. A machine with the Kero app needs no server build.
 - Dragging files onto a remote pane pastes your computer's paths. Paste them instead.
 - One host has one account. Login servers, where several people reach their own accounts on one machine, are planned.
