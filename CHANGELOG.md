@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.9
+
+- On a Mac, Command+Backspace clears the line you're typing in the
+  shell, as in Ghostty. Thanks @eliottwantz
+
 ## 2.1.8
 
 - With the Tailscale app on a Mac, **Settings › Hosts › Let other
