@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.8
+
+- With the Tailscale app on a Mac, **Settings › Hosts › Let other
+  machines connect** no longer says Tailscale isn't running when it is,
+  and kerod listens on your tailnet as it should.
+
 ## 2.1.7
 
 - Kero can update a host that runs the Kero desktop app, not only the
