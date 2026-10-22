@@ -698,6 +698,13 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 			conn.Clear(proto.ClearScreen)
 			return true
 		},
+		// The wheel tells the user is in this pane, which then takes this
+		// window's size back from another machine's app (Stream.Claim);
+		// it scrolls as it would.
+		OnScroll: func(int) bool {
+			go conn.Claim()
+			return false
+		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
 		// A selection copied as it ends shows nothing else: say so.
 		OnCopy: func(_ string, by terminal.CopySource) {
