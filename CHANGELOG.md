@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.4
+
+- The folder picker and the command palette scroll with the mouse wheel
+  and trackpad, rather than snapping back to the highlighted row. Thanks
+  @ak4duy.
+
 ## 2.1.3
 
 - On Windows, turning on **Let other machines connect** in Settings ›
