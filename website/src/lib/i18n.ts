@@ -65,6 +65,8 @@ const strings = {
     searchFailed: 'The search index could not be loaded.',
     noResults: (q: string) => `No results for “${q}”`,
     language: 'Language',
+    openNav: 'Open menu',
+    closeNav: 'Close menu',
     sections: {} as Record<string, string>,
   },
   zh: {
@@ -90,6 +92,8 @@ const strings = {
     searchFailed: '无法加载搜索索引。',
     noResults: (q: string) => `没有找到“${q}”的结果`,
     language: '语言',
+    openNav: '打开菜单',
+    closeNav: '关闭菜单',
     // docs/sidebar.json's section titles.
     sections: {
       'Getting Started': '入门',

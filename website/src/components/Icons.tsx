@@ -85,6 +85,12 @@ export const MenuIcon = icon(() => (
     <line x1="4" x2="20" y1="18" y2="18" />
   </>
 ));
+export const XIcon = icon(() => (
+  <>
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </>
+));
 
 export const SearchIcon = icon(() => (
   <>
