@@ -62,12 +62,8 @@ func (a *App) focusTerminal() {
 	if s := a.session(a.selected); s != nil {
 		if id := a.focusOf(s); id != "" {
 			a.paneRef(id).Focus()
-			// The session takes this window's size back from another
-			// machine's that took it.
-			if e := a.terms[id]; e != nil && e.stream != nil {
-				go e.stream.Claim()
-			}
 		}
+		a.claimShown()
 	}
 }
 

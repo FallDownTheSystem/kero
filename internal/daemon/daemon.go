@@ -719,11 +719,18 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 		}
 		switch kind {
 		case proto.FrameInput:
+			// The user types in this client, but for the focus-out report
+			// (mode 1004) its terminal sends as the user leaves it.
+			if string(payload) != "\x1b[O" {
+				s.own(a)
+			}
 			s.input(payload)
 		case proto.FrameResize:
 			if c, rr, cw, ch, ok := proto.ParseResizePixels(payload); ok {
-				s.resize(c, rr, cw, ch)
+				s.ask(a, c, rr, cw, ch)
 			}
+		case proto.FrameClaim:
+			s.own(a)
 		case proto.FrameTheme:
 			if th, ok := proto.ParseTheme(payload); ok {
 				d.useTheme(th)

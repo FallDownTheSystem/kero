@@ -43,9 +43,12 @@ type pane struct {
 	proc         *ptyProc
 	term         *terminal.Terminal
 	clients      map[*attachment]struct{}
-	shellPID     int
-	fgPGID       int
-	cwdAt        time.Time
+	// owner is the client whose size the pane takes, the one the user is
+	// in (own), nil until one is.
+	owner    *attachment
+	shellPID int
+	fgPGID   int
+	cwdAt    time.Time
 
 	dirty bool // output since the history on disk
 	// seen is what the screen showed when the status last came from it,
@@ -510,11 +513,47 @@ func (d *Daemon) useTheme(t proto.Theme) {
 }
 
 func (s *pane) resize(cols, rows, cellW, cellH int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.resizeLocked(cols, rows, cellW, cellH)
+}
+
+// ask takes the size a client's terminal fits, which the pane takes when
+// the client owns it, or none does (own); s.mu is not held.
+func (s *pane) ask(c *attachment, cols, rows, cellW, cellH int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c.asked = [4]int{cols, rows, cellW, cellH}
+	if s.owner == nil || s.owner == c {
+		s.resizeLocked(cols, rows, cellW, cellH)
+	}
+}
+
+// own gives the pane's size to the client the user is in, typing in it or
+// moving into it (proto.FrameClaim): the pane takes the size it asked
+// for last, and the sizes others ask for wait until they own it. A
+// session has one size, and a layout synced from the app the user is in
+// resizes another machine's app's panes too, whose sizes would take it.
+func (s *pane) own(c *attachment) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.owner == c {
+		return
+	}
+	if _, ok := s.clients[c]; !ok {
+		return
+	}
+	s.owner = c
+	if a := c.asked; a[0] > 0 {
+		s.resizeLocked(a[0], a[1], a[2], a[3])
+	}
+}
+
+// resizeLocked resizes the pane's terminal and program; s.mu is held.
+func (s *pane) resizeLocked(cols, rows, cellW, cellH int) {
 	if cols <= 0 || rows <= 0 {
 		return
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.closed || s.term == nil {
 		return
 	}
@@ -725,6 +764,9 @@ func (s *pane) detach(c *attachment) {
 		delete(s.clients, c)
 		c.mirror.Close()
 	}
+	if s.owner == c {
+		s.owner = nil
+	}
 	s.mu.Unlock()
 }
 
@@ -771,6 +813,7 @@ func (s *pane) readText(scrollback bool, lines int) string {
 type attachment struct {
 	conn   net.Conn
 	mirror *terminal.Mirror // what its terminal shows of the session's
+	asked  [4]int           // the size its terminal fits (pane.ask); pane.mu guards it
 	out    chan []byte
 	once   sync.Once
 	done   chan struct{}

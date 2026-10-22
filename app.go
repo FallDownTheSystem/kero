@@ -578,7 +578,6 @@ func (a *App) ensureTerm(id string) {
 	e := &termEntry{started: time.Now()}
 	a.terms[id] = e
 	dialer := h.dialer()
-	held := a.win != nil && !a.win.IsFocused()
 	go func() {
 		stream, err := client.AttachVia(dialer, id)
 		if err != nil {
@@ -589,7 +588,6 @@ func (a *App) ensureTerm(id string) {
 			})
 			return
 		}
-		stream.Hold(held)
 		g := &gated{Stream: stream, ready: make(chan struct{})}
 		o := a.termOptions(id, g)
 		// The terminal shows kerod's frames: kerod's terminal is the
@@ -617,8 +615,9 @@ func (a *App) ensureTerm(id string) {
 				return
 			}
 			e.term, e.stream = term, stream
-			if h := a.win != nil && !a.win.IsFocused(); h != held {
-				go stream.Hold(h) // the window's focus changed meanwhile
+			// Shown, it takes the window's size (claimShown).
+			if s := a.session(a.selected); a.focused && s != nil && s.PaneByID(id) != nil {
+				go stream.Claim()
 			}
 			if a.selected == id {
 				a.focusTerminal()
@@ -627,13 +626,16 @@ func (a *App) ensureTerm(id string) {
 	}()
 }
 
-// holdTerms holds back the sizes the panes' terminals ask for while the
-// window is not the user's, or lets them take the sessions' sizes back
-// (client.Stream.Hold): a session has the size of the app the user is in.
-func (a *App) holdTerms(held bool) {
-	for _, e := range a.terms {
-		if e.stream != nil {
-			go e.stream.Hold(held)
+// claimShown gives the panes the window shows the window's sizes, which
+// another machine's app may have taken (client.Stream.Claim).
+func (a *App) claimShown() {
+	s := a.session(a.selected)
+	if s == nil {
+		return
+	}
+	for _, p := range s.Panes {
+		if e := a.terms[p.ID]; e != nil && e.stream != nil {
+			go e.stream.Claim()
 		}
 	}
 }
