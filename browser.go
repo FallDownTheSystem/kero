@@ -42,6 +42,9 @@ type webEntry struct {
 	findText string
 	// loads are kero browser's calls waiting for the page's load to end.
 	loads []chan error
+	// iconURL is the URL of the icon the page told: until it does, its
+	// site's last shows.
+	iconURL string
 }
 
 // browserUA makes the page look like Safari's on macOS: sites serve a bare
@@ -83,7 +86,7 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 			if a.webs[id] != e {
 				return
 			}
-			e.url, e.err = url, ""
+			e.url, e.err, e.iconURL = url, "", ""
 			if !e.editing {
 				e.address = url
 			}
@@ -107,12 +110,15 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 			}
 			e.syncNav()
 			a.tellPage(id, e)
+			// A page of an app changes its icon as it does its title.
+			a.findFavicon(e)
 		})
 	})
 	page.OnDidFinishLoad(func() {
 		a.update(func() {
 			e.syncNav()
 			e.loadEnded(nil)
+			a.findFavicon(e)
 		})
 	})
 	page.OnDidFailLoad(func(err *mygo.LoadError) {
@@ -370,7 +376,13 @@ func (a *App) addressBar(c *ui.Context, pal *palette, s *proto.Session, p *proto
 				grip.Background(pal.rowHover).TextColor(pal.textMuted).Cursor(ui.CursorGrab)
 			}
 		}
-		grip.Children(func() { ui.Icon(c, globeIcon).Size(13, 13) })
+		grip.Children(func() {
+			if icon := a.favicon(e); icon != nil && !blank {
+				ui.Image(c, icon).Size(14, 14).Radius(3)
+			} else {
+				ui.Icon(c, globeIcon).Size(13, 13)
+			}
+		})
 		in = ui.TextInputBase(c.Key("in"), &e.address).Grow(1).MinWidth(0).FontSize(12.5).
 			Placeholder(locales.BrowserAddress()).Label(locales.BrowserAddress())
 		if blank {

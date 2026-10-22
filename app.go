@@ -92,6 +92,7 @@ type App struct {
 	terms      map[string]*termEntry
 	webs       map[string]*webEntry // browser panes' pages, by pane
 	ads        adBlock              // what their pages block
+	icons      favicons             // and the icons they show
 	lru        []string
 	refs       map[string]*ui.Handle // panes' terminals, and splits, by id
 	focus      map[string]string     // the pane the user is in, by session
