@@ -3786,24 +3786,24 @@ func (msgs Messages) SetDiffAuto() string {
 	return Catalog.Format(msgs.locale, "setDiffAuto", nil)
 }
 
-// SetBrowser says "Browser"
+// PageBrowser says "Browser"
 // in the language the app shows.
-func SetBrowser() string { return In(i18n.Locale()).SetBrowser() }
+func PageBrowser() string { return In(i18n.Locale()).PageBrowser() }
 
-// SetBrowser says "Browser"
+// PageBrowser says "Browser"
 // in the language of msgs.
-func (msgs Messages) SetBrowser() string {
-	return Catalog.Format(msgs.locale, "setBrowser", nil)
+func (msgs Messages) PageBrowser() string {
+	return Catalog.Format(msgs.locale, "pageBrowser", nil)
 }
 
-// SetBrowserDetail says "The pages of browser panes."
+// SetAdBlocking says "Ad blocking"
 // in the language the app shows.
-func SetBrowserDetail() string { return In(i18n.Locale()).SetBrowserDetail() }
+func SetAdBlocking() string { return In(i18n.Locale()).SetAdBlocking() }
 
-// SetBrowserDetail says "The pages of browser panes."
+// SetAdBlocking says "Ad blocking"
 // in the language of msgs.
-func (msgs Messages) SetBrowserDetail() string {
-	return Catalog.Format(msgs.locale, "setBrowserDetail", nil)
+func (msgs Messages) SetAdBlocking() string {
+	return Catalog.Format(msgs.locale, "setAdBlocking", nil)
 }
 
 // SetBlockAds says "Block ads"

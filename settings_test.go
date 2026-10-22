@@ -616,7 +616,7 @@ func abs32(f float32) float32 {
 // The filter lists under Block ads add up and save, and hide with it.
 func TestAdListToggles(t *testing.T) {
 	a := testApp(t)
-	a.ss.page = "general"
+	a.ss.page = "browser"
 	tt := ui.NewTester(a.settingsView, 820, 1500)
 	tt.Frame()
 	flip := func(label string) {

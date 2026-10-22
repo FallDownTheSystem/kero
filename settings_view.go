@@ -42,6 +42,7 @@ var settingsPages = []settingsPage{
 	{"appearance", locales.PageAppearance, glyph("f7-paintbrush"), false},
 	{"terminal", locales.PageTerminal, terminalIcon, false},
 	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right"), false},
+	{"browser", locales.PageBrowser, globeIcon, false},
 	{"notifications", locales.PageNotifications, glyph("f7-bell"), false},
 	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard"), false},
 	{"agents", locales.PageAgents, glyph("f7-sparkles"), false},
@@ -254,6 +255,8 @@ func (a *App) settingsView(c *ui.Context) {
 								a.terminalPage(c, pal)
 							case "shell":
 								a.shellPage(c, pal)
+							case "browser":
+								a.browserPage(c, pal)
 							case "notifications":
 								a.notificationsPage(c, pal)
 							case "keyboard":
@@ -501,18 +504,6 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				[]string{locales.SetDiffAuto(), locales.ChangesUnified(), locales.ChangesSplit()})
 		})
 	})
-	lists := ""
-	if s.BlockAds {
-		lists = locales.SetAdListsNote()
-	}
-	settingsGroup(c, pal, locales.SetBrowser(), lists, func() {
-		settingRow(c, pal, locales.SetBlockAds(), locales.SetBlockAdsDetail(), func() {
-			toggle(c.Key("browser-block-ads"), &s.BlockAds, pal)
-		})
-		if s.BlockAds {
-			adListRows(c, pal, s)
-		}
-	})
 	settingsGroup(c, pal, locales.SetStartup(), "", func() {
 		settingRow(c, pal, locales.SetOpenAtLogin(), "", func() {
 			toggle(c.Key("login"), &a.ss.loginOpen, pal).OnChange(func() {
@@ -524,6 +515,23 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		})
 	})
 	a.updatesGroup(c, pal)
+}
+
+// browserPage is Settings › Browser: what browser panes block.
+func (a *App) browserPage(c *ui.Context, pal *palette) {
+	s := &a.set
+	lists := ""
+	if s.BlockAds {
+		lists = locales.SetAdListsNote()
+	}
+	settingsGroup(c, pal, locales.SetAdBlocking(), lists, func() {
+		settingRow(c, pal, locales.SetBlockAds(), locales.SetBlockAdsDetail(), func() {
+			toggle(c.Key("browser-block-ads"), &s.BlockAds, pal)
+		})
+		if s.BlockAds {
+			adListRows(c, pal, s)
+		}
+	})
 }
 
 // adListRows are the filter lists to block with: those Kero offers, and
