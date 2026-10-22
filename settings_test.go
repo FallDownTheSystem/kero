@@ -596,6 +596,10 @@ func TestFieldButtonHeight(t *testing.T) {
 	if add.H != controlH+2 || abs32(add.Y+add.H/2-(name.Y+name.H/2)) > 0.5 {
 		t.Errorf("Add %+v beside the field %+v", add, name)
 	}
+	// The input is the whole field: 130 wide, as high as Add.
+	if name.W != 130 || name.H != add.H {
+		t.Errorf("the name's input is %+v, in a field of 130×%v", name, add.H)
+	}
 }
 
 func abs32(f float32) float32 {

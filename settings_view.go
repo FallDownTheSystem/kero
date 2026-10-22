@@ -322,7 +322,7 @@ func (a *App) settingsSearch(c *ui.Context, pal *palette) {
 	frame := ui.Row(c.Key("search")).Cursor(ui.CursorText).Margin(0, 0, 10, 0)
 	frame.Children(func() {
 		ui.Icon(c, searchIcon).Size(13, 13).TextColor(pal.textFaint).Shrink(0)
-		in = ui.TextInputBase(c.Key("in"), &a.ss.query).Bind(&a.ss.searchRef).Grow(1).MinWidth(0).FontSize(13).
+		in = ui.TextInputBase(c.Key("in"), &a.ss.query).Bind(&a.ss.searchRef).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).FontSize(13).
 			Placeholder(locales.CommonSearch()).Label(locales.SettingsSearchLabel())
 		in.OnShortcut(0, ui.KeyEscape, func() { a.ss.query = "" })
 		if a.ss.query != "" {
