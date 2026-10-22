@@ -249,13 +249,23 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 				ui.Text(c, locales.SidebarNoSessions()).FontSize(12.5).TextColor(pal.textFaint).Padding(8, 10)
 			}
 		}
+		// Then each host's, flat, tagged with its name: a host has a row
+		// of its own only while it needs one (hostNeedsRow).
 		for _, h := range a.hosts[1:] {
-			top := float32(18)
-			if gi == 0 {
-				top = 2
+			groups := a.hostGroups(h)
+			if a.hostNeedsRow(h) {
+				top := float32(18)
+				if gi == 0 {
+					top = 2
+				}
+				a.hostLine(c, pal, h, top)
+				gi++
 			}
-			gi++
-			a.hostSection(c, pal, h, top, &gi, &n)
+			for i, g := range groups {
+				g.first = i == 0
+				a.groupView(c, pal, g, gi, &n)
+				gi++
+			}
 		}
 	})
 	a.sidebarFooter(c, pal)
@@ -297,6 +307,10 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 			a.startProjectRename(id)
 		}
 		m.Separator()
+		// A remote group's menu has its host's, as the host has no header.
+		if g.host.remote() {
+			m.Submenu(g.host.name, func(m *ui.Menu) { a.hostMenu(m, g.host) })
+		}
 		if m.Item(locales.SidebarCloseProjectMenu()).Disabled(id == "").Chosen() {
 			name, count := g.project.Name, len(g.sessions)
 			a.confirm = &confirmation{
@@ -321,11 +335,19 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 			return
 		}
 		ui.Text(c, g.project.Name).FontSize(12.5).FontWeight(600).TextColor(pal.textMuted).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+		if g.host.remote() {
+			a.hostTag(c, pal, g.host)
+		}
 		ui.Textf(c, "%d", len(g.sessions)).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum")
 		chev := ui.Icon(c, chevronIcon).Size(11, 11).TextColor(pal.textFaint)
 		turn := chev.AnimateTo("turn", 90*(1-b2f(collapsed)), ui.Snappy)
 		chev.Rotate(turn).Opacity(chev.Animate("shown", b2f(hovered || collapsed), 120*time.Millisecond))
 		ui.Spacer(c)
+		// A host with no row of its own tells how the app stands with it
+		// here: reconnecting, or wanting an update or restart.
+		if g.first && g.host.remote() && !a.hostNeedsRow(g.host) {
+			a.hostState(c, pal, g.host)
+		}
 		if needs > 0 {
 			ui.Text(c, locales.SidebarNeedsYou(needs)).FontSize(12.5).FontWeight(500).TextColor(pal.attention).SingleLine()
 		}

@@ -3,9 +3,10 @@
 ## Unreleased
 
 - Kero shows sessions that run on other machines, such as a Linux dev box,
-  a cloud VM or a WSL distribution, in the same sidebar, under each host's
-  name, with their statuses and notifications. Add a host in Settings ›
-  Hosts by the address you'd give ssh, `me@devbox`: Kero reaches it over
+  a cloud VM or a WSL distribution, in the same sidebar, tagged with each
+  host's name, with their statuses and notifications. Add a host in
+  Settings › Hosts by the address you'd give ssh, `me@devbox`: Kero
+  reaches it over
   SSH with your keys and agent, or through kerod's listener on your
   tailnet (`listen = tailnet://:7373`), which Tailscale tells who
   connects to. One compressed connection carries all of a host's panes,
@@ -16,6 +17,14 @@
   pasting an image or files (which copies them to the host) all act on
   the host. Its programs drive the app with `kero focus` and `kero do`
   only once you turn on its Remote Control.
+- The sidebar stays flat with hosts: their projects follow yours, each
+  tagged with its host's name, so the same repository on two machines
+  sits side by side. A host has a row of its own only when it needs you,
+  as when it can't be reached; one with no sessions doesn't show. Its
+  menu is in its projects'. Each host wears a color, picked from its name or set
+  with `color=`, on its tag and its name in a pane's header. With hosts,
+  Open Project lists any machine's folders in Kero, with a switch
+  between them.
 - The server build of Kero runs kerod and the CLI on Linux, macOS and
   Windows with no app, display or GTK: `curl -fsSL
   https://github.com/egoist/kero/releases/latest/download/install-server.sh
