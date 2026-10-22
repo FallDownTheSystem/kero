@@ -127,6 +127,10 @@ func cli(ctx context.Context, path string, v any) error {
 		return fmt.Errorf("tailscale: no command for %s", path)
 	}
 	c := exec.CommandContext(ctx, cmd, args...)
+	// The macOS app's binary is the CLI only when run from a shell (it
+	// looks at SHLVL), else it starts the GUI and fails; an app launched
+	// from Finder has no shell, so tell it outright.
+	c.Env = append(os.Environ(), "TAILSCALE_BE_CLI=1")
 	hide(c)
 	out, err := c.Output()
 	if err != nil {
