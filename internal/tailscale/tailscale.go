@@ -126,7 +126,9 @@ func cli(ctx context.Context, path string, v any) error {
 	default:
 		return fmt.Errorf("tailscale: no command for %s", path)
 	}
-	out, err := exec.CommandContext(ctx, cmd, args...).Output()
+	c := exec.CommandContext(ctx, cmd, args...)
+	hide(c)
+	out, err := c.Output()
 	if err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) && len(ee.Stderr) > 0 {
