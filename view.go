@@ -24,6 +24,9 @@ const (
 	headerH = 2 * (barMid - cardGap)
 	cardGap = 8 // around the card
 	rowH    = 34
+	// rowInset is where a sidebar row's text starts: a session's name and
+	// its group's.
+	rowInset = 12
 )
 
 // chrome is where the sidebar's animation puts things, in whole pixels so
@@ -285,7 +288,13 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 	if gi == 0 {
 		top = 2
 	}
-	hdr := ui.Row(c.Key("project-"+key)).Height(28).Margin(top, 0, 3, 0).Padding(0, 6, 0, 10).Gap(6).AlignItems(ui.Center).Radius(6)
+	// Its name starts where its sessions' names do (sessionRow), past the
+	// edge a row keeps in dark mode.
+	inset := float32(rowInset)
+	if pal.dark {
+		inset++
+	}
+	hdr := ui.Row(c.Key("project-"+key)).Height(28).Margin(top, 0, 3, 0).Padding(0, 6, 0, inset).Gap(6).AlignItems(ui.Center).Radius(6)
 	hovered := hdr.Hovered()
 	renaming := id != "" && a.renamingProject == id
 	if hdr.Clicked() && !renaming {
@@ -380,7 +389,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	*n++
 	index := *n
 	selected := s.ID == a.selected
-	row := ui.Row(c.Key(s.ID)).Height(rowH).Padding(0, 10, 0, 12).Gap(10).AlignItems(ui.Center).Radius(8).Margin(0, 0, 1, 0)
+	row := ui.Row(c.Key(s.ID)).Height(rowH).Padding(0, 10, 0, rowInset).Gap(10).AlignItems(ui.Center).Radius(8).Margin(0, 0, 1, 0)
 	hovered := row.Hovered()
 	if pal.dark {
 		// Room for the chosen row's edge in every row, so that choosing
