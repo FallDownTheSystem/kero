@@ -521,6 +521,18 @@
   "setDiffLayout": "Diffs",
   "setDiffLayoutDetail": "Auto shows diffs unified while the changes panel is narrow, and side by side once it's wide.",
   "setDiffAuto": "Auto",
+  "setBrowser": "Browser",
+  "setBrowserDetail": "The pages of browser panes.",
+  "setBlockAds": "Block ads",
+  "setBlockAdsDetail": "Blocks ads and trackers with filter lists, which Kero downloads and keeps up to date.",
+  "setAdListEasylist": "Ads, the list most blockers start from.",
+  "setAdListEasyprivacy": "Trackers and analytics.",
+  "setAdListPeterLowe": "Ad and tracker servers, by their domains.",
+  "setAdListEasylistChina": "Ads on Chinese sites.",
+  "setAdListFanboyCookie": "Cookie notices and consent banners.",
+  "setAdListFanboySocial": "Social media buttons and embeds.",
+  "setAdListFanboyAnnoyance": "Pop-ups, newsletter prompts and chat boxes, and the cookie and social lists' too.",
+  "setAdListsNote": "Lists hide more as they add up, and may break a page now and then. Lists of other URLs go in the configuration, as browser-filter-list.",
   "changesUnmodified": "{count, plural, one {# unmodified line} other {# unmodified lines}}",
   "@changesUnmodified": {
     "placeholders": {

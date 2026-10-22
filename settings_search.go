@@ -30,6 +30,7 @@ func settingsIndex() []searchEntry {
 		{"general", locales.SetResumeAgents(), "resume-agents claude codex pi opencode conversation restore reboot"},
 		{"general", locales.SetGitStatus(), "git-status branch changes diff repository worktree"},
 		{"general", locales.SetDiffLayout(), "diff-layout diff unified split side by side changes"},
+		{"general", locales.SetBlockAds(), "browser-block-ads browser-filter-list ad blocker adblock trackers filter lists easylist easyprivacy peter lowe fanboy cookie annoyances social china privacy web"},
 		{"general", locales.SetOpenAtLogin(), "startup launch login items"},
 		{"general", locales.SetVersion(), "updates check for updates software update about"},
 		{"general", locales.SetAutoCheck(), "updates automatic background daily"},

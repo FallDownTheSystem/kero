@@ -136,3 +136,32 @@ func TestMigratesSettingsJSON(t *testing.T) {
 		t.Error("settings.json stayed")
 	}
 }
+
+func TestAdLists(t *testing.T) {
+	tests := []struct {
+		file     string
+		want     []string
+		problems int
+	}{
+		{"", []string{"easylist", "easyprivacy"}, 0},
+		{"browser-filter-list = easylist\nbrowser-filter-list = peter-lowe\nbrowser-filter-list = easylist", []string{"easylist", "peter-lowe"}, 0},
+		{"browser-filter-list =", []string{}, 0},
+		{"browser-filter-list = easylist\nbrowser-filter-list =\nbrowser-filter-list = fanboy-cookie", []string{"fanboy-cookie"}, 0},
+		{"browser-filter-list = https://lists.example/ads.txt", []string{"https://lists.example/ads.txt"}, 0},
+		{"browser-filter-list = easylist\nbrowser-filter-list = no-such-list\nbrowser-filter-list = ftp://lists.example/x", []string{"easylist"}, 1},
+	}
+	for _, tt := range tests {
+		s, probs := parse(tt.file)
+		if !reflect.DeepEqual(s.AdLists, tt.want) || len(probs) != tt.problems {
+			t.Errorf("%q: lists %q, problems %q", tt.file, s.AdLists, probs)
+		}
+		// What is saved reads back the same: no lists as none, not the
+		// defaults.
+		if back, _ := parse(format(s, "")); !reflect.DeepEqual(back.AdLists, s.AdLists) {
+			t.Errorf("%q: saved and read back %q, want %q", tt.file, back.AdLists, s.AdLists)
+		}
+	}
+	if out := format(Default(), ""); strings.Contains(out, "browser-filter-list") {
+		t.Errorf("the default lists were written:\n%s", out)
+	}
+}

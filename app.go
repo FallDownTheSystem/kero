@@ -91,6 +91,7 @@ type App struct {
 	selected   string
 	terms      map[string]*termEntry
 	webs       map[string]*webEntry // browser panes' pages, by pane
+	ads        adBlock              // what their pages block
 	lru        []string
 	refs       map[string]*ui.Handle // panes' terminals, and splits, by id
 	focus      map[string]string     // the pane the user is in, by session
@@ -774,6 +775,11 @@ func (a *App) apply(s settings.Settings, save bool) {
 	}
 	if old.DockBadge != s.DockBadge {
 		a.notify(true)
+	}
+	// Only once a browser pane showed a page: until then, no lists are
+	// downloaded.
+	if (old.BlockAds != s.BlockAds || !slices.Equal(old.AdLists, s.AdLists)) && (a.ads.started || len(a.webs) > 0) {
+		a.applyAdBlock()
 	}
 	if !slices.Equal(old.Hosts, s.Hosts) && a.win != nil {
 		a.syncHosts()

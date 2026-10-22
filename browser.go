@@ -67,7 +67,7 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 		return e
 	}
 	v, err := a.win.NewWebView(mygo.WebViewOptions{
-		Page: mygo.PageOptions{DevTools: mygo.DevToolsEnabled, UserAgentSuffix: browserUA()},
+		Page: mygo.PageOptions{DevTools: mygo.DevToolsEnabled, UserAgentSuffix: browserUA(), ContentRules: a.adRules()},
 	})
 	if err != nil {
 		e.err = err.Error()

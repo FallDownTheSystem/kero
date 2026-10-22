@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"kero/internal/adblock"
 	"kero/internal/proto"
 	"kero/internal/remote"
 )
@@ -71,6 +72,10 @@ type Settings struct {
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
 	DiffLayout string `json:"diffLayout"` // the changes panel's diffs: "auto", "unified" or "split"
+
+	// Browser
+	BlockAds bool     `json:"blockAds"` // in browser panes, with AdLists
+	AdLists  []string `json:"adLists"`  // the filter lists: adblock.Catalog's IDs, or URLs
 
 	// Keyboard: accelerators by action, over the defaults; "" unbinds.
 	Shortcuts map[string]string `json:"shortcuts,omitempty"`
@@ -144,6 +149,8 @@ func Default() Settings {
 		RemoteControl:   true,
 		GitStatus:       true,
 		DiffLayout:      "auto",
+		BlockAds:        true,
+		AdLists:         slices.Clone(adblock.DefaultLists),
 	}
 }
 
@@ -263,6 +270,7 @@ func (s Settings) Clone() Settings { return clone(s) }
 
 func clone(s Settings) Settings {
 	s.Env = append([]string(nil), s.Env...)
+	s.AdLists = slices.Clone(s.AdLists)
 	s.Hosts = slices.Clone(s.Hosts)
 	s.Listen = slices.Clone(s.Listen)
 	s.ListenAllow = slices.Clone(s.ListenAllow)

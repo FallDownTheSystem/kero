@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"kero/internal/actions"
+	"kero/internal/adblock"
 	"kero/internal/proto"
 	"kero/internal/remote"
 )
@@ -248,6 +249,32 @@ var keys = []key{
 		}},
 	boolKey("git-status", "show the git branch and changes of each session", func(s *Settings) *bool { return &s.GitStatus }),
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
+	boolKey("browser-block-ads", "block ads and trackers in browser panes, with the browser-filter-list lists", func(s *Settings) *bool { return &s.BlockAds }),
+	{name: "browser-filter-list", doc: "a filter list browser-block-ads blocks with: " + strings.Join(adListIDs(), ", ") + ", or a list's https URL; repeat it, and leave it empty for none", list: true,
+		get: func(s *Settings) []string {
+			if len(s.AdLists) == 0 {
+				return []string{""} // none, rather than the defaults
+			}
+			return slices.Clone(s.AdLists)
+		},
+		set: func(s *Settings, v []string) error {
+			s.AdLists = []string{}
+			var bad []string
+			for _, id := range v {
+				switch _, ok := adblock.Find(id); {
+				case id == "":
+					s.AdLists = s.AdLists[:0] // an empty value clears the lists before it
+				case !ok:
+					bad = append(bad, fmt.Sprintf("%q is no list", id))
+				case !slices.Contains(s.AdLists, id):
+					s.AdLists = append(s.AdLists, id)
+				}
+			}
+			if bad != nil {
+				return fmt.Errorf("%s", strings.Join(bad, "; "))
+			}
+			return nil
+		}},
 	{name: "keybind", doc: "<keys>=<action>, over the defaults, as cmd+shift+d=pane.split.down; <keys>=unbind frees keys; see kero actions", list: true,
 		get: func(s *Settings) []string {
 			var out []string
@@ -299,6 +326,14 @@ var keys = []key{
 			}
 			return nil
 		}},
+}
+
+func adListIDs() []string {
+	var ids []string
+	for _, s := range adblock.Catalog {
+		ids = append(ids, s.ID)
+	}
+	return ids
 }
 
 func findKey(name string) *key {

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -610,4 +611,37 @@ func abs32(f float32) float32 {
 		return -f
 	}
 	return f
+}
+
+// The filter lists under Block ads add up and save, and hide with it.
+func TestAdListToggles(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "general"
+	tt := ui.NewTester(a.settingsView, 820, 1500)
+	tt.Frame()
+	flip := func(label string) {
+		t.Helper()
+		r, ok := tt.Find(label)
+		if !ok {
+			t.Fatalf("no row %q", label)
+		}
+		tt.ClickAt(752, r.Y+r.H/2) // its switch, at the row's end
+		tt.Frame()
+		tt.Frame()
+	}
+	flip("Peter Lowe's Ad and tracking server list")
+	flip("EasyList")
+	if want := []string{"easyprivacy", "peter-lowe"}; !slices.Equal(a.set.AdLists, want) || !slices.Equal(settings.Load().AdLists, want) {
+		t.Fatalf("lists %q, saved %q, want %q", a.set.AdLists, settings.Load().AdLists, want)
+	}
+	flip("EasyPrivacy")
+	flip("Peter Lowe's Ad and tracking server list")
+	if got := settings.Load().AdLists; len(got) != 0 {
+		t.Fatalf("no lists saved as %q", got)
+	}
+	a.set.BlockAds = false
+	tt.Frame()
+	if tt.HasText("EasyPrivacy") {
+		t.Error("the lists show while Block ads is off")
+	}
 }

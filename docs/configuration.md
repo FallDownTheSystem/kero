@@ -118,6 +118,32 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `git-status`  | `true`  | Show each session's branch and [changes](./changes.md)                                            |
 | `diff-layout` | `auto`  | Diffs in the changes panel: `unified`, `split` (side by side), or `auto`, side by side once it's wide |
 
+## Browser
+
+| Key                   | Default                    | Description                                                                         |
+| --------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
+| `browser-block-ads`   | `true`                     | [Block ads and trackers](./panes.md#blocking-ads) in browser panes                  |
+| `browser-filter-list` | `easylist`, `easyprivacy`  | A filter list to block with. Repeat it for each list; leave it empty for none       |
+
+`browser-filter-list` takes the lists Kero offers by name, or the `https://` URL of any list in Adblock Plus syntax:
+
+| Name               | List                                                                |
+| ------------------ | ------------------------------------------------------------------- |
+| `easylist`         | EasyList: ads                                                       |
+| `easyprivacy`      | EasyPrivacy: trackers and analytics                                 |
+| `peter-lowe`       | Peter Lowe's list: ad and tracker servers                           |
+| `easylist-china`   | EasyList China: ads on Chinese sites                                |
+| `fanboy-cookie`    | EasyList Cookie List: cookie notices and consent banners            |
+| `fanboy-social`    | Fanboy's Social Blocking List: social media buttons and embeds      |
+| `fanboy-annoyance` | Fanboy's Annoyance List: pop-ups and prompts, with the two above    |
+
+```ini
+browser-filter-list = easylist
+browser-filter-list = easyprivacy
+browser-filter-list = fanboy-cookie
+browser-filter-list = https://example.com/my-filters.txt
+```
+
 ## Keyboard
 
 `keybind` rebinds an action, as `<keys>=<action>`. Repeat it for each binding. Use `unbind` as the action to free keys.

@@ -3786,6 +3786,126 @@ func (msgs Messages) SetDiffAuto() string {
 	return Catalog.Format(msgs.locale, "setDiffAuto", nil)
 }
 
+// SetBrowser says "Browser"
+// in the language the app shows.
+func SetBrowser() string { return In(i18n.Locale()).SetBrowser() }
+
+// SetBrowser says "Browser"
+// in the language of msgs.
+func (msgs Messages) SetBrowser() string {
+	return Catalog.Format(msgs.locale, "setBrowser", nil)
+}
+
+// SetBrowserDetail says "The pages of browser panes."
+// in the language the app shows.
+func SetBrowserDetail() string { return In(i18n.Locale()).SetBrowserDetail() }
+
+// SetBrowserDetail says "The pages of browser panes."
+// in the language of msgs.
+func (msgs Messages) SetBrowserDetail() string {
+	return Catalog.Format(msgs.locale, "setBrowserDetail", nil)
+}
+
+// SetBlockAds says "Block ads"
+// in the language the app shows.
+func SetBlockAds() string { return In(i18n.Locale()).SetBlockAds() }
+
+// SetBlockAds says "Block ads"
+// in the language of msgs.
+func (msgs Messages) SetBlockAds() string {
+	return Catalog.Format(msgs.locale, "setBlockAds", nil)
+}
+
+// SetBlockAdsDetail says "Blocks ads and trackers with filter lists, which Kero downloads and keeps up to date."
+// in the language the app shows.
+func SetBlockAdsDetail() string { return In(i18n.Locale()).SetBlockAdsDetail() }
+
+// SetBlockAdsDetail says "Blocks ads and trackers with filter lists, which Kero downloads and keeps up to date."
+// in the language of msgs.
+func (msgs Messages) SetBlockAdsDetail() string {
+	return Catalog.Format(msgs.locale, "setBlockAdsDetail", nil)
+}
+
+// SetAdListEasylist says "Ads, the list most blockers start from."
+// in the language the app shows.
+func SetAdListEasylist() string { return In(i18n.Locale()).SetAdListEasylist() }
+
+// SetAdListEasylist says "Ads, the list most blockers start from."
+// in the language of msgs.
+func (msgs Messages) SetAdListEasylist() string {
+	return Catalog.Format(msgs.locale, "setAdListEasylist", nil)
+}
+
+// SetAdListEasyprivacy says "Trackers and analytics."
+// in the language the app shows.
+func SetAdListEasyprivacy() string { return In(i18n.Locale()).SetAdListEasyprivacy() }
+
+// SetAdListEasyprivacy says "Trackers and analytics."
+// in the language of msgs.
+func (msgs Messages) SetAdListEasyprivacy() string {
+	return Catalog.Format(msgs.locale, "setAdListEasyprivacy", nil)
+}
+
+// SetAdListPeterLowe says "Ad and tracker servers, by their domains."
+// in the language the app shows.
+func SetAdListPeterLowe() string { return In(i18n.Locale()).SetAdListPeterLowe() }
+
+// SetAdListPeterLowe says "Ad and tracker servers, by their domains."
+// in the language of msgs.
+func (msgs Messages) SetAdListPeterLowe() string {
+	return Catalog.Format(msgs.locale, "setAdListPeterLowe", nil)
+}
+
+// SetAdListEasylistChina says "Ads on Chinese sites."
+// in the language the app shows.
+func SetAdListEasylistChina() string { return In(i18n.Locale()).SetAdListEasylistChina() }
+
+// SetAdListEasylistChina says "Ads on Chinese sites."
+// in the language of msgs.
+func (msgs Messages) SetAdListEasylistChina() string {
+	return Catalog.Format(msgs.locale, "setAdListEasylistChina", nil)
+}
+
+// SetAdListFanboyCookie says "Cookie notices and consent banners."
+// in the language the app shows.
+func SetAdListFanboyCookie() string { return In(i18n.Locale()).SetAdListFanboyCookie() }
+
+// SetAdListFanboyCookie says "Cookie notices and consent banners."
+// in the language of msgs.
+func (msgs Messages) SetAdListFanboyCookie() string {
+	return Catalog.Format(msgs.locale, "setAdListFanboyCookie", nil)
+}
+
+// SetAdListFanboySocial says "Social media buttons and embeds."
+// in the language the app shows.
+func SetAdListFanboySocial() string { return In(i18n.Locale()).SetAdListFanboySocial() }
+
+// SetAdListFanboySocial says "Social media buttons and embeds."
+// in the language of msgs.
+func (msgs Messages) SetAdListFanboySocial() string {
+	return Catalog.Format(msgs.locale, "setAdListFanboySocial", nil)
+}
+
+// SetAdListFanboyAnnoyance says "Pop-ups, newsletter prompts and chat boxes, and the cookie and social lists' too."
+// in the language the app shows.
+func SetAdListFanboyAnnoyance() string { return In(i18n.Locale()).SetAdListFanboyAnnoyance() }
+
+// SetAdListFanboyAnnoyance says "Pop-ups, newsletter prompts and chat boxes, and the cookie and social lists' too."
+// in the language of msgs.
+func (msgs Messages) SetAdListFanboyAnnoyance() string {
+	return Catalog.Format(msgs.locale, "setAdListFanboyAnnoyance", nil)
+}
+
+// SetAdListsNote says "Lists hide more as they add up, and may break a page now and then. Lists of other URLs go in the configuration, as br…"
+// in the language the app shows.
+func SetAdListsNote() string { return In(i18n.Locale()).SetAdListsNote() }
+
+// SetAdListsNote says "Lists hide more as they add up, and may break a page now and then. Lists of other URLs go in the configuration, as br…"
+// in the language of msgs.
+func (msgs Messages) SetAdListsNote() string {
+	return Catalog.Format(msgs.locale, "setAdListsNote", nil)
+}
+
 // ChangesUnmodified says "{count, plural, one {# unmodified line} other {# unmodified lines}}"
 // in the language the app shows.
 func ChangesUnmodified(count int) string { return In(i18n.Locale()).ChangesUnmodified(count) }
