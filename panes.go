@@ -174,7 +174,9 @@ func (a *App) divider(c *ui.Context, pal *palette, s *proto.Session, l *proto.La
 func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi bool) {
 	focused := p.ID == a.focusOf(s)
 	bg := pal.card
-	if multi && !focused {
+	// A browser's page stays opaque, so its toolbar does too: the veil
+	// fades them alike.
+	if multi && !focused && !p.Browser() {
 		bg = pal.cardDim
 	}
 	card := ui.Column(c.Key("pane-" + p.ID)).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Radius(14).Clip().Bind(a.paneRef("card-" + p.ID))
@@ -384,9 +386,10 @@ func (a *App) movePane(sid, pane, target string, zone dropZone) {
 // being dragged.
 func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi, focused, hovered bool) (dragging bool) {
 	pad := float32(16)
-	if left {
-		// With the sidebar hidden, the header starts after the traffic
-		// lights and the sidebar's buttons, which come here.
+	if top && left {
+		// With the sidebar hidden, the header at the window's top left
+		// starts after the traffic lights and the sidebar's buttons,
+		// which come here.
 		pad = a.chrome.headerPad
 	}
 	h := ui.Row(c.Key("hdr")).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, pad).Gap(8)
