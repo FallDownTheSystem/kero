@@ -33,6 +33,7 @@ import (
 	"kero/internal/proto"
 	"kero/internal/settings"
 	"kero/internal/shell"
+	"kero/internal/update"
 )
 
 // Daemon is kerod's state.
@@ -104,6 +105,11 @@ func Run(opts Options) error {
 		logw = io.MultiWriter(logf, os.Stderr)
 	}
 	lg := log.New(logw, "", log.LstdFlags|log.Lmicroseconds)
+	// What an update of the server build on Windows moved aside, which
+	// it could not remove as it ran (update.Replace).
+	if build.Server && runtime.GOOS == "windows" {
+		update.RemoveOld(update.InstallDir())
+	}
 
 	// One daemon at a time: the lock is the daemon's while it runs. One
 	// that takes over from a kerod restarting waits for it to let go.

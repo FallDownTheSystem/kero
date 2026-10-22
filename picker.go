@@ -1,7 +1,6 @@
 package main
 
 import (
-	"path"
 	"slices"
 	"strings"
 
@@ -100,7 +99,7 @@ func (a *App) pickerItems() []pickerItem {
 		if sc < 0 {
 			continue
 		}
-		found = append(found, scored{pickerItem{name: e.Name, path: path.Join(p.list.Dir, e.Name), repo: e.Repo}, sc})
+		found = append(found, scored{pickerItem{name: e.Name, path: p.host.joinPath(p.list.Dir, e.Name), repo: e.Repo}, sc})
 	}
 	if q != "" {
 		slices.SortStableFunc(found, func(x, y scored) int { return y.score - x.score })
@@ -111,9 +110,14 @@ func (a *App) pickerItems() []pickerItem {
 	return items
 }
 
-// isPathQuery tells a query that names a folder rather than filters.
-func isPathQuery(q string) bool {
-	return strings.HasPrefix(q, "/") || q == "~" || strings.HasPrefix(q, "~/")
+// isPathQuery tells a query that names a folder rather than filters: on
+// Windows, ~\…, a share's \\server\… and a drive's C:\… too.
+func isPathQuery(q string, windows bool) bool {
+	if strings.HasPrefix(q, "/") || q == "~" || strings.HasPrefix(q, "~/") {
+		return true
+	}
+	drive := len(q) >= 2 && q[1] == ':' && ('A' <= q[0] && q[0] <= 'Z' || 'a' <= q[0] && q[0] <= 'z')
+	return windows && (strings.HasPrefix(q, `~\`) || strings.HasPrefix(q, `\\`) || drive)
 }
 
 func (a *App) pickerView(c *ui.Context, pal *palette) {
@@ -169,7 +173,7 @@ func (a *App) pickerView(c *ui.Context, pal *palette) {
 				openDir = a.pickerChosen(items)
 			case in.Submitted() || c.Shortcut(0, ui.KeyEnter) || c.Shortcut(0, ui.KeyTab):
 				switch {
-				case isPathQuery(q):
+				case isPathQuery(q, h.windows()):
 					goTo = q
 				case len(items) > 0:
 					goTo = items[p.index].path

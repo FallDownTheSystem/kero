@@ -2,6 +2,7 @@ package update
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"crypto/ed25519"
@@ -91,9 +92,6 @@ func TestInstallRefuses(t *testing.T) {
 		t.Error("updated a directory without the marker")
 	}
 	os.WriteFile(filepath.Join(dir, Marker), nil, 0o644)
-	if runtime.GOOS != "linux" {
-		return
-	}
 	if err := Install(t.Context(), "2.0.0", dir, "2.1.0", false); err == nil || !strings.Contains(err.Error(), "newer") {
 		t.Errorf("went back to an older Kero: %v", err)
 	}
@@ -118,16 +116,43 @@ func tarball(t *testing.T, files map[string]string) []byte {
 	return buf.Bytes()
 }
 
+func zipball(t *testing.T, files map[string]string) []byte {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, body := range files {
+		h := &zip.FileHeader{Name: name, Method: zip.Deflate}
+		h.SetMode(0o755)
+		w, _ := zw.CreateHeader(h)
+		w.Write([]byte(body))
+	}
+	zw.Close()
+	return buf.Bytes()
+}
+
 func TestReplace(t *testing.T) {
+	kero := exe(runtime.GOOS)
 	dir := filepath.Join(t.TempDir(), "kero")
 	os.MkdirAll(dir, 0o755)
-	os.WriteFile(filepath.Join(dir, "kero"), []byte("old"), 0o755)
+	os.WriteFile(filepath.Join(dir, kero), []byte("old"), 0o755)
 	os.WriteFile(filepath.Join(dir, "stale.so"), []byte("old"), 0o644)
-	if err := Replace(tarball(t, map[string]string{"kero": "new", "libghostty-vt.so": "lib", Marker: ""}), dir); err != nil {
+	if err := Replace(tarball(t, map[string]string{kero: "new", "libghostty-vt.so": "lib", Marker: ""}), dir); err != nil {
 		t.Fatal(err)
 	}
-	if b, _ := os.ReadFile(filepath.Join(dir, "kero")); string(b) != "new" {
+	if b, _ := os.ReadFile(filepath.Join(dir, kero)); string(b) != "new" {
 		t.Errorf("kero is %q", b)
+	}
+	// Windows' archives are zips.
+	if err := Replace(zipball(t, map[string]string{kero: "zipped", Marker: ""}), dir); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, kero)); string(b) != "zipped" {
+		t.Errorf("kero is %q", b)
+	}
+	if olds, _ := filepath.Glob(filepath.Join(dir, "*.old")); len(olds) > 0 {
+		t.Errorf("%v stayed", olds)
+	}
+	if err := Replace(tarball(t, map[string]string{kero: "new", "libghostty-vt.so": "lib", Marker: ""}), dir); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "stale.so")); err == nil {
 		t.Error("a file of the old version stayed")
@@ -138,11 +163,14 @@ func TestReplace(t *testing.T) {
 		}
 	}
 	// An archive without kero, or with a path out of it, changes nothing.
-	for _, bad := range []map[string]string{{"other": "x"}, {"kero": "x"}, {"kero": "x", Marker: "", "../escape": "x"}} {
+	for _, bad := range []map[string]string{{"other": "x"}, {kero: "x"}, {kero: "x", Marker: "", "../escape": "x"}} {
 		if err := Replace(tarball(t, bad), dir); err == nil {
 			t.Errorf("replaced with %v", bad)
 		}
-		if b, _ := os.ReadFile(filepath.Join(dir, "kero")); string(b) != "new" {
+		if err := Replace(zipball(t, bad), dir); err == nil {
+			t.Errorf("replaced with a zip of %v", bad)
+		}
+		if b, _ := os.ReadFile(filepath.Join(dir, kero)); string(b) != "new" {
 			t.Errorf("a bad archive changed kero to %q", b)
 		}
 	}

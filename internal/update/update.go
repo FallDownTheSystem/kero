@@ -6,6 +6,7 @@ package update
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -22,6 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,9 +40,25 @@ const Repo = "egoist/kero"
 const maxArchive = 256 << 20
 
 // Asset is the name of the server build's archive of a version for a
-// platform; its signature is Asset+".sig", its SHA-256 Asset+".sha256".
+// platform: a .zip for Windows, else a .tar.gz. Its signature is
+// Asset+".sig", its SHA-256 Asset+".sha256".
 func Asset(version, goos, goarch string) string {
-	return fmt.Sprintf("kero-server-%s-%s-%s.tar.gz", version, goos, goarch)
+	ext := ".tar.gz"
+	if goos == "windows" {
+		ext = ".zip"
+	}
+	return fmt.Sprintf("kero-server-%s-%s-%s%s", version, goos, goarch, ext)
+}
+
+// Platforms are those the server build is made for.
+var Platforms = []string{"linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"}
+
+// exe is the name of kero in an archive for goos.
+func exe(goos string) string {
+	if goos == "windows" {
+		return "kero.exe"
+	}
+	return "kero"
 }
 
 // releases is where the releases are: $KERO_RELEASES, for tests and
@@ -57,13 +75,19 @@ func URL(version, name string) string {
 	return releases() + "/v" + strings.TrimPrefix(version, "v") + "/" + name
 }
 
-// InstallScript is the URL of the script that installs a version of the
-// server build: `curl -fsSL <it> | sh`.
-func InstallScript(version string) string {
+// InstallScript is the URL of the script that installs a version ("" the
+// latest) of the server build: `curl -fsSL <it> | sh`.
+func InstallScript(version string) string { return script(version, "install-server.sh") }
+
+// InstallScriptPS is the URL of the script that installs a version of the
+// server build on Windows: `irm <it> | iex`, in PowerShell.
+func InstallScriptPS(version string) string { return script(version, "install-server.ps1") }
+
+func script(version, name string) string {
 	if version == "" {
-		return "https://github.com/" + Repo + "/releases/latest/download/install-server.sh"
+		return "https://github.com/" + Repo + "/releases/latest/download/" + name
 	}
-	return URL(version, "install-server.sh")
+	return URL(version, name)
 }
 
 var httpClient = &http.Client{Timeout: 5 * time.Minute}
@@ -211,11 +235,12 @@ func Sign(archive []byte, version, goos, goarch, privateKey string) (string, err
 // kero (InstallDir), which keeps running the old one until it restarts.
 // It goes back from current, the version installed, only with downgrade.
 func Install(ctx context.Context, version, dir, current string, downgrade bool) error {
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("the server build of Kero is for Linux, not %s", runtime.GOOS)
+	platform := runtime.GOOS + "/" + runtime.GOARCH
+	if !slices.Contains(Platforms, platform) {
+		return fmt.Errorf("the server build of Kero is not made for %s", platform)
 	}
 	if !Managed(dir) {
-		return fmt.Errorf("Kero in %s was not installed with install-server.sh: update it as you installed it", dir)
+		return fmt.Errorf("Kero in %s was not installed with Kero's install script: update it as you installed it", dir)
 	}
 	version = strings.TrimPrefix(version, "v")
 	if version == "" {
@@ -253,8 +278,8 @@ func Install(ctx context.Context, version, dir, current string, downgrade bool) 
 
 // Replace puts what the archive holds in place of dir, as a whole, so
 // that no file of the old version stays: into a directory beside it
-// first, then by renames. The archive is the server build's: it holds
-// kero and the Marker.
+// first, then by renames. The archive is the server build's, for this
+// platform: it holds kero and the Marker.
 func Replace(archive []byte, dir string) error {
 	dir = filepath.Clean(dir)
 	staging := dir + ".new"
@@ -265,9 +290,12 @@ func Replace(archive []byte, dir string) error {
 		os.RemoveAll(staging)
 		return err
 	}
-	if st, err := os.Stat(filepath.Join(staging, "kero")); err != nil || runtime.GOOS != "windows" && st.Mode()&0o111 == 0 || !Managed(staging) {
+	if st, err := os.Stat(filepath.Join(staging, exe(runtime.GOOS))); err != nil || runtime.GOOS != "windows" && st.Mode()&0o111 == 0 || !Managed(staging) {
 		os.RemoveAll(staging)
 		return errors.New("update: the archive is not the server build of Kero")
+	}
+	if runtime.GOOS == "windows" {
+		return replaceFiles(staging, dir)
 	}
 	if err := os.Rename(dir, old); err != nil {
 		os.RemoveAll(staging)
@@ -281,17 +309,78 @@ func Replace(archive []byte, dir string) error {
 	return nil
 }
 
-// extract unpacks a .tar.gz into dir: its regular files and directories,
-// nothing outside dir.
+// oldSuffix ends the files a Windows update moved aside.
+const oldSuffix = ".old"
+
+// replaceFiles puts staging's files in place of dir's, one by one, as
+// Windows takes it: the files kerod runs, kero.exe and its library, and
+// the directory that holds them, can be neither removed nor replaced, but
+// those files can be moved. So dir's go aside first, as name.<n>.old,
+// removed once nothing runs them (RemoveOld).
+func replaceFiles(staging, dir string) error {
+	defer os.RemoveAll(staging)
+	RemoveOld(dir)
+	olds, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	news, err := os.ReadDir(staging)
+	if err != nil {
+		return err
+	}
+	type move struct{ from, to string }
+	var done []move
+	undo := func(err error) error {
+		for i := len(done) - 1; i >= 0; i-- {
+			os.Rename(done[i].to, done[i].from)
+		}
+		return err
+	}
+	stamp := strconv.FormatInt(time.Now().UnixNano(), 36)
+	for _, e := range olds {
+		if strings.HasSuffix(e.Name(), oldSuffix) {
+			continue
+		}
+		m := move{filepath.Join(dir, e.Name()), filepath.Join(dir, e.Name()+"."+stamp+oldSuffix)}
+		if err := os.Rename(m.from, m.to); err != nil {
+			return undo(err)
+		}
+		done = append(done, m)
+	}
+	for _, e := range news {
+		m := move{filepath.Join(staging, e.Name()), filepath.Join(dir, e.Name())}
+		if err := os.Rename(m.from, m.to); err != nil {
+			return undo(err)
+		}
+		done = append(done, m)
+	}
+	RemoveOld(dir)
+	return nil
+}
+
+// RemoveOld removes what an update on Windows moved aside in dir, but
+// what still runs, which the next one removes.
+func RemoveOld(dir string) {
+	olds, _ := filepath.Glob(filepath.Join(dir, "*"+oldSuffix))
+	for _, o := range olds {
+		os.RemoveAll(o)
+	}
+}
+
+// extract unpacks a .zip or a .tar.gz into dir: its regular files and
+// directories, nothing outside dir.
 func extract(archive []byte, dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	if bytes.HasPrefix(archive, []byte("PK\x03\x04")) {
+		return extractZip(archive, dir)
+	}
 	gz, err := gzip.NewReader(bytes.NewReader(archive))
 	if err != nil {
 		return fmt.Errorf("update: %w", err)
 	}
 	tr := tar.NewReader(gz)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -300,34 +389,73 @@ func extract(archive []byte, dir string) error {
 		if err != nil {
 			return fmt.Errorf("update: %w", err)
 		}
-		name := filepath.Clean(filepath.FromSlash(h.Name))
-		if name == "." {
-			continue
-		}
-		if filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) {
-			return fmt.Errorf("update: %s is outside the archive", h.Name)
-		}
-		path := filepath.Join(dir, name)
 		switch h.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(path, 0o755); err != nil {
-				return err
-			}
+			err = place(dir, h.Name, true, 0, nil)
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				return err
-			}
-			f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(h.Mode)&0o755)
-			if err != nil {
-				return err
-			}
-			_, err = io.Copy(f, io.LimitReader(tr, maxArchive))
-			if cerr := f.Close(); err == nil {
-				err = cerr
-			}
-			if err != nil {
-				return err
-			}
+			err = place(dir, h.Name, false, os.FileMode(h.Mode), tr)
+		}
+		if err != nil {
+			return err
 		}
 	}
+}
+
+func extractZip(archive []byte, dir string) error {
+	zr, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	if err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
+	for _, f := range zr.File {
+		if f.FileInfo().IsDir() {
+			if err := place(dir, f.Name, true, 0, nil); err != nil {
+				return err
+			}
+			continue
+		}
+		if !f.Mode().IsRegular() {
+			continue
+		}
+		r, err := f.Open()
+		if err != nil {
+			return fmt.Errorf("update: %w", err)
+		}
+		mode := f.Mode()
+		if mode&0o777 == 0 {
+			mode = 0o644
+		}
+		err = place(dir, f.Name, false, mode, r)
+		r.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// place writes a file, or a directory, of an archive into dir.
+func place(dir, name string, isDir bool, mode os.FileMode, r io.Reader) error {
+	clean := filepath.Clean(filepath.FromSlash(name))
+	if clean == "." {
+		return nil
+	}
+	if filepath.IsAbs(clean) || filepath.VolumeName(clean) != "" || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("update: %s is outside the archive", name)
+	}
+	path := filepath.Join(dir, clean)
+	if isDir {
+		return os.MkdirAll(path, 0o755)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode&0o755)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(f, io.LimitReader(r, maxArchive))
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	return err
 }

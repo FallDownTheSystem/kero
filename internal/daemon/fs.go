@@ -30,7 +30,7 @@ func hostPath(p, base string) string {
 	switch {
 	case p == "" || p == "~":
 		return proto.Home()
-	case strings.HasPrefix(p, "~/"):
+	case strings.HasPrefix(p, "~/") || runtime.GOOS == "windows" && strings.HasPrefix(p, `~\`):
 		return filepath.Join(proto.Home(), p[2:])
 	case filepath.IsAbs(p):
 		return filepath.Clean(p)

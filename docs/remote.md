@@ -9,10 +9,16 @@ Kero can show sessions that run on other machines, such as a Linux dev box, a cl
 
 ## Quick start
 
-On the machine, install the server build of Kero. It needs no root, no display and no GTK:
+On the machine, install the server build of Kero. It needs no root or administrator, no display and no GTK. On Linux or macOS:
 
 ```sh
 curl -fsSL https://github.com/egoist/kero/releases/latest/download/install-server.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://github.com/egoist/kero/releases/latest/download/install-server.ps1 | iex
 ```
 
 On your computer, open **Settings › Hosts**, type the address you'd give `ssh`, such as `me@devbox`, and press **Add**. The host's sessions appear in the sidebar under its name.
@@ -51,7 +57,13 @@ Kero never prompts for anything over SSH, as there's no one to answer in the app
 - **A host you haven't connected to before** needs its key trusted first. Run `ssh me@devbox` once in a terminal.
 - **Password logins** aren't supported. Use a key.
 
-Kero looks for `kero` on the host in `~/.local/bin`, the desktop app's command line tool and your `PATH`. If yours is elsewhere, name it in the address: `me@devbox?kero=/opt/kero/kero`.
+Kero looks for `kero` on the host in `~/.local/bin` (on Windows, `%LOCALAPPDATA%\Programs\kero-server`), the desktop app's command line tool and your `PATH`. If yours is elsewhere, name it in the address: `me@devbox?kero=/opt/kero/kero`, or on Windows `me@pc?kero=C:/kero/kero.exe`.
+
+### Windows hosts
+
+Kero reaches a Windows machine over SSH, so turn on its OpenSSH Server first (**Settings › System › Optional features**, as an administrator). Kero works with the server's default shell, cmd, and with PowerShell. It finds out which one the first time it connects, which costs that connection a moment.
+
+The install script runs kerod as a task of yours in Task Scheduler, which starts it as you log on to the machine, in your session. While no one is logged on, kerod starts as Kero connects and keeps running after the connection ends. A kerod started that way runs without your Windows password, as programs do over SSH with a key, so programs in its sessions can't reach network shares or the credentials Windows keeps for you. Log on to the machine once, or restart kerod after you do, to run them with your full account.
 
 ### WSL
 
@@ -93,10 +105,10 @@ kerod reads `listen` and `listen-allow` as it starts, so run `kero daemon restar
 
 ## Running kerod as a service
 
-On a server, run kerod as a service of your own, so that it starts with the machine and keeps your sessions running while no one is logged in. The install script does this for you on Linux. On a Mac, the service is a launchd agent, which runs while you're logged in to the Mac, so keep a session logged in there.
+On a server, run kerod as a service of your own, so that it starts with the machine and keeps your sessions running while no one is logged in. The install scripts do this for you. On a Mac, the service is a launchd agent, which runs while you're logged in to the Mac, so keep a session logged in there; the script installs it when you are. On Windows, it's a Task Scheduler task, which starts kerod as you log on.
 
 ```sh
-kero daemon install-service      # a systemd user unit, or a launchd agent on macOS
+kero daemon install-service      # a systemd user unit, a launchd agent on macOS, a task on Windows
 kero daemon status               # how it runs, and where it listens
 kero daemon uninstall-service
 ```
@@ -132,7 +144,7 @@ The app and a host can run different versions of Kero. When the host runs an old
 
 - Kero updates a host only when you ask, never on a reconnect, and never back to an older version.
 - When the host runs a newer Kero than the app, update the app instead (**Settings › General**).
-- Kero updates only an install of `install-server.sh`. If you installed Kero on the host another way, or it runs the Kero desktop app, update it the way you installed it.
+- Kero updates only an install of its install scripts. If you installed Kero on the host another way, or it runs the Kero desktop app, update it the way you installed it.
 
 From the command line:
 
@@ -172,7 +184,7 @@ host = ubuntu=wsl://Ubuntu
 | --- | --- |
 | `KERO_HOST` | The host commands act on, as `-H` |
 | `KERO_SSH` | The `ssh` program Kero runs, in place of the one on your `PATH` |
-| `KERO_RELEASES` | A mirror of Kero's releases, for `install-server.sh` and `kero daemon update` |
+| `KERO_RELEASES` | A mirror of Kero's releases, for the install scripts and `kero daemon update` |
 
 ## Security
 
@@ -183,7 +195,6 @@ host = ubuntu=wsl://Ubuntu
 
 ## Limits
 
-- The server build is for Linux on x86-64 and ARM64, with glibc 2.28 or later. On a Mac, the app's own kerod serves as a host: run `kero daemon install-service` there.
-- Windows machines can't be hosts yet.
+- The server build is for Linux, with glibc 2.28 or later, macOS and Windows 10 (1809) or later, on x86-64 and ARM64. On a Mac with the Kero app, the app's own kerod serves as a host too.
 - Dragging files onto a remote pane pastes your computer's paths. Paste them instead.
 - One host has one account. Login servers, where several people reach their own accounts on one machine, are planned.

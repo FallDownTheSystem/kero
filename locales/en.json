@@ -910,7 +910,7 @@
       }
     }
   },
-  "hostInstallDetail": "Kero runs its install script on {host}: the server build of Kero goes in ~/.local, and kerod runs as a service of yours there.",
+  "hostInstallDetail": "Kero runs its install script on {host}: the server build of Kero goes in your home folder there (~/.local, or %LOCALAPPDATA% on Windows), and kerod runs as a service of yours.",
   "@hostInstallDetail": {
     "placeholders": {
       "host": {

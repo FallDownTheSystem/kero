@@ -11,8 +11,10 @@ import (
 	"net/netip"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,7 +41,8 @@ const ClientHeader = "Kero-Client"
 
 // BridgeLocations are where the bridge command looks for kero on a host,
 // in order: a server install, the command line tool a desktop install
-// links, the PATH, the apps.
+// links, the PATH, the apps. The last are of Windows, whose sh, as Git's,
+// has its home in the user's profile.
 var BridgeLocations = []string{
 	`$HOME/.local/bin/kero`,
 	`$HOME/.config/kero/bin/kero`,
@@ -48,16 +51,122 @@ var BridgeLocations = []string{
 	`/usr/local/bin/kero`,
 	`/usr/bin/kero`,
 	`/Applications/Kero.app/Contents/MacOS/Kero`,
+	`$HOME/AppData/Local/Programs/kero-server/kero`,
+	`$HOME/AppData/Roaming/kero/bin/kero`,
 }
 
 // bridgeNotFound is how the bridge command says there is no kero, as its
 // exit status: a shell's for a command not found.
 const bridgeNotFound = 127
 
-// BridgeCommand is the shell command that runs kero's bridge on the host,
-// for via ("ssh" or "wsl"): with sh, whatever the user's shell, so that
-// fish and csh take it too.
-func BridgeCommand(a Addr, via string) string { return "sh -c " + shellQuote(bridgeScript(a, via)) }
+// The shells of Windows, which its SSH server runs commands with: cmd, its
+// default, or PowerShell. Neither takes sh -c.
+const (
+	shellCmd        = "cmd"
+	shellPowerShell = "powershell"
+)
+
+// shells remembers the hosts whose SSH server runs commands with a shell
+// of Windows (address → shell), for their next connections to run the
+// bridge at once.
+var shells sync.Map
+
+func hostShell(a Addr) string {
+	s, _ := shells.Load(a.String())
+	sh, _ := s.(string)
+	return sh
+}
+
+// Windows reports whether a host is known to run Windows, as its SSH
+// server runs commands with cmd or PowerShell: what a connection found.
+func Windows(a Addr) bool { return hostShell(a) != "" }
+
+// bridgeCommand is the command that runs kero's bridge on a host over SSH,
+// for the shell that runs it there: sh, whatever the user's shell, so that
+// fish and csh take it too, else Windows' cmd or PowerShell.
+func bridgeCommand(a Addr, shell string) string {
+	switch shell {
+	case shellCmd:
+		return cmdBridge(a)
+	case shellPowerShell:
+		return powershellBridge(a)
+	}
+	return "sh -c " + shellQuote(bridgeScript(a, "ssh"))
+}
+
+// cmdBridge is the bridge's command for cmd: kero where install-server.ps1
+// puts it, then the desktop app's command line tool, then the PATH's.
+// Paths are quoted, which no %VAR% of them, as a user's name, can end;
+// the command starts with no quote, which cmd /c would take off.
+func cmdBridge(a Addr) string {
+	const run = " __bridge --via ssh"
+	const missing = `(echo kero is not installed on %COMPUTERNAME% 1>&2 & exit /b 127)`
+	locs := []string{`%LOCALAPPDATA%\Programs\kero-server\kero.exe`, `%APPDATA%\kero\bin\kero.exe`}
+	s := `(where kero >nul 2>&1 && kero` + run + ` || ` + missing + `)`
+	if a.Kero != "" {
+		locs, s = []string{a.Kero}, missing
+	}
+	for i := len(locs) - 1; i >= 0; i-- {
+		s = `if exist "` + locs[i] + `" ("` + locs[i] + `"` + run + `) else ` + s
+	}
+	return s
+}
+
+// powershellBridge is the bridge's command for PowerShell, which looks
+// where cmdBridge does. It has no double quotes, which the SSH server
+// would not keep as it passes the command to PowerShell.
+func powershellBridge(a Addr) string {
+	locs := `($env:LOCALAPPDATA + '\Programs\kero-server\kero.exe'), ($env:APPDATA + '\kero\bin\kero.exe')`
+	path := `if (-not $k) { $k = (Get-Command kero -CommandType Application -ErrorAction Ignore | Select-Object -First 1).Source }; `
+	if a.Kero != "" {
+		locs, path = psQuote(a.Kero), ""
+	}
+	return `$k = @(` + locs + `) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1; ` + path +
+		`if (-not $k) { [Console]::Error.WriteLine('kero is not installed on ' + $env:COMPUTERNAME); exit 127 }; ` +
+		`& $k __bridge --via ssh; exit $LASTEXITCODE`
+}
+
+// psQuote quotes s for PowerShell, as a string of its own.
+func psQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
+
+// ansiEscape matches the colors PowerShell 7 writes its errors in.
+var ansiEscape = regexp.MustCompile("\x1b\\[[0-9;?]*[A-Za-z]")
+
+// quotedSh matches sh, quoted, as cmd names a command it does not know,
+// in whatever language: 'sh' is not recognized, "sh" no se reconoce.
+var quotedSh = regexp.MustCompile(`['"“”«»「」]sh['"“”«»「」]`)
+
+// psCommandError matches PowerShell's error for a command it does not
+// know: 7's, as "sh: The term 'sh' is not recognized", which no error of
+// a Unix sh, as "sh: 1: …", is, and 5's, which names the exception.
+var psCommandError = regexp.MustCompile(`(?m)^sh ?:.*['"“”«»「」]sh['"“”«»「」]|CommandNotFoundException`)
+
+// windowsShell tells, from how the bridge's sh -c ended, the shell of
+// Windows that ran it, which has no sh: "" for any other end. An SSH
+// server's own failures exit with 255.
+func windowsShell(code int, stderr string) string {
+	if code == 255 || code == bridgeNotFound {
+		return ""
+	}
+	s := ansiEscape.ReplaceAllString(stderr, "")
+	switch {
+	case psCommandError.MatchString(s):
+		return shellPowerShell
+	case code == 1 && quotedSh.MatchString(s):
+		return shellCmd
+	}
+	return ""
+}
+
+// shellError is the end of a bridge that the host's shell, one of Windows,
+// could not run: Dial runs the bridge again, as that shell takes it.
+type shellError struct {
+	shell string
+	err   error
+}
+
+func (e *shellError) Error() string { return e.err.Error() }
+func (e *shellError) Unwrap() error { return e.err }
 
 // bridgeScript is the script of sh that finds kero and runs its bridge.
 func bridgeScript(a Addr, via string) string {
@@ -66,12 +175,14 @@ func bridgeScript(a Addr, via string) string {
 	if a.Kero != "" {
 		script = "exec " + shellQuote(a.Kero) + run
 	} else {
+		// No character cmd reads as its own, as > & | " %, which it would
+		// act on before it says it has no sh: words split at colons only,
+		// the spaces of paths escaped.
 		var locs []string
 		for _, l := range BridgeLocations {
-			locs = append(locs, `"`+l+`"`)
+			locs = append(locs, strings.ReplaceAll(l, " ", `\ `))
 		}
-		script = `for k in ` + strings.Join(locs, " ") + `; do if command -v "$k" >/dev/null 2>&1; then exec "$k"` + run + `; fi; done; ` +
-			`echo "kero is not installed on $(uname -n)" >&2; exit 127`
+		script = `IFS=:; for k in ` + strings.Join(locs, " ") + `; do if k=$(command -v $k); then exec $k` + run + `; fi; done; exit ` + strconv.Itoa(bridgeNotFound)
 	}
 	return script
 }
@@ -98,7 +209,7 @@ func sshArgs(a Addr) []string {
 	if a.User != "" {
 		args = append(args, "-l", a.User)
 	}
-	return append(args, "--", a.Host, BridgeCommand(a, "ssh"))
+	return append(args, "--", a.Host, bridgeCommand(a, hostShell(a)))
 }
 
 // SSHCommand is the program that runs ssh: $KERO_SSH, else ssh.
@@ -114,7 +225,7 @@ func SSHCommand() string {
 func transport(ctx context.Context, a Addr, client string) (io.ReadWriteCloser, error) {
 	switch a.Scheme {
 	case "ssh":
-		return startBridge(exec.Command(SSHCommand(), sshArgs(a)...))
+		return startBridge(exec.Command(SSHCommand(), sshArgs(a)...), true)
 	case "wsl":
 		if runtime.GOOS != "windows" {
 			return nil, errors.New("wsl:// addresses are of Windows")
@@ -125,7 +236,7 @@ func transport(ctx context.Context, a Addr, client string) (io.ReadWriteCloser, 
 		}
 		// --exec runs sh itself, not through the distribution's shell.
 		args = append(args, "--exec", "sh", "-c", bridgeScript(a, "wsl"))
-		return startBridge(exec.Command("wsl.exe", args...))
+		return startBridge(exec.Command("wsl.exe", args...), false)
 	case "http", "https":
 		scheme := "ws"
 		if a.Scheme == "https" {
@@ -172,6 +283,7 @@ func httpError(resp *http.Response, err error) string {
 // and would drop what is still in it, as the bridge's last words.
 type cmdConn struct {
 	cmd    *exec.Cmd
+	ssh    bool // ssh's, whose host may run Windows
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
 	stderr tail
@@ -182,8 +294,8 @@ type cmdConn struct {
 	err    error // the program's end, once done
 }
 
-func startBridge(cmd *exec.Cmd) (*cmdConn, error) {
-	c := &cmdConn{cmd: cmd, eof: make(chan struct{}), done: make(chan struct{})}
+func startBridge(cmd *exec.Cmd, ssh bool) (*cmdConn, error) {
+	c := &cmdConn{cmd: cmd, ssh: ssh, eof: make(chan struct{}), done: make(chan struct{})}
 	hideWindow(cmd)
 	// Never a prompt, as there is no one to answer; wsl.exe's errors in
 	// UTF-8, which it writes in UTF-16 otherwise.
@@ -256,10 +368,15 @@ func (c *cmdConn) failure() error {
 	if errors.As(c.err, &ee) {
 		code = ee.ExitCode()
 	}
+	if c.ssh {
+		if sh := windowsShell(code, c.stderr.all()); sh != "" {
+			return &shellError{sh, errors.New(msg)}
+		}
+	}
 	switch {
 	case code == bridgeNotFound || strings.Contains(msg, "kero is not installed"):
 		if msg == "" {
-			msg = "kero not found"
+			msg = "no kero there"
 		}
 		return fmt.Errorf("%w: %s", ErrNotInstalled, msg)
 	case code == 255 && authFailure(msg):
@@ -296,6 +413,13 @@ func (t *tail) Write(p []byte) (int, error) {
 		t.buf = t.buf[len(t.buf)-4096:]
 	}
 	return len(p), nil
+}
+
+// all is what the program wrote, its end at least.
+func (t *tail) all() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return string(t.buf)
 }
 
 // last is the last line that says something.

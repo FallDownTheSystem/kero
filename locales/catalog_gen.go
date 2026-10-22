@@ -4488,11 +4488,11 @@ func (msgs Messages) HostInstallTitle(host string) string {
 	return Catalog.Format(msgs.locale, "hostInstallTitle", map[string]any{"host": host})
 }
 
-// HostInstallDetail says "Kero runs its install script on {host}: the server build of Kero goes in ~/.local, and kerod runs as a service of you…"
+// HostInstallDetail says "Kero runs its install script on {host}: the server build of Kero goes in your home folder there (~/.local, or %LOCALA…"
 // in the language the app shows.
 func HostInstallDetail(host string) string { return In(i18n.Locale()).HostInstallDetail(host) }
 
-// HostInstallDetail says "Kero runs its install script on {host}: the server build of Kero goes in ~/.local, and kerod runs as a service of you…"
+// HostInstallDetail says "Kero runs its install script on {host}: the server build of Kero goes in your home folder there (~/.local, or %LOCALA…"
 // in the language of msgs.
 func (msgs Messages) HostInstallDetail(host string) string {
 	return Catalog.Format(msgs.locale, "hostInstallDetail", map[string]any{"host": host})

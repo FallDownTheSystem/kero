@@ -1,8 +1,9 @@
 #!/bin/sh
-# Installs the server build of Kero for the current user, without root:
-# kerod and the kero command in ~/.local/lib/kero, the command in
-# ~/.local/bin, and kerod as a systemd user service, so that Kero on
-# another machine shows this one's sessions (Settings › Hosts).
+# Installs the server build of Kero for the current user, without root, on
+# Linux or macOS: kerod and the kero command in ~/.local/lib/kero, the
+# command in ~/.local/bin, and kerod as a service of the user's (systemd's
+# or launchd's), so that Kero on another machine shows this one's sessions
+# (Settings › Hosts). Windows has install-server.ps1.
 #
 #   curl -fsSL https://github.com/egoist/kero/releases/latest/download/install-server.sh | sh
 #   sh install-server.sh [--version 2.1.0] [--no-service] [--dry-run]
@@ -26,8 +27,8 @@ Usage: sh install-server.sh [--version VERSION] [--no-service] [--dry-run]
        sh install-server.sh --uninstall
 
 Installs the server build of Kero in $lib, the kero command in $bin, and
-runs kerod as a systemd user service (--no-service: kerod starts as Kero
-connects). --uninstall removes them, and leaves your settings and data in
+runs kerod as a service: systemd's on Linux, launchd's on macOS
+(--no-service: kerod starts as Kero connects). --uninstall removes them, and leaves your settings and data in
 ~/.config/kero.
 EOF
 }
@@ -106,7 +107,11 @@ main() {
 		shift
 	done
 
-	[ "$(uname -s)" = Linux ] || fail "the server build of Kero is for Linux; on a Mac, the app runs kerod (kero daemon install-service)"
+	case "$(uname -s)" in
+	Linux) os=linux ;;
+	Darwin) os=darwin ;;
+	*) fail "the server build of Kero is for Linux, macOS and Windows (install-server.ps1), not $(uname -s)" ;;
+	esac
 	[ "$(id -u)" != 0 ] || fail "run this as the user whose sessions Kero runs, not as root"
 	case "$(uname -m)" in
 	x86_64 | amd64) arch=amd64 ;;
@@ -123,14 +128,14 @@ main() {
 	*[!0-9A-Za-z.-]* | '') fail "$version is not a version of Kero" ;;
 	esac
 
-	name="kero-server-$version-linux-$arch.tar.gz"
+	name="kero-server-$version-$os-$arch.tar.gz"
 	url="${KERO_RELEASES:-https://github.com/$repo/releases/download}/v$version/$name"
 	work="$(mktemp -d)"
 	staging="$lib.new"
 	trap 'rm -rf "$work" "$staging"' EXIT
 	trap 'exit 1' HUP INT TERM
 
-	echo "Downloading Kero $version for linux/$arch"
+	echo "Downloading Kero $version for $os/$arch"
 	fetch "$url" >"$work/$name" || fail "could not download $url"
 	fetch "$url.sha256" >"$work/$name.sha256" || fail "could not download $url.sha256"
 	want="$(cut -d' ' -f1 <"$work/$name.sha256")"
@@ -175,16 +180,24 @@ main() {
 	fi
 	case ":$PATH:" in
 	*":$bin:"*) ;;
-	*) echo "Add $bin to your PATH to run kero, as in ~/.profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+	*) echo "Add $bin to your PATH to run kero, in your shell's profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
 	esac
 
-	unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/kerod.service"
+	# The service: systemd's user unit, or launchd's agent, which runs in
+	# the session of the user logged in at the Mac.
+	if [ "$os" = darwin ]; then
+		unit="$HOME/Library/LaunchAgents/sh.kero.kerod.plist"
+		manager() { launchctl print "gui/$(id -u)" >/dev/null 2>&1; }
+	else
+		unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/kerod.service"
+		manager() { command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; }
+	fi
 	if [ "$upgrade" = 1 ] && "$lib/kero" daemon status 2>/dev/null | grep -q '^kerod .* running'; then
 		# Never a restart unasked: it would end the programs of the sessions.
 		echo "kerod runs the version of before until it restarts: kero daemon restart (its sessions start again, the programs in them end)."
 	elif [ -f "$unit" ]; then
 		: # The service runs this install's kero as it starts.
-	elif [ "$service" = 1 ] && command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+	elif [ "$service" = 1 ] && manager; then
 		"$lib/kero" daemon install-service || echo "kerod does not run as a service: Kero starts it as it connects."
 	else
 		echo "kerod starts as Kero connects. To keep it running with the machine: kero daemon install-service"

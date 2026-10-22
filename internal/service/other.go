@@ -1,11 +1,11 @@
-//go:build !linux && !darwin
+//go:build !linux && !darwin && !windows
 
 package service
 
 func file() string { return "" }
 
-// Install, and the rest, are of systemd and launchd: on Windows, kerod
-// starts with the app or a bridge.
+// Install, and the rest, are of systemd, launchd and Task Scheduler:
+// elsewhere kerod starts with the app or a bridge.
 func Install(string, func() error) error { return ErrUnsupported }
 func EnableLinger() error                { return ErrUnsupported }
 func Uninstall() error                   { return nil }

@@ -1,9 +1,9 @@
 // Sign signs the server build's archives for a release, as the release
 // workflow runs it: for each file, file.sig, which update.Verify checks,
-// and file.sha256, which install-server.sh checks. The private key is
+// and file.sha256, which the install scripts check. The private key is
 // $MYGO_UPDATER_PRIVATE_KEY, the one the app's updates are signed with.
 //
-//	go run ./internal/update/sign build/server/*.tar.gz
+//	go run ./internal/update/sign build/server/*.tar.gz build/server/*.zip
 package main
 
 import (
@@ -57,10 +57,14 @@ func fail(err error) {
 }
 
 // parseName reads the version and platform of an archive from its name,
-// as update.Asset writes it: kero-server-2.1.0-linux-amd64.tar.gz.
+// as update.Asset writes it: kero-server-2.1.0-linux-amd64.tar.gz, or
+// kero-server-2.1.0-windows-amd64.zip.
 func parseName(name string) (version, goos, goarch string, err error) {
 	rest, ok := strings.CutPrefix(name, "kero-server-")
 	rest, ok2 := strings.CutSuffix(rest, ".tar.gz")
+	if !ok2 {
+		rest, ok2 = strings.CutSuffix(rest, ".zip")
+	}
 	parts := strings.Split(rest, "-")
 	if !ok || !ok2 || len(parts) < 3 {
 		return "", "", "", fmt.Errorf("%s is not named as update.Asset names archives", name)

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -87,15 +89,41 @@ func (h *host) home() string {
 	return h.info.Home
 }
 
+// windows reports whether the host runs Windows, whose paths have drives
+// and backslashes.
+func (h *host) windows() bool {
+	if !h.remote() {
+		return runtime.GOOS == "windows"
+	}
+	return h.info.OS == "windows"
+}
+
 // shortDir writes a directory of the host with ~ for its home.
 func (h *host) shortDir(dir string) string {
 	if !h.remote() {
 		return proto.ShortDir(dir)
 	}
-	if home := strings.TrimSuffix(h.info.Home, "/"); home != "" && (dir == home || strings.HasPrefix(dir, home+"/")) {
+	sep, same := "/", func(a, b string) bool { return a == b }
+	if h.windows() {
+		sep, same = `\`, strings.EqualFold
+	}
+	home := strings.TrimSuffix(h.info.Home, sep)
+	switch {
+	case home == "":
+	case same(dir, home):
+		return "~"
+	case len(dir) > len(home) && same(dir[:len(home)], home) && dir[len(home):len(home)+1] == sep:
 		return "~" + dir[len(home):]
 	}
 	return dir
+}
+
+// joinPath joins a directory of the host and a name in it.
+func (h *host) joinPath(dir, name string) string {
+	if h.windows() {
+		return strings.TrimRight(dir, `\/`) + `\` + name
+	}
+	return path.Join(dir, name)
 }
 
 // stale reports whether kerod runs another version of Kero than the one

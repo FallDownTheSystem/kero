@@ -105,7 +105,7 @@ func (a *App) remotePaste(id string, d transfer.Data) bool {
 				a.update(func() { a.toast(fmt.Sprintf("%s: %v", h.name, err)) })
 				return
 			}
-			paths = append(paths, shellEscape(r.Path))
+			paths = append(paths, pastedPath(h, r.Path))
 		}
 		a.update(func() {
 			if e := a.terms[id]; e != nil && e.term != nil {
@@ -128,4 +128,17 @@ func shellEscape(p string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+// pastedPath writes a path of a host as one word of its shells: of a
+// POSIX shell, else, on Windows, of cmd and PowerShell alike, quoted
+// should it need to be.
+func pastedPath(h *host, p string) string {
+	if !h.windows() {
+		return shellEscape(p)
+	}
+	if strings.ContainsAny(p, " \t&()[]{}^=;!'+,`~$%@#") {
+		return `"` + p + `"`
+	}
+	return p
 }

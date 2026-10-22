@@ -486,7 +486,7 @@ func (a *App) openRemotePath(h *host, id, link string) {
 					return
 				}
 				// The host's editor, as its shell would run it.
-				p := proto.CreateParams{Split: id, Direction: "down", Command: []string{"sh", "-c", `exec ${VISUAL:-${EDITOR:-vi}} "$1"`, "sh", st.Path}}
+				p := proto.CreateParams{Split: id, Direction: "down", Command: editorCommand(h, st.Path)}
 				a.split(s, p)
 			}
 		})
@@ -500,4 +500,15 @@ func withRunning(detail string, n int) string {
 		return detail
 	}
 	return detail + " " + locales.RestartRunning(n) + "."
+}
+
+// editorCommand edits a file of a host in a pane, with the editor its
+// shell names, $VISUAL or $EDITOR, else vi, or on Windows edit.
+func editorCommand(h *host, file string) []string {
+	if !h.windows() {
+		return []string{"sh", "-c", `exec ${VISUAL:-${EDITOR:-vi}} "$1"`, "sh", file}
+	}
+	quote := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
+	return []string{"powershell.exe", "-NoProfile", "-Command",
+		`$e = if ($env:VISUAL) { $env:VISUAL } elseif ($env:EDITOR) { $env:EDITOR } else { 'edit' }; Invoke-Expression ($e + ' ' + ` + quote(quote(file)) + `)`}
 }

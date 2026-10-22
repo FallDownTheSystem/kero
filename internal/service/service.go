@@ -1,9 +1,11 @@
 // Package service runs kerod as a service of the user's: a systemd user
 // unit on Linux, which lingering starts with the machine and keeps running
-// with no one logged in, and a launchd agent on macOS, which runs while
-// the user is logged in. `kero daemon install-service` installs it, as a
-// server wants: it runs `kero daemon serve`, which never exits for being
-// idle, with KERO_SERVICE=1, which tells kerod a manager starts it again.
+// with no one logged in, a launchd agent on macOS, which runs while the
+// user is logged in, and a task of Task Scheduler on Windows, which does
+// too. `kero daemon install-service` installs it, as a server wants: it
+// runs `kero daemon serve`, which never exits for being idle, with
+// KERO_SERVICE=1 under systemd and launchd, which tells kerod a manager
+// starts it again as it exits; Task Scheduler does not.
 package service
 
 import (
@@ -15,7 +17,7 @@ import (
 )
 
 // ErrUnsupported: the system runs no services of a user's that Kero knows.
-var ErrUnsupported = errors.New("kero runs kerod as a service with systemd (Linux) or launchd (macOS)")
+var ErrUnsupported = errors.New("kero runs kerod as a service with systemd (Linux), launchd (macOS) or Task Scheduler (Windows)")
 
 // Name is the service's name: kerod, or kerod-dev for a development
 // build (proto.Name), whose kerod is of its own.

@@ -10,6 +10,14 @@ Windows and Linux.
 
 User docs: [docs/remote.md](../docs/remote.md).
 
+- **Every platform is a host.** The server build ships for Linux, macOS and
+  Windows, on amd64 and arm64, each archive installed and run on its own
+  platform in CI (.github/workflows/server.yml). Windows is reached over
+  OpenSSH: the bridge's `sh -c` has none of cmd's special characters, so
+  cmd and PowerShell say they have no sh, which tells Kero to run the
+  bridge as that shell takes it, from then on. kerod runs there as a Task
+  Scheduler task at logon, through `conhost --headless`, and an update
+  moves the running files aside, as Windows can't replace them.
 - **SSH and WSL are transports too, beside HTTP.** Herdr (herdrdev/herdr)
   reaches machines only over SSH: `ssh host herdr remote-client-bridge` pipes
   stdio to the remote daemon's socket. That needs nothing set up on the host
@@ -313,7 +321,5 @@ For networks without Tailscale, and for the iOS client.
 - How does input latency feel over a slow link? kerod renders every frame, so
   a typed key needs a round trip before it shows. Measure before considering
   local echo prediction.
-- Windows hosts: Kero ships for Windows and kerod runs there with ConPTY, and
-  the listeners don't depend on the OS. Are there users who'd run one?
 - Should a remote session show the host's own terminal theme, or always the
   app's? Today the app styles the terminal, so it would be the app's.

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -73,12 +74,17 @@ var Exe string
 // in a session of its own, so that it outlives whoever started it.
 func StartDaemon() error {
 	// The service's, or none: a kerod beside it would hold the lock its
-	// manager starts the service's for, again and again.
+	// manager starts the service's for, again and again. But Task
+	// Scheduler's, which starts none while no one is logged on to the
+	// machine, and never again: a kerod of its own then.
 	if service.Installed() {
-		if err := service.Start(); err != nil {
+		err := service.Start()
+		if err == nil {
+			return nil
+		}
+		if runtime.GOOS != "windows" {
 			return fmt.Errorf("kerod's service did not start: %w", err)
 		}
-		return nil
 	}
 	exe := Exe
 	if exe == "" {

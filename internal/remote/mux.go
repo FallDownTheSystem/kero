@@ -96,7 +96,21 @@ func Dial(ctx context.Context, a Addr, o Options) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return handshake(ctx, tr, a, o)
+	c, err := handshake(ctx, tr, a, o)
+	// A host of Windows has no sh: the bridge again, as its shell takes
+	// it, which the host's next connections run at once, should it run.
+	var se *shellError
+	if !errors.As(err, &se) {
+		return c, err
+	}
+	shells.Store(a.String(), se.shell)
+	if tr, err = transport(ctx, a, o.Client); err == nil {
+		c, err = handshake(ctx, tr, a, o)
+	}
+	if err != nil && !errors.Is(err, ErrNotInstalled) {
+		shells.Delete(a.String())
+	}
+	return c, err
 }
 
 // handshake opens a remote connection over a transport, which it closes

@@ -873,15 +873,19 @@ func daemonCmd(args []string, host string) error {
 		}
 		return nil
 	case "stop", "restart":
+		// The service's manager stops and restarts it, but Task
+		// Scheduler, whose kerod stops as any, and starts with the task.
 		if service.Installed() {
+			err := service.Restart()
 			if sub == "stop" {
-				return service.Stop()
+				err = service.Stop()
 			}
-			if err := service.Restart(); err != nil {
+			if !errors.Is(err, service.ErrUnsupported) {
+				if err == nil && sub == "restart" {
+					fmt.Println("kerod restarted")
+				}
 				return err
 			}
-			fmt.Println("kerod restarted")
-			return nil
 		}
 		if err := StopDaemon(); err != nil {
 			return err

@@ -16,16 +16,18 @@
   pasting an image or files (which copies them to the host) all act on
   the host. Its programs drive the app with `kero focus` and `kero do`
   only once you turn on its Remote Control.
-- The server build of Kero runs kerod and the CLI on Linux with no app,
-  display or GTK: `curl -fsSL
+- The server build of Kero runs kerod and the CLI on Linux, macOS and
+  Windows with no app, display or GTK: `curl -fsSL
   https://github.com/egoist/kero/releases/latest/download/install-server.sh
-  | sh`. The app offers to install it on a host that has no Kero, and to
-  update it to the app's version, signed as the app's updates are.
+  | sh`, or on Windows `irm .../install-server.ps1 | iex`. The app offers
+  to install it on a host that has no Kero, and to update it to the app's
+  version, signed as the app's updates are. Windows hosts are reached
+  over OpenSSH, whose shell may be cmd or PowerShell.
 - `kero -H <host>` and `$KERO_HOST` run commands on a host's sessions; `kero
   hosts` adds, checks and installs hosts; `kero clients` lists who is
   connected to kerod; `kero daemon install-service` runs kerod as a
-  systemd user service or a launchd agent, and `kero daemon serve` in the
-  foreground.
+  systemd user service, a launchd agent or a Task Scheduler task, and
+  `kero daemon serve` in the foreground.
 - kerod's socket is its user's from the moment it is made, and kerod
   refuses connections of other users' processes. The login shell is
   looked up through NSS, so LDAP and SSSD accounts get theirs.

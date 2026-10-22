@@ -269,6 +269,18 @@ func hostsCmd(args []string) error {
 		if version == "" {
 			version = releasedVersion()
 		}
+		// A connection finds a host of Windows, which installs with
+		// PowerShell.
+		if a.Scheme == "ssh" && !remote.Windows(a) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			rc, err := remote.Dial(ctx, a, remote.Options{App: build.Version(), Client: clientName("kero CLI")})
+			cancel()
+			if err == nil {
+				rc.Close()
+			} else if errors.Is(err, remote.ErrAuth) {
+				return err
+			}
+		}
 		cmd, err := remote.InstallCommand(a, version, false)
 		if err != nil {
 			return err
@@ -397,7 +409,9 @@ func bridge(args []string) error {
 // service's, else one this executable starts.
 func restartLocal() error {
 	if service.Installed() {
-		return service.Restart()
+		if err := service.Restart(); !errors.Is(err, service.ErrUnsupported) {
+			return err
+		}
 	}
 	if err := StopDaemon(); err != nil {
 		return err

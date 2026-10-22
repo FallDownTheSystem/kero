@@ -166,6 +166,19 @@ func TestHostShortDir(t *testing.T) {
 			t.Errorf("shortDir(%q) = %q", in, got)
 		}
 	}
+	// A host of Windows: backslashes, and a drive's letter of either case.
+	w := &host{name: "w", info: proto.HostInfo{OS: "windows", Home: `C:\Users\me`}}
+	for in, want := range map[string]string{`C:\Users\me`: "~", `c:\users\me\api`: `~\api`, `C:\Users\meg`: `C:\Users\meg`, `D:\src`: `D:\src`} {
+		if got := w.shortDir(in); got != want {
+			t.Errorf("Windows: shortDir(%q) = %q", in, got)
+		}
+	}
+	if got := w.joinPath(`C:\`, "src"); got != `C:\src` {
+		t.Errorf("joinPath = %q", got)
+	}
+	if got := pastedPath(w, `C:\Users\me\AppData\Local\Temp\a b.png`); got != `"C:\Users\me\AppData\Local\Temp\a b.png"` {
+		t.Errorf("pastedPath = %q", got)
+	}
 }
 
 func TestShellEscape(t *testing.T) {
@@ -182,7 +195,8 @@ func TestShellEscape(t *testing.T) {
 
 func TestPickerItems(t *testing.T) {
 	a := testApp(t)
-	a.picker = folderPicker{open: true, host: a.local(), list: &proto.FSList{Dir: "/home/me", Parent: "/home", Entries: []proto.FSEntry{
+	linux := &host{name: "b", info: proto.HostInfo{OS: "linux", Home: "/home/me"}}
+	a.picker = folderPicker{open: true, host: linux, list: &proto.FSList{Dir: "/home/me", Parent: "/home", Entries: []proto.FSEntry{
 		{Name: "api", Dir: true, Repo: true}, {Name: "notes.txt"}, {Name: "web", Dir: true},
 	}}}
 	var got []string
@@ -197,8 +211,13 @@ func TestPickerItems(t *testing.T) {
 		t.Errorf("filtered %+v", items)
 	}
 	for q, want := range map[string]bool{"~/x": true, "/srv": true, "~": true, "src": false, "~x": false} {
-		if isPathQuery(q) != want {
+		if isPathQuery(q, false) != want {
 			t.Errorf("isPathQuery(%q)", q)
+		}
+	}
+	for q, want := range map[string]bool{`C:\src`: true, "d:": true, `~\x`: true, `\\nas\share`: true, "src": false, "1:": false} {
+		if isPathQuery(q, true) != want {
+			t.Errorf("Windows: isPathQuery(%q)", q)
 		}
 	}
 	_ = fmt.Sprint()
@@ -272,7 +291,8 @@ func TestHostVersions(t *testing.T) {
 
 func TestPickerChosen(t *testing.T) {
 	a := testApp(t)
-	a.picker = folderPicker{open: true, host: a.local(), list: &proto.FSList{Dir: "/home/me", Parent: "/home", Entries: []proto.FSEntry{{Name: "api", Dir: true}}}}
+	linux := &host{name: "b", info: proto.HostInfo{OS: "linux", Home: "/home/me"}}
+	a.picker = folderPicker{open: true, host: linux, list: &proto.FSList{Dir: "/home/me", Parent: "/home", Entries: []proto.FSEntry{{Name: "api", Dir: true}}}}
 	items := a.pickerItems()
 	if got := a.pickerChosen(items); got != "/home/me" {
 		t.Errorf("with the parent chosen, Open opens %q", got)

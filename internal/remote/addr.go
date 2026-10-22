@@ -33,7 +33,7 @@ type Addr struct {
 	Host   string // the host, or for wsl the distribution, "" its default
 	Port   string
 	// Kero is the kero executable on the host, for ssh and wsl, when it is
-	// not where the bridge looks (BridgeCommand).
+	// not where the bridge looks (BridgeLocations).
 	Kero string
 }
 
@@ -93,8 +93,8 @@ func ParseAddr(s string) (Addr, error) {
 	if a.User != "" && (!plainName(a.User, "._+-") || strings.HasPrefix(a.User, "-")) {
 		return Addr{}, fmt.Errorf("%q: a user is a name of letters, digits, dots and dashes", raw)
 	}
-	if a.Kero != "" && (!strings.HasPrefix(a.Kero, "/") || !plainName(a.Kero, "._+-/")) {
-		return Addr{}, fmt.Errorf("%q: kero= is an absolute path of letters, digits, dots, dashes and slashes", raw)
+	if a.Kero != "" && !absPath(a.Kero) {
+		return Addr{}, fmt.Errorf("%q: kero= is an absolute path of letters, digits, dots, dashes and slashes, as /opt/kero/kero or C:/kero/kero.exe", raw)
 	}
 	if a.Port != "" {
 		for _, r := range a.Port {
@@ -187,4 +187,15 @@ func plainName(s, extra string) bool {
 		}
 	}
 	return true
+}
+
+// absPath reports whether p is a path kero= takes: absolute, of Unix, or
+// of Windows with forward slashes, as C:/kero/kero.exe, of characters no
+// shell, sh, cmd or PowerShell, reads as anything else.
+func absPath(p string) bool {
+	rest := p
+	if len(p) > 3 && p[1] == ':' && p[2] == '/' && ('A' <= p[0] && p[0] <= 'Z' || 'a' <= p[0] && p[0] <= 'z') {
+		rest = p[2:]
+	}
+	return strings.HasPrefix(rest, "/") && plainName(rest, "._+-/")
 }
