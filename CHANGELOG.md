@@ -1,7 +1,29 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 
+- Browser panes show web pages beside your terminals: the dev server an
+  agent works on, the docs it reads, the pull request it opened. One
+  splits, zooms, moves and closes like any pane, and comes back on the
+  same page when Kero restarts. Open one with <kbd>⌘</kbd> <kbd>⇧</kbd>
+  <kbd>B</kbd>, by typing an address in the command palette, or with
+  `kero split --url localhost:3000`; <kbd>⌘</kbd> <kbd>L</kbd> goes to
+  its address bar, which shows the site's icon.
+- `kero browser` drives a browser pane's page the way `kero send` and
+  `kero read` drive a terminal: it opens pages, clicks, types, waits for
+  elements or text, reads the page's text and HTML, runs JavaScript and
+  takes screenshots. Like `kero do`, it needs Remote Control.
+- Browser panes block ads and trackers, with EasyList and EasyPrivacy to
+  begin with. Settings › Browser turns it off or picks other filter
+  lists, or `browser-block-ads` and `browser-filter-list` in the config
+  file, which takes the URL of any list in Adblock Plus syntax too.
+- With `focus-follows-mouse`, the pane the pointer moves into gets the
+  focus.
+- Dim unfocused terminals, in Settings › Terminal, or
+  `dim-unfocused-terminals = false`, keeps the terminals you're not in
+  from fading.
+- The command palette finds commands and Settings pages by keywords, and
+  by their English names in any language.
 - Kero shows sessions that run on other machines, such as a Linux dev box,
   a cloud VM or a WSL distribution, in the same sidebar, tagged with each
   host's name, with their statuses and notifications. Add a host in
