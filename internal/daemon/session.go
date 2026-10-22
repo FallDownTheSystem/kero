@@ -139,7 +139,11 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 func (s *pane) start(command []string, env []string) error {
 	shell := userShell()
 	name := shellName(shell)
-	args := shellArgs(shell, command)
+	bin := s.d.binFirst()
+	args := shellArgs(shell, bin, command)
+	if bin != "" && name == "zsh" {
+		env = append(env[:len(env):len(env)], zshEnv(bin)...)
+	}
 	dir := s.info.Dir
 	if st, err := os.Stat(dir); dir == "" || err != nil || !st.IsDir() {
 		dir = proto.Home()

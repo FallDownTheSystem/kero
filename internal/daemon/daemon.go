@@ -246,6 +246,11 @@ func (d *Daemon) linkCLI() {
 	if err := clilink.Link(d.exe, filepath.Join(d.dir, "bin")); err != nil {
 		d.log.Printf("linking the CLI: %v", err)
 	}
+	if bin := d.binFirst(); bin != "" {
+		if err := writeZshenv(bin); err != nil {
+			d.log.Printf("writing zsh's startup file: %v", err)
+		}
+	}
 }
 
 func (d *Daemon) viewedID() string { return *d.viewed.Load() }
@@ -445,7 +450,7 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 		switch {
 		case k == "CLAUDECODE", k == "TERM_PROGRAM", k == "TERM_PROGRAM_VERSION", k == "TERM_SESSION_ID",
 			k == "ITERM_SESSION_ID", k == "WINDOWID", k == "KITTY_WINDOW_ID", k == "LC_TERMINAL", k == "LC_TERMINAL_VERSION",
-			k == "KERO_SESSION", k == "KERO_PANE", k == "KERO_HOST", k == takeoverEnv, k == "KERO_SERVICE", k == "INVOCATION_ID", k == "MYGO_GHOSTTY_VT", k == "TMUX", k == "TMUX_PANE",
+			k == "KERO_SESSION", k == "KERO_PANE", k == "KERO_HOST", k == "KERO_ZDOTDIR", k == takeoverEnv, k == "KERO_SERVICE", k == "INVOCATION_ID", k == "MYGO_GHOSTTY_VT", k == "TMUX", k == "TMUX_PANE",
 			strings.HasPrefix(k, "CLAUDE_CODE_"), strings.HasPrefix(k, "GHOSTTY_"),
 			strings.HasPrefix(k, "VSCODE_"), strings.HasPrefix(k, "__CF"), k == "XPC_SERVICE_NAME":
 			continue
