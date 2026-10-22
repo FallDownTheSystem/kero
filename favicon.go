@@ -47,7 +47,16 @@ type favicon struct {
 // faviconMaxAge is how long an icon is kept before it is downloaded again.
 const faviconMaxAge = 7 * 24 * time.Hour
 
-func faviconDir() string { return filepath.Join(proto.Dir(), "favicons") }
+// faviconDir is where sites' icons are kept: the user's cache directory,
+// as they can always be downloaded again, else kero's.
+func faviconDir() string {
+	if os.Getenv("KERO_HOME") == "" {
+		if base, err := os.UserCacheDir(); err == nil {
+			return filepath.Join(base, proto.Name(), "favicons")
+		}
+	}
+	return filepath.Join(proto.Dir(), "favicons")
+}
 
 // siteOrigin returns the scheme and host of a page's URL: what its icon
 // is kept by.
