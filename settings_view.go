@@ -151,7 +151,7 @@ func (a *App) refreshService() {
 			}
 			up := time.Since(time.UnixMilli(c.Welcome.Started)).Round(time.Minute)
 			line = locales.SvcRunning(strconv.Itoa(c.Welcome.PID), durationWords(up), len(st.Sessions), panes)
-			if c.Welcome.App != mygo.App.Version() {
+			if kerodStale(c.Welcome.App, c.Welcome.Build) {
 				line += locales.SvcStale()
 			}
 			c.Close()

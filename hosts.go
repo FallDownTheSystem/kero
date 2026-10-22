@@ -38,6 +38,7 @@ type host struct {
 	err       string // why the last connection failed
 	errKind   error  // remote.ErrNotInstalled, remote.ErrAuth, else nil
 	daemonApp string // the version of Kero kerod runs
+	daemonFP  string // what its code is made of (proto.Welcome.Build)
 	info      proto.HostInfo
 	retries   int
 	gen       int    // connection attempts: the results of one another followed are dropped
@@ -138,7 +139,7 @@ func (h *host) stale() bool {
 		// host leaves behind it, never ahead of it.
 		return h.info.Kero != "" && update.Compare(h.daemonApp, h.info.Kero) < 0
 	}
-	return h.daemonApp != mygo.App.Version()
+	return kerodStale(h.daemonApp, h.daemonFP)
 }
 
 // kero is the version of Kero on a remote host: kerod's, else the one
@@ -358,7 +359,7 @@ func (a *App) connected(h *host, gen int, rc *remote.Conn, cl *client.Client, er
 	}
 	h.cl, h.conn, h.err, h.errKind, h.retries = cl, connReady, "", nil, 0
 	h.kerod = kerodID(h, cl)
-	h.daemonApp = cl.Welcome.App
+	h.daemonApp, h.daemonFP = cl.Welcome.App, cl.Welcome.Build
 	cl.OnEvent(func(m proto.Message) { a.update(func() { a.event(h, cl, m) }) })
 	cl.Go("subscribe", nil, nil)
 	h.viewSent = nil

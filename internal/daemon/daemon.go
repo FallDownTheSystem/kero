@@ -647,7 +647,7 @@ func (d *Daemon) serveHello(conn net.Conn, r *bufio.Reader, line []byte, id iden
 			id.peer = localPeer(conn)
 		}
 	}
-	welcome := proto.Welcome{Version: proto.Version, PID: os.Getpid(), Started: d.started.UnixMilli(), App: build.Version()}
+	welcome := proto.Welcome{Version: proto.Version, PID: os.Getpid(), Started: d.started.UnixMilli(), App: build.Version(), Build: build.Daemon}
 	if hello.Version != proto.Version {
 		welcome.Error = fmt.Sprintf("kerod speaks protocol %d, the client %d", proto.Version, hello.Version)
 		json.NewEncoder(conn).Encode(welcome)

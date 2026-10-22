@@ -49,7 +49,11 @@ type Welcome struct {
 	Started int64 `json:"started"` // unix ms
 	// App is the version of Kero that kerod runs (App.Version): after an
 	// update it is the version before, until kerod restarts.
-	App   string `json:"app,omitempty"`
+	App string `json:"app,omitempty"`
+	// Build fingerprints the code kerod runs (build.Daemon): an update
+	// that leaves it as it was needs no restart. An earlier kerod, or the
+	// server build's, tells none.
+	Build string `json:"build,omitempty"`
 	Error string `json:"error,omitempty"`
 	// Attach only: the size of the snapshot that follows.
 	Cols int `json:"cols,omitempty"`
