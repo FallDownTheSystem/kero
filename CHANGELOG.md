@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.1
+
+- On Windows, the mouse wheel scrolls full-screen programs that take the
+  mouse as they start, such as pi, rather than stepping through their
+  prompt history. Kero now runs panes in the newer console Windows
+  Terminal uses, which it ships, so programs get the mouse, the wheel and
+  what they draw as they would there. Windows hosts get it with their
+  next update.
+
 ## 2.1.0
 
 - Browser panes show web pages beside your terminals: the dev server an
