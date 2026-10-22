@@ -222,10 +222,15 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 }
 
 func (a *App) confirmView(c *ui.Context, pal *palette) {
-	cf := a.confirm
-	if cf == nil {
-		return
+	if a.confirm != nil && confirmDialog(c, pal, &a.confirm) {
+		a.focusTerminal()
 	}
+}
+
+// confirmDialog asks *pending's question in c's window, and clears it once
+// answered, which it reports.
+func confirmDialog(c *ui.Context, pal *palette, pending **confirmation) bool {
+	cf := *pending
 	run := false
 	ui.DialogBase(c.Key("confirm"), &cf.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay)
@@ -245,10 +250,11 @@ func (a *App) confirmView(c *ui.Context, pal *palette) {
 		cf.open = false
 		cf.run()
 	}
-	if !cf.open {
-		a.confirm = nil
-		a.focusTerminal()
+	if cf.open {
+		return false
 	}
+	*pending = nil
+	return true
 }
 
 // shortcuts are the window's keys that no menu item has.

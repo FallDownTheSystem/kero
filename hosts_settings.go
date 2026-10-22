@@ -70,7 +70,7 @@ func (a *App) hostRow(c *ui.Context, pal *palette, h *host) {
 				ui.Text(c, status).FontSize(12).TextColor(col).LineHeight(1.35).Selectable()
 			})
 			iconButton(c, "reconnect", reloadIcon, locales.HostReconnect(), pal, func() { a.reconnectHost(h) })
-			iconButton(c, "remove", closeIcon, locales.HostRemove(), pal, func() { a.confirmRemoveHost(h) })
+			iconButton(c, "remove", closeIcon, locales.HostRemove(), pal, func() { a.ss.confirm = a.removeHostConfirmation(h) })
 		})
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Padding(0, 0, 0, 26).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {

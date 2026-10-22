@@ -71,6 +71,7 @@ type settingsState struct {
 	problems     []string                   // what the configuration file got wrong
 	scrolls      map[string]*ui.ScrollState // each page's, for its scroll edge
 	host         hostDraft                  // the Hosts page's form
+	confirm      *confirmation              // a question, asked in this window
 }
 
 // openSettings shows the Settings window, on a page.
@@ -283,6 +284,9 @@ func (a *App) settingsView(c *ui.Context) {
 			})
 		})
 	})
+	if a.ss.confirm != nil {
+		confirmDialog(c, pal, &a.ss.confirm)
+	}
 	// The controls edit a.set: what changed applies, and saves.
 	if !reflect.DeepEqual(a.set, a.applied) {
 		a.applySettings(a.set)
@@ -917,14 +921,11 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 	settingsGroup(c, pal, locales.SetBackgroundService(), locales.SetBackgroundServiceDetail(), func() {
 		settingRow(c, pal, "kerod", a.ss.service, func() {
 			if button(c, "svc-restart", locales.CommonRestart(), "", false, pal) {
-				a.confirm = &confirmation{
+				a.ss.confirm = &confirmation{
 					open: true, title: locales.ConfirmRestartServiceTitle(),
 					detail: locales.RestartServiceDetail(),
 					action: locales.CommonRestart(), destroy: true,
 					run: func() { a.restartDaemon(); time.AfterFunc(2*time.Second, func() { a.update(a.refreshService) }) },
-				}
-				if a.win != nil {
-					a.win.Focus()
 				}
 			}
 		})
@@ -942,12 +943,9 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, locales.SetReset(), locales.SetResetDetail(), func() {
 			if button(c, "reset", locales.SetResetButton(), "", false, pal) {
-				a.confirm = &confirmation{
+				a.ss.confirm = &confirmation{
 					open: true, title: locales.SetResetTitle(), detail: locales.SetResetConfirmDetail(), action: locales.SetResetAction(), destroy: true,
 					run: func() { a.applySettings(settings.Default()) },
-				}
-				if a.win != nil {
-					a.win.Focus()
 				}
 			}
 		})

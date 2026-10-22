@@ -254,7 +254,7 @@ func (a *App) hostMenu(m *ui.Menu, h *host) {
 		a.openSettings("hosts")
 	}
 	if m.Item(locales.HostRemove()).Chosen() {
-		a.confirmRemoveHost(h)
+		a.confirm = a.removeHostConfirmation(h)
 	}
 }
 
@@ -274,21 +274,17 @@ func (a *App) reconnectHost(h *host) {
 	a.connectHost(h)
 }
 
-// confirmRemoveHost removes a host from Settings › Hosts, which leaves its
-// sessions running there.
-func (a *App) confirmRemoveHost(h *host) {
+// removeHostConfirmation asks to remove a host from Settings › Hosts,
+// which leaves its sessions running there.
+func (a *App) removeHostConfirmation(h *host) *confirmation {
 	name := h.name
-	a.confirm = &confirmation{
+	return &confirmation{
 		open:    true,
 		title:   locales.HostRemoveTitle(name),
 		detail:  locales.HostRemoveDetail(name),
 		action:  locales.CommonRemove(),
 		destroy: true,
 		run:     func() { a.removeHost(name) },
-	}
-	// The question shows in the main window, as Settings may be in front.
-	if a.win != nil {
-		a.win.Focus()
 	}
 }
 

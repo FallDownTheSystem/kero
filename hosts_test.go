@@ -439,3 +439,31 @@ func TestSidebarFlatDarkShot(t *testing.T) {
 	tt.Frame()
 	shot(t, tt, "sidebar-flat-dark")
 }
+
+// Removing a host from Settings asks there, not in the main window, and
+// removes it once the user says so.
+func TestRemoveHostAsksInSettings(t *testing.T) {
+	a := testApp(t)
+	withHost(t, a, "build")
+	a.ss.page = "hosts"
+	tt := ui.NewTester(a.settingsView, 820, 640)
+	tt.Frame()
+	if err := tt.Click(locales.HostRemove()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.confirm != nil || a.ss.confirm == nil {
+		t.Fatalf("the question went to the main window: %+v, settings %+v", a.confirm, a.ss.confirm)
+	}
+	if !tt.HasText(locales.HostRemoveTitle("build")) {
+		t.Fatalf("Settings shows no question; texts %q", tt.Texts())
+	}
+	shot(t, tt, "settings-remove-host")
+	if err := tt.Click(locales.CommonRemove()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.ss.confirm != nil || len(a.set.Hosts) != 0 {
+		t.Errorf("not removed: question %+v, hosts %+v", a.ss.confirm, a.set.Hosts)
+	}
+}
