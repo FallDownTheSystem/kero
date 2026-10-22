@@ -174,8 +174,8 @@ func (a *App) divider(c *ui.Context, pal *palette, s *proto.Session, l *proto.La
 func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi bool) {
 	focused := p.ID == a.focusOf(s)
 	bg := pal.card
-	// A browser's page stays opaque, so its toolbar does too: the veil
-	// fades them alike.
+	// A browser's page stays opaque, so its toolbar does too, and neither
+	// fades: a page is read, not typed into, from beside it.
 	if multi && !focused && !p.Browser() {
 		bg = pal.cardDim
 	}
@@ -220,8 +220,8 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 			dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
 			a.paneTerminal(c, pal, s, p)
 		}
-		if multi {
-			// The panes the user is not in fade, text and all.
+		if multi && !p.Browser() {
+			// The terminals the user is not in fade, text and all.
 			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
 			v.Opacity(v.Animate("on", b2f(!focused), 160*time.Millisecond))
 		}
