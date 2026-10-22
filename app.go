@@ -578,6 +578,7 @@ func (a *App) ensureTerm(id string) {
 	e := &termEntry{started: time.Now()}
 	a.terms[id] = e
 	dialer := h.dialer()
+	held := a.win != nil && !a.win.IsFocused()
 	go func() {
 		stream, err := client.AttachVia(dialer, id)
 		if err != nil {
@@ -588,6 +589,7 @@ func (a *App) ensureTerm(id string) {
 			})
 			return
 		}
+		stream.Hold(held)
 		g := &gated{Stream: stream, ready: make(chan struct{})}
 		o := a.termOptions(id, g)
 		// The terminal shows kerod's frames: kerod's terminal is the
@@ -615,11 +617,25 @@ func (a *App) ensureTerm(id string) {
 				return
 			}
 			e.term, e.stream = term, stream
+			if h := a.win != nil && !a.win.IsFocused(); h != held {
+				go stream.Hold(h) // the window's focus changed meanwhile
+			}
 			if a.selected == id {
 				a.focusTerminal()
 			}
 		})
 	}()
+}
+
+// holdTerms holds back the sizes the panes' terminals ask for while the
+// window is not the user's, or lets them take the sessions' sizes back
+// (client.Stream.Hold): a session has the size of the app the user is in.
+func (a *App) holdTerms(held bool) {
+	for _, e := range a.terms {
+		if e.stream != nil {
+			go e.stream.Hold(held)
+		}
+	}
 }
 
 func (a *App) termFont() terminal.Font {

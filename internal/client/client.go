@@ -300,9 +300,11 @@ type Stream struct {
 	wmu sync.Mutex
 	// asked is the size the terminal last asked for, and size the one the
 	// session's terminal took last (FrameResized), which another client's
-	// asking for its own changes; wmu guards them.
+	// asking for its own changes; held holds the terminal's asking back
+	// (Hold). wmu guards them.
 	asked  [4]int
 	size   [2]int
+	held   bool
 	buf    []byte
 	closed chan struct{}
 	once   sync.Once
@@ -384,7 +386,21 @@ func (s *Stream) ResizePixels(cols, rows, cellWidth, cellHeight int) error {
 	s.wmu.Lock()
 	defer s.wmu.Unlock()
 	s.asked = [4]int{cols, rows, cellWidth, cellHeight}
+	if s.held {
+		return nil
+	}
 	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePixelsPayload(cols, rows, cellWidth, cellHeight))
+}
+
+// Hold holds back the sizes the terminal asks for, which the user is not
+// in, as in a window of another machine's app that a layout synced from
+// the one the user is in resizes: the session keeps the size of that one.
+// Released, the terminal takes the session's size back (Claim).
+func (s *Stream) Hold(held bool) error {
+	s.wmu.Lock()
+	defer s.wmu.Unlock()
+	s.held = held
+	return s.claim()
 }
 
 // Claim asks again for the size this terminal fits, when another
@@ -399,7 +415,7 @@ func (s *Stream) Claim() error {
 // claim is Claim; s.wmu is held.
 func (s *Stream) claim() error {
 	a := s.asked
-	if a[0] == 0 || s.size == [2]int{a[0], a[1]} {
+	if s.held || a[0] == 0 || s.size == [2]int{a[0], a[1]} {
 		return nil
 	}
 	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePixelsPayload(a[0], a[1], a[2], a[3]))

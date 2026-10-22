@@ -25,13 +25,13 @@ type ptyProc struct {
 	conpty  conPTY  // the ConPTY of the console
 	// cols and rows are the console's size.
 	cols, rows int
-	in      *os.File
-	out     *os.File
-	process windows.Handle
-	job     windows.Handle
-	pid     int
-	exited  chan struct{}
-	code    int
+	in         *os.File
+	out        *os.File
+	process    windows.Handle
+	job        windows.Handle
+	pid        int
+	exited     chan struct{}
+	code       int
 }
 
 type ptyOptions struct {

@@ -111,3 +111,31 @@ func (c writeConn) RemoteAddr() net.Addr             { return nil }
 func (c writeConn) SetDeadline(time.Time) error      { return nil }
 func (c writeConn) SetReadDeadline(time.Time) error  { return nil }
 func (c writeConn) SetWriteDeadline(time.Time) error { return nil }
+
+// A held stream sends no size, nor takes the session's back with input;
+// released, it takes it back at the size last asked.
+func TestStreamHold(t *testing.T) {
+	var sent bytes.Buffer
+	s := &Stream{conn: writeConn{&sent}, size: [2]int{80, 24}, Gone: make(chan struct{})}
+	s.Hold(true)
+	s.ResizePixels(100, 30, 9, 18)
+	s.ResizePixels(90, 28, 9, 18)
+	s.Write([]byte("a"))
+	s.Hold(false)
+	var got []string
+	for {
+		kind, payload, err := proto.ReadFrame(&sent)
+		if err != nil {
+			break
+		}
+		if kind == proto.FrameResize {
+			c, r, _, _, _ := proto.ParseResizePixels(payload)
+			got = append(got, fmt.Sprintf("resize %dx%d", c, r))
+		} else {
+			got = append(got, fmt.Sprintf("%q", payload))
+		}
+	}
+	if want := []string{`"a"`, "resize 90x28"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("sent %q, want %q", got, want)
+	}
+}

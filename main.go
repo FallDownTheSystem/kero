@@ -125,8 +125,8 @@ func runApp() {
 			Vibrancy:  vibrancyFor(a.set),
 			Content:   ui.View(a.view),
 		}))
-		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.reportView() }) })
-		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
+		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.holdTerms(false); a.reportView() }) })
+		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.holdTerms(true); a.reportView() }) })
 		a.connect()
 		a.syncHosts()
 		go a.watchConfig()
