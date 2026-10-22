@@ -3,7 +3,10 @@
 ## 2.1.3
 
 - On Windows, turning on **Let other machines connect** in Settings ›
-  Hosts no longer flashes a console window open.
+  Hosts no longer flashes a console window open, nor does Kero on
+  another machine connecting to it.
+- Settings › Hosts leaves the commands for setting up a host to the guide
+  it links to.
 
 ## 2.1.2
 

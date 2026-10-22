@@ -53,7 +53,6 @@ func (a *App) hostsPage(c *ui.Context, pal *palette) {
 			ui.Text(c, d.err).FontSize(12).TextColor(pal.danger).Padding(0, 0, 10, 0)
 		}
 	})
-	codeBlock(c, pal, "# on the machine, once: the server build of Kero, kerod as a service\ncurl -fsSL https://github.com/egoist/kero/releases/latest/download/install-server.sh | sh\n# or on Windows, in PowerShell\nirm https://github.com/egoist/kero/releases/latest/download/install-server.ps1 | iex\n\n# from here\nkero hosts add devbox me@devbox\nkero -H devbox ls")
 	a.listenGroup(c, pal)
 	settingsGroup(c, pal, locales.SetHostSettingsSplit(), locales.SetHostSettingsSplitDetail(), nil)
 }
