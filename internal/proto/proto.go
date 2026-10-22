@@ -70,7 +70,7 @@ type Message struct {
 	Result any    `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 
-	Event string `json:"event,omitempty"` // "state", "select", "action", "notice"
+	Event string `json:"event,omitempty"` // "state", "select", "action", "notice", "browser"
 	State *State `json:"state,omitempty"`
 	// Select asks the app to show a session ("kero focus").
 	Select string `json:"select,omitempty"`
@@ -80,6 +80,9 @@ type Message struct {
 	Args   map[string]string `json:"args,omitempty"`
 	// Notice is a program's desktop notification, to show as it is.
 	Notice *Notice `json:"notice,omitempty"`
+	// Browser asks the app to do something on a browser pane's page
+	// ("kero browser"), which it answers with browser.answer.
+	Browser *BrowserRequest `json:"browser,omitempty"`
 }
 
 // Notice is a desktop notification a program in a session sent.
@@ -139,11 +142,15 @@ type Project struct {
 }
 
 // Pane is a terminal the daemon keeps running: a shell in a
-// pseudo-terminal, one of a session's.
+// pseudo-terminal, one of a session's; or, with a URL, a browser, which
+// the app shows and the daemon only keeps the place and page of.
 type Pane struct {
-	ID      string   `json:"id"`
-	Title   string   `json:"title,omitempty"` // set by the program (OSC 0/2)
-	Dir     string   `json:"dir,omitempty"`   // the shell's working directory
+	ID    string `json:"id"`
+	Title string `json:"title,omitempty"` // set by the program (OSC 0/2), or the page
+	// URL is the page a browser pane shows, as the app last told: set,
+	// the pane runs no shell.
+	URL     string   `json:"url,omitempty"`
+	Dir     string   `json:"dir,omitempty"` // the shell's working directory
 	Command []string `json:"command,omitempty"`
 	// Process is the foreground program, "" while the shell is.
 	Process string `json:"process,omitempty"`
@@ -312,6 +319,15 @@ func Lead(panes []Pane, focus string) int {
 // foreground set, else the program, else the shell, else its directory's
 // name.
 func (p *Pane) PaneName() string {
+	if p.Browser() {
+		if t := strings.TrimSpace(p.Title); t != "" {
+			return t
+		}
+		if p.URL == BlankURL {
+			return "browser"
+		}
+		return URLHost(p.URL)
+	}
 	if p.Process != "" {
 		if t := CleanTitle(p.Title); t != "" && !looksLikePath(t) {
 			return t
@@ -329,6 +345,9 @@ func (p *Pane) PaneName() string {
 	}
 	return "shell"
 }
+
+// Browser reports whether the pane is a browser's, not a terminal's.
+func (p *Pane) Browser() bool { return p.URL != "" }
 
 // WorkDir is where the pane works: the foreground program's directory,
 // else the shell's.
@@ -377,6 +396,11 @@ func (s *Session) DisplayName(from string) string {
 			return p.Agent
 		}
 	}
+	// A session of browsers alone goes by its page: beside a terminal,
+	// a browser names it no more than a shell does.
+	if p.Browser() && !s.hasTerminal() {
+		return p.PaneName()
+	}
 	if p.Dir != "" {
 		if p.Dir == Home() {
 			return "~"
@@ -384,6 +408,15 @@ func (s *Session) DisplayName(from string) string {
 		return filepath.Base(p.Dir)
 	}
 	return "shell"
+}
+
+func (s *Session) hasTerminal() bool {
+	for i := range s.Panes {
+		if !s.Panes[i].Browser() {
+			return true
+		}
+	}
+	return false
 }
 
 // CleanTitle strips the status glyphs agents put before their titles:
@@ -589,9 +622,11 @@ type (
 		Dir     string   `json:"dir,omitempty"` // "" the project's, else home
 		Command []string `json:"command,omitempty"`
 		Env     []string `json:"env,omitempty"`
-		After   string   `json:"after,omitempty"` // put it after this session
-		Cols    int      `json:"cols,omitempty"`
-		Rows    int      `json:"rows,omitempty"`
+		// URL makes a browser pane showing it, instead of a shell.
+		URL   string `json:"url,omitempty"`
+		After string `json:"after,omitempty"` // put it after this session
+		Cols  int    `json:"cols,omitempty"`
+		Rows  int    `json:"rows,omitempty"`
 	}
 	IDParams struct {
 		ID string `json:"id"`
@@ -631,6 +666,49 @@ type (
 	LayoutParams struct {
 		Session string  `json:"session"`
 		Layout  *Layout `json:"layout"`
+	}
+	// PageParams tell the page a browser pane shows, as the app's user
+	// went to it (pane.page).
+	PageParams struct {
+		ID    string `json:"id"`
+		URL   string `json:"url"`
+		Title string `json:"title,omitempty"`
+	}
+	// BrowserParams ask a browser pane's page to do something (browser),
+	// which the app showing it does.
+	BrowserParams struct {
+		ID string `json:"id"`
+		// Op is what to do: open, back, forward, reload, text, html,
+		// click, type, wait, eval or screenshot.
+		Op       string `json:"op"`
+		Selector string `json:"selector,omitempty"`
+		// Text is the URL to open, the text to type or wait for, or the
+		// script to evaluate.
+		Text  string `json:"text,omitempty"`
+		Enter bool   `json:"enter,omitempty"` // press Enter after typing
+		// Timeout is how long to wait for the element, or the page to
+		// load, in ms: 0 for the app's default.
+		Timeout int64 `json:"timeout,omitempty"`
+	}
+	// BrowserRequest is a browser call as kerod hands it to the app: Req
+	// is what the app answers it by, and Pane the browser pane's id.
+	BrowserRequest struct {
+		Req  int64  `json:"req"`
+		Pane string `json:"pane"`
+		BrowserParams
+	}
+	// BrowserResult is what the page answered: text for text, html and
+	// eval, an image for screenshot.
+	BrowserResult struct {
+		Text string `json:"text,omitempty"`
+		PNG  []byte `json:"png,omitempty"`
+	}
+	// BrowserAnswer answers a BrowserRequest (browser.answer): a result,
+	// or why there is none.
+	BrowserAnswer struct {
+		Req    int64          `json:"req"`
+		Result *BrowserResult `json:"result,omitempty"`
+		Error  string         `json:"error,omitempty"`
 	}
 	NotifyParams struct {
 		ID    string `json:"id"`

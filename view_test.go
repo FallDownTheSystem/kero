@@ -477,3 +477,137 @@ func TestNestedSplitKeys(t *testing.T) {
 		}
 	}
 }
+
+// A browser pane shows a toolbar over its page, as its header, with an
+// address bar that a blank page asks to type in and Open Location gives
+// the keyboard; it attaches no terminal.
+func TestBrowserPane(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", Dir: "/tmp", URL: proto.BlankURL, Status: proto.Idle, Progress: -1}
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	tt.Frame()
+	for _, text := range []string{locales.BrowserBlank()} {
+		if !tt.HasText(text) {
+			t.Errorf("no %q; texts %q", text, tt.Texts())
+		}
+	}
+	if a.terms["b"] != nil {
+		t.Error("a browser pane attached a terminal")
+	}
+	e := a.webs["b"]
+	if e == nil {
+		t.Fatal("no browser for pane b")
+	}
+	// A blank page's address bar takes the keyboard: what is typed there
+	// goes to the page, as a URL.
+	tt.Type("localhost:5173")
+	tt.Frame()
+	if e.address != "localhost:5173" {
+		t.Errorf("typed %q into the address bar", e.address)
+	}
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if e.url != "http://localhost:5173" {
+		t.Errorf("went to %q", e.url)
+	}
+
+	// Its toolbar is its header: no title over it, page's or other.
+	s = &a.st.Sessions[0]
+	s.Panes[1].Title = "Vite App"
+	tt.Frame()
+	if tt.HasText("Vite App") || tt.HasText("browser") || !tt.HasText(locales.BrowserAddress()) {
+		t.Errorf("a browser pane shows a title bar; texts %q", tt.Texts())
+	}
+	// Open Location gives the browser's address bar the keyboard, with
+	// what it holds to type over.
+	a.setFocus(s, "b")
+	a.run("browser.address", nil)
+	tt.Frame()
+	tt.Type("kero.sh")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if e.url != "https://kero.sh" {
+		t.Errorf("Open Location went to %q", e.url)
+	}
+	shot(t, tt, "browser")
+}
+
+// An address typed in the palette opens in a browser, first of what it
+// finds; words find the browser's actions, but open nothing.
+func TestPaletteOpensAddress(t *testing.T) {
+	a := testApp(t)
+	tt := ui.NewTester(a.view, 1100, 640)
+	a.openPalette()
+	tt.Frame()
+	tt.Type("localhost:5173")
+	tt.Frame()
+	// The palette's rows follow its label.
+	texts := tt.Texts()
+	rows := texts[slices.Index(texts, locales.PaletteLabel())+1:]
+	if len(rows) < 2 || rows[0] != locales.PaletteOpenInBrowser() || rows[1] != "http://localhost:5173" {
+		t.Fatalf("the address is not the first item; rows %q", rows)
+	}
+	a.pal.query = ""
+	tt.Frame()
+	tt.Type("web")
+	tt.Frame()
+	if tt.HasText(locales.PaletteOpenInBrowser()) || !tt.HasText(locales.ActionNewBrowser()) {
+		t.Errorf("words: texts %q", tt.Texts())
+	}
+}
+
+// With focus-follows-mouse, the pointer going into a pane focuses it, but
+// a pane that comes under a pointer standing still does not.
+func TestFocusFollowsMouse(t *testing.T) {
+	a := testApp(t)
+	a.set.FocusFollowsMouse = true
+	s := &a.st.Sessions[0]
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	ar, _ := tt.Find("fish") // pane a's title
+	br, _ := tt.Find("zsh")  // pane b's
+	move := func(x float32) {
+		tt.Move(x, 340)
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+	}
+	move(ar.X + 40)
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("over a, focus %q", got)
+	}
+	move(br.X + 40)
+	if got := a.focusOf(s); got != "b" {
+		t.Fatalf("into b, focus %q, want b", got)
+	}
+
+	// The keyboard takes the focus back to a: b, under the pointer, keeps
+	// it from there, as the pointer moves on in it.
+	a.setFocus(s, "a")
+	tt.Frame()
+	move(br.X + 60)
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("moving in b after the keyboard focused a, focus %q", got)
+	}
+
+	// The panes swap places under the pointer standing still, and back.
+	var l *proto.Layout
+	s.Layout = l.Split("b", "a", "right", 0)
+	tt.Advance(time.Second)
+	tt.Frame()
+	s.Layout = l.Split("a", "b", "right", 0)
+	tt.Advance(time.Second)
+	tt.Frame()
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("b came under the pointer standing still, and took the focus")
+	}
+
+	// Off, the pointer leaves the focus be.
+	a.set.FocusFollowsMouse = false
+	move(ar.X + 40)
+	move(br.X + 40)
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("with the setting off, focus %q", got)
+	}
+}

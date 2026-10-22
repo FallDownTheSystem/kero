@@ -24,6 +24,7 @@ func settingsIndex() []searchEntry {
 	return []searchEntry{
 		{"general", locales.SetNewSessionsStartIn(), "new-session-directory folder current project home tab"},
 		{"general", locales.SetSessionName(), "session-name title sidebar focused lead folder pane"},
+		{"general", locales.SetFocusFollowsMouse(), "focus-follows-mouse hover pointer niri hyprland sloppy"},
 		{"general", locales.SetAskBeforeClosing(), "confirm-close quit kill"},
 		{"general", locales.SetRestoreSessions(), "restore-sessions reboot persist"},
 		{"general", locales.SetResumeAgents(), "resume-agents claude codex pi opencode conversation restore reboot"},
@@ -65,7 +66,7 @@ func settingsIndex() []searchEntry {
 		{"notifications", locales.SetDockBadge(), "dock-badge count"},
 		{"notifications", locales.SetDockBounce(), "dock-bounce attention"},
 
-		{"agents", locales.SetRemoteControlRow(), "remote-control kero do focus automation"},
+		{"agents", locales.SetRemoteControlRow(), "remote-control kero do focus browser automation"},
 		{"agents", locales.SetCliRow(), "cli command line tool install path"},
 		{"agents", "Claude Code", "skill agents install"},
 		{"agents", "Codex, OpenCode, Pi", "skill agents install"},
@@ -98,7 +99,9 @@ func searchEntries(shortcuts map[string]string) []searchEntry {
 // actionWords find actions besides their titles: what one looks for an
 // action by when its title doesn't say it.
 var actionWords = map[string]string{
-	"changes.toggle": "git diff branch panel",
+	"changes.toggle":  "git diff branch panel",
+	"pane.browser":    "web page url preview localhost open",
+	"browser.address": "web url address go to",
 }
 
 // matches reports whether every word of a query is in a text.

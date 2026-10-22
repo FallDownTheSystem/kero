@@ -19,10 +19,7 @@ import (
 )
 
 var (
-	hostIcon    = glyph("f7-desktopcomputer")
-	reloadIcon  = glyph("f7-arrow-clockwise")
-	updateIcon  = glyph("f7-arrow-down-circle")
-	networkIcon = glyph("f7-globe")
+	hostIcon = glyph("f7-desktopcomputer")
 )
 
 // hostSection is a remote host in the sidebar: its header, which tells
@@ -487,7 +484,7 @@ func (a *App) openRemotePath(h *host, id, link string) {
 				}
 				// The host's editor, as its shell would run it.
 				p := proto.CreateParams{Split: id, Direction: "down", Command: []string{"sh", "-c", `exec ${VISUAL:-${EDITOR:-vi}} "$1"`, "sh", st.Path}}
-				a.splitWith(s, p)
+				a.split(s, p)
 			}
 		})
 	}()

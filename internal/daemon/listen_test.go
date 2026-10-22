@@ -60,7 +60,7 @@ func (f *fakeTailscale) set(who string) {
 	f.mu.Unlock()
 }
 
-func testDaemon(t *testing.T) *Daemon {
+func listenDaemon(t *testing.T) *Daemon {
 	d := &Daemon{
 		log: log.New(io.Discard, "", 0), started: time.Now(),
 		subs: map[*controlConn]struct{}{}, clients: map[*proto.ClientInfo]struct{}{}, panes: map[string]*pane{},
@@ -79,7 +79,7 @@ func testDaemon(t *testing.T) *Daemon {
 func TestTailnetListener(t *testing.T) {
 	ts := &fakeTailscale{who: "alice@example.com"}
 	ts.serve(t)
-	d := testDaemon(t)
+	d := listenDaemon(t)
 	// The test connects from loopback, as no peer of a tailnet does.
 	l := &listeners{d: d, allow: []string{"tag:ci"}, isLocal: func(netip.Addr) bool { return false }}
 	srv := httptest.NewServer(l.handler("tailnet"))
@@ -187,7 +187,7 @@ func TestTailnetListener(t *testing.T) {
 func TestServeListener(t *testing.T) {
 	ts := &fakeTailscale{who: "alice@example.com"}
 	ts.serve(t)
-	l := &listeners{d: testDaemon(t)}
+	l := &listeners{d: listenDaemon(t)}
 	h := l.handler("tailnet-serve")
 	for _, c := range []struct {
 		header http.Header

@@ -194,6 +194,26 @@ func (msgs Messages) ActionSplitDown() string {
 	return Catalog.Format(msgs.locale, "actionSplitDown", nil)
 }
 
+// ActionNewBrowser says "New Browser Pane"
+// in the language the app shows.
+func ActionNewBrowser() string { return In(i18n.Locale()).ActionNewBrowser() }
+
+// ActionNewBrowser says "New Browser Pane"
+// in the language of msgs.
+func (msgs Messages) ActionNewBrowser() string {
+	return Catalog.Format(msgs.locale, "actionNewBrowser", nil)
+}
+
+// ActionOpenLocation says "Open Location…"
+// in the language the app shows.
+func ActionOpenLocation() string { return In(i18n.Locale()).ActionOpenLocation() }
+
+// ActionOpenLocation says "Open Location…"
+// in the language of msgs.
+func (msgs Messages) ActionOpenLocation() string {
+	return Catalog.Format(msgs.locale, "actionOpenLocation", nil)
+}
+
 // ActionZoomPane says "Zoom Pane"
 // in the language the app shows.
 func ActionZoomPane() string { return In(i18n.Locale()).ActionZoomPane() }
@@ -1346,6 +1366,16 @@ func (msgs Messages) PaletteRestartServiceDetail() string {
 	return Catalog.Format(msgs.locale, "paletteRestartServiceDetail", nil)
 }
 
+// PaletteOpenInBrowser says "Open in Browser Pane"
+// in the language the app shows.
+func PaletteOpenInBrowser() string { return In(i18n.Locale()).PaletteOpenInBrowser() }
+
+// PaletteOpenInBrowser says "Open in Browser Pane"
+// in the language of msgs.
+func (msgs Messages) PaletteOpenInBrowser() string {
+	return Catalog.Format(msgs.locale, "paletteOpenInBrowser", nil)
+}
+
 // PaletteLabel says "Go to Session"
 // in the language the app shows.
 func PaletteLabel() string { return In(i18n.Locale()).PaletteLabel() }
@@ -1866,6 +1896,26 @@ func SetNameFolder() string { return In(i18n.Locale()).SetNameFolder() }
 // in the language of msgs.
 func (msgs Messages) SetNameFolder() string {
 	return Catalog.Format(msgs.locale, "setNameFolder", nil)
+}
+
+// SetFocusFollowsMouse says "Focus follows mouse"
+// in the language the app shows.
+func SetFocusFollowsMouse() string { return In(i18n.Locale()).SetFocusFollowsMouse() }
+
+// SetFocusFollowsMouse says "Focus follows mouse"
+// in the language of msgs.
+func (msgs Messages) SetFocusFollowsMouse() string {
+	return Catalog.Format(msgs.locale, "setFocusFollowsMouse", nil)
+}
+
+// SetFocusFollowsMouseDetail says "A pane takes the focus when the pointer moves into it, without a click."
+// in the language the app shows.
+func SetFocusFollowsMouseDetail() string { return In(i18n.Locale()).SetFocusFollowsMouseDetail() }
+
+// SetFocusFollowsMouseDetail says "A pane takes the focus when the pointer moves into it, without a click."
+// in the language of msgs.
+func (msgs Messages) SetFocusFollowsMouseDetail() string {
+	return Catalog.Format(msgs.locale, "setFocusFollowsMouseDetail", nil)
 }
 
 // SetAskBeforeClosing says "Ask before closing a running program"
@@ -2892,11 +2942,11 @@ func (msgs Messages) SetRemoteControlRow() string {
 	return Catalog.Format(msgs.locale, "setRemoteControlRow", nil)
 }
 
-// SetRemoteControlDetail says "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette."
+// SetRemoteControlDetail says "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette. …"
 // in the language the app shows.
 func SetRemoteControlDetail() string { return In(i18n.Locale()).SetRemoteControlDetail() }
 
-// SetRemoteControlDetail says "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette."
+// SetRemoteControlDetail says "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette. …"
 // in the language of msgs.
 func (msgs Messages) SetRemoteControlDetail() string {
 	return Catalog.Format(msgs.locale, "setRemoteControlDetail", nil)
@@ -4492,4 +4542,74 @@ func HostSameAs(other string) string { return In(i18n.Locale()).HostSameAs(other
 // in the language of msgs.
 func (msgs Messages) HostSameAs(other string) string {
 	return Catalog.Format(msgs.locale, "hostSameAs", map[string]any{"other": other})
+}
+
+// BrowserCantShow says "Can’t show the page"
+// in the language the app shows.
+func BrowserCantShow() string { return In(i18n.Locale()).BrowserCantShow() }
+
+// BrowserCantShow says "Can’t show the page"
+// in the language of msgs.
+func (msgs Messages) BrowserCantShow() string {
+	return Catalog.Format(msgs.locale, "browserCantShow", nil)
+}
+
+// BrowserBlank says "Type an address or a search above"
+// in the language the app shows.
+func BrowserBlank() string { return In(i18n.Locale()).BrowserBlank() }
+
+// BrowserBlank says "Type an address or a search above"
+// in the language of msgs.
+func (msgs Messages) BrowserBlank() string {
+	return Catalog.Format(msgs.locale, "browserBlank", nil)
+}
+
+// BrowserBack says "Back"
+// in the language the app shows.
+func BrowserBack() string { return In(i18n.Locale()).BrowserBack() }
+
+// BrowserBack says "Back"
+// in the language of msgs.
+func (msgs Messages) BrowserBack() string {
+	return Catalog.Format(msgs.locale, "browserBack", nil)
+}
+
+// BrowserForward says "Forward"
+// in the language the app shows.
+func BrowserForward() string { return In(i18n.Locale()).BrowserForward() }
+
+// BrowserForward says "Forward"
+// in the language of msgs.
+func (msgs Messages) BrowserForward() string {
+	return Catalog.Format(msgs.locale, "browserForward", nil)
+}
+
+// BrowserReload says "Reload"
+// in the language the app shows.
+func BrowserReload() string { return In(i18n.Locale()).BrowserReload() }
+
+// BrowserReload says "Reload"
+// in the language of msgs.
+func (msgs Messages) BrowserReload() string {
+	return Catalog.Format(msgs.locale, "browserReload", nil)
+}
+
+// BrowserStop says "Stop"
+// in the language the app shows.
+func BrowserStop() string { return In(i18n.Locale()).BrowserStop() }
+
+// BrowserStop says "Stop"
+// in the language of msgs.
+func (msgs Messages) BrowserStop() string {
+	return Catalog.Format(msgs.locale, "browserStop", nil)
+}
+
+// BrowserAddress says "Address or search"
+// in the language the app shows.
+func BrowserAddress() string { return In(i18n.Locale()).BrowserAddress() }
+
+// BrowserAddress says "Address or search"
+// in the language of msgs.
+func (msgs Messages) BrowserAddress() string {
+	return Catalog.Format(msgs.locale, "browserAddress", nil)
 }

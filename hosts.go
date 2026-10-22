@@ -225,6 +225,12 @@ func (a *App) closeHost(h *host) {
 	}
 	a.mergeState(h, proto.State{})
 	h.loaded = false
+	// Its browser panes' pages, which this machine shows, go with it.
+	for id := range a.webs {
+		if a.sessionOfPane(id) == nil {
+			a.dropWeb(id)
+		}
+	}
 }
 
 // connect connects to this machine's kerod, starting it.

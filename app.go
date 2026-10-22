@@ -90,6 +90,7 @@ type App struct {
 	ss         settingsState
 	selected   string
 	terms      map[string]*termEntry
+	webs       map[string]*webEntry // browser panes' pages, by pane
 	lru        []string
 	refs       map[string]*ui.Handle // panes' terminals, and splits, by id
 	focus      map[string]string     // the pane the user is in, by session
@@ -117,6 +118,11 @@ type App struct {
 	// later are actions that change what the view is building, run once
 	// it is built.
 	later []func()
+
+	// Focus follows the mouse: the pane the pointer went into, and where
+	// the pointer was last over a pane, in the window.
+	hoverPane string
+	hoverAt   [2]float32
 
 	// Panes dragged: the zone last under the pointer, the pane whose
 	// drop preview shows and since when, and the panes just moved, which
@@ -146,7 +152,7 @@ type confirmation struct {
 }
 
 func newApp() *App {
-	a := &App{terms: map[string]*termEntry{}, statuses: map[string]proto.Status{}, active: true, focused: true,
+	a := &App{terms: map[string]*termEntry{}, webs: map[string]*webEntry{}, statuses: map[string]proto.Status{}, active: true, focused: true,
 		refs: map[string]*ui.Handle{}, focus: map[string]string{}, arrived: map[string]bool{}}
 	a.loadPrefs()
 	a.set = settings.Load()
@@ -224,6 +230,18 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 			a.run(act.ID, m.Args)
 			a.from = nil
 		}
+	case "browser":
+		// kero browser waits on the answer, which refuses when Remote
+		// Control is off, not as an action does, silently.
+		if r := m.Browser; r != nil {
+			a.browse(h, r, func(res *proto.BrowserResult, err error) {
+				ans := proto.BrowserAnswer{Req: r.Req, Result: res}
+				if err != nil {
+					ans.Result, ans.Error = nil, err.Error()
+				}
+				cl.Go("browser.answer", ans, nil)
+			})
+		}
 	case "notice":
 		// A program's own notification, as a terminal shows it: not
 		// while the user looks at its session.
@@ -270,6 +288,11 @@ func (a *App) setState(h *host, st proto.State) {
 	for id := range a.terms {
 		if !live[id] {
 			a.dropTerm(id)
+		}
+	}
+	for id := range a.webs {
+		if !live[id] {
+			a.dropWeb(id)
 		}
 	}
 	if a.session(a.selected) == nil {
@@ -546,7 +569,7 @@ func (g *gated) Read(p []byte) (int, error) {
 // ensureTerm attaches a terminal to a session, unless one is.
 func (a *App) ensureTerm(id string) {
 	h := a.hostOf(id)
-	if a.terms[id] != nil || h.conn != connReady {
+	if a.terms[id] != nil || h.conn != connReady || a.isBrowser(id) {
 		return
 	}
 	e := &termEntry{started: time.Now()}

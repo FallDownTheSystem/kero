@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"slices"
 	"strings"
 	"unicode"
@@ -32,6 +33,7 @@ type paletteItem struct {
 	run     func()
 	score   int
 	words   string // what finds it besides its title and detail, unshown
+	top     bool   // what the query asks for outright, before any match
 }
 
 func (a *App) openPalette() {
@@ -60,6 +62,11 @@ func (a *App) paletteItems() []paletteItem {
 		}
 	}
 	var cmds []paletteItem
+	// An address typed opens in a browser beside the pane the user is in.
+	if q := strings.TrimSpace(a.pal.query); proto.IsAddress(q) && a.session(a.selected) != nil {
+		cmds = append(cmds, paletteItem{title: locales.PaletteOpenInBrowser(), detail: proto.BrowserURL(q), top: true,
+			run: func() { a.openBrowser(q) }})
+	}
 	for _, act := range actions.All {
 		id := act.ID
 		cmds = append(cmds, paletteItem{title: strings.TrimSuffix(actionTitle(act.ID), "…"), keys: actions.Glyphs(actions.Keys(act, a.set.Shortcuts)),
@@ -132,6 +139,9 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 		}
 		if t := fuzzy(a.pal.query, it.title); t >= 0 {
 			sc = max(sc, t+50)
+		}
+		if it.top {
+			sc = math.MaxInt32
 		}
 		if sc < 0 {
 			continue

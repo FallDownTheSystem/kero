@@ -49,6 +49,9 @@ var (
 	diffIcon        = glyph("octicon-file-diff-16")
 	revertIcon      = glyph("f7-arrow-uturn-left")
 	openFileIcon    = glyph("f7-arrow-up-right-square")
+	globeIcon       = glyph("f7-globe")
+	chevronLeftIcon = glyph("f7-chevron-left")
+	reloadIcon      = glyph("f7-arrow-clockwise")
 )
 
 // programIcons are the logos of programs a pane may run, by the name kerod
@@ -69,8 +72,12 @@ func init() {
 
 // programIcon is the logo of the pane's foreground program, as Claude's
 // for Claude Code and Node.js's for a script node runs; the terminal's
-// while the shell is in the foreground or the program has none.
+// while the shell is in the foreground or the program has none; a globe
+// for a browser.
 func programIcon(p *proto.Pane) *ui.SVG {
+	if p.Browser() {
+		return globeIcon
+	}
 	for _, name := range []string{p.Agent, p.Process, p.Runtime} {
 		if i := programIcons[name]; i != nil {
 			return i

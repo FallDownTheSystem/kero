@@ -36,5 +36,31 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 | `-r`, `--ratio <0..1>`                | The new pane's share of the space (default 0.5) |
 | `-d`, `--dir <dir>`                   | Start it in another directory                  |
 | `-w`, `--wait`                        | Wait for its command to end, and exit with its status |
+| `-u`, `--url <url>`                   | Open a browser showing the page instead of a shell |
 
 Run inside Kero, `kero split` splits the pane it runs in. Elsewhere, name a target: `kero split my-session --down`.
+
+## Browser panes
+
+A browser pane shows a web page beside your terminals: the dev server an agent is working on, the docs it reads, the pull request it opened. It splits, zooms, moves and closes like any pane, and comes back on the same page when Kero restarts.
+
+| Action           | Shortcut                               |
+| ---------------- | -------------------------------------- |
+| New browser pane | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>B</kbd> |
+| Open location    | <kbd>⌘</kbd> <kbd>L</kbd>              |
+
+Type an address in its bar, such as `localhost:3000` or `github.com`, or words to search for. An address typed in the command palette (<kbd>⌘</kbd> <kbd>P</kbd>) opens in a new browser pane too. <kbd>⌘</kbd> <kbd>F</kbd> finds text in the page.
+
+From a shell, or an agent, open one with `--url`:
+
+```sh
+kero split --url localhost:5173
+kero new --url https://github.com/egoist/kero/pulls
+```
+
+An agent can then use the page as you would, with `kero browser`: click, type, read its text, wait for it and take a screenshot. See [Command Line](./cli.md#browsing).
+
+```sh
+kero browser type 'input[name=q]' "kero" --enter
+kero browser text main
+```
