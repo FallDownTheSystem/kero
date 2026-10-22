@@ -119,7 +119,8 @@ func (a *App) layoutNode(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 
 // divider is the gap between two panes, which a drag moves.
 func (a *App) divider(c *ui.Context, pal *palette, s *proto.Session, l *proto.Layout, key string) {
-	d := ui.Box(c.Key("div")).Shrink(0)
+	// A drag leaves the keyboard in the pane the user is in.
+	d := ui.Box(c.Key("div")).Shrink(0).KeepFocus()
 	if l.Row {
 		d.Width(paneGap).Cursor(ui.CursorResizeColumn)
 	} else {
