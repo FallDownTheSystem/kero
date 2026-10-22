@@ -36,7 +36,7 @@ func (a *App) hostsPage(c *ui.Context, pal *palette) {
 			add := func() { a.addHost() }
 			textField(c, "host-addr", &d.addr, locales.SetHostAddressPlaceholder(), 0, pal).Font("monospace").OnSubmit(add)
 			textField(c, "host-name", &d.name, locales.SetHostNamePlaceholder(defaultHostName(d.addr)), 130, pal).OnSubmit(add)
-			if button(c, "host-add", locales.CommonAdd(), "", true, pal) {
+			if fieldButton(c, "host-add", locales.CommonAdd(), true, pal) {
 				add()
 			}
 		})

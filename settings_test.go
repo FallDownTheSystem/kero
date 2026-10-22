@@ -10,6 +10,8 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/settings"
+
+	"kero/locales"
 )
 
 // Every page builds, and shows its settings.
@@ -573,4 +575,32 @@ func TestSearchMenuIsModal(t *testing.T) {
 	if a.ss.scrolls["terminal"].Y == 0 {
 		t.Error("the page does not scroll once the menu closed")
 	}
+}
+
+// A form's button stands as high as the field beside it, as Hosts' Add
+// ($KERO_SHOTS).
+func TestFieldButtonHeight(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "hosts"
+	tt := ui.NewTester(a.settingsView, 820, 900)
+	tt.Frame()
+	shot(t, tt, "hosts-add")
+	add, ok := tt.Find(locales.CommonAdd())
+	if !ok {
+		t.Fatalf("no Add; texts %q", tt.Texts())
+	}
+	name, ok := tt.Find(locales.SetHostNamePlaceholder("devbox"))
+	if !ok {
+		t.Fatal("no name field")
+	}
+	if add.H != controlH+2 || abs32(add.Y+add.H/2-(name.Y+name.H/2)) > 0.5 {
+		t.Errorf("Add %+v beside the field %+v", add, name)
+	}
+}
+
+func abs32(f float32) float32 {
+	if f < 0 {
+		return -f
+	}
+	return f
 }

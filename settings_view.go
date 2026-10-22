@@ -787,7 +787,7 @@ func (a *App) shellPage(c *ui.Context, pal *palette) {
 				}
 			}
 			textField(c, "env-new", &a.ss.envDraft, "NAME=value", 0, pal).Font("monospace").OnSubmit(addEnv)
-			if button(c, "env-add", locales.CommonAdd(), "", false, pal) {
+			if fieldButton(c, "env-add", locales.CommonAdd(), false, pal) {
 				addEnv()
 			}
 		})
