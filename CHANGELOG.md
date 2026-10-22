@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.5
+
+- A session open in Kero on two machines takes the size of the one you're
+  using, the one you last typed, scrolled or switched to the session in,
+  rather than of the last to resize it. Resizing a split on one machine
+  no longer cuts off the bottom of the pane on the other. Hosts get it
+  with their next update.
+- Dragging the divider between panes, or the sidebar's edge, leaves the
+  keyboard in the pane you were typing in.
+- After an update, Kero offers to restart kerod only when the update
+  changed it.
+
 ## 2.1.4
 
 - The folder picker and the command palette scroll with the mouse wheel
