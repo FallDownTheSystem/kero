@@ -22,7 +22,7 @@ func TestSettingsPages(t *testing.T) {
 	want := map[string]string{
 		"general": "Restore sessions after a restart", "appearance": "Translucent window", "terminal": "Line height",
 		"shell": "Scrollback", "notifications": "A session needs me", "keyboard": "Split Right",
-		"agents": "Let commands drive this window", "advanced": "Background service",
+		"agents": "Let commands drive this window", "hosts": "Experimental", "advanced": "Background service",
 	}
 	for _, p := range settingsPages {
 		if p.id == "notifications" {
@@ -32,6 +32,9 @@ func TestSettingsPages(t *testing.T) {
 		tt.Frame()
 		if !tt.HasText(want[p.id]) {
 			t.Errorf("page %s: no %q; texts %q", p.id, want[p.id], tt.Texts())
+		}
+		if p.id != "hosts" && tt.HasText("Experimental") {
+			t.Errorf("page %s is tagged experimental", p.id)
 		}
 		shot(t, tt, "settings-"+p.id)
 	}

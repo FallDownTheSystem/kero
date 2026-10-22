@@ -533,6 +533,7 @@
   "changesExpandDown": "Expand Down",
   "changesExpandAll": "Expand All",
   "pageHosts": "Hosts",
+  "pageExperimental": "Experimental",
   "hostThisComputer": "This Computer",
   "hostColor": "Color",
   "hostColorAuto": "From Its Name",

@@ -3836,6 +3836,16 @@ func (msgs Messages) PageHosts() string {
 	return Catalog.Format(msgs.locale, "pageHosts", nil)
 }
 
+// PageExperimental says "Experimental"
+// in the language the app shows.
+func PageExperimental() string { return In(i18n.Locale()).PageExperimental() }
+
+// PageExperimental says "Experimental"
+// in the language of msgs.
+func (msgs Messages) PageExperimental() string {
+	return Catalog.Format(msgs.locale, "pageExperimental", nil)
+}
+
 // HostThisComputer says "This Computer"
 // in the language the app shows.
 func HostThisComputer() string { return In(i18n.Locale()).HostThisComputer() }

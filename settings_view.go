@@ -30,21 +30,22 @@ import (
 
 // settingsPage is a page of the Settings window.
 type settingsPage struct {
-	id    string
-	title func() string
-	icon  *ui.SVG
+	id           string
+	title        func() string
+	icon         *ui.SVG
+	experimental bool // tagged so beside its title
 }
 
 var settingsPages = []settingsPage{
-	{"general", locales.PageGeneral, glyph("f7-gear-alt")},
-	{"appearance", locales.PageAppearance, glyph("f7-paintbrush")},
-	{"terminal", locales.PageTerminal, terminalIcon},
-	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right")},
-	{"notifications", locales.PageNotifications, glyph("f7-bell")},
-	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard")},
-	{"agents", locales.PageAgents, glyph("f7-sparkles")},
-	{"hosts", locales.PageHosts, hostIcon},
-	{"advanced", locales.PageAdvanced, glyph("f7-slider-horizontal-3")},
+	{"general", locales.PageGeneral, glyph("f7-gear-alt"), false},
+	{"appearance", locales.PageAppearance, glyph("f7-paintbrush"), false},
+	{"terminal", locales.PageTerminal, terminalIcon, false},
+	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right"), false},
+	{"notifications", locales.PageNotifications, glyph("f7-bell"), false},
+	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard"), false},
+	{"agents", locales.PageAgents, glyph("f7-sparkles"), false},
+	{"hosts", locales.PageHosts, hostIcon, true},
+	{"advanced", locales.PageAdvanced, glyph("f7-slider-horizontal-3"), false},
 }
 
 // settingsState is what the Settings window keeps besides the settings.
@@ -269,6 +270,12 @@ func (a *App) settingsView(c *ui.Context) {
 					edge.Opacity(edge.Animate("on", b2f(edgeOn), 160*time.Millisecond))
 					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).AlignItems(ui.Center).Padding(0, 10, 0, 24).DragWindow().Children(func() {
 						ui.Text(c, page.title()).FontSize(15).FontWeight(650).TextColor(pal.text)
+						if page.experimental {
+							ui.Row(c.Key("experimental")).Height(18).Margin(0, 0, 0, 8).Padding(0, 6).Radius(5).AlignItems(ui.Center).Shrink(0).
+								Background(pal.attention.Alpha(0.14)).Children(func() {
+								ui.Text(c, locales.PageExperimental()).FontSize(11.5).FontWeight(600).TextColor(pal.attention).SingleLine()
+							})
+						}
 						ui.Spacer(c)
 						windowControls(c, pal, a.setWin)
 					})
