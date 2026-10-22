@@ -69,7 +69,8 @@ func (a *App) pickerGo(dir string) {
 				a.picker.err = err.Error()
 				return
 			}
-			a.picker.list = &l
+			// It shows from its first folder, whatever the last one's scroll.
+			a.picker.list, a.picker.reveal = &l, true
 		})
 	}()
 }
