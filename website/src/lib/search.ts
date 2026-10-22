@@ -13,7 +13,7 @@ export type SearchEntry = {
   section: boolean;
 };
 
-const sources = import.meta.glob<string>('../../docs/**/*.md', {
+const sources = import.meta.glob<string>('../../../docs/**/*.md', {
   eager: true,
   query: '?raw',
   import: 'default',

@@ -933,6 +933,15 @@ button {
   color: #77727f;
 }
 
+.kw-host {
+  margin-left: 0.15em;
+  padding: 0.05em 0.45em;
+  border-radius: 0.4em;
+  background: rgba(20, 150, 140, 0.14);
+  color: #13786f;
+  font-weight: 500;
+}
+
 .kw-count {
   margin-left: 0.25em;
   font-weight: 400;
@@ -1466,6 +1475,20 @@ button {
   border-top: 1px solid var(--stroke);
 }
 
+.feature--wide {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--stroke);
+}
+
+.feature--wide.feature {
+  border-left: none;
+}
+
+.feature--wide .checklist {
+  flex-flow: row wrap;
+  gap: 8px 28px;
+}
+
 .feature__icon {
   color: var(--brand);
 }
@@ -1959,10 +1982,10 @@ button {
   }
 }
 
-/* ---------- Markdown, over @void/md's theme ---------- */
+/* ---------- Markdown, over the vendored theme in markdown.css ---------- */
 
-/* Outranks the theme's own dark rules, :root:not([data-theme]) .void-md. */
-:root .site .docs .void-md {
+/* Outranks the theme's own dark rules, :root:not([data-theme]) .markdown. */
+:root .site .docs .markdown {
   --vmd-font-body: var(--font-sans);
   --vmd-font-mono: var(--font-mono);
   --vmd-text: var(--text);
@@ -1975,22 +1998,22 @@ button {
   font-size: 16px;
 }
 
-.void-md h1,
-.void-md h2,
-.void-md h3 {
+.markdown h1,
+.markdown h2,
+.markdown h3 {
   font-family: var(--font-display);
   font-weight: 500;
   color: var(--text);
 }
 
-.void-md h1 {
+.markdown h1 {
   margin-top: 0;
   font-size: clamp(34px, 4vw, 44px);
   line-height: 1.1;
   letter-spacing: -0.04em;
 }
 
-.void-md h2 {
+.markdown h2 {
   margin-top: 2.6em;
   padding-top: 1.4em;
   padding-bottom: 0;
@@ -2000,32 +2023,32 @@ button {
   letter-spacing: -0.03em;
 }
 
-.void-md h3 {
+.markdown h3 {
   margin-top: 2em;
   font-size: 19px;
   letter-spacing: -0.02em;
 }
 
-.void-md h1 + p {
+.markdown h1 + p {
   font-size: 18px;
   color: var(--text-2);
 }
 
-.void-md a {
+.markdown a {
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--brand) 45%, transparent);
   text-underline-offset: 3px;
 }
 
-.void-md a:hover {
+.markdown a:hover {
   text-decoration-color: currentColor;
 }
 
-.void-md .header-anchor {
+.markdown .header-anchor {
   text-decoration: none;
 }
 
-.void-md :not(pre) > code {
+.markdown :not(pre) > code {
   padding: 0.15em 0.4em;
   border: 1px solid var(--stroke);
   border-radius: 6px;
@@ -2033,31 +2056,31 @@ button {
   font-size: 0.86em;
 }
 
-:root .site .void-md div[class*='language-'] {
+:root .site .markdown div[class*='language-'] {
   background: var(--surface);
   border-radius: 12px;
 }
 
-:root .site .void-md pre.shiki.shiki-themes {
+:root .site .markdown pre.shiki.shiki-themes {
   background-color: transparent !important;
 }
 
-.void-md pre {
+.markdown pre {
   border: 1px solid var(--stroke);
   border-radius: 12px;
   font-size: 13.5px;
   line-height: 1.7;
 }
 
-.void-md table {
+.markdown table {
   font-size: 14px;
 }
 
-.void-md th {
+.markdown th {
   font-weight: 600;
 }
 
-.void-md kbd {
+.markdown kbd {
   display: inline-block;
   min-width: 1.6em;
   padding: 0.05em 0.4em;
@@ -2071,8 +2094,8 @@ button {
   text-align: center;
 }
 
-.void-md .custom-block.tip,
-.void-md .tip.custom-block {
+.markdown .custom-block.tip,
+.markdown .tip.custom-block {
   border-color: color-mix(in srgb, var(--brand) 35%, transparent);
   background: var(--brand-soft);
 }

@@ -1,23 +1,23 @@
-import type { Component } from 'solid-js';
-import sidebarJson from '../../docs/sidebar.json';
+import type { Heading } from '../../plugins/markdown';
+import sidebarJson from '../../../docs/sidebar.json';
 
-// The docs live in ../docs, a workspace package of their own. @void/md
-// compiles each file into a component, with its frontmatter and headings.
+// The docs live in ../docs, a workspace package of their own. plugins/markdown
+// compiles each file into its HTML, frontmatter and headings.
 type DocModule = {
-  default: Component;
+  html: string;
   frontmatter: { title?: string; description?: string };
-  headings: ReadonlyArray<{ depth: number; slug: string; text: string }>;
+  headings: Heading[];
 };
 
-const modules = import.meta.glob<DocModule>('../../docs/**/*.md', { eager: true });
+const modules = import.meta.glob<DocModule>('../../../docs/**/*.md', { eager: true, import: 'default' });
 
 export type Doc = {
   slug: string; // "" for the docs' index
   href: string;
   title: string;
   description: string;
-  headings: DocModule['headings'];
-  Content: Component;
+  headings: Heading[];
+  html: string;
 };
 
 export const docs = new Map<string, Doc>();
@@ -30,7 +30,7 @@ for (const [file, mod] of Object.entries(modules)) {
     title: mod.frontmatter.title ?? mod.headings.find((h) => h.depth === 1)?.text ?? name,
     description: mod.frontmatter.description ?? '',
     headings: mod.headings,
-    Content: mod.default,
+    html: mod.html,
   });
 }
 

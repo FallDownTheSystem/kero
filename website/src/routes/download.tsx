@@ -1,9 +1,41 @@
 import { For, Show, createSignal, onMount } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
+import { createFileRoute } from '@tanstack/solid-router';
+import { createServerFn } from '@tanstack/solid-start';
 import { Link } from '../components/Link';
 import { AppleIcon, ArrowUpRightIcon, DownloadIcon, LinuxIcon, WindowsIcon } from '../components/Icons';
 import { GITHUB_URL } from '../components/SiteHeader';
-import type { Props } from './download.server';
+
+// The latest published release, whose assets the download links point at:
+// mygo.json's version may be a draft still building, or not released at all.
+// GitHub redirects releases/latest to its tag, which, unlike the API, has no
+// rate limit for the Worker's shared IPs to run into. Cloudflare keeps the
+// redirect for a few minutes, as the latest release changes only when one is
+// published.
+const latestVersion = createServerFn().handler(async () => {
+  const res = await fetch(`${GITHUB_URL}/releases/latest`, {
+    redirect: 'manual',
+    cf: { cacheTtlByStatus: { '300-399': 300 } },
+  } as RequestInit);
+  const tag = res.headers.get('location')?.match(/\/releases\/tag\/v([^/?#]+)$/)?.[1];
+  if (!tag) throw new Error(`No latest release: ${res.status} ${res.headers.get('location') ?? ''}`);
+  return { version: tag };
+});
+
+export const Route = createFileRoute('/download')({
+  loader: () => latestVersion(),
+  staleTime: 5 * 60_000,
+  head: () => ({
+    meta: [
+      { title: 'Download | Kero' },
+      {
+        name: 'description',
+        content: 'Download Kero, a terminal for coding agents, for macOS, Windows and Linux.',
+      },
+    ],
+  }),
+  component: DownloadPage,
+});
 
 const INSTALL_SCRIPT = `curl -fsSL ${GITHUB_URL}/releases/latest/download/install.sh | sh`;
 
@@ -69,7 +101,8 @@ async function detectArch(): Promise<Arch | undefined> {
   if (arch === 'x86') return 'x86';
 }
 
-export default function DownloadPage(props: Props) {
+function DownloadPage() {
+  const data = Route.useLoaderData();
   const [os, setOS] = createSignal<OS>();
   const [arch, setArch] = createSignal<Arch>();
 
@@ -78,9 +111,9 @@ export default function DownloadPage(props: Props) {
     detectArch().then(setArch);
   });
 
-  const tag = () => `v${props.version}`;
+  const tag = () => `v${data().version}`;
   const href = (asset: (v: string) => string) =>
-    `${GITHUB_URL}/releases/download/${tag()}/${asset(props.version)}`;
+    `${GITHUB_URL}/releases/download/${tag()}/${asset(data().version)}`;
   const isPick = (p: (typeof platforms)[number], f: (typeof platforms)[number]['files'][number]) =>
     p.os === os() && (arch() ? f.arch === arch() : f === p.files[0]);
 

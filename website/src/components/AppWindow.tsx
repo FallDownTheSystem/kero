@@ -1,23 +1,24 @@
 import { createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js';
-import sidebarSvg from '../../icons/f7-sidebar-left.svg?raw';
-import plusSvg from '../../icons/f7-plus.svg?raw';
-import folderSvg from '../../icons/f7-folder.svg?raw';
-import searchSvg from '../../icons/f7-search.svg?raw';
-import gearSvg from '../../icons/f7-gear-alt.svg?raw';
-import terminalSvg from '../../icons/meteor-terminal.svg?raw';
-import splitRightSvg from '../../icons/f7-square-split-2x1.svg?raw';
-import splitDownSvg from '../../icons/f7-square-split-1x2.svg?raw';
-import zoomSvg from '../../icons/f7-arrow-up-left-arrow-down-right.svg?raw';
-import closeSvg from '../../icons/f7-xmark.svg?raw';
+import sidebarSvg from '../../../icons/f7-sidebar-left.svg?raw';
+import plusSvg from '../../../icons/f7-plus.svg?raw';
+import folderSvg from '../../../icons/f7-folder.svg?raw';
+import searchSvg from '../../../icons/f7-search.svg?raw';
+import gearSvg from '../../../icons/f7-gear-alt.svg?raw';
+import terminalSvg from '../../../icons/meteor-terminal.svg?raw';
+import splitRightSvg from '../../../icons/f7-square-split-2x1.svg?raw';
+import splitDownSvg from '../../../icons/f7-square-split-1x2.svg?raw';
+import zoomSvg from '../../../icons/f7-arrow-up-left-arrow-down-right.svg?raw';
+import closeSvg from '../../../icons/f7-xmark.svg?raw';
 
 // Kero's window, drawn in HTML so it stays sharp at any size: a project's
 // sessions in the sidebar, and a session split into Claude Code reviewing
-// a change, lazygit showing it, and the program running. The snake plays
+// a change, lazygit showing it, and the program running, with a project
+// whose sessions run on a remote host. The snake plays
 // itself while the window shows.
 
 type Status = 'idle' | 'waiting' | 'working' | 'done';
 
-const projects: { name: string; note?: string; sessions: { name: string; status: Status; selected?: boolean; bold?: boolean }[] }[] = [
+const projects: { name: string; host?: string; note?: string; sessions: { name: string; status: Status; selected?: boolean; bold?: boolean }[] }[] = [
   {
     name: 'snake',
     note: '1 needs you',
@@ -34,11 +35,16 @@ const projects: { name: string; note?: string; sessions: { name: string; status:
       { name: 'Write CLI docs', status: 'done', bold: true },
     ],
   },
+  {
+    name: 'api',
+    host: 'devbox',
+    sessions: [{ name: 'Migrate the database', status: 'working' }],
+  },
 ];
 
 export default function AppWindow() {
   return (
-    <div class="kw" role="img" aria-label="Kero's window: Claude Code reviewing a change, lazygit showing its diff and a snake game running in split panes, beside a sidebar of sessions grouped by project">
+    <div class="kw" role="img" aria-label="Kero's window: Claude Code reviewing a change, lazygit showing its diff and a snake game running in split panes, beside a sidebar of sessions grouped by project, one of them on a remote host">
       <aside class="kw-side">
         <div class="kw-side__top">
           <span class="kw-lights">
@@ -56,7 +62,12 @@ export default function AppWindow() {
             <div class="kw-project">
               <p class="kw-project__head">
                 <span>
-                  {p.name} <span class="kw-count">{p.sessions.length}</span>
+                  {p.name}
+                  <Show when={p.host}>
+                    {' '}
+                    <span class="kw-host">{p.host}</span>
+                  </Show>{' '}
+                  <span class="kw-count">{p.sessions.length}</span>
                 </span>
                 <Show when={p.note}>
                   <span class="kw-attention">{p.note}</span>
@@ -82,7 +93,7 @@ export default function AppWindow() {
           </span>
           <span class="kw-tally">
             <StatusIcon status="waiting" size={12} /> 1
-            <StatusIcon status="working" size={12} /> 1
+            <StatusIcon status="working" size={12} /> 2
             <StatusIcon status="done" size={12} /> 1
           </span>
         </div>

@@ -1,9 +1,22 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { Dynamic } from 'solid-js/web';
-import { useRouter } from '@void/solid';
+import { useRouter } from '@tanstack/solid-router';
 import { Link } from './Link';
 import { docs, ordered, sidebar } from '../lib/docs';
 import { ArrowLeftIcon, ArrowRightIcon, MenuIcon } from './Icons';
+
+// The page's title and description, for a route's head.
+export function docHead(slug: string) {
+  const doc = docs.get(slug);
+  if (!doc) return {};
+  return {
+    meta: [
+      { title: `${doc.title} | Kero` },
+      { name: 'description', content: doc.description },
+      { property: 'og:title', content: `${doc.title} | Kero` },
+      { property: 'og:description', content: doc.description },
+    ],
+  };
+}
 
 export default function DocsView(props: { slug: string }) {
   const doc = createMemo(() => docs.get(props.slug)!);
@@ -38,9 +51,7 @@ export default function DocsView(props: { slug: string }) {
       <main class="docs-main">
         <article class="docs-article">
           <Show when={section()}>{(s) => <p class="eyebrow">{s().title}</p>}</Show>
-          <div class="void-md" {...useInternalLinks()}>
-            <Dynamic component={doc().Content} />
-          </div>
+          <div class="markdown" innerHTML={doc().html} {...useContentEvents()} />
         </article>
         <nav class="docs-pager" aria-label="Pagination">
           <Show when={prev()} fallback={<span />}>
@@ -112,9 +123,10 @@ function SidebarNav(props: { current: string }) {
 }
 
 // The Markdown renders plain <a> tags, which would reload the whole page.
-// Route internal ones through Void like Link does: prefetch on hover, focus
-// or touch, and navigate in place on click.
-function useInternalLinks() {
+// Route internal ones through the router like Link does: preload on hover,
+// focus or touch, and navigate in place on click. And a code block's copy
+// button copies its code.
+function useContentEvents() {
   const router = useRouter();
   const internal = (e: Event) => {
     const a = (e.target as Element | null)?.closest?.('a');
@@ -127,20 +139,39 @@ function useInternalLinks() {
   };
   const prefetch = (e: Event) => {
     const href = internal(e);
-    if (href) void router.prefetch(href);
+    if (href) void router.preloadRoute({ href } as never).catch(() => {});
   };
   return {
     onMouseOver: prefetch,
     onFocusIn: prefetch,
     onTouchStart: prefetch,
     onClick: (e: MouseEvent) => {
+      if (copyCode(e)) return;
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const href = internal(e);
       if (!href) return;
       e.preventDefault();
-      void router.visit(href);
+      router.history.push(href);
     },
   };
+}
+
+// The code beside a clicked copy button, without the empty last line that
+// Shiki adds.
+function copyCode(e: MouseEvent) {
+  const button = (e.target as Element | null)?.closest?.("div[class*='language-'] > button.copy");
+  const pre = button?.parentElement?.querySelector('pre');
+  if (!button || !pre) return false;
+  const lines = Array.from(pre.querySelectorAll('.line'), (l) => l.textContent ?? '');
+  if (lines.at(-1) === '') lines.pop();
+  navigator.clipboard?.writeText(lines.join('\n')).then(
+    () => {
+      button.classList.add('copied');
+      setTimeout(() => button.classList.remove('copied'), 2000);
+    },
+    () => {},
+  );
+  return true;
 }
 
 // The heading the reader is at: the last one above the top fifth of the

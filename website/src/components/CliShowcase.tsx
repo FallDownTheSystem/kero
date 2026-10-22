@@ -36,6 +36,18 @@ const tabs: { id: string; lines: Line[] }[] = [
     ],
   },
   {
+    id: 'remote',
+    lines: [
+      { cmd: 'kero hosts add devbox me@devbox' },
+      { cmd: 'kero -H devbox new -n migrate -- claude' },
+      { out: 'm4e7b1' },
+      { cmd: 'kero -H devbox ls' },
+      { out: 'devbox' },
+      { out: '  m4e7b1  migrate         working   claude' },
+      { out: '# close your laptop; it keeps running on devbox', dim: true },
+    ],
+  },
+  {
     id: 'report',
     lines: [
       { cmd: 'kero report working "Migrating the database" --progress 40' },

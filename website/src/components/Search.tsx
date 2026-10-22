@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, Index, on, onCleanup, onMount, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
-import { useRouter } from '@void/solid';
+import { useRouter } from '@tanstack/solid-router';
 import type { SearchEntry } from '../lib/search';
 import { FileTextIcon, HashIcon, SearchIcon } from './Icons';
 
@@ -115,13 +115,13 @@ function SearchDialog(props: { onClose: () => void }) {
   // Fetch the highlighted result's page data ahead of Enter or a click.
   createEffect(() => {
     const entry = flat()[selected()];
-    if (entry) void router.prefetch(entry.href);
+    if (entry) void router.preloadRoute({ href: entry.href } as never).catch(() => {});
   });
 
   function go(entry: SearchEntry | undefined) {
     if (!entry) return;
     props.onClose();
-    void router.visit(entry.href);
+    router.history.push(entry.href);
   }
 
   function onKeyDown(e: KeyboardEvent) {

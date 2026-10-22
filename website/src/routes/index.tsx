@@ -1,10 +1,11 @@
 import { For } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
+import { createFileRoute } from '@tanstack/solid-router';
 import { Link } from '../components/Link';
 import AppWindow from '../components/AppWindow';
 import CliShowcase from '../components/CliShowcase';
 import ParticleMorph from '../components/ParticleMorph';
-import { ArrowUpRightIcon, BellIcon, BotIcon, LayersIcon, TerminalIcon } from '../components/Icons';
+import { ArrowUpRightIcon, BellIcon, BotIcon, LayersIcon, ServerIcon, TerminalIcon } from '../components/Icons';
 
 const features = [
   {
@@ -35,9 +36,35 @@ const features = [
     points: ['Every Ghostty theme, light and dark', 'Plain-text config with live reload', 'Rebind any action'],
     link: { href: '/docs/configuration', label: 'Configuration' },
   },
+  {
+    icon: ServerIcon,
+    title: 'Agents on Every Machine',
+    body: 'Run sessions on a Linux box, a cloud VM, a Windows PC or the Mac mini under your desk. They join your sidebar, tagged with the host, and keep running when your laptop sleeps.',
+    points: [
+      'Reach hosts over SSH, Tailscale or WSL',
+      'The same statuses, notifications and kero command',
+      'One script installs the server build, no root needed',
+    ],
+    link: { href: '/docs/remote', label: 'Remote hosts' },
+    wide: true,
+  },
 ];
 
-export default function HomePage() {
+export const Route = createFileRoute('/')({
+  head: () => ({
+    meta: [
+      { title: 'A terminal for coding agents | Kero' },
+      {
+        name: 'description',
+        content:
+          'Kero is a terminal for coding agents. Sessions keep running when you quit, on your computer or a remote host, and the sidebar shows which ones need you.',
+      },
+    ],
+  }),
+  component: HomePage,
+});
+
+function HomePage() {
   return (
     <main class="home">
       {/* Hero */}
@@ -113,7 +140,7 @@ export default function HomePage() {
         <section class="wrapper features">
           <For each={features}>
             {(f) => (
-            <article class="feature">
+            <article class="feature" classList={{ 'feature--wide': !!f.wide }}>
               <Dynamic component={f.icon} size={20} class="feature__icon" />
               <h3>{f.title}</h3>
               <p>{f.body}</p>
