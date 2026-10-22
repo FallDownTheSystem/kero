@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.7
+
+- Kero can update a host that runs the Kero desktop app, not only the
+  server build: turn on **Settings › Hosts › Let them update Kero here**
+  on that computer (`remote-updates = true`), and its project in your
+  sidebar shows **Update** when it's behind. The app there updates,
+  relaunches and restarts kerod. It's off unless you turn it on, and the
+  host needs 2.1.7 itself, so update it there once more first.
+
 ## 2.1.6
 
 - A session open in Kero on two machines no longer takes the size of a
