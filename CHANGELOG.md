@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.6
+
+- A session open in Kero on two machines no longer takes the size of a
+  machine you've walked away from: Kero sizes it for the one you're at,
+  and gives it back to the other as soon as you return there or this one
+  quits or sleeps. Hosts get it with their next update.
+- Panes and sessions on a Windows host are named by their folder
+  (`mygo`), not its whole path (`C:\Users\you\dev\mygo`).
+
 ## 2.1.5
 
 - A session open in Kero on two machines takes the size of the one you're
