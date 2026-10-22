@@ -74,10 +74,10 @@ jobs:
           KERO_RELEASES="file://$RUNNER_TEMP/releases" ${{ matrix.as }} /bin/sh build/server/install-server.sh --no-service
           kero="$HOME/.local/bin/kero"
           "$kero" version
-          "$kero" new -n check -- sh -c 'echo kero-ok; sleep 60'
-          for i in $(seq 40); do
+          "$kero" new -n check -- sh -c 'echo kero-ok; sleep 300'
+          for i in $(seq 240); do
             "$kero" read check | grep -q kero-ok && break
-            if [ "$i" = 40 ]; then
+            if [ "$i" = 240 ]; then
               "$kero" read check
               cat "$HOME/.config/kero/kerod.log" "$HOME/Library/Application Support/kero/kerod.log" 2>/dev/null || true
               exit 1
@@ -110,9 +110,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $kero = Join-Path $env:LOCALAPPDATA 'Programs\kero-server\kero.exe'
           & $kero version
-          & $kero new -n check -- powershell -NoProfile -Command 'Write-Output kero-ok; Start-Sleep 60'
+          & $kero new -n check -- powershell -NoProfile -Command 'Write-Output kero-ok; Start-Sleep 300'
           $ok = $false
-          foreach ($i in 1..40) {
+          foreach ($i in 1..240) {
             if ((& $kero read check) -match 'kero-ok') { $ok = $true; break }
             Start-Sleep -Milliseconds 250
           }

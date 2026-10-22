@@ -19,9 +19,6 @@ param(
 	[switch]$Uninstall
 )
 
-$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
-
 $repo = 'egoist/kero'
 $lib = Join-Path $env:LOCALAPPDATA 'Programs\kero-server'
 $kero = Join-Path $lib 'kero.exe'
@@ -66,13 +63,17 @@ function Quiet { $ErrorActionPreference = 'SilentlyContinue'; & $kero @args 2>$n
 
 function Same-Dir([string]$a, [string]$b) { return $a.TrimEnd('\') -ieq $b.TrimEnd('\') }
 
-# What an update moved aside, but what still runs.
+# What an update moved aside, but what still runs: kero's own names,
+# kero.exe.<stamp>.kero-old, as kero daemon update gives them.
 function Remove-Old([string]$dir) {
-	Get-ChildItem -LiteralPath $dir -Filter '*.old' -Force -ErrorAction SilentlyContinue |
+	Get-ChildItem -LiteralPath $dir -Filter '*.kero-old' -Force -ErrorAction SilentlyContinue |
 		ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# The preferences are the functions' own: a run with iex would leave them
+# in the user's PowerShell otherwise.
 function Uninstall-Kero {
+	$ErrorActionPreference = 'Stop'
 	if (Test-Path -LiteralPath $kero) {
 		Quiet daemon uninstall-service | Out-Null
 		Quiet daemon stop | Out-Null
@@ -93,6 +94,8 @@ function Uninstall-Kero {
 }
 
 function Install-Kero {
+	$ErrorActionPreference = 'Stop'
+	$ProgressPreference = 'SilentlyContinue'
 	$arch = $null
 	try {
 		$arch = @{ 'X64' = 'amd64'; 'Arm64' = 'arm64' }[[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()]
@@ -153,9 +156,25 @@ function Install-Kero {
 		New-Item -ItemType Directory -Force -Path $lib | Out-Null
 		Remove-Old $lib
 		$stamp = [DateTime]::UtcNow.Ticks
-		Get-ChildItem -LiteralPath $lib -Force | Where-Object { $_.Name -notlike '*.old' } |
-			ForEach-Object { Rename-Item -LiteralPath $_.FullName -NewName "$($_.Name).$stamp.old" }
-		Get-ChildItem -LiteralPath $staging -Force | ForEach-Object { Move-Item -LiteralPath $_.FullName -Destination $lib }
+		$moved = New-Object Collections.ArrayList
+		try {
+			foreach ($f in @(Get-ChildItem -LiteralPath $lib -Force | Where-Object { $_.Name -notlike '*.kero-old' })) {
+				$to = Join-Path $lib "$($f.Name).$stamp.kero-old"
+				Move-Item -LiteralPath $f.FullName -Destination $to
+				[void]$moved.Add(@($f.FullName, $to))
+			}
+			foreach ($f in @(Get-ChildItem -LiteralPath $staging -Force)) {
+				$to = Join-Path $lib $f.Name
+				Move-Item -LiteralPath $f.FullName -Destination $to
+				[void]$moved.Add(@($f.FullName, $to))
+			}
+		} catch {
+			# Back as it was: the install of before, whole.
+			for ($i = $moved.Count - 1; $i -ge 0; $i--) {
+				Move-Item -LiteralPath $moved[$i][1] -Destination $moved[$i][0] -ErrorAction SilentlyContinue
+			}
+			Fail "could not replace the files of ${lib}: $($_.Exception.Message)"
+		}
 		Remove-Old $lib
 	} finally {
 		Remove-Item -LiteralPath $work, $staging -Recurse -Force -ErrorAction SilentlyContinue
@@ -170,7 +189,7 @@ function Install-Kero {
 
 	$running = $false
 	if ($upgrade) {
-		$running = [bool](Quiet daemon status | Select-String -Quiet '^kerod .* running')
+		$running = [bool](Quiet daemon status | Select-String -Quiet '^kerod [0-9]+ running')
 	}
 	if ($running) {
 		# Never a restart unasked: it would end the programs of the sessions.

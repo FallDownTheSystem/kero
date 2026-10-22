@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -176,8 +179,34 @@ func TestHostShortDir(t *testing.T) {
 	if got := w.joinPath(`C:\`, "src"); got != `C:\src` {
 		t.Errorf("joinPath = %q", got)
 	}
-	if got := pastedPath(w, `C:\Users\me\AppData\Local\Temp\a b.png`); got != `"C:\Users\me\AppData\Local\Temp\a b.png"` {
-		t.Errorf("pastedPath = %q", got)
+	// Quoted for PowerShell, the shell of Windows' panes, in which nothing
+	// of a file's name runs.
+	for in, want := range map[string]string{
+		`C:\Temp\kero-paste\x\pasted-image.png`: `C:\Temp\kero-paste\x\pasted-image.png`,
+		`C:\Temp\a b.png`:                       `'C:\Temp\a b.png'`,
+		`C:\Temp\$(calc).png`:                   `'C:\Temp\$(calc).png'`,
+		"C:\\Temp\\it\u2019s.png":               "'C:\\Temp\\it\u2019\u2019s.png'",
+	} {
+		if got := pastedPath(w, in); got != want {
+			t.Errorf("pastedPath(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// A Windows host's file opens in its editor by name, whatever the name.
+func TestEditorCommandWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("runs PowerShell")
+	}
+	w := &host{name: "w", info: proto.HostInfo{OS: "windows", Home: `C:\Users\me`}}
+	for _, name := range []string{`C:\a b\x.txt`, "C:\\x\u2019+(Write-Output PWNED)+\u2019y.txt", `C:\$(Write-Output PWNED)'.txt`} {
+		args := editorCommand(w, name)
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Env = append(os.Environ(), "VISUAL=", "EDITOR=[Console]::OutputEncoding = [Text.Encoding]::UTF8; Write-Output")
+		out, err := cmd.Output()
+		if err != nil || strings.TrimSpace(string(out)) != name {
+			t.Errorf("%q: the editor got %q, %v", name, out, err)
+		}
 	}
 }
 
@@ -215,7 +244,7 @@ func TestPickerItems(t *testing.T) {
 			t.Errorf("isPathQuery(%q)", q)
 		}
 	}
-	for q, want := range map[string]bool{`C:\src`: true, "d:": true, `~\x`: true, `\\nas\share`: true, "src": false, "1:": false} {
+	for q, want := range map[string]bool{`C:\src`: true, "d:": false, `d:/x`: true, `~\x`: true, `\\nas\share`: true, "src": false, "1:": false} {
 		if isPathQuery(q, true) != want {
 			t.Errorf("Windows: isPathQuery(%q)", q)
 		}

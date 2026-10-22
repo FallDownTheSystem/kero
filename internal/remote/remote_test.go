@@ -102,8 +102,15 @@ func TestWindowsShell(t *testing.T) {
 		{1, "sh : The term 'sh' is not recognized as the name of a cmdlet\r\n    + CategoryInfo          : ObjectNotFound: (sh:String) [], CommandNotFoundException\r\n", shellPowerShell},
 		{1, "\x1b[31;1msh: \x1b[31;1mThe term 'sh' is not recognized as a name of a cmdlet\x1b[0m\r\n", shellPowerShell},
 		{1, "\x1b[31;1msh: \x1b[31;1m无法将“sh”项识别为 cmdlet\x1b[0m\r\n", shellPowerShell},
+		// The same in the host's code page, GBK, which no pattern of quotes
+		// matches.
+		{1, "sh: \xce\xde\xb7\xa8\xbd\xab\xa1\xb0sh\xa1\xb1\xcf\xee\r\n", shellPowerShell},
 		{127, "sh: 1: exec: /opt/kero: not found", ""},
 		{2, "sh: 1: Syntax error: \"(\" unexpected", ""},
+		{1, "sh: 1: kero: something", ""},
+		{1, "sh: line 1: kero: something", ""},
+		{1, "sh: -c: line 0: syntax error", ""},
+		{2, "'sh' is not recognized as an internal or external command,\r\n", ""},
 		{255, "ssh: connect to host x port 22: Connection refused", ""},
 		{1, "kero: kerod did not start", ""},
 	} {
@@ -125,6 +132,8 @@ func fakeSSH() {
 	shell := os.Getenv("KERO_TEST_SHELL")
 	sh := strings.HasPrefix(cmd, "sh -c ")
 	switch {
+	case shell == "sh" && cmd == "sh -c 'exit 0'":
+		os.Exit(0)
 	case shell == "sh" && sh:
 		fmt.Fprintln(os.Stderr, "kero is not installed on devbox")
 		os.Exit(127)
@@ -471,6 +480,27 @@ func TestBridgeScript(t *testing.T) {
 		}
 		if want := filepath.Join(home, loc) + " __bridge --via ssh\n"; err != nil || string(out) != want {
 			t.Errorf("%s: %q, %v; want %q", loc, out, err, want)
+		}
+	}
+}
+
+// An install finds a host of Windows before it runs, as its shell fails to
+// run sh.
+func TestFindShell(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("KERO_SSH", exe)
+	t.Setenv("KERO_TEST_SSH_LOG", filepath.Join(t.TempDir(), "ssh.log"))
+	for i, shell := range []string{"cmd", "powershell", "sh"} {
+		t.Setenv("KERO_TEST_SHELL", shell)
+		a := Addr{Scheme: "ssh", Host: fmt.Sprintf("probe%d", i)}
+		if err := FindShell(a, true); err != nil {
+			t.Errorf("%s: %v", shell, err)
+		}
+		if Windows(a) != (shell != "sh") {
+			t.Errorf("%s: Windows = %v", shell, Windows(a))
 		}
 	}
 }

@@ -148,7 +148,7 @@ func TestReplace(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(dir, kero)); string(b) != "zipped" {
 		t.Errorf("kero is %q", b)
 	}
-	if olds, _ := filepath.Glob(filepath.Join(dir, "*.old")); len(olds) > 0 {
+	if olds, _ := filepath.Glob(filepath.Join(dir, "*"+oldSuffix)); len(olds) > 0 {
 		t.Errorf("%v stayed", olds)
 	}
 	if err := Replace(tarball(t, map[string]string{kero: "new", "libghostty-vt.so": "lib", Marker: ""}), dir); err != nil {

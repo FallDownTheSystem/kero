@@ -99,6 +99,18 @@ jobs:
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
         run: go tool mygo build -platform "${{ matrix.platform }}" -upload
 
+  # What a release is of passes its tests, as from a branch run by hand.
+  test:
+    needs: draft-release
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go test ./internal/...
+
   # The server build of Kero, for machines whose sessions the app shows
   # (Settings › Hosts): kerod and the kero CLI without the app, with
   # libghostty-vt, for Linux, macOS and Windows, which the install scripts
@@ -112,7 +124,7 @@ jobs:
   # Signed apart from the jobs that run what was built, with the key the
   # app's updates are signed with, which the server build checks.
   server-sign:
-    needs: server
+    needs: [server, test]
     name: Sign the server build
     runs-on: ubuntu-latest
     steps:

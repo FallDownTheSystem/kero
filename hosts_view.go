@@ -14,6 +14,7 @@ import (
 
 	"kero/internal/proto"
 	"kero/internal/remote"
+	"kero/internal/shell"
 
 	"kero/locales"
 )
@@ -508,7 +509,6 @@ func editorCommand(h *host, file string) []string {
 	if !h.windows() {
 		return []string{"sh", "-c", `exec ${VISUAL:-${EDITOR:-vi}} "$1"`, "sh", file}
 	}
-	quote := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 	return []string{"powershell.exe", "-NoProfile", "-Command",
-		`$e = if ($env:VISUAL) { $env:VISUAL } elseif ($env:EDITOR) { $env:EDITOR } else { 'edit' }; Invoke-Expression ($e + ' ' + ` + quote(quote(file)) + `)`}
+		`$e = if ($env:VISUAL) { $env:VISUAL } elseif ($env:EDITOR) { $env:EDITOR } else { 'edit' }; Invoke-Expression ($e + ' ' + ` + shell.PSQuote(shell.PSQuote(file)) + `)`}
 }

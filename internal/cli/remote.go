@@ -269,17 +269,10 @@ func hostsCmd(args []string) error {
 		if version == "" {
 			version = releasedVersion()
 		}
-		// A connection finds a host of Windows, which installs with
+		// A host of Windows, whose shell has no sh, installs with
 		// PowerShell.
-		if a.Scheme == "ssh" && !remote.Windows(a) {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			rc, err := remote.Dial(ctx, a, remote.Options{App: build.Version(), Client: clientName("kero CLI")})
-			cancel()
-			if err == nil {
-				rc.Close()
-			} else if errors.Is(err, remote.ErrAuth) {
-				return err
-			}
+		if err := remote.FindShell(a, false); err != nil {
+			return err
 		}
 		cmd, err := remote.InstallCommand(a, version, false)
 		if err != nil {

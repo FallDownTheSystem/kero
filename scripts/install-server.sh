@@ -192,7 +192,7 @@ main() {
 		unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/kerod.service"
 		manager() { command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; }
 	fi
-	if [ "$upgrade" = 1 ] && "$lib/kero" daemon status 2>/dev/null | grep -q '^kerod .* running'; then
+	if [ "$upgrade" = 1 ] && "$lib/kero" daemon status 2>/dev/null | grep -q '^kerod [0-9][0-9]* running'; then
 		# Never a restart unasked: it would end the programs of the sessions.
 		echo "kerod runs the version of before until it restarts: kero daemon restart (its sessions start again, the programs in them end)."
 	elif [ -f "$unit" ]; then

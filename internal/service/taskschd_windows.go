@@ -149,16 +149,21 @@ func Uninstall() error {
 }
 
 // Start runs the task, and waits for its kerod: none starts while no one
-// is logged on to the machine, as over SSH only.
+// is logged on to the machine, as over SSH only. The task runs again each
+// second, as Task Scheduler ignores a run while the task's last kerod,
+// which just stopped as it restarts, has not ended.
 func Start() error {
 	if err := schtasks("/Run", "/TN", task()); err != nil {
 		return err
 	}
-	for range 100 {
+	for i := 1; i <= 100; i++ {
 		if running() {
 			return nil
 		}
 		time.Sleep(50 * time.Millisecond)
+		if i%20 == 0 {
+			schtasks("/Run", "/TN", task())
+		}
 	}
 	return errors.New("the task did not start kerod: it runs only while you are logged on to the machine")
 }

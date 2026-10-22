@@ -116,7 +116,7 @@ func isPathQuery(q string, windows bool) bool {
 	if strings.HasPrefix(q, "/") || q == "~" || strings.HasPrefix(q, "~/") {
 		return true
 	}
-	drive := len(q) >= 2 && q[1] == ':' && ('A' <= q[0] && q[0] <= 'Z' || 'a' <= q[0] && q[0] <= 'z')
+	drive := len(q) >= 3 && q[1] == ':' && (q[2] == '\\' || q[2] == '/') && ('A' <= q[0] && q[0] <= 'Z' || 'a' <= q[0] && q[0] <= 'z')
 	return windows && (strings.HasPrefix(q, `~\`) || strings.HasPrefix(q, `\\`) || drive)
 }
 

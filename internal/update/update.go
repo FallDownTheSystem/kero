@@ -309,13 +309,14 @@ func Replace(archive []byte, dir string) error {
 	return nil
 }
 
-// oldSuffix ends the files a Windows update moved aside.
-const oldSuffix = ".old"
+// oldSuffix ends the files a Windows update moved aside, as
+// kero.exe.<stamp>.kero-old: its own, which no file of the user's ends with.
+const oldSuffix = ".kero-old"
 
 // replaceFiles puts staging's files in place of dir's, one by one, as
 // Windows takes it: the files kerod runs, kero.exe and its library, and
 // the directory that holds them, can be neither removed nor replaced, but
-// those files can be moved. So dir's go aside first, as name.<n>.old,
+// those files can be moved. So dir's go aside first (oldSuffix),
 // removed once nothing runs them (RemoveOld).
 func replaceFiles(staging, dir string) error {
 	defer os.RemoveAll(staging)
@@ -358,9 +359,13 @@ func replaceFiles(staging, dir string) error {
 	return nil
 }
 
-// RemoveOld removes what an update on Windows moved aside in dir, but
-// what still runs, which the next one removes.
+// RemoveOld removes what an update on Windows moved aside in dir, an
+// install that updates itself (Managed), but what still runs, which the
+// next one removes.
 func RemoveOld(dir string) {
+	if !Managed(dir) {
+		return
+	}
 	olds, _ := filepath.Glob(filepath.Join(dir, "*"+oldSuffix))
 	for _, o := range olds {
 		os.RemoveAll(o)

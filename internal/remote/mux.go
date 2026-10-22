@@ -92,6 +92,18 @@ type Conn struct {
 
 // Dial connects to a host, within ctx.
 func Dial(ctx context.Context, a Addr, o Options) (*Conn, error) {
+	cached := Windows(a)
+	c, err := dial(ctx, a, o)
+	// A shell remembered may have changed, as the SSH server's default:
+	// it is found again.
+	if err != nil && cached && ctx.Err() == nil && !errors.Is(err, ErrNotInstalled) && !errors.Is(err, ErrAuth) {
+		shells.Delete(a.String())
+		return dial(ctx, a, o)
+	}
+	return c, err
+}
+
+func dial(ctx context.Context, a Addr, o Options) (*Conn, error) {
 	tr, err := transport(ctx, a, o.Client)
 	if err != nil {
 		return nil, err

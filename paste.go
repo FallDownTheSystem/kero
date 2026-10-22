@@ -10,6 +10,7 @@ import (
 
 	"kero/internal/client"
 	"kero/internal/proto"
+	"kero/internal/shell"
 
 	"kero/locales"
 )
@@ -131,14 +132,17 @@ func shellEscape(p string) string {
 }
 
 // pastedPath writes a path of a host as one word of its shells: of a
-// POSIX shell, else, on Windows, of cmd and PowerShell alike, quoted
-// should it need to be.
+// POSIX shell, else, on Windows, of PowerShell, the shell of its panes:
+// in single quotes, in which nothing expands, unless it is all letters,
+// digits and . _ - : \ /.
 func pastedPath(h *host, p string) string {
 	if !h.windows() {
 		return shellEscape(p)
 	}
-	if strings.ContainsAny(p, " \t&()[]{}^=;!'+,`~$%@#") {
-		return `"` + p + `"`
+	for _, r := range p {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune(`._-:\/`, r)) {
+			return shell.PSQuote(p)
+		}
 	}
 	return p
 }

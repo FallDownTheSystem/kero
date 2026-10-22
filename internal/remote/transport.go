@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"kero/internal/shell"
 )
 
 // Errors a dial tells apart, for the app to say what to do.
@@ -100,11 +102,14 @@ func bridgeCommand(a Addr, shell string) string {
 // the command starts with no quote, which cmd /c would take off.
 func cmdBridge(a Addr) string {
 	const run = " __bridge --via ssh"
-	const missing = `(echo kero is not installed on %COMPUTERNAME% 1>&2 & exit /b 127)`
+	const missing = `echo kero is not installed on %COMPUTERNAME% 1>&2 & exit /b 127`
 	locs := []string{`%LOCALAPPDATA%\Programs\kero-server\kero.exe`, `%APPDATA%\kero\bin\kero.exe`}
-	s := `(where kero >nul 2>&1 && kero` + run + ` || ` + missing + `)`
+	// The PATH's kero.exe, the PATH's only, not the directory's, exits as
+	// the bridge does, which may be with an error of its own, never taken
+	// for a kero missing.
+	s := `((for %k in (kero.exe) do @if not "%~$PATH:k"=="" ("%~$PATH:k"` + run + ` & exit /b)) & ` + missing + `)`
 	if a.Kero != "" {
-		locs, s = []string{a.Kero}, missing
+		locs, s = []string{a.Kero}, `(`+missing+`)`
 	}
 	for i := len(locs) - 1; i >= 0; i-- {
 		s = `if exist "` + locs[i] + `" ("` + locs[i] + `"` + run + `) else ` + s
@@ -119,15 +124,12 @@ func powershellBridge(a Addr) string {
 	locs := `($env:LOCALAPPDATA + '\Programs\kero-server\kero.exe'), ($env:APPDATA + '\kero\bin\kero.exe')`
 	path := `if (-not $k) { $k = (Get-Command kero -CommandType Application -ErrorAction Ignore | Select-Object -First 1).Source }; `
 	if a.Kero != "" {
-		locs, path = psQuote(a.Kero), ""
+		locs, path = shell.PSQuote(a.Kero), ""
 	}
 	return `$k = @(` + locs + `) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1; ` + path +
 		`if (-not $k) { [Console]::Error.WriteLine('kero is not installed on ' + $env:COMPUTERNAME); exit 127 }; ` +
 		`& $k __bridge --via ssh; exit $LASTEXITCODE`
 }
-
-// psQuote quotes s for PowerShell, as a string of its own.
-func psQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 
 // ansiEscape matches the colors PowerShell 7 writes its errors in.
 var ansiEscape = regexp.MustCompile("\x1b\\[[0-9;?]*[A-Za-z]")
@@ -137,22 +139,24 @@ var ansiEscape = regexp.MustCompile("\x1b\\[[0-9;?]*[A-Za-z]")
 var quotedSh = regexp.MustCompile(`['"“”«»「」]sh['"“”«»「」]`)
 
 // psCommandError matches PowerShell's error for a command it does not
-// know: 7's, as "sh: The term 'sh' is not recognized", which no error of
-// a Unix sh, as "sh: 1: …", is, and 5's, which names the exception.
-var psCommandError = regexp.MustCompile(`(?m)^sh ?:.*['"“”«»「」]sh['"“”«»「」]|CommandNotFoundException`)
+// know: 5's, which names the exception, and 7's, "sh: " and what it says
+// in the language of the host, as in its code page, which no Unix sh's
+// error is: dash's "sh: 1: …", bash's "sh: line 1: …" or "sh: -c: …".
+var psCommandError = regexp.MustCompile(`CommandNotFoundException|(?m)^sh: (?:[^0-9l\-]|l[^i])`)
 
 // windowsShell tells, from how the bridge's sh -c ended, the shell of
-// Windows that ran it, which has no sh: "" for any other end. An SSH
-// server's own failures exit with 255.
+// Windows that ran it, which has no sh: "" for any other end. cmd and
+// PowerShell exit with 1 for a command they do not know; the bridge's sh
+// never does, nor the SSH server, whose failures exit with 255.
 func windowsShell(code int, stderr string) string {
-	if code == 255 || code == bridgeNotFound {
+	if code != 1 {
 		return ""
 	}
 	s := ansiEscape.ReplaceAllString(stderr, "")
 	switch {
 	case psCommandError.MatchString(s):
 		return shellPowerShell
-	case code == 1 && quotedSh.MatchString(s):
+	case quotedSh.MatchString(s):
 		return shellCmd
 	}
 	return ""
