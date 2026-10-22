@@ -3,8 +3,11 @@ package client
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
+	"net"
 	"testing"
+	"time"
 
 	"kero/internal/proto"
 )
@@ -64,3 +67,47 @@ func TestStreamLargeOutput(t *testing.T) {
 		t.Errorf("read %d bytes, not the %d written", len(got), len(out))
 	}
 }
+
+// Input takes the session's size back from another client that resized
+// it, before it goes; a focus-out report does not, nor input at the size
+// asked.
+func TestStreamClaimsSize(t *testing.T) {
+	var wire bytes.Buffer
+	proto.WriteFrame(&wire, proto.FrameResized, proto.ResizePayload(100, 30))
+	var sent bytes.Buffer
+	s := &Stream{conn: writeConn{&sent}, r: bufio.NewReader(&wire), size: [2]int{80, 24}, Gone: make(chan struct{})}
+	s.ResizePixels(80, 24, 9, 18)
+	s.Write([]byte("a")) // at the size asked: no resize
+	io.ReadAll(s)        // another client's size, 100x30
+	s.Write([]byte("\x1b[O"))
+	s.Write([]byte("b"))
+	var got []string
+	for {
+		kind, payload, err := proto.ReadFrame(&sent)
+		if err != nil {
+			break
+		}
+		if kind == proto.FrameResize {
+			c, r, cw, ch, _ := proto.ParseResizePixels(payload)
+			got = append(got, fmt.Sprintf("resize %dx%d %dx%d", c, r, cw, ch))
+		} else {
+			got = append(got, fmt.Sprintf("%c %q", kind, payload))
+		}
+	}
+	want := []string{"resize 80x24 9x18", fmt.Sprintf("%c %q", proto.FrameInput, "a"), fmt.Sprintf("%c %q", proto.FrameInput, "\x1b[O"), "resize 80x24 9x18", fmt.Sprintf("%c %q", proto.FrameInput, "b")}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("sent %q, want %q", got, want)
+	}
+}
+
+// writeConn is a net.Conn that writes to a buffer.
+type writeConn struct{ w *bytes.Buffer }
+
+func (c writeConn) Read([]byte) (int, error)         { return 0, io.EOF }
+func (c writeConn) Write(p []byte) (int, error)      { return c.w.Write(p) }
+func (c writeConn) Close() error                     { return nil }
+func (c writeConn) LocalAddr() net.Addr              { return nil }
+func (c writeConn) RemoteAddr() net.Addr             { return nil }
+func (c writeConn) SetDeadline(time.Time) error      { return nil }
+func (c writeConn) SetReadDeadline(time.Time) error  { return nil }
+func (c writeConn) SetWriteDeadline(time.Time) error { return nil }

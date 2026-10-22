@@ -297,7 +297,12 @@ type Stream struct {
 	r       *bufio.Reader
 	Welcome proto.Welcome
 
-	wmu    sync.Mutex
+	wmu sync.Mutex
+	// asked is the size the terminal last asked for, and size the one the
+	// session's terminal took last (FrameResized), which another client's
+	// asking for its own changes; wmu guards them.
+	asked  [4]int
+	size   [2]int
 	buf    []byte
 	closed chan struct{}
 	once   sync.Once
@@ -326,7 +331,7 @@ func AttachVia(d Dialer, id string) (*Stream, error) {
 		conn.Close()
 		return nil, err
 	}
-	return &Stream{conn: conn, r: r, Welcome: w, closed: make(chan struct{}), Gone: make(chan struct{})}, nil
+	return &Stream{conn: conn, r: r, Welcome: w, size: [2]int{w.Cols, w.Rows}, closed: make(chan struct{}), Gone: make(chan struct{})}, nil
 }
 
 func (s *Stream) Read(p []byte) (int, error) {
@@ -341,8 +346,13 @@ func (s *Stream) Read(p []byte) (int, error) {
 		case proto.FrameClosed:
 			s.goneOnce.Do(func() { close(s.Gone) })
 		case proto.FrameResized:
-			if c, r, ok := proto.ParseResize(payload); ok && s.OnResized != nil {
-				s.OnResized(c, r)
+			if c, r, ok := proto.ParseResize(payload); ok {
+				s.wmu.Lock()
+				s.size = [2]int{c, r}
+				s.wmu.Unlock()
+				if s.OnResized != nil {
+					s.OnResized(c, r)
+				}
 			}
 		}
 	}
@@ -351,9 +361,17 @@ func (s *Stream) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+// Write sends what the user typed, taking the session's size back first
+// (Claim): the program answers it at the size this terminal shows. A
+// focus-out report (mode 1004) takes nothing: the user is leaving.
 func (s *Stream) Write(p []byte) (int, error) {
 	s.wmu.Lock()
 	defer s.wmu.Unlock()
+	if string(p) != "\x1b[O" {
+		if err := s.claim(); err != nil {
+			return 0, err
+		}
+	}
 	if err := proto.WriteFrame(s.conn, proto.FrameInput, p); err != nil {
 		return 0, err
 	}
@@ -365,7 +383,26 @@ func (s *Stream) Write(p []byte) (int, error) {
 func (s *Stream) ResizePixels(cols, rows, cellWidth, cellHeight int) error {
 	s.wmu.Lock()
 	defer s.wmu.Unlock()
+	s.asked = [4]int{cols, rows, cellWidth, cellHeight}
 	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePixelsPayload(cols, rows, cellWidth, cellHeight))
+}
+
+// Claim asks again for the size this terminal fits, when another
+// client's took the session's terminal: a session has one size, the one
+// of the client the user is in, on whichever machine.
+func (s *Stream) Claim() error {
+	s.wmu.Lock()
+	defer s.wmu.Unlock()
+	return s.claim()
+}
+
+// claim is Claim; s.wmu is held.
+func (s *Stream) claim() error {
+	a := s.asked
+	if a[0] == 0 || s.size == [2]int{a[0], a[1]} {
+		return nil
+	}
+	return proto.WriteFrame(s.conn, proto.FrameResize, proto.ResizePixelsPayload(a[0], a[1], a[2], a[3]))
 }
 
 // UseTheme tells the daemon the colors the terminal shows, which programs
