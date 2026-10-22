@@ -164,6 +164,9 @@ func (a *App) hostNote(c *ui.Context, pal *palette, h *host) {
 			title = locales.HostRestarting(h.name)
 		case h.conn == connVersion:
 			title, detail = locales.HostVersionTitle(h.name), a.hostVersionDetail(h)
+		case errors.Is(h.errKind, remote.ErrNotInstalled):
+			// What the host said says it again.
+			title = a.hostProblem(h)
 		default:
 			title, detail = a.hostProblem(h), h.err
 			if errors.Is(h.errKind, remote.ErrAuth) && h.addr.Scheme == "ssh" {

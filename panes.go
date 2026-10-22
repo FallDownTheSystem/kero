@@ -432,8 +432,12 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 				a.startRename(s.ID)
 			}
 			// The home directory names itself "~", which the title may
-			// already say.
-			if dir := proto.ShortDir(p.WorkDir()); dir != title {
+			// already say; another machine's, as scp writes it: devbox:~/api.
+			h := a.hostOf(p.ID)
+			if dir := h.shortDir(p.WorkDir()); dir != title || h.remote() {
+				if h.remote() {
+					dir = h.name + ":" + dir
+				}
 				ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
 			}
 		})

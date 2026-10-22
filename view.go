@@ -524,6 +524,10 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bool, is func(*proto.Session) bool, fg ui.Color, say func(int) string, hint string, jump func()) {
 	n := 0
 	for i := range a.st.Sessions {
+		// A host the app lost says nothing new, as for the Dock's badge.
+		if h := a.hostOf(a.st.Sessions[i].ID); h.remote() && h.conn != connReady {
+			continue
+		}
 		if is(&a.st.Sessions[i]) {
 			n++
 		}

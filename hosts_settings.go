@@ -87,20 +87,20 @@ func (a *App) hostRow(c *ui.Context, pal *palette, h *host) {
 				a.set = s
 			})
 		})
-		switch {
-		case h.busy != "":
-		case errorsIsNotInstalled(h):
-			if button(c, "install", locales.HostInstall(), "", true, pal) {
-				a.installOnHost(h)
-			}
-		case h.conn == connVersion || h.behind():
-			if button(c, "update", locales.HostUpdateAction(h.name), "", true, pal) {
-				a.offerHostUpdate(h)
-				if a.win != nil {
-					a.win.Focus()
+		// What fixes it, a button of its own size, under the host.
+		ui.Row(c).Padding(0, 0, 0, 26).Children(func() {
+			switch {
+			case h.busy != "":
+			case errorsIsNotInstalled(h):
+				if button(c, "install", locales.HostInstall(), "", true, pal) {
+					a.installOnHost(h)
+				}
+			case h.conn == connVersion || h.behind():
+				if button(c, "update", locales.HostUpdateAction(h.name), "", true, pal) {
+					a.offerHostUpdate(h)
 				}
 			}
-		}
+		})
 	})
 }
 
@@ -119,6 +119,8 @@ func (a *App) hostStatus(h *host) string {
 		return locales.HostReconnecting()
 	case h.conn == connConnecting:
 		return locales.StatusConnecting()
+	case h.conn == connFailed && errors.Is(h.errKind, remote.ErrNotInstalled):
+		return a.hostProblem(h)
 	case h.conn == connFailed:
 		return a.hostProblem(h) + ": " + h.err
 	case h.conn == connVersion:
