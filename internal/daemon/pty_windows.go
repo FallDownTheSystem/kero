@@ -23,6 +23,8 @@ type ptyProc struct {
 	mu      sync.Mutex
 	console uintptr // the HPCON, 0 once closed
 	conpty  conPTY  // the ConPTY of the console
+	// cols and rows are the console's size.
+	cols, rows int
 	in      *os.File
 	out     *os.File
 	process windows.Handle
@@ -158,6 +160,8 @@ func startPTY(o ptyOptions) (*ptyProc, error) {
 	p := &ptyProc{
 		console: console,
 		conpty:  cp,
+		cols:    o.Cols,
+		rows:    o.Rows,
 		in:      os.NewFile(uintptr(inW), "conpty-in"),
 		out:     os.NewFile(uintptr(outR), "conpty-out"),
 		exited:  make(chan struct{}),
@@ -247,16 +251,32 @@ func (p *ptyProc) Read(b []byte) (int, error) {
 
 func (p *ptyProc) Write(b []byte) (int, error) { return p.in.Write(b) }
 
-// Resize resizes the console; ConPTY has no size in pixels.
+// Resize resizes the console; ConPTY has no size in pixels. A new width
+// and height go one after the other, the width first: the console, given
+// both at once, keeps its rows at the top as it grows, its cursor rows
+// above the bottom, where the terminal's, which brings rows back from the
+// scrollback, is at the bottom; the program then draws above the
+// terminal's last rows, which stay blank.
 func (p *ptyProc) Resize(cols, rows, _, _ int) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.console == 0 {
 		return os.ErrClosed
 	}
+	if cols != p.cols && rows != p.rows {
+		if err := p.resize(cols, p.rows); err != nil {
+			return err
+		}
+	}
+	return p.resize(cols, rows)
+}
+
+// resize resizes the console; p.mu is held.
+func (p *ptyProc) resize(cols, rows int) error {
 	if r, _, _ := p.conpty.resize.Call(p.console, coord(cols, rows)); r != 0 {
 		return fmt.Errorf("pty: ResizePseudoConsole: %w", syscall.Errno(r&0xFFFF))
 	}
+	p.cols, p.rows = cols, rows
 	return nil
 }
 
