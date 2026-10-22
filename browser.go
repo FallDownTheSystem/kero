@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"runtime"
 	"time"
 	"unicode/utf8"
@@ -39,6 +40,8 @@ type webEntry struct {
 	found    mygo.FindResult
 	findSeq  int
 	findText string
+	// loads are kero browser's calls waiting for the page's load to end.
+	loads []chan error
 }
 
 // browserUA makes the page look like Safari's on macOS: sites serve a bare
@@ -106,13 +109,20 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 			a.tellPage(id, e)
 		})
 	})
-	page.OnDidFinishLoad(func() { a.update(func() { e.syncNav() }) })
+	page.OnDidFinishLoad(func() {
+		a.update(func() {
+			e.syncNav()
+			e.loadEnded(nil)
+		})
+	})
 	page.OnDidFailLoad(func(err *mygo.LoadError) {
 		a.update(func() {
 			e.syncNav()
-			// A navigation the user left before it ended fails too.
+			// A navigation the user left before it ended fails too: the
+			// one that left it ends later.
 			if err.Code != -999 && err.Description != "" {
 				e.err = err.Description
+				e.loadEnded(errors.New(err.Description))
 			}
 		})
 	})
@@ -157,7 +167,7 @@ func (a *App) tellPage(id string, e *webEntry) {
 			p.URL, p.Title = e.url, e.title
 		}
 	}
-	a.call("pane.page", proto.PageParams{ID: id, URL: e.url, Title: e.title}, nil)
+	a.call(id, "pane.page", proto.PageParams{ID: id, URL: e.url, Title: e.title}, nil)
 }
 
 func (a *App) dropWeb(id string) {
@@ -275,7 +285,7 @@ func (a *App) paneBrowser(c *ui.Context, pal *palette, bar ui.TitleBar, shown fl
 // clear of the traffic lights and the sidebar's buttons.
 func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, e *webEntry, top, left, right, multi, focused, hovered bool) (ui.Element, bool) {
 	pad := float32(16)
-	if left {
+	if top && left {
 		pad = a.chrome.headerPad
 	}
 	// The first button's icon starts where a header's title does.

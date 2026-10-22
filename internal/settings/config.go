@@ -10,6 +10,7 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/proto"
+	"kero/internal/remote"
 )
 
 // kero's configuration is a file of lines `key = value`, as Ghostty's:
@@ -108,6 +109,7 @@ var keys = []key{
 		[]string{"current", "project", "home"}, []string{"current", "project", "home"}),
 	choiceKey("session-name", "what names a session you or an agent didn't: the program in the pane you're in, else in the one that most needs you; the program in the one that most needs you; or the first pane's folder",
 		func(s *Settings) *string { return &s.SessionName }, proto.NameFocused, proto.NameLead, proto.NameFolder),
+	boolKey("focus-follows-mouse", "focus the pane the pointer moves into", func(s *Settings) *bool { return &s.FocusFollowsMouse }),
 	boolKey("confirm-close", "ask before closing a pane a program runs in", func(s *Settings) *bool { return &s.ConfirmClose }),
 	boolKey("restore-sessions", "start sessions again after kerod restarts, as after a reboot", func(s *Settings) *bool { return &s.RestoreSessions }),
 	boolKey("resume-agents", "as sessions start again, resume the conversation of the coding agent each pane ran", func(s *Settings) *bool { return &s.ResumeAgents }),
@@ -181,7 +183,69 @@ var keys = []key{
 	boolKey("dock-badge", "the number of sessions that need you", func(s *Settings) *bool { return &s.DockBadge }),
 	boolKey("dock-bounce", "once, when a session comes to need you", func(s *Settings) *bool { return &s.BounceDock }),
 
-	boolKey("remote-control", "kero do and kero focus drive the app", func(s *Settings) *bool { return &s.RemoteControl }),
+	boolKey("remote-control", "kero do, kero focus and kero browser drive the app", func(s *Settings) *bool { return &s.RemoteControl }),
+	{name: "host", doc: "another machine whose sessions the app shows, as name=address: [user@]host or ssh://… over SSH, wsl://distro, http(s)://… for kerod's tailnet listener; add remote-control after it to let its programs drive the app, and color=red, orange, amber, green, teal, blue, purple or pink to mark its sessions; repeat it", list: true,
+		get: func(s *Settings) []string {
+			var out []string
+			for _, h := range s.Hosts {
+				v := h.Name + "=" + h.Addr
+				if h.RemoteControl {
+					v += " remote-control"
+				}
+				if h.Color != "" {
+					v += " color=" + h.Color
+				}
+				out = append(out, v)
+			}
+			return out
+		},
+		set: func(s *Settings, v []string) error {
+			s.Hosts = nil
+			var bad []string
+			for _, line := range v {
+				h, err := ParseHost(line)
+				if err == nil && s.Host(h.Name) != nil {
+					err = fmt.Errorf("%q is named twice", h.Name)
+				}
+				if err != nil {
+					bad = append(bad, err.Error())
+					continue
+				}
+				s.Hosts = append(s.Hosts, h)
+			}
+			if bad != nil {
+				return fmt.Errorf("%s", strings.Join(bad, "; "))
+			}
+			return nil
+		}},
+	{name: "listen", doc: "let Kero on other machines reach this one's sessions: tailnet://:7373 on its Tailscale addresses, tailnet-serve:// for Tailscale Serve; repeat it", list: true,
+		get: func(s *Settings) []string { return slices.Clone(s.Listen) },
+		set: func(s *Settings, v []string) error {
+			s.Listen = nil
+			var bad []string
+			for _, l := range v {
+				if _, err := remote.ParseListen(l); err != nil {
+					bad = append(bad, err.Error())
+					continue
+				}
+				s.Listen = append(s.Listen, strings.TrimSpace(l))
+			}
+			if bad != nil {
+				return fmt.Errorf("%s", strings.Join(bad, "; "))
+			}
+			return nil
+		}},
+	{name: "listen-allow", doc: "who besides this machine's owner may connect to a listener: a tailnet login, tag:name, or * for anyone on the tailnet; repeat it", list: true,
+		get: func(s *Settings) []string { return slices.Clone(s.ListenAllow) },
+		set: func(s *Settings, v []string) error {
+			s.ListenAllow = nil
+			for _, a := range v {
+				if a = strings.TrimSpace(a); a != "" {
+					s.ListenAllow = append(s.ListenAllow, a)
+				}
+			}
+			return nil
+		}},
 	boolKey("git-status", "show the git branch and changes of each session", func(s *Settings) *bool { return &s.GitStatus }),
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
 	boolKey("browser-block-ads", "block ads and trackers in browser panes, with EasyList and EasyPrivacy", func(s *Settings) *bool { return &s.BlockAds }),

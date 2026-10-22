@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 
 	"github.com/egoist/mygo"
@@ -34,12 +33,12 @@ func main() {
 	if len(os.Args) > 1 {
 		switch {
 		case os.Args[1] == "__kerod":
-			if err := daemon.Run(); err != nil {
+			if err := daemon.Run(daemon.Options{}); err != nil {
 				fmt.Fprintln(os.Stderr, "kerod:", err)
 				os.Exit(1)
 			}
 			return
-		case slices.Contains(cli.Commands, os.Args[1]):
+		case cli.IsCommand(os.Args[1]):
 			os.Exit(cli.Run(os.Args[1:]))
 		}
 	}
@@ -129,6 +128,7 @@ func runApp() {
 		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.reportView() }) })
 		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
 		a.connect()
+		a.syncHosts()
 		go a.watchConfig()
 	})
 	if err := mygo.App.Run(); err != nil {
@@ -136,24 +136,7 @@ func runApp() {
 	}
 }
 
-// newSessionIn starts a session in a directory, in its project.
-func (a *App) newSessionIn(dir string) {
-	if a.cl == nil {
-		return
-	}
-	cl := a.cl
-	go func() {
-		var s proto.Session
-		err := cl.Call("create", proto.CreateParams{Dir: dir}, &s)
-		a.update(func() {
-			if err != nil {
-				a.toast(err.Error())
-				return
-			}
-			a.addPending(s)
-			a.selectSession(s.ID)
-		})
-	}()
-}
+// newSessionIn starts a session in a directory of a host, in its project.
+func (a *App) newSessionIn(h *host, dir string) { a.create(h, proto.CreateParams{Dir: dir}, "") }
 
 func stopDaemon() error { return cli.StopDaemon() }

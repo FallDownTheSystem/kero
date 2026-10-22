@@ -10,6 +10,8 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/settings"
+
+	"kero/locales"
 )
 
 // Every page builds, and shows its settings.
@@ -20,7 +22,7 @@ func TestSettingsPages(t *testing.T) {
 	want := map[string]string{
 		"general": "Restore sessions after a restart", "appearance": "Translucent window", "terminal": "Line height",
 		"shell": "Scrollback", "notifications": "A session needs me", "keyboard": "Split Right",
-		"agents": "Let commands drive this window", "advanced": "Background service",
+		"agents": "Let commands drive this window", "hosts": "Experimental", "advanced": "Background service",
 	}
 	for _, p := range settingsPages {
 		if p.id == "notifications" {
@@ -30,6 +32,9 @@ func TestSettingsPages(t *testing.T) {
 		tt.Frame()
 		if !tt.HasText(want[p.id]) {
 			t.Errorf("page %s: no %q; texts %q", p.id, want[p.id], tt.Texts())
+		}
+		if p.id != "hosts" && tt.HasText("Experimental") {
+			t.Errorf("page %s is tagged experimental", p.id)
 		}
 		shot(t, tt, "settings-"+p.id)
 	}
@@ -573,4 +578,36 @@ func TestSearchMenuIsModal(t *testing.T) {
 	if a.ss.scrolls["terminal"].Y == 0 {
 		t.Error("the page does not scroll once the menu closed")
 	}
+}
+
+// A form's button stands as high as the field beside it, as Hosts' Add
+// ($KERO_SHOTS).
+func TestFieldButtonHeight(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "hosts"
+	tt := ui.NewTester(a.settingsView, 820, 900)
+	tt.Frame()
+	shot(t, tt, "hosts-add")
+	add, ok := tt.Find(locales.CommonAdd())
+	if !ok {
+		t.Fatalf("no Add; texts %q", tt.Texts())
+	}
+	name, ok := tt.Find(locales.SetHostNamePlaceholder("devbox"))
+	if !ok {
+		t.Fatal("no name field")
+	}
+	if add.H != controlH+2 || abs32(add.Y+add.H/2-(name.Y+name.H/2)) > 0.5 {
+		t.Errorf("Add %+v beside the field %+v", add, name)
+	}
+	// The input is the whole field: 130 wide, as high as Add.
+	if name.W != 130 || name.H != add.H {
+		t.Errorf("the name's input is %+v, in a field of 130×%v", name, add.H)
+	}
+}
+
+func abs32(f float32) float32 {
+	if f < 0 {
+		return -f
+	}
+	return f
 }

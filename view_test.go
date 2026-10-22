@@ -45,6 +45,7 @@ func testApp(t *testing.T) *App {
 		}},
 	}
 	a.loaded, a.selected = true, "s1"
+	a.local().loaded = true
 	return a
 }
 
@@ -158,6 +159,32 @@ func TestSidebarAnimationNoHolds(t *testing.T) {
 	}
 }
 
+// With the sidebar hidden, only the header at the window's top left
+// keeps clear of the traffic lights: a pane under it starts its title
+// where any card does.
+func TestHeaderPadBelowTopLeft(t *testing.T) {
+	a := testApp(t)
+	a.prefs.SidebarHidden = true
+	var l *proto.Layout
+	a.st.Sessions[0].Layout = l.Split("a", "b", "down", 0)
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	top, ok1 := tt.Find("fish")
+	below, ok2 := tt.Find("zsh")
+	if !ok1 || !ok2 {
+		t.Fatalf("no titles; texts %q", tt.Texts())
+	}
+	if below.Y <= top.Y {
+		t.Fatalf("pane b is not under a: %v, %v", top, below)
+	}
+	if below.X >= top.X {
+		t.Errorf("the title under the top left's starts at %v, as far in as the top left's %v", below.X, top.X)
+	}
+	shot(t, tt, "header-pad-below")
+}
+
 // The window moves from the panes' headers and the gaps around them, and
 // not from a press on a pane, which focuses it.
 func TestWindowDragRegions(t *testing.T) {
@@ -200,7 +227,7 @@ func TestCopyOnSelectToast(t *testing.T) {
 // next session of it, and says nothing while nothing does ($KERO_SHOTS).
 func TestSidebarFooter(t *testing.T) {
 	a := testApp(t)
-	a.conn = connReady
+	a.local().conn = connReady
 	tt := ui.NewTester(a.view, 1100, 700)
 	tt.Frame()
 	for _, txt := range tt.Texts() {
@@ -277,7 +304,7 @@ func TestSessionTooltipAtPointer(t *testing.T) {
 // first while a program runs, as the restart ends it.
 func TestRestartStaleDaemon(t *testing.T) {
 	a := testApp(t)
-	a.conn, a.daemonApp = connReady, "1.9.0"
+	a.local().conn, a.local().daemonApp = connReady, "1.9.0"
 	a.st.Sessions[0].Process = "claude"
 	tt := ui.NewTester(a.view, 1100, 640)
 	tt.Frame()
@@ -289,7 +316,7 @@ func TestRestartStaleDaemon(t *testing.T) {
 		t.Fatalf("no question before the restart: %+v", a.confirm)
 	}
 
-	a.confirm, a.daemonApp = nil, mygo.App.Version()
+	a.confirm, a.local().daemonApp = nil, mygo.App.Version()
 	tt.Frame()
 	if tt.HasText("Restart Service") {
 		t.Error("a chip to restart a kerod of this version")
@@ -554,5 +581,59 @@ func TestPaletteOpensAddress(t *testing.T) {
 	tt.Frame()
 	if tt.HasText(locales.PaletteOpenInBrowser()) || !tt.HasText(locales.ActionNewBrowser()) {
 		t.Errorf("words: texts %q", tt.Texts())
+	}
+}
+
+// With focus-follows-mouse, the pointer going into a pane focuses it, but
+// a pane that comes under a pointer standing still does not.
+func TestFocusFollowsMouse(t *testing.T) {
+	a := testApp(t)
+	a.set.FocusFollowsMouse = true
+	s := &a.st.Sessions[0]
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	ar, _ := tt.Find("fish") // pane a's title
+	br, _ := tt.Find("zsh")  // pane b's
+	move := func(x float32) {
+		tt.Move(x, 340)
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+	}
+	move(ar.X + 40)
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("over a, focus %q", got)
+	}
+	move(br.X + 40)
+	if got := a.focusOf(s); got != "b" {
+		t.Fatalf("into b, focus %q, want b", got)
+	}
+
+	// The keyboard takes the focus back to a: b, under the pointer, keeps
+	// it from there, as the pointer moves on in it.
+	a.setFocus(s, "a")
+	tt.Frame()
+	move(br.X + 60)
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("moving in b after the keyboard focused a, focus %q", got)
+	}
+
+	// The panes swap places under the pointer standing still, and back.
+	var l *proto.Layout
+	s.Layout = l.Split("b", "a", "right", 0)
+	tt.Advance(time.Second)
+	tt.Frame()
+	s.Layout = l.Split("a", "b", "right", 0)
+	tt.Advance(time.Second)
+	tt.Frame()
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("b came under the pointer standing still, and took the focus")
+	}
+
+	// Off, the pointer leaves the focus be.
+	a.set.FocusFollowsMouse = false
+	move(ar.X + 40)
+	move(br.X + 40)
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("with the setting off, focus %q", got)
 	}
 }

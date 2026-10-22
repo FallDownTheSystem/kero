@@ -58,6 +58,13 @@ kero split --url localhost:5173
 kero new --url https://github.com/egoist/kero/pulls
 ```
 
+An agent can then use the page as you would, with `kero browser`: click, type, read its text, wait for it and take a screenshot. See [Command Line](./cli.md#browsing).
+
+```sh
+kero browser type 'input[name=q]' "kero" --enter
+kero browser text main
+```
+
 ### Blocking ads
 
 Browser panes block ads and trackers with the [EasyList](https://easylist.to) and EasyPrivacy filter lists, which Kero downloads the first time a browser pane opens and refreshes every week. Pages that open before the lists are ready get them as soon as they are, from their next load on.

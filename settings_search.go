@@ -24,6 +24,7 @@ func settingsIndex() []searchEntry {
 	return []searchEntry{
 		{"general", locales.SetNewSessionsStartIn(), "new-session-directory folder current project home tab"},
 		{"general", locales.SetSessionName(), "session-name title sidebar focused lead folder pane"},
+		{"general", locales.SetFocusFollowsMouse(), "focus-follows-mouse hover pointer niri hyprland sloppy"},
 		{"general", locales.SetAskBeforeClosing(), "confirm-close quit kill"},
 		{"general", locales.SetRestoreSessions(), "restore-sessions reboot persist"},
 		{"general", locales.SetResumeAgents(), "resume-agents claude codex pi opencode conversation restore reboot"},
@@ -66,11 +67,15 @@ func settingsIndex() []searchEntry {
 		{"notifications", locales.SetDockBadge(), "dock-badge count"},
 		{"notifications", locales.SetDockBounce(), "dock-bounce attention"},
 
-		{"agents", locales.SetRemoteControlRow(), "remote-control kero do focus automation"},
+		{"agents", locales.SetRemoteControlRow(), "remote-control kero do focus browser automation"},
 		{"agents", locales.SetCliRow(), "cli command line tool install path"},
 		{"agents", "Claude Code", "skill agents install"},
 		{"agents", "Codex, OpenCode, Pi", "skill agents install"},
 		{"agents", locales.SetProgramStatus(), "osc 7501 report progress"},
+
+		{"hosts", locales.SetHosts(), "host hosts remote server ssh tailscale tailnet wsl machine linux devbox -H kero hosts"},
+		{"hosts", locales.SetHostAdd(), "add host address ssh wsl https"},
+		{"hosts", locales.SetHostRemoteControl(), "remote-control host kero do focus"},
 
 		{"advanced", locales.SetConfigFile(), "configuration ghostty edit file dotfiles"},
 		{"advanced", "kerod", "daemon background service restart sessions"},

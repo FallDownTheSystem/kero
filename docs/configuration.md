@@ -43,6 +43,7 @@ kero config check             # report unknown keys and bad values
 | ----------------------- | --------- | ------------------------------------------------------------- |
 | `new-session-directory` | `current` | Where a new session starts: `current`, `project` or `home`    |
 | `session-name`          | `focused` | What names a session you haven't: `focused`, `lead` or `folder` ([more](./sessions.md#how-an-unnamed-session-is-named)) |
+| `focus-follows-mouse`   | `false`   | Focus the pane the pointer moves into                         |
 | `confirm-close`         | `true`    | Ask before closing a pane that a program is running in        |
 | `restore-sessions`      | `true`    | Start sessions again after kerod restarts, as after a reboot  |
 | `resume-agents`         | `true`    | As sessions start again, resume the conversation of the agent each pane ran |
@@ -99,6 +100,16 @@ kero config check             # report unknown keys and bad values
 | Key              | Default | Description                                         |
 | ---------------- | ------- | --------------------------------------------------- |
 | `remote-control` | `true`  | Let `kero do` and `kero focus` drive the app        |
+
+## Hosts
+
+Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote Hosts](./remote.md).
+
+| Key            | Default | Description |
+| -------------- | ------- | ----------- |
+| `host`         |         | A host, as `name=address`: `me@devbox` or `ssh://…` over SSH, `wsl://distro`, `http(s)://…` for kerod's tailnet listener. Add ` remote-control` after it to let its programs drive the app, and ` color=teal` (red, orange, amber, green, teal, blue, purple or pink) to mark its sessions. Repeat it for each host |
+| `listen`       |         | Let Kero on other machines reach this one: `tailnet://:7373` on its Tailscale addresses, `tailnet-serve://` for Tailscale Serve. Repeat it for each |
+| `listen-allow` |         | Who besides the machine's owner may connect: a tailnet login, `tag:name`, or `*` for anyone on the tailnet. Repeat it for each |
 
 ## Git
 

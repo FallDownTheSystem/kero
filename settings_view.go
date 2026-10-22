@@ -30,20 +30,22 @@ import (
 
 // settingsPage is a page of the Settings window.
 type settingsPage struct {
-	id    string
-	title func() string
-	icon  *ui.SVG
+	id           string
+	title        func() string
+	icon         *ui.SVG
+	experimental bool // tagged so beside its title
 }
 
 var settingsPages = []settingsPage{
-	{"general", locales.PageGeneral, glyph("f7-gear-alt")},
-	{"appearance", locales.PageAppearance, glyph("f7-paintbrush")},
-	{"terminal", locales.PageTerminal, terminalIcon},
-	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right")},
-	{"notifications", locales.PageNotifications, glyph("f7-bell")},
-	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard")},
-	{"agents", locales.PageAgents, glyph("f7-sparkles")},
-	{"advanced", locales.PageAdvanced, glyph("f7-slider-horizontal-3")},
+	{"general", locales.PageGeneral, glyph("f7-gear-alt"), false},
+	{"appearance", locales.PageAppearance, glyph("f7-paintbrush"), false},
+	{"terminal", locales.PageTerminal, terminalIcon, false},
+	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right"), false},
+	{"notifications", locales.PageNotifications, glyph("f7-bell"), false},
+	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard"), false},
+	{"agents", locales.PageAgents, glyph("f7-sparkles"), false},
+	{"hosts", locales.PageHosts, hostIcon, true},
+	{"advanced", locales.PageAdvanced, glyph("f7-slider-horizontal-3"), false},
 }
 
 // settingsState is what the Settings window keeps besides the settings.
@@ -68,6 +70,8 @@ type settingsState struct {
 	menus        map[string]*searchMenu     // the search menus', by key
 	problems     []string                   // what the configuration file got wrong
 	scrolls      map[string]*ui.ScrollState // each page's, for its scroll edge
+	host         hostDraft                  // the Hosts page's form
+	confirm      *confirmation              // a question, asked in this window
 }
 
 // openSettings shows the Settings window, on a page.
@@ -255,6 +259,8 @@ func (a *App) settingsView(c *ui.Context) {
 								a.keyboardPage(c, pal)
 							case "agents":
 								a.agentsPage(c, pal)
+							case "hosts":
+								a.hostsPage(c, pal)
 							case "advanced":
 								a.advancedPage(c, pal)
 							}
@@ -265,6 +271,12 @@ func (a *App) settingsView(c *ui.Context) {
 					edge.Opacity(edge.Animate("on", b2f(edgeOn), 160*time.Millisecond))
 					ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(headerH).AlignItems(ui.Center).Padding(0, 10, 0, 24).DragWindow().Children(func() {
 						ui.Text(c, page.title()).FontSize(15).FontWeight(650).TextColor(pal.text)
+						if page.experimental {
+							ui.Row(c.Key("experimental")).Height(18).Margin(0, 0, 0, 8).Padding(0, 6).Radius(5).AlignItems(ui.Center).Shrink(0).
+								Background(pal.attention.Alpha(0.14)).Children(func() {
+								ui.Text(c, locales.PageExperimental()).FontSize(11.5).FontWeight(600).TextColor(pal.attention).SingleLine()
+							})
+						}
 						ui.Spacer(c)
 						windowControls(c, pal, a.setWin)
 					})
@@ -272,6 +284,9 @@ func (a *App) settingsView(c *ui.Context) {
 			})
 		})
 	})
+	if a.ss.confirm != nil {
+		confirmDialog(c, pal, &a.ss.confirm)
+	}
 	// The controls edit a.set: what changed applies, and saves.
 	if !reflect.DeepEqual(a.set, a.applied) {
 		a.applySettings(a.set)
@@ -318,7 +333,7 @@ func (a *App) settingsSearch(c *ui.Context, pal *palette) {
 	frame := ui.Row(c.Key("search")).Cursor(ui.CursorText).Margin(0, 0, 10, 0)
 	frame.Children(func() {
 		ui.Icon(c, searchIcon).Size(13, 13).TextColor(pal.textFaint).Shrink(0)
-		in = ui.TextInputBase(c.Key("in"), &a.ss.query).Bind(&a.ss.searchRef).Grow(1).MinWidth(0).FontSize(13).
+		in = ui.TextInputBase(c.Key("in"), &a.ss.query).Bind(&a.ss.searchRef).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).FontSize(13).
 			Placeholder(locales.CommonSearch()).Label(locales.SettingsSearchLabel())
 		in.OnShortcut(0, ui.KeyEscape, func() { a.ss.query = "" })
 		if a.ss.query != "" {
@@ -460,6 +475,9 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetSessionName(), locales.SetSessionNameDetail(), func() {
 			segmented(c, "sessionname", &s.SessionName, []string{proto.NameFocused, proto.NameLead, proto.NameFolder},
 				[]string{locales.SetNameFocused(), locales.SetNameLead(), locales.SetNameFolder()})
+		})
+		settingRow(c, pal, locales.SetFocusFollowsMouse(), locales.SetFocusFollowsMouseDetail(), func() {
+			toggle(c.Key("focusmouse"), &s.FocusFollowsMouse, pal)
 		})
 		settingRow(c, pal, locales.SetAskBeforeClosing(), locales.SetAskBeforeClosingDetail(), func() {
 			toggle(c.Key("confirm"), &s.ConfirmClose, pal)
@@ -735,7 +753,11 @@ func (a *App) terminalPreview(c *ui.Context, pal *palette) {
 func (a *App) shellPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	login := shell.Login()
-	settingsGroup(c, pal, locales.SetShellGroup(), locales.SetShellGroupDetail(), func() {
+	note := locales.SetShellGroupDetail()
+	if len(a.hosts) > 1 {
+		note += " " + locales.SetShellThisComputer()
+	}
+	settingsGroup(c, pal, locales.SetShellGroup(), note, func() {
 		settingRow(c, pal, locales.SetShell(), locales.SetShellDetail(proto.ShortDir(login)), func() {
 			if !a.ss.shellEditing {
 				a.ss.shellDraft = s.Shell
@@ -781,7 +803,7 @@ func (a *App) shellPage(c *ui.Context, pal *palette) {
 				}
 			}
 			textField(c, "env-new", &a.ss.envDraft, "NAME=value", 0, pal).Font("monospace").OnSubmit(addEnv)
-			if button(c, "env-add", locales.CommonAdd(), "", false, pal) {
+			if fieldButton(c, "env-add", locales.CommonAdd(), false, pal) {
 				addEnv()
 			}
 		})
@@ -904,14 +926,11 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 	settingsGroup(c, pal, locales.SetBackgroundService(), locales.SetBackgroundServiceDetail(), func() {
 		settingRow(c, pal, "kerod", a.ss.service, func() {
 			if button(c, "svc-restart", locales.CommonRestart(), "", false, pal) {
-				a.confirm = &confirmation{
+				a.ss.confirm = &confirmation{
 					open: true, title: locales.ConfirmRestartServiceTitle(),
 					detail: locales.RestartServiceDetail(),
 					action: locales.CommonRestart(), destroy: true,
 					run: func() { a.restartDaemon(); time.AfterFunc(2*time.Second, func() { a.update(a.refreshService) }) },
-				}
-				if a.win != nil {
-					a.win.Focus()
 				}
 			}
 		})
@@ -929,12 +948,9 @@ func (a *App) advancedPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, locales.SetReset(), locales.SetResetDetail(), func() {
 			if button(c, "reset", locales.SetResetButton(), "", false, pal) {
-				a.confirm = &confirmation{
+				a.ss.confirm = &confirmation{
 					open: true, title: locales.SetResetTitle(), detail: locales.SetResetConfirmDetail(), action: locales.SetResetAction(), destroy: true,
 					run: func() { a.applySettings(settings.Default()) },
-				}
-				if a.win != nil {
-					a.win.Focus()
 				}
 			}
 		})
