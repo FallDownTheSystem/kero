@@ -31,10 +31,11 @@ type Settings struct {
 	QuitConfirm       bool   `json:"quitConfirm"`       // tell, the first time, that quitting keeps sessions
 
 	// Appearance
-	Appearance string `json:"appearance"` // "system", "light" or "dark"
-	Language   string `json:"language"`   // "system", or one of Languages
-	Background string `json:"background"` // a wash, see Backgrounds
-	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
+	Appearance   string `json:"appearance"`   // "system", "light" or "dark"
+	Language     string `json:"language"`     // "system", or one of Languages
+	Background   string `json:"background"`   // a wash, see Backgrounds
+	Vibrancy     bool   `json:"vibrancy"`     // the window's material under the wash
+	DimUnfocused bool   `json:"dimUnfocused"` // the panes the user is not in fade
 
 	// Terminal
 	FontFamily   string  `json:"fontFamily"` // "" the font kero carries; "monospace" the system's
@@ -130,6 +131,7 @@ func Default() Settings {
 		Language:        "system",
 		Background:      "rex",
 		Vibrancy:        true,
+		DimUnfocused:    true,
 		FontSize:        13,
 		LineHeight:      1.22,
 		FontWeight:      400,

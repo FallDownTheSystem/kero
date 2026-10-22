@@ -50,12 +50,13 @@ kero config check             # report unknown keys and bad values
 
 ## Appearance
 
-| Key                  | Default  | Description                                                     |
-| -------------------- | -------- | --------------------------------------------------------------- |
-| `window-theme`       | `system` | The app's appearance: `system`, `light` or `dark`               |
-| `language`           | `system` | The app's language: `system`, `en` or `zh-Hans`                 |
-| `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
-| `window-translucent` | `true`   | Let the desktop show through the window                         |
+| Key                   | Default  | Description                                                     |
+| --------------------- | -------- | --------------------------------------------------------------- |
+| `window-theme`        | `system` | The app's appearance: `system`, `light` or `dark`               |
+| `language`            | `system` | The app's language: `system`, `en` or `zh-Hans`                 |
+| `background`          | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
+| `window-translucent`  | `true`   | Let the desktop show through the window                         |
+| `dim-unfocused-panes` | `true`   | Fade the panes you're not in, when a session has several        |
 
 ## Terminal
 
