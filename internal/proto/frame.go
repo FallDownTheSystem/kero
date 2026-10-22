@@ -39,11 +39,12 @@ const (
 	// daemon), a Theme's Payload, which the daemon's terminals answer
 	// programs' questions about the colors with.
 	FrameTheme byte = 't'
-	// FrameClaim tells the daemon the user moved into the client's
-	// terminal (client → daemon), with no payload: the session takes the
-	// size it asked for last, as it does once the user types in it, and
-	// the sizes other clients ask for wait until they claim it again. A
-	// daemon before it ignores it.
+	// FrameClaim tells the daemon the user is at the client's terminal
+	// (client → daemon), shown as they use its machine, with no payload:
+	// the session takes the size it asked for last, as it does once the
+	// user types in it, and the sizes other clients ask for wait until they
+	// claim it again; it goes back to the client claimed in before as this
+	// one detaches. A daemon before it ignores it.
 	FrameClaim byte = 'm'
 )
 

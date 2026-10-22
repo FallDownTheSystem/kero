@@ -104,6 +104,10 @@ type App struct {
 	active   bool
 	focused  bool
 	statuses map[string]proto.Status // as last seen, for notifications
+	// idleTime tells how long the user has not used the machine's keyboard
+	// or mouse (mygo.Power.IdleTime), 0 when the system does not tell; nil
+	// in tests.
+	idleTime func() time.Duration
 
 	renaming        string
 	renamingProject string
@@ -616,7 +620,7 @@ func (a *App) ensureTerm(id string) {
 			}
 			e.term, e.stream = term, stream
 			// Shown, it takes the window's size (claimShown).
-			if s := a.session(a.selected); a.focused && s != nil && s.PaneByID(id) != nil {
+			if s := a.session(a.selected); s != nil && a.here() && slices.Contains(shownPanes(s), id) {
 				go stream.Claim()
 			}
 			if a.selected == id {
@@ -626,16 +630,54 @@ func (a *App) ensureTerm(id string) {
 	}()
 }
 
+// hereIdle is how long after the user's last input, on the keyboard or
+// mouse, they are taken to be at this machine still; awayIdle how long
+// without it they are taken to have gone, as to another machine's app.
+const (
+	hereIdle = 2 * time.Second
+	awayIdle = 5 * time.Second
+)
+
+// here reports whether the user is at this window: it is focused, and
+// they used the machine just now. A window stays focused on a machine the
+// user left, whose app then moves its panes without them, as when the
+// session it showed closed: the idle time the system tells says they
+// left. A system that tells none leaves it to the window's focus.
+func (a *App) here() bool {
+	if !a.focused {
+		return false
+	}
+	return a.idleTime == nil || a.idleTime() < hereIdle
+}
+
 // claimShown gives the panes the window shows the window's sizes, which
-// another machine's app may have taken (client.Stream.Claim).
+// another machine's app may have taken (client.Stream.Claim), while the
+// user is here.
 func (a *App) claimShown() {
 	s := a.session(a.selected)
-	if s == nil {
+	if s == nil || !a.here() {
 		return
 	}
-	for _, p := range s.Panes {
-		if e := a.terms[p.ID]; e != nil && e.stream != nil {
+	for _, id := range shownPanes(s) {
+		if e := a.terms[id]; e != nil && e.stream != nil {
 			go e.stream.Claim()
+		}
+	}
+}
+
+// watchReturn claims the panes the window shows as the user comes back
+// to this machine after a while away, as at another machine's app, which
+// sized them for its own window: they need not type in them or move into
+// them for this window to show them whole.
+func (a *App) watchReturn() {
+	away := false
+	for range time.Tick(time.Second) {
+		switch idle := a.idleTime(); {
+		case idle >= awayIdle:
+			away = true
+		case away && idle < hereIdle:
+			away = false
+			a.update(a.claimShown)
 		}
 	}
 }
@@ -698,9 +740,9 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 			conn.Clear(proto.ClearScreen)
 			return true
 		},
-		// The wheel tells the user is in this pane, which then takes this
-		// window's size back from another machine's app (Stream.Claim);
-		// it scrolls as it would.
+		// The wheel, the user's even over a window not focused, tells they
+		// are in this pane, which then takes this window's size back from
+		// another machine's app (Stream.Claim); it scrolls as it would.
 		OnScroll: func(int) bool {
 			go conn.Claim()
 			return false

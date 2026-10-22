@@ -719,10 +719,8 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 		}
 		switch kind {
 		case proto.FrameInput:
-			// The user types in this client, but for the focus-out report
-			// (mode 1004) its terminal sends as the user leaves it.
-			if string(payload) != "\x1b[O" {
-				s.own(a)
+			if typed(payload) {
+				s.claim(a)
 			}
 			s.input(payload)
 		case proto.FrameResize:
@@ -730,7 +728,7 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 				s.ask(a, c, rr, cw, ch)
 			}
 		case proto.FrameClaim:
-			s.own(a)
+			s.claim(a)
 		case proto.FrameTheme:
 			if th, ok := proto.ParseTheme(payload); ok {
 				d.useTheme(th)
@@ -741,6 +739,15 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 			}
 		}
 	}
+}
+
+// typed reports whether input a client sends is the user's, typed or
+// pasted or a mouse report, and not one of the focus reports (mode 1004)
+// its terminal sends as its pane gains or loses the keyboard, which an
+// app moves without the user, as when the session it showed closed.
+func typed(input []byte) bool {
+	s := string(input)
+	return s != "\x1b[I" && s != "\x1b[O"
 }
 
 func (d *Daemon) serveControl(conn net.Conn, r *bufio.Reader) {

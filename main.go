@@ -127,6 +127,8 @@ func runApp() {
 		}))
 		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.claimShown(); a.reportView() }) })
 		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
+		a.idleTime = mygo.Power.IdleTime
+		go a.watchReturn()
 		a.connect()
 		a.syncHosts()
 		go a.watchConfig()

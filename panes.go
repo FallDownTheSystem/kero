@@ -39,6 +39,27 @@ func (a *App) focusOf(s *proto.Session) string {
 	return ""
 }
 
+// shownPanes returns the panes of a session the window shows, as panes
+// lays them out: the zoomed one alone, or the one the user is in without
+// a layout.
+func shownPanes(s *proto.Session) []string {
+	p := s.PaneByID(s.Zoomed)
+	if p == nil && s.Layout != nil && len(s.Panes) > 1 {
+		ids := make([]string, len(s.Panes))
+		for i, p := range s.Panes {
+			ids[i] = p.ID
+		}
+		return ids
+	}
+	if p == nil {
+		p = s.FocusPane()
+	}
+	if p == nil {
+		return nil
+	}
+	return []string{p.ID}
+}
+
 // setFocus moves the user into a pane, and tells kerod, which remembers it.
 func (a *App) setFocus(s *proto.Session, pane string) {
 	if a.focus == nil {
