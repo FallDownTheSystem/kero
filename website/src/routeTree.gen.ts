@@ -13,6 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as ZhIndexRouteImport } from './routes/zh/index'
+import { Route as ZhDownloadRouteImport } from './routes/zh/download'
+import { Route as ZhDocsIndexRouteImport } from './routes/zh/docs/index'
+import { Route as ZhDocsSplatRouteImport } from './routes/zh/docs/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,39 +38,100 @@ const DocsSplatRoute = DocsSplatRouteImport.update({
   path: '/docs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ZhIndexRoute = ZhIndexRouteImport.update({
+  id: '/zh/',
+  path: '/zh/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZhDownloadRoute = ZhDownloadRouteImport.update({
+  id: '/zh/download',
+  path: '/zh/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZhDocsIndexRoute = ZhDocsIndexRouteImport.update({
+  id: '/zh/docs/',
+  path: '/zh/docs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZhDocsSplatRoute = ZhDocsSplatRouteImport.update({
+  id: '/zh/docs/$',
+  path: '/zh/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/download': typeof DownloadRoute
   '/docs/$': typeof DocsSplatRoute
+  '/zh/download': typeof ZhDownloadRoute
   '/docs/': typeof DocsIndexRoute
+  '/zh/': typeof ZhIndexRoute
+  '/zh/docs/$': typeof ZhDocsSplatRoute
+  '/zh/docs/': typeof ZhDocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/download': typeof DownloadRoute
   '/docs/$': typeof DocsSplatRoute
+  '/zh/download': typeof ZhDownloadRoute
   '/docs': typeof DocsIndexRoute
+  '/zh': typeof ZhIndexRoute
+  '/zh/docs/$': typeof ZhDocsSplatRoute
+  '/zh/docs': typeof ZhDocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/download': typeof DownloadRoute
   '/docs/$': typeof DocsSplatRoute
+  '/zh/download': typeof ZhDownloadRoute
   '/docs/': typeof DocsIndexRoute
+  '/zh/': typeof ZhIndexRoute
+  '/zh/docs/$': typeof ZhDocsSplatRoute
+  '/zh/docs/': typeof ZhDocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/download' | '/docs/$' | '/docs/'
+  fullPaths:
+    | '/'
+    | '/download'
+    | '/docs/$'
+    | '/zh/download'
+    | '/docs/'
+    | '/zh/'
+    | '/zh/docs/$'
+    | '/zh/docs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/download' | '/docs/$' | '/docs'
-  id: '__root__' | '/' | '/download' | '/docs/$' | '/docs/'
+  to:
+    | '/'
+    | '/download'
+    | '/docs/$'
+    | '/zh/download'
+    | '/docs'
+    | '/zh'
+    | '/zh/docs/$'
+    | '/zh/docs'
+  id:
+    | '__root__'
+    | '/'
+    | '/download'
+    | '/docs/$'
+    | '/zh/download'
+    | '/docs/'
+    | '/zh/'
+    | '/zh/docs/$'
+    | '/zh/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DownloadRoute: typeof DownloadRoute
   DocsSplatRoute: typeof DocsSplatRoute
+  ZhDownloadRoute: typeof ZhDownloadRoute
   DocsIndexRoute: typeof DocsIndexRoute
+  ZhIndexRoute: typeof ZhIndexRoute
+  ZhDocsSplatRoute: typeof ZhDocsSplatRoute
+  ZhDocsIndexRoute: typeof ZhDocsIndexRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -99,6 +164,34 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/zh/': {
+      id: '/zh/'
+      path: '/zh'
+      fullPath: '/zh/'
+      preLoaderRoute: typeof ZhIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zh/download': {
+      id: '/zh/download'
+      path: '/zh/download'
+      fullPath: '/zh/download'
+      preLoaderRoute: typeof ZhDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zh/docs/': {
+      id: '/zh/docs/'
+      path: '/zh/docs'
+      fullPath: '/zh/docs/'
+      preLoaderRoute: typeof ZhDocsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zh/docs/$': {
+      id: '/zh/docs/$'
+      path: '/zh/docs/$'
+      fullPath: '/zh/docs/$'
+      preLoaderRoute: typeof ZhDocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -106,7 +199,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DownloadRoute: DownloadRoute,
   DocsSplatRoute: DocsSplatRoute,
+  ZhDownloadRoute: ZhDownloadRoute,
   DocsIndexRoute: DocsIndexRoute,
+  ZhIndexRoute: ZhIndexRoute,
+  ZhDocsSplatRoute: ZhDocsSplatRoute,
+  ZhDocsIndexRoute: ZhDocsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

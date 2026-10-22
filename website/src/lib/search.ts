@@ -1,9 +1,10 @@
 import { create, insert, search as zbsearch } from 'zbsearch';
 import { docs, ordered } from './docs';
+import type { Locale } from './i18n';
 
 // The search index: one entry per page (its title and intro) and one per
-// ## or ### section. The search dialog imports this module lazily, so the
-// docs' text is fetched the first time someone searches.
+// ## or ### section, for each locale. The search dialog imports this module
+// lazily, so the docs' text is fetched the first time someone searches.
 
 export type SearchEntry = {
   href: string; // the page, plus #slug for a section
@@ -36,11 +37,13 @@ function plain(md: string) {
     .trim();
 }
 
-function entries(): SearchEntry[] {
+function entries(locale: Locale): SearchEntry[] {
   const out: SearchEntry[] = [];
   for (const [file, source] of Object.entries(sources)) {
-    const name = file.replace(/^.*\/docs\//, '').replace(/\.md$/, '');
-    const doc = docs.get(name === 'index' ? '' : name.replace(/\/index$/, ''));
+    const path = file.replace(/^.*\/docs\//, '').replace(/\.md$/, '');
+    if (path.startsWith('zh/') !== (locale === 'zh')) continue;
+    const name = locale === 'zh' ? path.slice(3) : path;
+    const doc = docs[locale].get(name === 'index' ? '' : name.replace(/\/index$/, ''));
     if (!doc) continue;
 
     // The compiled headings carry the slugs the page renders; match them,
@@ -72,23 +75,26 @@ function entries(): SearchEntry[] {
   return out;
 }
 
-const all = entries();
+const all = { en: entries('en'), zh: entries('zh') };
 const db = create({ schema: { page: 'string', heading: 'string', text: 'string' } as const });
-for (const entry of all) insert(db, entry);
+for (const entry of all.en) insert(db, entry);
 
 // The pages, in sidebar order, for an empty query.
-export const pages = all
-  .filter((e) => !e.section)
-  .sort((a, b) => order(a.href) - order(b.href));
+export function pages(locale: Locale) {
+  return all[locale]
+    .filter((e) => !e.section)
+    .sort((a, b) => order(locale, a.href) - order(locale, b.href));
+}
 
-function order(href: string) {
-  const i = ordered.findIndex((d) => d.href === href);
+function order(locale: Locale, href: string) {
+  const i = ordered[locale].findIndex((d) => d.href === href);
   return i < 0 ? Infinity : i;
 }
 
 // Entries that match every word of the query, best first: a match in a
 // heading counts most, then in the page's title, then in the text.
-export async function search(query: string): Promise<SearchEntry[]> {
+export async function search(query: string, locale: Locale): Promise<SearchEntry[]> {
+  if (locale === 'zh') return searchText(query, all.zh);
   const results = await zbsearch(db, {
     term: query,
     properties: ['heading', 'page', 'text'],
@@ -97,4 +103,28 @@ export async function search(query: string): Promise<SearchEntry[]> {
     limit: 40,
   });
   return results.hits.map((hit) => hit.document as unknown as SearchEntry);
+}
+
+// Chinese has no spaces between words for the index to split on, so match
+// each of the query's words as a substring instead, ranked the same way.
+function searchText(query: string, entries: SearchEntry[]) {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const score = (e: SearchEntry) => {
+    let total = 0;
+    for (const term of terms) {
+      const s =
+        (e.heading.toLowerCase().includes(term) ? 4 : 0) +
+        (e.page.toLowerCase().includes(term) ? 1.5 : 0) +
+        (e.text.toLowerCase().includes(term) ? 1 : 0);
+      if (!s) return 0;
+      total += s;
+    }
+    return total;
+  };
+  return entries
+    .map((e) => ({ e, s: score(e) }))
+    .filter((r) => r.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 40)
+    .map((r) => r.e);
 }

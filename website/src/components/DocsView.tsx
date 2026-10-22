@@ -2,28 +2,23 @@ import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show }
 import { useRouter } from '@tanstack/solid-router';
 import { Link } from './Link';
 import { docs, ordered, sidebar } from '../lib/docs';
+import { pageHead, t, type Locale } from '../lib/i18n';
 import { ArrowLeftIcon, ArrowRightIcon, MenuIcon } from './Icons';
 
 // The page's title and description, for a route's head.
-export function docHead(slug: string) {
-  const doc = docs.get(slug);
+export function docHead(locale: Locale, slug: string) {
+  const doc = docs[locale].get(slug);
   if (!doc) return {};
-  return {
-    meta: [
-      { title: `${doc.title} | Kero` },
-      { name: 'description', content: doc.description },
-      { property: 'og:title', content: `${doc.title} | Kero` },
-      { property: 'og:description', content: doc.description },
-    ],
-  };
+  return pageHead(locale, slug ? `/docs/${slug}` : '/docs', `${doc.title} | Kero`, doc.description);
 }
 
-export default function DocsView(props: { slug: string }) {
-  const doc = createMemo(() => docs.get(props.slug)!);
-  const index = () => ordered.indexOf(doc());
-  const prev = () => ordered[index() - 1];
-  const next = () => ordered[index() + 1];
-  const section = () => sidebar.find((s) => s.items.includes(doc()));
+export default function DocsView(props: { slug: string; locale: Locale }) {
+  const doc = createMemo(() => docs[props.locale].get(props.slug)!);
+  const s = () => t(props.locale);
+  const index = () => ordered[props.locale].indexOf(doc());
+  const prev = () => ordered[props.locale][index() - 1];
+  const next = () => ordered[props.locale][index() + 1];
+  const section = () => sidebar[props.locale].find((s) => s.items.includes(doc()));
   const toc = () => doc().headings.filter((h) => h.depth === 2 || h.depth === 3);
   const active = useActiveHeading(() => toc().map((h) => h.slug));
 
@@ -38,13 +33,13 @@ export default function DocsView(props: { slug: string }) {
       <aside class="docs-sidebar">
         <details class="docs-sidebar__mobile" ref={menu}>
           <summary>
-            <MenuIcon size={16} /> Menu
+            <MenuIcon size={16} /> {s().menu}
             <span class="muted">/ {doc().title}</span>
           </summary>
-          <SidebarNav current={doc().href} />
+          <SidebarNav locale={props.locale} current={doc().href} />
         </details>
         <div class="docs-sidebar__desktop">
-          <SidebarNav current={doc().href} />
+          <SidebarNav locale={props.locale} current={doc().href} />
         </div>
       </aside>
 
@@ -53,12 +48,12 @@ export default function DocsView(props: { slug: string }) {
           <Show when={section()}>{(s) => <p class="eyebrow">{s().title}</p>}</Show>
           <div class="markdown" innerHTML={doc().html} {...useContentEvents()} />
         </article>
-        <nav class="docs-pager" aria-label="Pagination">
+        <nav class="docs-pager" aria-label={s().pagination}>
           <Show when={prev()} fallback={<span />}>
             {(p) => (
               <Link href={p().href} class="docs-pager__link">
                 <span class="docs-pager__label">
-                  <ArrowLeftIcon size={14} /> Previous
+                  <ArrowLeftIcon size={14} /> {s().previous}
                 </span>
                 <span class="docs-pager__title">{p().title}</span>
               </Link>
@@ -68,7 +63,7 @@ export default function DocsView(props: { slug: string }) {
             {(n) => (
               <Link href={n().href} class="docs-pager__link docs-pager__link--next">
                 <span class="docs-pager__label">
-                  Next <ArrowRightIcon size={14} />
+                  {s().next} <ArrowRightIcon size={14} />
                 </span>
                 <span class="docs-pager__title">{n().title}</span>
               </Link>
@@ -79,7 +74,7 @@ export default function DocsView(props: { slug: string }) {
 
       <aside class="docs-toc">
         <Show when={toc().length > 0}>
-          <p class="docs-toc__title">On this page</p>
+          <p class="docs-toc__title">{s().onThisPage}</p>
           <ul>
             <For each={toc()}>
               {(h) => (
@@ -97,10 +92,10 @@ export default function DocsView(props: { slug: string }) {
   );
 }
 
-function SidebarNav(props: { current: string }) {
+function SidebarNav(props: { locale: Locale; current: string }) {
   return (
     <nav class="docs-nav">
-      <For each={sidebar}>
+      <For each={sidebar[props.locale]}>
         {(section) => (
           <div class="docs-nav__section">
             <p class="docs-nav__title">{section.title}</p>

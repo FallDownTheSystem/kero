@@ -12,6 +12,9 @@ const themes = { light: 'github-light', dark: 'github-dark-dimmed' };
 
 export type Heading = { depth: number; slug: string; text: string };
 
+// The language of the page being rendered, for the words the renderer adds.
+type Env = { zh?: boolean };
+
 // Compiles the Markdown in ../docs into modules of { html, frontmatter,
 // headings }, which src/lib/docs.ts imports. A ?raw import is left alone.
 export function markdown(): Plugin {
@@ -23,8 +26,9 @@ export function markdown(): Plugin {
       if (!id.startsWith(docsDir) || !id.endsWith('.md')) return;
       md ??= createCompiler();
       const compiler = await md;
-      const { data: frontmatter, content } = matter(docsLinks(source));
-      const env = {};
+      const prefix = id.startsWith(`${docsDir}zh/`) ? '/zh' : '';
+      const { data: frontmatter, content } = matter(docsLinks(source, prefix));
+      const env: Env = { zh: prefix === '/zh' };
       const tokens = compiler.parse(content, env);
       const html = await compiler.renderer.renderAsync(tokens, compiler.options, env);
       const out = { html, frontmatter, headings: headings(tokens) };
@@ -35,11 +39,12 @@ export function markdown(): Plugin {
 
 // The docs link to each other as ./page.md, which reads well on GitHub.
 // Served at /docs/page, and /docs for index.md, such links would resolve
-// against the wrong directory on /docs, so make them absolute.
-function docsLinks(source: string) {
+// against the wrong directory on /docs, so make them absolute, under /zh for
+// the Chinese in docs/zh.
+function docsLinks(source: string, prefix: string) {
   return source.replace(/\]\(\.\/([\w/-]+)\.md(#[\w-]+)?\)/g, (_, page: string, hash = '') => {
     const path = page === 'index' ? '/docs' : `/docs/${page.replace(/\/index$/, '')}`;
-    return `](${path}${hash})`;
+    return `](${prefix}${path}${hash})`;
   });
 }
 
@@ -53,7 +58,7 @@ async function createCompiler() {
 
   // Highlighted, in a wrapper with the language's name and a copy button,
   // which DocsView wires up.
-  md.renderer.rules.fence = async (tokens, idx) => {
+  md.renderer.rules.fence = async (tokens, idx, _options, env) => {
     const token = tokens[idx]!;
     const label = token.info.trim().split(/\s+/)[0] ?? '';
     let lang = label || 'text';
@@ -62,7 +67,7 @@ async function createCompiler() {
       else lang = 'text';
     }
     const code = highlighter.codeToHtml(token.content, { lang, themes, defaultColor: 'light' });
-    return `<div class="language-${label}"><button title="Copy Code" class="copy"></button><span class="lang">${label}</span>${code}</div>`;
+    return `<div class="language-${label}"><button title="${(env as Env).zh ? '复制代码' : 'Copy Code'}" class="copy"></button><span class="lang">${label}</span>${code}</div>`;
   };
 
   // External links open in a new tab.
@@ -76,19 +81,19 @@ async function createCompiler() {
   };
 
   // ::: tip and friends, as VitePress renders them.
-  for (const [kind, title] of [
-    ['tip', 'TIP'],
-    ['info', 'INFO'],
-    ['warning', 'WARNING'],
-    ['danger', 'DANGER'],
+  for (const [kind, title, zhTitle] of [
+    ['tip', 'TIP', '提示'],
+    ['info', 'INFO', '信息'],
+    ['warning', 'WARNING', '警告'],
+    ['danger', 'DANGER', '危险'],
   ] as const) {
     md.use(container, kind, {
-      render(tokens: { nesting: number; info: string }[], idx: number) {
+      render(tokens: { nesting: number; info: string }[], idx: number, _options: unknown, env: Env) {
         const token = tokens[idx]!;
         if (token.nesting !== 1) return '</div>\n';
         const info = token.info.trim().slice(kind.length).trim();
         const cls = 'custom-block-title' + (info ? '' : ' custom-block-title-default');
-        return `<div class="${kind} custom-block"><p class="${cls}">${md.renderInline(info || title)}</p>\n`;
+        return `<div class="${kind} custom-block"><p class="${cls}">${md.renderInline(info || (env.zh ? zhTitle : title))}</p>\n`;
       },
     });
   }

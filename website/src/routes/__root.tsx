@@ -10,6 +10,7 @@ import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tan
 import { HydrationScript } from 'solid-js/web';
 import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
+import { delocalize, htmlLang, localeOf } from '../lib/i18n';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,8 +31,9 @@ export const Route = createRootRoute({
 });
 
 function RootDocument(props: { children: JSX.Element }) {
+  const location = useLocation();
   return (
-    <html lang="en">
+    <html lang={htmlLang[localeOf(location().pathname)]}>
       <head>
         <HydrationScript />
       </head>
@@ -49,11 +51,13 @@ function RootDocument(props: { children: JSX.Element }) {
 function Layout() {
   const location = useLocation();
   const path = () => location().pathname.replace(/\/$/, '') || '/';
+  const locale = () => localeOf(path());
+  const page = () => delocalize(path());
   return (
-    <div class="site" classList={{ 'site--dark': path() === '/' || path() === '/download' }}>
-      <SiteHeader path={path()} />
+    <div class="site" classList={{ 'site--dark': page() === '/' || page() === '/download' }}>
+      <SiteHeader path={path()} locale={locale()} />
       <Outlet />
-      <SiteFooter />
+      <SiteFooter locale={locale()} />
     </div>
   );
 }

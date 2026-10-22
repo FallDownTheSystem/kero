@@ -2,6 +2,7 @@ import { createEffect, createMemo, createSignal, For, Index, on, onCleanup, onMo
 import { Portal } from 'solid-js/web';
 import { useRouter } from '@tanstack/solid-router';
 import type { SearchEntry } from '../lib/search';
+import { t, useLocale } from '../lib/i18n';
 import { FileTextIcon, HashIcon, SearchIcon } from './Icons';
 
 // The index is a chunk of its own, fetched when the search is first opened
@@ -16,6 +17,7 @@ function loadIndex() {
 export default function Search() {
   const [open, setOpen] = createSignal(false);
   const [mac, setMac] = createSignal(true);
+  const locale = useLocale();
 
   onMount(() => {
     setMac(/Mac|iPhone|iPad/.test(navigator.platform));
@@ -37,7 +39,7 @@ export default function Search() {
     <>
       <button type="button" class="search-button" onClick={() => setOpen(true)} onPointerEnter={preload}>
         <SearchIcon size={15} />
-        Search docs…
+        {t(locale()).searchDocs}
         <kbd>{mac() ? '⌘K' : 'Ctrl K'}</kbd>
       </button>
       <button
@@ -45,7 +47,7 @@ export default function Search() {
         class="icon-link search-icon-button"
         onClick={() => setOpen(true)}
         onPointerEnter={preload}
-        aria-label="Search docs"
+        aria-label={t(locale()).searchDocsLabel}
       >
         <SearchIcon size={18} />
       </button>
@@ -61,6 +63,8 @@ export default function Search() {
 
 function SearchDialog(props: { onClose: () => void }) {
   const router = useRouter();
+  const locale = useLocale();
+  const s = () => t(locale());
   const [query, setQuery] = createSignal('');
   const [search, setSearch] = createSignal<typeof import('../lib/search')>();
   const [failed, setFailed] = createSignal(false);
@@ -85,11 +89,11 @@ function SearchDialog(props: { onClose: () => void }) {
   // newer one's.
   let latest = 0;
   createEffect(
-    on([search, query], ([s, q]) => {
-      if (!s) return;
+    on([search, query, locale], ([index, q, l]) => {
+      if (!index) return;
       const n = ++latest;
-      if (!q.trim()) return setResults(s.pages);
-      void s.search(q).then((r) => n === latest && setResults(r));
+      if (!q.trim()) return setResults(index.pages(l));
+      void index.search(q, l).then((r) => n === latest && setResults(r));
     }),
   );
 
@@ -144,13 +148,13 @@ function SearchDialog(props: { onClose: () => void }) {
   return (
     <div class="search-dialog" onKeyDown={onKeyDown}>
       <div class="search-dialog__backdrop" onClick={props.onClose} />
-      <div class="search-dialog__panel" role="dialog" aria-modal="true" aria-label="Search the docs">
+      <div class="search-dialog__panel" role="dialog" aria-modal="true" aria-label={s().searchDialog}>
         <div class="search-dialog__field">
           <SearchIcon size={16} />
           <input
             ref={input}
             type="search"
-            placeholder="Search the docs…"
+            placeholder={s().searchPlaceholder}
             autocomplete="off"
             spellcheck={false}
             value={query()}
@@ -164,9 +168,9 @@ function SearchDialog(props: { onClose: () => void }) {
         <div class="search-dialog__results" id="search-results" role="listbox" ref={list}>
           <Show
             when={search()}
-            fallback={<p class="search-dialog__empty">{failed() ? 'The search index could not be loaded.' : 'Loading…'}</p>}
+            fallback={<p class="search-dialog__empty">{failed() ? s().searchFailed : s().searchLoading}</p>}
           >
-            <Show when={flat().length} fallback={<p class="search-dialog__empty">No results for “{query()}”</p>}>
+            <Show when={flat().length} fallback={<p class="search-dialog__empty">{s().noResults(query())}</p>}>
               <For each={groups()}>
                 {(group) => (
                   <div class="search-dialog__group" role="group">
