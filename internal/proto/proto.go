@@ -345,7 +345,7 @@ func (p *Pane) PaneName() string {
 		if p.Dir == Home() {
 			return "~"
 		}
-		return filepath.Base(p.Dir)
+		return DirName(p.Dir)
 	}
 	return "shell"
 }
@@ -409,7 +409,7 @@ func (s *Session) DisplayName(from string) string {
 		if p.Dir == Home() {
 			return "~"
 		}
-		return filepath.Base(p.Dir)
+		return DirName(p.Dir)
 	}
 	return "shell"
 }
@@ -465,6 +465,20 @@ func isTitleGlyph(r rune) bool {
 		return true
 	}
 	return false
+}
+
+// DirName is a directory's last element, whichever system's it is: the
+// app shows a Windows host's C:\src\kero as kero on a Mac, where
+// filepath.Base doesn't split at a backslash.
+func DirName(dir string) string {
+	t := strings.TrimRight(dir, `/\`)
+	if i := strings.LastIndexAny(t, `/\`); i >= 0 && i < len(t)-1 && !strings.HasSuffix(t, ":") {
+		return t[i+1:]
+	}
+	if t != "" && !strings.HasSuffix(t, ":") {
+		return t
+	}
+	return dir
 }
 
 func looksLikePath(t string) bool {

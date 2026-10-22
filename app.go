@@ -7,7 +7,6 @@ import (
 	"maps"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -1091,7 +1090,7 @@ func (a *App) addPending(h *host, s proto.Session) {
 	a.own(h, s)
 	a.st.Sessions = append(a.st.Sessions, s)
 	if a.project(s.Project) == nil {
-		a.st.Projects = append(a.st.Projects, proto.Project{ID: s.Project, Name: path.Base(filepath.ToSlash(s.Dir)), Dir: s.Dir})
+		a.st.Projects = append(a.st.Projects, proto.Project{ID: s.Project, Name: proto.DirName(s.Dir), Dir: s.Dir})
 	}
 }
 
