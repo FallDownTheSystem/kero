@@ -167,7 +167,7 @@ func (a *App) tellPage(id string, e *webEntry) {
 			p.URL, p.Title = e.url, e.title
 		}
 	}
-	a.call("pane.page", proto.PageParams{ID: id, URL: e.url, Title: e.title}, nil)
+	a.call(id, "pane.page", proto.PageParams{ID: id, URL: e.url, Title: e.title}, nil)
 }
 
 func (a *App) dropWeb(id string) {

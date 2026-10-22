@@ -72,6 +72,10 @@ func settingsIndex() []searchEntry {
 		{"agents", "Codex, OpenCode, Pi", "skill agents install"},
 		{"agents", locales.SetProgramStatus(), "osc 7501 report progress"},
 
+		{"hosts", locales.SetHosts(), "host hosts remote server ssh tailscale tailnet wsl machine linux devbox -H kero hosts"},
+		{"hosts", locales.SetHostAdd(), "add host address ssh wsl https"},
+		{"hosts", locales.SetHostRemoteControl(), "remote-control host kero do focus"},
+
 		{"advanced", locales.SetConfigFile(), "configuration ghostty edit file dotfiles"},
 		{"advanced", "kerod", "daemon background service restart sessions"},
 		{"advanced", locales.SetLog(), "kerod log debug"},

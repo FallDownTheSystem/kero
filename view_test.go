@@ -45,6 +45,7 @@ func testApp(t *testing.T) *App {
 		}},
 	}
 	a.loaded, a.selected = true, "s1"
+	a.local().loaded = true
 	return a
 }
 
@@ -226,7 +227,7 @@ func TestCopyOnSelectToast(t *testing.T) {
 // next session of it, and says nothing while nothing does ($KERO_SHOTS).
 func TestSidebarFooter(t *testing.T) {
 	a := testApp(t)
-	a.conn = connReady
+	a.local().conn = connReady
 	tt := ui.NewTester(a.view, 1100, 700)
 	tt.Frame()
 	for _, txt := range tt.Texts() {
@@ -303,7 +304,7 @@ func TestSessionTooltipAtPointer(t *testing.T) {
 // first while a program runs, as the restart ends it.
 func TestRestartStaleDaemon(t *testing.T) {
 	a := testApp(t)
-	a.conn, a.daemonApp = connReady, "1.9.0"
+	a.local().conn, a.local().daemonApp = connReady, "1.9.0"
 	a.st.Sessions[0].Process = "claude"
 	tt := ui.NewTester(a.view, 1100, 640)
 	tt.Frame()
@@ -315,7 +316,7 @@ func TestRestartStaleDaemon(t *testing.T) {
 		t.Fatalf("no question before the restart: %+v", a.confirm)
 	}
 
-	a.confirm, a.daemonApp = nil, mygo.App.Version()
+	a.confirm, a.local().daemonApp = nil, mygo.App.Version()
 	tt.Frame()
 	if tt.HasText("Restart Service") {
 		t.Error("a chip to restart a kerod of this version")

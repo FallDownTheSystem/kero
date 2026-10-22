@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+- Kero shows sessions that run on other machines, such as a Linux dev box,
+  a cloud VM or a WSL distribution, in the same sidebar, under each host's
+  name, with their statuses and notifications. Add a host in Settings ›
+  Hosts by the address you'd give ssh, `me@devbox`: Kero reaches it over
+  SSH with your keys and agent, or through kerod's listener on your
+  tailnet (`listen = tailnet://:7373`), which Tailscale tells who
+  connects to. One compressed connection carries all of a host's panes,
+  and a host whose link drops shows its sessions faded until Kero
+  reconnects on its own.
+- On a host, New Session, Open Project (which lists the host's folders),
+  Command-clicking a path (which opens it in the host's `$EDITOR`) and
+  pasting an image or files (which copies them to the host) all act on
+  the host. Its programs drive the app with `kero focus` and `kero do`
+  only once you turn on its Remote Control.
+- The server build of Kero runs kerod and the CLI on Linux, macOS and
+  Windows with no app, display or GTK: `curl -fsSL
+  https://github.com/egoist/kero/releases/latest/download/install-server.sh
+  | sh`, or on Windows `irm .../install-server.ps1 | iex`. The app offers
+  to install it on a host that has no Kero, and to update it to the app's
+  version, signed as the app's updates are. Windows hosts are reached
+  over OpenSSH, whose shell may be cmd or PowerShell.
+- `kero -H <host>` and `$KERO_HOST` run commands on a host's sessions; `kero
+  hosts` adds, checks and installs hosts; `kero clients` lists who is
+  connected to kerod; `kero daemon install-service` runs kerod as a
+  systemd user service, a launchd agent or a Task Scheduler task, and
+  `kero daemon serve` in the foreground.
+- kerod's socket is its user's from the moment it is made, and kerod
+  refuses connections of other users' processes. The login shell is
+  looked up through NSS, so LDAP and SSSD accounts get theirs.
+
 ## 2.0.11
 
 - The changes panel no longer jumps to the bottom of the list the first

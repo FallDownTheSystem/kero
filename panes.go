@@ -54,7 +54,7 @@ func (a *App) setFocus(s *proto.Session, pane string) {
 	}
 	a.ensureTerm(pane)
 	a.touch(pane)
-	a.call("focus", proto.FocusParams{Session: s.ID, Pane: pane}, nil)
+	a.call(s.ID, "focus", proto.FocusParams{Session: s.ID, Pane: pane}, nil)
 }
 
 // focusTerminal gives the keyboard to the pane the user is in.
@@ -159,11 +159,11 @@ func (a *App) divider(c *ui.Context, pal *palette, s *proto.Session, l *proto.La
 		// Only the divider dragged saves the layout: another of the same
 		// session would save it every frame of the drag.
 		a.layoutDrag.session, a.layoutDrag.split = "", ""
-		a.call("layout", proto.LayoutParams{Session: s.ID, Layout: s.Layout.Clone()}, nil)
+		a.call(s.ID, "layout", proto.LayoutParams{Session: s.ID, Layout: s.Layout.Clone()}, nil)
 	}
 	if d.DoubleClicked() {
 		l.Ratio = 0.5
-		a.call("layout", proto.LayoutParams{Session: s.ID, Layout: s.Layout.Clone()}, nil)
+		a.call(s.ID, "layout", proto.LayoutParams{Session: s.ID, Layout: s.Layout.Clone()}, nil)
 	}
 }
 
@@ -379,7 +379,7 @@ func (a *App) movePane(sid, pane, target string, zone dropZone) {
 	s.Zoomed = ""
 	a.setFocus(s, pane)
 	a.paneRef(pane).Focus()
-	a.call("layout", proto.LayoutParams{Session: sid, Layout: s.Layout.Clone()}, nil)
+	a.call(sid, "layout", proto.LayoutParams{Session: sid, Layout: s.Layout.Clone()}, nil)
 }
 
 // paneHeader builds a pane's header, and reports whether its title is
@@ -435,8 +435,12 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 				a.startRename(s.ID)
 			}
 			// The home directory names itself "~", which the title may
-			// already say.
-			if dir := proto.ShortDir(p.WorkDir()); dir != title {
+			// already say; another machine's, as scp writes it: devbox:~/api.
+			h := a.hostOf(p.ID)
+			if dir := h.shortDir(p.WorkDir()); dir != title || h.remote() {
+				if h.remote() {
+					dir = h.name + ":" + dir
+				}
 				ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
 			}
 		})
@@ -584,6 +588,18 @@ func (a *App) paneTerminal(c *ui.Context, pal *palette, s *proto.Session, p *pro
 			if a.find.pane == p.ID {
 				a.findBar(c, pal, p, e.term)
 			}
+		case e == nil && a.hostOf(p.ID).remote() && a.hostOf(p.ID).conn != connReady:
+			// Shown as it was, until its host is back.
+			h := a.hostOf(p.ID)
+			switch {
+			case h.conn == connConnecting || h.busy != "":
+				ui.Column(c).Fill().Center().Gap(10).Children(func() {
+					ui.Spinner(c)
+					ui.Text(c, locales.HostReconnectingTo(h.name)).FontSize(12.5).TextColor(pal.textFaint)
+				})
+			default:
+				a.message(c, pal, a.hostProblem(h), h.err, locales.CommonTryAgain(), func() { a.reconnectHost(h) })
+			}
 		case e != nil && e.err != "":
 			a.message(c, pal, locales.PaneCantShow(), e.err, locales.CommonTryAgain(), func() {
 				a.dropTerm(p.ID)
@@ -613,21 +629,25 @@ func (a *App) splitPane(s *proto.Session, at, direction string) {
 	a.split(s, proto.CreateParams{Split: at, Direction: direction})
 }
 
-// split makes a pane beside another, as p asks, and puts the user in it.
+// split makes a pane beside another, as p asks, on the session's host,
+// and puts the user in it.
 func (a *App) split(s *proto.Session, p proto.CreateParams) {
-	if a.cl == nil || s == nil {
+	if s == nil {
 		return
 	}
-	direction := p.Direction
+	h := a.hostOf(s.ID)
 	if pane := s.PaneByID(p.Split); pane != nil && !pane.Browser() {
 		p.Cols, p.Rows = pane.Cols, pane.Rows
-		if direction == "down" || direction == "up" {
+		if p.Direction == "down" || p.Direction == "up" {
 			p.Rows = max(p.Rows/2, 4)
 		} else {
 			p.Cols = max(p.Cols/2, 10)
 		}
 	}
-	cl := a.cl
+	cl := h.cl
+	if cl == nil {
+		return
+	}
 	go func() {
 		var ns proto.Session
 		err := cl.Call("split", p, &ns)
@@ -636,7 +656,7 @@ func (a *App) split(s *proto.Session, p proto.CreateParams) {
 				a.toast(err.Error())
 				return
 			}
-			a.replaceSession(ns)
+			a.replaceSession(h, ns)
 			if cur := a.session(ns.ID); cur != nil {
 				if a.focus == nil {
 					a.focus = map[string]string{}
@@ -656,14 +676,16 @@ func (a *App) split(s *proto.Session, p proto.CreateParams) {
 
 // replaceSession puts a session as kerod answered into the state, before
 // the state that has it comes.
-func (a *App) replaceSession(ns proto.Session) {
+func (a *App) replaceSession(h *host, ns proto.Session) {
+	// Its new pane is the host's from now, as its terminal attaches there.
+	a.own(h, ns)
 	for i := range a.st.Sessions {
 		if a.st.Sessions[i].ID == ns.ID {
 			a.st.Sessions[i] = ns
 			return
 		}
 	}
-	a.addPending(ns)
+	a.addPending(h, ns)
 }
 
 func (a *App) closePane(s *proto.Session, pane string, ask bool) {
@@ -718,7 +740,7 @@ func (a *App) closePane(s *proto.Session, pane string, ask bool) {
 	}
 	a.dropTerm(pane)
 	a.dropWeb(pane)
-	a.call("pane.close", proto.IDParams{ID: pane}, nil)
+	a.call(pane, "pane.close", proto.IDParams{ID: pane}, nil)
 	a.focusTerminal()
 }
 
@@ -735,7 +757,7 @@ func (a *App) zoomPane(s *proto.Session, pane string) {
 		s.Zoomed = pane
 		a.setFocus(s, pane)
 	}
-	a.call("zoom", proto.FocusParams{Session: s.ID, Pane: pane}, nil)
+	a.call(s.ID, "zoom", proto.FocusParams{Session: s.ID, Pane: pane}, nil)
 	a.paneRef(pane).Focus()
 }
 

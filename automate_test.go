@@ -18,7 +18,7 @@ func TestBrowseRefuses(t *testing.T) {
 		t.Helper()
 		var got error
 		answered := false
-		a.browse(&r, func(res *proto.BrowserResult, err error) { answered, got = true, err })
+		a.browse(a.local(), &r, func(res *proto.BrowserResult, err error) { answered, got = true, err })
 		if !answered {
 			t.Fatalf("%+v: no answer", r)
 		}

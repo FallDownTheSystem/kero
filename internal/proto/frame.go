@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"bufio"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -171,4 +172,31 @@ func ParseResizePixels(p []byte) (cols, rows, cellWidth, cellHeight int, ok bool
 	}
 	cols, rows, _ = ParseResize(p[:4])
 	return cols, rows, int(binary.BigEndian.Uint16(p[4:])), int(binary.BigEndian.Uint16(p[6:])), true
+}
+
+// MaxLine bounds a JSON line of a control connection: kerod's state, sent
+// whole, and a request carrying a pasted file (paste.file).
+const MaxLine = 64 << 20
+
+// ErrLineTooLong is ReadLine's for a line past its bound.
+var ErrLineTooLong = errors.New("proto: line too long")
+
+// ReadLine reads a line of at most max bytes, its newline included, so
+// that the other side of a connection, as a host far away, cannot make
+// this one hold a line without end.
+func ReadLine(r *bufio.Reader, max int) ([]byte, error) {
+	var line []byte
+	for {
+		chunk, err := r.ReadSlice('\n')
+		if len(line)+len(chunk) > max {
+			return nil, ErrLineTooLong
+		}
+		line = append(line, chunk...)
+		if err == nil {
+			return line, nil
+		}
+		if err != bufio.ErrBufferFull {
+			return line, err
+		}
+	}
 }

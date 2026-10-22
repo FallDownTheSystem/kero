@@ -153,7 +153,7 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, s *proto.Session, width flo
 			ui.Icon(c, diffIcon).Size(14, 14).TextColor(pal.textFaint)
 			ui.Text(c, locales.SideChanges()).FontSize(14).FontWeight(600).TextColor(pal.text).SingleLine().Shrink(0)
 			if dir := a.changesDir(s); dir != "" {
-				ui.Text(c, proto.ShortDir(dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Tooltip(dir)
+				ui.Text(c, a.hostOf(s.ID).shortDir(dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Tooltip(dir)
 			}
 			ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch).DragWindow()
 			iconButton(c, "close-side", closeIcon, a.tip(locales.SideClose(), "changes.toggle"), pal, func() { a.defer_(func() { a.toggleSide(a.prefs.Side) }) })
@@ -273,7 +273,7 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 	// seconds while an agent works in the session, as a file can change
 	// without its count of lines.
 	stale := scope != ch.scope || stamp != ch.stamp || working && time.Since(ch.fetched) > 5*time.Second
-	if stale && !ch.busy && a.cl != nil {
+	if stale && !ch.busy && a.hostOf(pane.ID).cl != nil {
 		a.fetchChanges(scope, stamp, pane.ID, ch.base)
 	}
 	if working {
@@ -448,7 +448,7 @@ func (a *App) syncFiles(c *ui.Context, scope string, pane *proto.Pane, files []p
 			sf = &sideFile{pane: pane.ID, base: ch.base, f: f}
 			ch.files[key] = sf
 		}
-		if a.fileCollapsed(scope, f) || sf.busy || sf.writing || a.cl == nil {
+		if a.fileCollapsed(scope, f) || sf.busy || sf.writing || a.hostOf(pane.ID).cl == nil {
 			continue
 		}
 		known := sf.hash
@@ -566,7 +566,11 @@ func (a *App) fetchChanges(scope, stamp, pane, base string) {
 	if ch.scope != scope {
 		ch.err = ""
 	}
-	cl := a.cl
+	cl := a.hostOf(pane).cl
+	if cl == nil {
+		ch.busy = false
+		return
+	}
 	go func() {
 		var res proto.GitChanges
 		err := cl.Call("git.changes", proto.GitParams{Pane: pane, Base: base}, &res)
@@ -665,11 +669,11 @@ func (a *App) sideMessage(c *ui.Context, pal *palette, title, detail string) {
 // the hash of the text shown, which kerod then sends again only when it
 // changed.
 func (a *App) fetchFile(sf *sideFile, known string) {
-	if a.cl == nil {
+	cl := a.hostOf(sf.pane).cl
+	if cl == nil {
 		return
 	}
 	sf.busy = true
-	cl := a.cl
 	go func() {
 		var t proto.GitText
 		err := cl.Call("git.file", proto.GitParams{Pane: sf.pane, Base: sf.base, Path: sf.f.Path, OldPath: sf.f.OldPath, Known: known}, &t)
@@ -856,12 +860,12 @@ func hunkButton(c *ui.Context, key string, svg *ui.SVG, label, tip string, pal *
 // changed, to the file, through kerod, which writes it only as the file
 // was shown: one changed meanwhile is shown anew instead.
 func (a *App) writeBack(sf *sideFile) {
-	if a.cl == nil {
+	cl := a.hostOf(sf.pane).cl
+	if cl == nil {
 		return
 	}
 	text := sf.d.New.String()
 	sf.writing = true
-	cl := a.cl
 	go func() {
 		var hash string
 		err := cl.Call("git.revert", proto.GitWriteParams{Pane: sf.pane, Base: sf.base, Path: sf.f.Path, Hash: sf.hash, Text: text}, &hash)

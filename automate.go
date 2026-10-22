@@ -21,13 +21,22 @@ const browseTimeout = 10 * time.Second
 // answers: what waits on the page waits off the main thread. It is a
 // remote control of the app, as kero do is, and takes the user's leave
 // as kero do does.
-func (a *App) browse(r *proto.BrowserRequest, answer func(*proto.BrowserResult, error)) {
+func (a *App) browse(h *host, r *proto.BrowserRequest, answer func(*proto.BrowserResult, error)) {
 	fail := func(format string, args ...any) { answer(nil, fmt.Errorf(format, args...)) }
-	if !a.set.RemoteControl {
-		fail("Remote Control is off: turn it on in Kero's Settings › Agents")
+	if !a.remoteControl(h) {
+		if h.remote() {
+			fail("Remote Control of %s is off: turn it on in Kero's Settings › Hosts", h.name)
+		} else {
+			fail("Remote Control is off: turn it on in Kero's Settings › Agents")
+		}
 		return
 	}
 	s := a.sessionOfPane(r.Pane)
+	// The page shows on this machine, which reaches what the host may
+	// not: a host drives the browsers of its own sessions alone.
+	if s != nil && a.hostOf(s.ID) != h {
+		s = nil
+	}
 	if s == nil {
 		fail("no pane %s in the app", r.Pane)
 		return
