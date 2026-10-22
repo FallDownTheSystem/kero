@@ -38,6 +38,10 @@ type ptyOptions struct {
 	Dir        string
 	Env        []string
 	Cols, Rows int
+	// InheritCursor starts the console's cursor where the terminal's is,
+	// which it asks for (DSR) and the terminal must answer: else it starts
+	// at the top, and draws there, over a restored pane's history.
+	InheritCursor bool
 	// conpty is the ConPTY to start the program in, conpty() when unset.
 	conpty conPTY
 }
@@ -109,7 +113,10 @@ var conpty = sync.OnceValue(func() conPTY {
 	return systemConPTY
 })
 
-const procThreadAttributePseudoConsole = 0x00020016
+const (
+	procThreadAttributePseudoConsole = 0x00020016
+	pseudoconsoleInheritCursor       = 0x1
+)
 
 type startupInfoEx struct {
 	windows.StartupInfo
@@ -135,8 +142,11 @@ func startPTY(o ptyOptions) (*ptyProc, error) {
 		windows.CloseHandle(inW)
 		return nil, fmt.Errorf("pty: %w", err)
 	}
-	var console uintptr
-	r, _, _ := cp.create.Call(coord(o.Cols, o.Rows), uintptr(inR), uintptr(outW), 0, uintptr(unsafe.Pointer(&console)))
+	var console, flags uintptr
+	if o.InheritCursor {
+		flags |= pseudoconsoleInheritCursor
+	}
+	r, _, _ := cp.create.Call(coord(o.Cols, o.Rows), uintptr(inR), uintptr(outW), flags, uintptr(unsafe.Pointer(&console)))
 	// The console has its own copies of its ends.
 	windows.CloseHandle(inR)
 	windows.CloseHandle(outW)

@@ -152,6 +152,9 @@ func (s *pane) start(command []string, env []string) error {
 		Path: shell, Args: args, Dir: dir,
 		Env:  s.d.environment(s.sid, s.info.ID, shell, env),
 		Cols: s.info.Cols, Rows: s.info.Rows,
+		// The pane's terminal answers the console's question of where
+		// its cursor is: under a restored pane's history.
+		InheritCursor: true,
 	})
 	if err != nil {
 		return err

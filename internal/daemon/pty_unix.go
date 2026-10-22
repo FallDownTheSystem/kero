@@ -26,6 +26,9 @@ type ptyOptions struct {
 	Dir        string
 	Env        []string
 	Cols, Rows int
+	// InheritCursor is for ConPTY, whose console has a cursor of its own;
+	// a Unix program draws from the terminal's.
+	InheritCursor bool
 }
 
 func startPTY(o ptyOptions) (*ptyProc, error) {

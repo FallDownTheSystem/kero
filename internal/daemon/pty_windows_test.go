@@ -36,10 +36,14 @@ type console struct {
 
 func startConsole(t *testing.T, cp conPTY, path string, args ...string) *console {
 	t.Helper()
-	proc, err := startPTY(ptyOptions{
-		Path: path, Args: args, Dir: t.TempDir(), Env: testEnv(t),
-		Cols: 160, Rows: 10, conpty: cp, // wide enough for a prompt in a test's directory
-	})
+	return startConsoleWith(t, ptyOptions{Path: path, Args: args, conpty: cp})
+}
+
+func startConsoleWith(t *testing.T, o ptyOptions) *console {
+	t.Helper()
+	o.Dir, o.Env = t.TempDir(), testEnv(t)
+	o.Cols, o.Rows = 160, 10 // wide enough for a prompt in a test's directory
+	proc, err := startPTY(o)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,6 +108,30 @@ func TestConsoleClearScreen(t *testing.T) {
 			time.Sleep(200 * time.Millisecond)
 			c.proc.Write([]byte("a"))
 			c.waitFor(at, regexp.MustCompile(`\x1b\[1;\d+H`), "cursor on the first row")
+		})
+	}
+}
+
+// A console that inherits the cursor asks the terminal where it is and
+// draws from there: a restored pane's shell, under its history, has
+// PowerShell's redraws (an inline prediction) on its prompt's row, not on
+// the first.
+func TestConsoleInheritCursor(t *testing.T) {
+	shell, err := exec.LookPath("pwsh")
+	if err != nil {
+		if shell, err = exec.LookPath("powershell"); err != nil {
+			t.Skip("PowerShell not installed")
+		}
+	}
+	for name, cp := range conPTYs(t) {
+		t.Run(name, func(t *testing.T) {
+			c := startConsoleWith(t, ptyOptions{Path: shell, Args: []string{"pwsh", "-NoLogo", "-NoProfile"}, conpty: cp, InheritCursor: true})
+			at := c.waitFor(0, regexp.MustCompile(`\x1b\[6n`), "cursor position request")
+			c.proc.Write([]byte("\x1b[8;1R"))
+			at = c.waitFor(at, regexp.MustCompile(`PS [^\r\n]*>`), "prompt")
+			time.Sleep(200 * time.Millisecond)
+			c.proc.Write([]byte("a"))
+			c.waitFor(at, regexp.MustCompile(`\x1b\[8;\d+H`), "cursor on the prompt's row")
 		})
 	}
 }
