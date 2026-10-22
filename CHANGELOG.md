@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.3
+
+- On Windows, turning on **Let other machines connect** in Settings ›
+  Hosts no longer flashes a console window open.
+
 ## 2.1.2
 
 - Settings › Hosts can share this computer with Kero on your other
