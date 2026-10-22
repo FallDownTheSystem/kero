@@ -735,6 +735,14 @@
       }
     }
   },
+  "hostUpdateAppDetail": "The Kero app on {host} updates and relaunches, then restarts its service. Sessions there start again where they were, with their history, and the programs running in them end.",
+  "@hostUpdateAppDetail": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "hostUpdating": "Updating Kero on {host}…",
   "@hostUpdating": {
     "placeholders": {
@@ -777,7 +785,7 @@
       }
     }
   },
-  "hostDesktopDetail": "{host} runs the Kero app, version {version}, and this is Kero {app}. Update Kero on {host}, then restart its service.",
+  "hostDesktopDetail": "{host} runs the Kero app, version {version}, and this is Kero {app}. Update Kero on {host}, or turn on Let them update Kero there (Settings › Hosts) to update it from here.",
   "@hostDesktopDetail": {
     "placeholders": {
       "host": {
@@ -931,6 +939,8 @@
   "setListenDetail": "kerod listens at this computer's Tailscale addresses, for Kero on your other machines. Only your Tailscale account may connect.",
   "setListenOn": "Add this computer as a host on your other machines at this address. Only your Tailscale account may connect.",
   "setListenNoTailscale": "Tailscale isn't running here: kerod listens once it is.",
+  "setRemoteUpdates": "Let them update Kero here",
+  "setRemoteUpdatesDetail": "Kero on your other machines can update this app to its version. The app relaunches, and the programs running in its sessions end.",
   "setHostSettingsSplit": "A host's own settings",
   "setHostSettingsSplitDetail": "The shell, environment, scrollback and session restore of a host's sessions come from its own configuration: run kero config edit on the host. Appearance, keyboard and notifications are this app's.",
   "setShellThisComputer": "These apply to this computer's sessions. Each host's come from its own configuration (Settings › Hosts).",

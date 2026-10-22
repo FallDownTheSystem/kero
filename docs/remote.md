@@ -161,7 +161,8 @@ The app and a host can run different versions of Kero. When the host runs an old
 
 - Kero updates a host only when you ask, never on a reconnect, and never back to an older version.
 - When the host runs a newer Kero than the app, update the app instead (**Settings › General**).
-- Kero updates only an install of its install scripts. If you installed Kero on the host another way, or it runs the Kero desktop app, update it the way you installed it.
+- Kero updates an install of its install scripts. If you installed Kero on the host another way, update it the way you installed it.
+- A host running the Kero desktop app takes updates from your other machines once you let it: on that computer, turn on **Settings › Hosts › Let them update Kero here** (`remote-updates = true`). The app there then updates to the newest release, relaunches, and restarts kerod. Until then, update it on that computer.
 
 From the command line:
 

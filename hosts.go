@@ -166,6 +166,24 @@ func (h *host) ahead() bool {
 		update.Compare(h.kero(), mygo.App.Version()) > 0
 }
 
+// relaunchedEnv names the version of kerod the app relaunched for, which
+// the app it starts again inherits: should the app on disk be no newer
+// after all, it relaunches once, not on and on.
+const relaunchedEnv = "KERO_RELAUNCHED_FOR"
+
+// relaunchForKerod relaunches the app into a newer Kero that this
+// machine's kerod runs, as after Kero on another machine updated the app
+// here (remote-updates) and kerod restarted into it.
+func relaunchForKerod(v string) {
+	app := mygo.App.Version()
+	if !released(v) || !released(app) || update.Compare(v, app) <= 0 ||
+		!mygo.Updater.Enabled() || os.Getenv(relaunchedEnv) == v {
+		return
+	}
+	os.Setenv(relaunchedEnv, v)
+	mygo.App.Relaunch()
+}
+
 // released tells a version of Kero that has a release to install: not a
 // development build's.
 func released(v string) bool { return v != "" && !strings.Contains(v, "dev") && !mygo.IsDev() }
@@ -360,6 +378,9 @@ func (a *App) connected(h *host, gen int, rc *remote.Conn, cl *client.Client, er
 	h.cl, h.conn, h.err, h.errKind, h.retries = cl, connReady, "", nil, 0
 	h.kerod = kerodID(h, cl)
 	h.daemonApp, h.daemonFP = cl.Welcome.App, cl.Welcome.Build
+	if !h.remote() {
+		relaunchForKerod(h.daemonApp)
+	}
 	cl.OnEvent(func(m proto.Message) { a.update(func() { a.event(h, cl, m) }) })
 	cl.Go("subscribe", nil, nil)
 	h.viewSent = nil

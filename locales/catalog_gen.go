@@ -4364,6 +4364,16 @@ func (msgs Messages) HostUpdateDetail(host string) string {
 	return Catalog.Format(msgs.locale, "hostUpdateDetail", map[string]any{"host": host})
 }
 
+// HostUpdateAppDetail says "The Kero app on {host} updates and relaunches, then restarts its service. Sessions there start again where they were,…"
+// in the language the app shows.
+func HostUpdateAppDetail(host string) string { return In(i18n.Locale()).HostUpdateAppDetail(host) }
+
+// HostUpdateAppDetail says "The Kero app on {host} updates and relaunches, then restarts its service. Sessions there start again where they were,…"
+// in the language of msgs.
+func (msgs Messages) HostUpdateAppDetail(host string) string {
+	return Catalog.Format(msgs.locale, "hostUpdateAppDetail", map[string]any{"host": host})
+}
+
 // HostUpdating says "Updating Kero on {host}…"
 // in the language the app shows.
 func HostUpdating(host string) string { return In(i18n.Locale()).HostUpdating(host) }
@@ -4418,13 +4428,13 @@ func (msgs Messages) HostVersionDetail(host string, version string, app string) 
 	return Catalog.Format(msgs.locale, "hostVersionDetail", map[string]any{"host": host, "version": version, "app": app})
 }
 
-// HostDesktopDetail says "{host} runs the Kero app, version {version}, and this is Kero {app}. Update Kero on {host}, then restart its service."
+// HostDesktopDetail says "{host} runs the Kero app, version {version}, and this is Kero {app}. Update Kero on {host}, or turn on Let them updat…"
 // in the language the app shows.
 func HostDesktopDetail(host string, version string, app string) string {
 	return In(i18n.Locale()).HostDesktopDetail(host, version, app)
 }
 
-// HostDesktopDetail says "{host} runs the Kero app, version {version}, and this is Kero {app}. Update Kero on {host}, then restart its service."
+// HostDesktopDetail says "{host} runs the Kero app, version {version}, and this is Kero {app}. Update Kero on {host}, or turn on Let them updat…"
 // in the language of msgs.
 func (msgs Messages) HostDesktopDetail(host string, version string, app string) string {
 	return Catalog.Format(msgs.locale, "hostDesktopDetail", map[string]any{"host": host, "version": version, "app": app})
@@ -4766,6 +4776,26 @@ func SetListenNoTailscale() string { return In(i18n.Locale()).SetListenNoTailsca
 // in the language of msgs.
 func (msgs Messages) SetListenNoTailscale() string {
 	return Catalog.Format(msgs.locale, "setListenNoTailscale", nil)
+}
+
+// SetRemoteUpdates says "Let them update Kero here"
+// in the language the app shows.
+func SetRemoteUpdates() string { return In(i18n.Locale()).SetRemoteUpdates() }
+
+// SetRemoteUpdates says "Let them update Kero here"
+// in the language of msgs.
+func (msgs Messages) SetRemoteUpdates() string {
+	return Catalog.Format(msgs.locale, "setRemoteUpdates", nil)
+}
+
+// SetRemoteUpdatesDetail says "Kero on your other machines can update this app to its version. The app relaunches, and the programs running in its s…"
+// in the language the app shows.
+func SetRemoteUpdatesDetail() string { return In(i18n.Locale()).SetRemoteUpdatesDetail() }
+
+// SetRemoteUpdatesDetail says "Kero on your other machines can update this app to its version. The app relaunches, and the programs running in its s…"
+// in the language of msgs.
+func (msgs Messages) SetRemoteUpdatesDetail() string {
+	return Catalog.Format(msgs.locale, "setRemoteUpdatesDetail", nil)
 }
 
 // SetHostSettingsSplit says "A host's own settings"

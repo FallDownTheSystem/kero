@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
@@ -379,6 +380,20 @@ func TestHostVersions(t *testing.T) {
 	h.daemonApp = "0.3.0"
 	if h.stale() {
 		t.Error("kerod newer than the bridge that answered is stale")
+	}
+}
+
+// A host of the desktop app that takes updates from here is told of as one
+// to update; one that doesn't, as one to update there.
+func TestDesktopHostVersionDetail(t *testing.T) {
+	a := testApp(t)
+	h := &host{name: "pc", info: proto.HostInfo{Kero: "0.1.0"}}
+	if got := a.hostVersionDetail(h); got != locales.HostDesktopDetail("pc", "0.1.0", mygo.App.Version()) {
+		t.Errorf("without remote updates: %q", got)
+	}
+	h.info.Updates = true
+	if got := a.hostVersionDetail(h); got != locales.HostVersionDetail("pc", "0.1.0", mygo.App.Version()) {
+		t.Errorf("with remote updates: %q", got)
 	}
 }
 

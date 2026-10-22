@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/netip"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/egoist/mygo"
 
 	"kero/internal/build"
 	"kero/internal/proto"
@@ -384,7 +386,13 @@ func (l *listeners) handler(ctx context.Context, via string) http.Handler {
 // remoteServer answers a remote connection on kerod's behalf.
 func (d *Daemon) remoteServer(id identity) *remote.Server {
 	s := &remote.Server{
-		Info: func() proto.HostInfo { return remote.LocalInfo(id.peer) },
+		Info: func() proto.HostInfo {
+			h := remote.LocalInfo(id.peer)
+			if !h.Server {
+				h.Updates = AppUpdates()
+			}
+			return h
+		},
 		Stream: func(conn net.Conn, hello []byte, mux proto.MuxHello) {
 			sid := id
 			if sid.client == "" {
@@ -406,8 +414,50 @@ func (d *Daemon) remoteServer(id identity) *remote.Server {
 			}
 			return nil
 		}
+	} else if !build.Server {
+		s.Update = func(app string) error {
+			if !AppUpdates() {
+				return errors.New("Kero on this host takes updates from other machines only with remote-updates on: update it there")
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+			d.log.Printf("updating the app to Kero %s, as %s asked", app, id.peer)
+			if err := UpdateApp(ctx, app); err != nil {
+				d.log.Printf("update: %v", err)
+				return err
+			}
+			return nil
+		}
 	}
 	return s
+}
+
+// AppUpdates reports whether the desktop app here takes updates from
+// Kero on other machines: the user let it (remote-updates), and it can
+// update itself, as a development build or a package manager's can't.
+func AppUpdates() bool {
+	return settings.Load().RemoteUpdates && mygo.Updater.Enabled()
+}
+
+// UpdateApp installs the newest release of the desktop app in place of
+// this one, as the app of version app asks, from its own signed feed: the
+// release kerod restarts into, and the window here relaunches into as it
+// finds kerod newer (App.relaunchForKerod). Never back to an older one.
+func UpdateApp(ctx context.Context, app string) error {
+	up, err := mygo.Updater.Check(ctx)
+	if err != nil {
+		return err
+	}
+	if up == nil {
+		if update.Compare(build.Version(), app) >= 0 {
+			return nil
+		}
+		return fmt.Errorf("no release of Kero %s or newer to update to", app)
+	}
+	if update.Compare(up.Version, app) < 0 {
+		return fmt.Errorf("the newest release is Kero %s, older than %s", up.Version, app)
+	}
+	return up.Install(ctx, nil)
 }
 
 // restart restarts kerod, as a remote client asks after an update: it

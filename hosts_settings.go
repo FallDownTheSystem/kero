@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/remote"
@@ -95,6 +96,13 @@ func (a *App) listenGroup(c *ui.Context, pal *palette) {
 				a.set = s
 			})
 		})
+		// Only the desktop app updates itself so: a development build, or
+		// a package manager's install, can't.
+		if mygo.Updater.Enabled() {
+			settingRow(c, pal, locales.SetRemoteUpdates(), locales.SetRemoteUpdatesDetail(), func() {
+				toggle(c.Key("remote-updates"), &a.set.RemoteUpdates, pal)
+			})
+		}
 		if addr == "" {
 			return
 		}

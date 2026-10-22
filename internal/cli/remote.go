@@ -384,7 +384,15 @@ func bridge(args []string) error {
 		// end of the process ends.
 		Closed: func() { os.Exit(0) },
 	}
-	if info.Updates {
+	if !info.Server && daemon.AppUpdates() {
+		// The desktop app updates itself, then kerod restarts into it.
+		info.Updates = true
+		srv.Update = func(app string) error {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+			return daemon.UpdateApp(ctx, app)
+		}
+	} else if info.Updates {
 		dir := update.InstallDir()
 		// kerod starts from the install, as an update moves this one aside.
 		client.Exe = filepath.Join(dir, "kero")

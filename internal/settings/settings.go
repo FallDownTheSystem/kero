@@ -89,6 +89,10 @@ type Settings struct {
 	// besides the machine's owner: tailnet logins, tag:name, or *.
 	Listen      []string `json:"listen,omitempty"`
 	ListenAllow []string `json:"listenAllow,omitempty"`
+	// RemoteUpdates lets Kero on another machine that connects update the
+	// app here to its version, and restart kerod into it, as it can a
+	// server build: off unless the user turns it on here.
+	RemoteUpdates bool `json:"remoteUpdates,omitempty"`
 }
 
 // Host is a machine whose kerod the app shows: its name, and its address

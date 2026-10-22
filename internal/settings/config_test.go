@@ -113,6 +113,17 @@ func TestBadValuesKeepDefaults(t *testing.T) {
 	}
 }
 
+// Kero elsewhere updates the app here only once the user lets it.
+func TestRemoteUpdatesOptIn(t *testing.T) {
+	if Default().RemoteUpdates {
+		t.Error("remote updates are on by default")
+	}
+	s, probs := parse("remote-updates = true\n")
+	if !s.RemoteUpdates || len(probs) != 0 {
+		t.Errorf("remote-updates = true: %v, problems %q", s.RemoteUpdates, probs)
+	}
+}
+
 func TestMigratesSettingsJSON(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("KERO_HOME", dir)

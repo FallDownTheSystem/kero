@@ -357,7 +357,7 @@ func (a *App) hostVersionDetail(h *host) string {
 	switch {
 	case h.ahead():
 		return locales.HostNewerDetail(h.name, v, app)
-	case !h.info.Server:
+	case !h.info.Server && !h.info.Updates:
 		return locales.HostDesktopDetail(h.name, v, app)
 	case !h.info.Updates:
 		return locales.HostManualDetail(h.name, v, app)
@@ -382,10 +382,14 @@ func (a *App) offerHostUpdate(h *host) {
 		a.toast(locales.HostUpdateDev())
 		return
 	}
+	detail := locales.HostUpdateDetail(h.name)
+	if !h.info.Server {
+		detail = locales.HostUpdateAppDetail(h.name)
+	}
 	a.confirm = &confirmation{
 		open:    true,
 		title:   locales.HostUpdateTitle(h.name, mygo.App.Version()),
-		detail:  withRunning(locales.HostUpdateDetail(h.name), a.busyCount(h)),
+		detail:  withRunning(detail, a.busyCount(h)),
 		action:  locales.CommonUpdate(),
 		destroy: true,
 		run:     func() { a.hostRequest(h, "update") },
