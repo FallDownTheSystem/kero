@@ -1,10 +1,10 @@
 #!/bin/sh
 # Builds the server build of Kero as releases publish it, into build/server:
-# for each platform (update.Platforms), an archive of kero, libghostty-vt
-# and the marker of an install that updates itself (update.Marker), a .zip
-# for Windows, else a .tar.gz, named as update.Asset names it; and the
-# install scripts, with the version of mygo.json in them. It needs go, jq,
-# curl and zip.
+# for each platform (update.Platforms), an archive of kero, libghostty-vt,
+# on Windows the ConPTY of resources/windows-*, and the marker of an
+# install that updates itself (update.Marker), a .zip for Windows, else a
+# .tar.gz, named as update.Asset names it; and the install scripts, with
+# the version of mygo.json in them. It needs go, jq, curl and zip.
 #
 #   sh scripts/build-server.sh [os/arch ...]
 set -eu
@@ -45,10 +45,17 @@ for p in $platforms; do
 	lib="$(echo "$file" | jq -r .name)"
 	curl -fsSL "$(echo "$file" | jq -r .url)" -o "$stage/$lib"
 	echo "$(echo "$file" | jq -r .sha256)  $stage/$lib" | check
+	# On Windows, the ConPTY the app ships too, which kerod finds beside
+	# itself (resources/windows-*).
+	extra=
+	if [ "$os" = windows ]; then
+		cp "resources/$os-$arch/conpty.dll" "resources/$os-$arch/OpenConsole.exe" "resources/$os-$arch/ConPTY-LICENSE.txt" "$stage/"
+		extra="conpty.dll OpenConsole.exe ConPTY-LICENSE.txt"
+	fi
 	: >"$stage/.kero-server"
 	if [ "$os" = windows ]; then
 		rm -f "$out/kero-server-$version-$os-$arch.zip"
-		(cd "$stage" && zip -q -X "../kero-server-$version-$os-$arch.zip" "$exe" "$lib" .kero-server)
+		(cd "$stage" && zip -q -X "../kero-server-$version-$os-$arch.zip" "$exe" "$lib" $extra .kero-server)
 	else
 		tar -C "$stage" -czf "$out/kero-server-$version-$os-$arch.tar.gz" "$exe" "$lib" .kero-server
 	fi

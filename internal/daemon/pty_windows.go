@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -12,6 +13,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"kero/internal/clilink"
 )
 
 // ptyProc is a program running in a pseudo console of its own (ConPTY),
@@ -19,6 +22,7 @@ import (
 type ptyProc struct {
 	mu      sync.Mutex
 	console uintptr // the HPCON, 0 once closed
+	conpty  conPTY  // the ConPTY of the console
 	in      *os.File
 	out     *os.File
 	process windows.Handle
@@ -34,17 +38,76 @@ type ptyOptions struct {
 	Dir        string
 	Env        []string
 	Cols, Rows int
+	// conpty is the ConPTY to start the program in, conpty() when unset.
+	conpty conPTY
 }
 
 var (
 	kernel32                              = windows.NewLazySystemDLL("kernel32.dll")
-	procCreatePseudoConsole               = kernel32.NewProc("CreatePseudoConsole")
-	procResizePseudoConsole               = kernel32.NewProc("ResizePseudoConsole")
-	procClosePseudoConsole                = kernel32.NewProc("ClosePseudoConsole")
 	procInitializeProcThreadAttributeList = kernel32.NewProc("InitializeProcThreadAttributeList")
 	procUpdateProcThreadAttribute         = kernel32.NewProc("UpdateProcThreadAttribute")
 	procDeleteProcThreadAttributeList     = kernel32.NewProc("DeleteProcThreadAttributeList")
 )
+
+// conPTY is a ConPTY's functions: Windows' own, in kernel32, or those of
+// the conpty.dll Kero ships, which runs the OpenConsole.exe beside it.
+type conPTY struct {
+	create, resize, close *windows.LazyProc
+	clear                 *windows.LazyProc // nil in kernel32, which has none
+}
+
+var systemConPTY = conPTY{
+	create: kernel32.NewProc("CreatePseudoConsole"),
+	resize: kernel32.NewProc("ResizePseudoConsole"),
+	close:  kernel32.NewProc("ClosePseudoConsole"),
+}
+
+// bundledConPTY returns the ConPTY of the conpty.dll in dir, when it and
+// its OpenConsole.exe are there and it loads.
+func bundledConPTY(dir string) (conPTY, bool) {
+	if _, err := os.Stat(filepath.Join(dir, "OpenConsole.exe")); err != nil {
+		return conPTY{}, false
+	}
+	dll := windows.NewLazyDLL(filepath.Join(dir, "conpty.dll"))
+	c := conPTY{
+		create: dll.NewProc("CreatePseudoConsole"),
+		resize: dll.NewProc("ResizePseudoConsole"),
+		close:  dll.NewProc("ClosePseudoConsole"),
+		clear:  dll.NewProc("ClearPseudoConsole"),
+	}
+	for _, p := range []*windows.LazyProc{c.create, c.resize, c.close, c.clear} {
+		if p.Find() != nil {
+			return conPTY{}, false
+		}
+	}
+	return c, true
+}
+
+// conpty returns the ConPTY panes run in: the one Kero ships next to its
+// executable (resources/windows-*), or next to the app the kero command is
+// a copy of, else Windows' own, as under go test. The one Kero ships is
+// newer, and passes what programs write on as it is: Windows' own drops
+// the mouse modes a program sets before it reads the console in VT input
+// mode, as pi does, which then gets the wheel as the arrow keys.
+var conpty = sync.OnceValue(func() conPTY {
+	exe, err := os.Executable()
+	if err != nil {
+		return systemConPTY
+	}
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	dirs := []string{filepath.Dir(exe)}
+	if app := clilink.Target(filepath.Dir(exe)); app != "" {
+		dirs = append(dirs, filepath.Dir(app))
+	}
+	for _, dir := range dirs {
+		if c, ok := bundledConPTY(dir); ok {
+			return c
+		}
+	}
+	return systemConPTY
+})
 
 const procThreadAttributePseudoConsole = 0x00020016
 
@@ -54,7 +117,11 @@ type startupInfoEx struct {
 }
 
 func startPTY(o ptyOptions) (*ptyProc, error) {
-	if err := procCreatePseudoConsole.Find(); err != nil {
+	cp := o.conpty
+	if cp.create == nil {
+		cp = conpty()
+	}
+	if err := cp.create.Find(); err != nil {
 		return nil, errors.New("pty: ConPTY needs Windows 10 1809 or later")
 	}
 	// The console reads what is typed from inR and writes the output to
@@ -69,7 +136,7 @@ func startPTY(o ptyOptions) (*ptyProc, error) {
 		return nil, fmt.Errorf("pty: %w", err)
 	}
 	var console uintptr
-	r, _, _ := procCreatePseudoConsole.Call(coord(o.Cols, o.Rows), uintptr(inR), uintptr(outW), 0, uintptr(unsafe.Pointer(&console)))
+	r, _, _ := cp.create.Call(coord(o.Cols, o.Rows), uintptr(inR), uintptr(outW), 0, uintptr(unsafe.Pointer(&console)))
 	// The console has its own copies of its ends.
 	windows.CloseHandle(inR)
 	windows.CloseHandle(outW)
@@ -80,6 +147,7 @@ func startPTY(o ptyOptions) (*ptyProc, error) {
 	}
 	p := &ptyProc{
 		console: console,
+		conpty:  cp,
 		in:      os.NewFile(uintptr(inW), "conpty-in"),
 		out:     os.NewFile(uintptr(outR), "conpty-out"),
 		exited:  make(chan struct{}),
@@ -176,7 +244,7 @@ func (p *ptyProc) Resize(cols, rows, _, _ int) error {
 	if p.console == 0 {
 		return os.ErrClosed
 	}
-	if r, _, _ := procResizePseudoConsole.Call(p.console, coord(cols, rows)); r != 0 {
+	if r, _, _ := p.conpty.resize.Call(p.console, coord(cols, rows)); r != 0 {
 		return fmt.Errorf("pty: ResizePseudoConsole: %w", syscall.Errno(r&0xFFFF))
 	}
 	return nil
@@ -192,10 +260,11 @@ const ptySignalClearWindow = 2
 // ClearScreen clears the console's screen as the terminal's was
 // (Terminal.ClearScreen): the console draws with the cursor at absolute
 // rows, so with its prompt still on a lower row it would send the cursor
-// back there. The console takes the signal from Windows 11 24H2; an older
-// one ends at a signal it does not know, so it is left as it is.
+// back there. The bundled ConPTY has ClearPseudoConsole; Windows' own
+// takes its signal from Windows 11 24H2, and an older one ends at a signal
+// it does not know, so it is left as it is.
 func (p *ptyProc) ClearScreen() {
-	if windows.RtlGetVersion().BuildNumber < 26100 {
+	if p.conpty.clear == nil && windows.RtlGetVersion().BuildNumber < 26100 {
 		return
 	}
 	p.mu.Lock()
@@ -203,7 +272,11 @@ func (p *ptyProc) ClearScreen() {
 	if p.console == 0 {
 		return
 	}
-	// The HPCON points at the console's handles, its signal pipe first.
+	if p.conpty.clear != nil {
+		p.conpty.clear.Call(p.console)
+		return
+	}
+	// kernel32's HPCON points at the console's handles, its signal pipe first.
 	signal := **(**windows.Handle)(unsafe.Pointer(&p.console))
 	packet := [2]byte{ptySignalClearWindow, 0} // a little-endian uint16
 	var n uint32
@@ -224,7 +297,7 @@ func (p *ptyProc) Close() error {
 	// ClosePseudoConsole waits for its output to be read before Windows 11
 	// 24H2: pump goes on reading meanwhile, to the end, then the pipe goes.
 	go func() {
-		procClosePseudoConsole.Call(console)
+		p.conpty.close.Call(console)
 		p.out.Close()
 	}()
 	return nil

@@ -110,6 +110,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $kero = Join-Path $env:LOCALAPPDATA 'Programs\kero-server\kero.exe'
           & $kero version
+          # The ConPTY panes run in came with the archive.
+          foreach ($f in 'conpty.dll', 'OpenConsole.exe') {
+            if (-not (Test-Path (Join-Path $env:LOCALAPPDATA "Programs\kero-server\$f"))) { throw "no $f" }
+          }
           & $kero new -n check -- powershell -NoProfile -Command 'Write-Output kero-ok; Start-Sleep 300'
           $ok = $false
           foreach ($i in 1..240) {
