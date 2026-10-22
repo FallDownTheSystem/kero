@@ -51,13 +51,25 @@ func (r *Rules) Len() int { return len(r.Block) + len(r.Hide) + len(r.Except) + 
 // Lists splits the rules into lists of at most MaxRules rules, in
 // WebKit's JSON: each list has some of the rules that block and hide,
 // and all of the exceptions and important ones, since a list's exceptions
-// undo only its own rules. No rules make no list, which WebKit would not
-// take.
+// undo only its own rules. A rule that two filter lists make is there
+// once. No rules make no list, which WebKit would not take.
 func (r *Rules) Lists() []string {
 	var lists []string
-	tail := slices.Concat(r.Except, r.Important)
+	seen := map[string]bool{}
+	unique := func(rules []Rule) []Rule {
+		var out []Rule
+		for _, rule := range rules {
+			key, _ := json.Marshal(rule)
+			if !seen[string(key)] {
+				seen[string(key)] = true
+				out = append(out, rule)
+			}
+		}
+		return out
+	}
+	tail := unique(slices.Concat(r.Except, r.Important))
 	room := max(MaxRules-len(tail), 1)
-	head := slices.Concat(r.Block, r.Hide)
+	head := unique(slices.Concat(r.Block, r.Hide))
 	for len(head) > 0 || lists == nil && len(tail) > 0 {
 		n := min(room, len(head))
 		data, _ := json.Marshal(slices.Concat(head[:n], tail))

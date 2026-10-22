@@ -2,6 +2,7 @@ package adblock
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -191,7 +192,7 @@ func TestConvertOrder(t *testing.T) {
 func TestLists(t *testing.T) {
 	var r Rules
 	for i := range MaxRules + 10 {
-		r.Block = append(r.Block, Rule{Trigger: Trigger{URLFilter: "/" + strings.Repeat("a", i%7)}, Action: Action{Type: "block"}})
+		r.Block = append(r.Block, Rule{Trigger: Trigger{URLFilter: "/" + strconv.Itoa(i)}, Action: Action{Type: "block"}})
 	}
 	r.Except = []Rule{{Trigger: Trigger{URLFilter: "x"}, Action: Action{Type: "ignore-previous-rules"}}}
 	lists := r.Lists()
@@ -211,6 +212,13 @@ func TestLists(t *testing.T) {
 	}
 	if total != MaxRules+10 {
 		t.Errorf("the lists block with %d rules, want %d", total, MaxRules+10)
+	}
+	// Filter lists overlap: a rule is there once.
+	var twice Rules
+	twice.Convert("||ads.example^\n##.ad")
+	twice.Convert("||ads.example^\n##.ad")
+	if lists := twice.Lists(); len(lists) != 1 || strings.Count(lists[0], `"trigger"`) != 2 {
+		t.Errorf("the same filters twice make %v", lists)
 	}
 	var empty Rules
 	if lists := empty.Lists(); len(lists) != 0 {

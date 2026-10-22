@@ -776,7 +776,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 	if old.DockBadge != s.DockBadge {
 		a.notify(true)
 	}
-	if old.BlockAds != s.BlockAds {
+	// Only once a browser pane showed a page: until then, no lists are
+	// downloaded.
+	if (old.BlockAds != s.BlockAds || !slices.Equal(old.AdLists, s.AdLists)) && (a.ads.started || len(a.webs) > 0) {
 		a.applyAdBlock()
 	}
 	if !slices.Equal(old.Hosts, s.Hosts) && a.win != nil {

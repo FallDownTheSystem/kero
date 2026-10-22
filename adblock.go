@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"slices"
+	"sync"
 
 	"github.com/egoist/mygo"
 
@@ -14,11 +16,17 @@ import (
 
 // adBlock blocks ads and trackers in browser panes (browser-block-ads):
 // the first time a pane shows a page with the setting on, it downloads
-// the filter lists, if it has to, and compiles them off the main thread,
-// once a launch. Pages made before that is done get the rules when it is.
+// the filter lists the settings name (browser-filter-list), if it has
+// to, and compiles them off the main thread, and again when the user
+// chooses other lists. Pages made before that is done get the rules when
+// it is.
 type adBlock struct {
 	started bool
-	rules   []*mygo.ContentRules // main thread
+	// lists are those compiled, or compiling, last; gen counts the
+	// compiles, so that only the latest one's rules apply.
+	lists []string
+	gen   int
+	rules []*mygo.ContentRules // main thread
 }
 
 // adRules returns the rules browser panes' pages apply: none while the
@@ -27,22 +35,28 @@ func (a *App) adRules() []*mygo.ContentRules {
 	if !a.set.BlockAds {
 		return nil
 	}
-	a.startAdBlock()
+	a.compileAds()
 	return a.ads.rules
 }
 
-// startAdBlock compiles the rules, once.
-func (a *App) startAdBlock() {
-	if a.ads.started {
+// compileAds compiles the lists the settings name, unless those compiled
+// or compiling last are those.
+func (a *App) compileAds() {
+	if a.ads.started && slices.Equal(a.ads.lists, a.set.AdLists) {
 		return
 	}
-	a.ads.started = true
+	a.ads.started, a.ads.lists = true, slices.Clone(a.set.AdLists)
+	a.ads.gen++
+	gen, lists := a.ads.gen, a.ads.lists
 	go func() {
-		rules, err := compileAdBlock()
+		rules, err := compileAdBlock(lists)
 		if err != nil {
 			log.Printf("kero: ad blocking: %v", err)
 		}
 		a.update(func() {
+			if a.ads.gen != gen {
+				return // other lists compile now
+			}
 			a.ads.rules = rules
 			a.applyAdBlock()
 		})
@@ -50,7 +64,7 @@ func (a *App) startAdBlock() {
 }
 
 // applyAdBlock gives the open browser panes' pages the rules, or takes
-// them away, as the setting is; they apply to the loads from then on.
+// them away, as the settings are; they apply to the loads from then on.
 func (a *App) applyAdBlock() {
 	rules := a.adRules()
 	for _, e := range a.webs {
@@ -60,10 +74,26 @@ func (a *App) applyAdBlock() {
 	}
 }
 
-// compileAdBlock compiles the filter lists, as many content rule lists as
-// they take, keeping those it compiled if one fails.
-func compileAdBlock() ([]*mygo.ContentRules, error) {
-	filters, err := adblock.Load(context.Background(), filepath.Join(proto.Dir(), "adblock"), adblock.Sources)
+// compiling has one compile run at a time: each compiles the lists
+// kero-ads-0, kero-ads-1 and so on, and replaces what the one before it
+// compiled under those ids.
+var compiling sync.Mutex
+
+// compileAdBlock compiles the filter lists of ids, as many content rule
+// lists as they take, keeping those it compiled if one fails.
+func compileAdBlock(ids []string) ([]*mygo.ContentRules, error) {
+	compiling.Lock()
+	defer compiling.Unlock()
+	var sources []adblock.Source
+	for _, id := range ids {
+		if s, ok := adblock.Find(id); ok {
+			sources = append(sources, s)
+		}
+	}
+	if len(sources) == 0 {
+		return nil, nil
+	}
+	filters, err := adblock.Load(context.Background(), filepath.Join(proto.Dir(), "adblock"), sources)
 	if err != nil {
 		return nil, err
 	}

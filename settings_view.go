@@ -19,6 +19,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
+	"kero/internal/adblock"
 	"kero/internal/cli"
 	"kero/internal/client"
 	"kero/internal/proto"
@@ -500,10 +501,17 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				[]string{locales.SetDiffAuto(), locales.ChangesUnified(), locales.ChangesSplit()})
 		})
 	})
-	settingsGroup(c, pal, locales.SetBrowser(), locales.SetBrowserDetail(), func() {
+	lists := ""
+	if s.BlockAds {
+		lists = locales.SetAdListsNote()
+	}
+	settingsGroup(c, pal, locales.SetBrowser(), lists, func() {
 		settingRow(c, pal, locales.SetBlockAds(), locales.SetBlockAdsDetail(), func() {
 			toggle(c.Key("browser-block-ads"), &s.BlockAds, pal)
 		})
+		if s.BlockAds {
+			adListRows(c, pal, s)
+		}
 	})
 	settingsGroup(c, pal, locales.SetStartup(), "", func() {
 		settingRow(c, pal, locales.SetOpenAtLogin(), "", func() {
@@ -516,6 +524,56 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		})
 	})
 	a.updatesGroup(c, pal)
+}
+
+// adListRows are the filter lists to block with: those Kero offers, and
+// those of other URLs the configuration names.
+func adListRows(c *ui.Context, pal *palette, s *settings.Settings) {
+	sources := slices.Clone(adblock.Catalog)
+	for _, id := range s.AdLists {
+		if src, ok := adblock.Find(id); ok && !slices.ContainsFunc(sources, func(c adblock.Source) bool { return c.ID == id }) {
+			sources = append(sources, src)
+		}
+	}
+	for _, src := range sources {
+		on := slices.Contains(s.AdLists, src.ID)
+		settingRow(c, pal, src.Name, adListDetail(src), func() {
+			toggle(c.Key("adlist-"+src.ID), &on, pal).OnChange(func() {
+				// In the order of the rows, whatever order the file had.
+				var lists []string
+				for _, other := range sources {
+					if other.ID == src.ID && on || other.ID != src.ID && slices.Contains(s.AdLists, other.ID) {
+						lists = append(lists, other.ID)
+					}
+				}
+				if lists == nil {
+					lists = []string{}
+				}
+				s.AdLists = lists
+			})
+		})
+	}
+}
+
+// adListDetail says what a filter list blocks, or where it is.
+func adListDetail(src adblock.Source) string {
+	switch src.ID {
+	case "easylist":
+		return locales.SetAdListEasylist()
+	case "easyprivacy":
+		return locales.SetAdListEasyprivacy()
+	case "peter-lowe":
+		return locales.SetAdListPeterLowe()
+	case "easylist-china":
+		return locales.SetAdListEasylistChina()
+	case "fanboy-cookie":
+		return locales.SetAdListFanboyCookie()
+	case "fanboy-social":
+		return locales.SetAdListFanboySocial()
+	case "fanboy-annoyance":
+		return locales.SetAdListFanboyAnnoyance()
+	}
+	return src.URL
 }
 
 func (a *App) updatesGroup(c *ui.Context, pal *palette) {

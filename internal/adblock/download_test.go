@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func TestLoad(t *testing.T) {
 	}))
 	defer server.Close()
 	dir := t.TempDir()
-	sources := []Source{{"list", server.URL + "/list"}}
+	sources := []Source{{"list", "List", server.URL + "/list"}}
 	path := filepath.Join(dir, "list.txt")
 
 	lists, err := Load(context.Background(), dir, sources)
@@ -64,10 +65,31 @@ func TestLoad(t *testing.T) {
 	broken.Store(false)
 	// What is no filter list is not kept.
 	portal := t.TempDir()
-	if _, err := Load(context.Background(), portal, []Source{{"list", server.URL + "/portal"}}); err == nil {
+	if _, err := Load(context.Background(), portal, []Source{{"list", "List", server.URL + "/portal"}}); err == nil {
 		t.Error("a page that is no filter list was taken")
 	}
 	if _, err := os.Stat(filepath.Join(portal, "list.txt")); err == nil {
 		t.Error("a page that is no filter list was kept")
+	}
+}
+
+func TestFind(t *testing.T) {
+	if s, ok := Find("easyprivacy"); !ok || s.Name != "EasyPrivacy" || s.file() != "easyprivacy.txt" {
+		t.Errorf("Find(easyprivacy) = %+v, %v", s, ok)
+	}
+	a, ok := Find("https://lists.example/a.txt")
+	b, _ := Find("https://lists.example/b.txt")
+	if !ok || a.Name != "lists.example" || a.file() == b.file() || !strings.HasPrefix(a.file(), "url-") {
+		t.Errorf("lists of URLs: %+v %s, %s", a, a.file(), b.file())
+	}
+	for _, id := range []string{"", "no-such-list", "ftp://lists.example/a.txt", "https://", "easylist.txt"} {
+		if s, ok := Find(id); ok {
+			t.Errorf("Find(%q) = %+v", id, s)
+		}
+	}
+	for _, id := range DefaultLists {
+		if _, ok := Find(id); !ok {
+			t.Errorf("default list %q is not in the catalog", id)
+		}
 	}
 }
