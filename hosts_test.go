@@ -467,3 +467,58 @@ func TestRemoveHostAsksInSettings(t *testing.T) {
 		t.Errorf("not removed: question %+v, hosts %+v", a.ss.confirm, a.set.Hosts)
 	}
 }
+
+// Editing a host in Settings renames it in place, keeping its connection
+// and sessions; a new address connects again; a name taken is refused.
+func TestEditHost(t *testing.T) {
+	a := testApp(t)
+	build := withHost(t, a, "build")
+	withHost(t, a, "gpu")
+	a.ss.page = "hosts"
+	tt := ui.NewTester(a.settingsView, 820, 640)
+	tt.Frame()
+	if err := tt.Click(locales.HostEdit()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.ss.hostEdit.editing != "build" || !tt.HasText(locales.CommonSave()) {
+		t.Fatalf("no editor: %+v; texts %q", a.ss.hostEdit, tt.Texts())
+	}
+
+	a.ss.hostEdit.name = "gpu"
+	if err := tt.Click(locales.CommonSave()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.ss.hostEdit.err != locales.SetHostNameTaken("gpu") {
+		t.Fatalf("took a name taken: %+v", a.ss.hostEdit)
+	}
+
+	a.ss.hostEdit.name, a.ss.hostEdit.err = "builder", ""
+	if err := tt.Click(locales.CommonSave()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	a.syncHosts()
+	if h := a.hostNamed("builder"); h != build || a.set.Host("build") != nil || a.hostOf("rs-build") != build {
+		t.Fatalf("renamed to %p, not %p; hosts %+v", h, build, a.set.Hosts)
+	}
+	if a.ss.hostEdit.editing != "" {
+		t.Errorf("still editing %+v", a.ss.hostEdit)
+	}
+
+	tt.Frame()
+	if err := tt.Click(locales.HostEdit()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	a.ss.hostEdit.addr = "me@builder.lan"
+	if err := tt.Click(locales.CommonSave()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	a.syncHosts()
+	if h := a.hostNamed("builder"); h == nil || h == build || h.addr.String() != "me@builder.lan" {
+		t.Fatalf("a new address kept the connection: %+v", h)
+	}
+}

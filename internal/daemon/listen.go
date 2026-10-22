@@ -24,19 +24,19 @@ import (
 )
 
 // listeners are kerod's network listeners (Options.Listen, else the
-// configuration's listen key), which take remote connections as
-// WebSockets (remote.MuxPath), each from a caller Tailscale tells, and
-// only from those the machine's owner allows: the owner, and listen-allow.
-// They are off unless asked for.
+// configuration's listen key, which they follow as it changes), which
+// take remote connections as WebSockets (remote.MuxPath), each from a
+// caller Tailscale tells, and only from those the machine's owner allows:
+// the owner, and listen-allow. They are off unless asked for.
 type listeners struct {
-	d     *Daemon
-	specs []remote.Listen
-	allow []string
+	d *Daemon
 
-	mu      sync.Mutex
-	servers []*http.Server
-	sockets []string
-	closed  bool
+	mu    sync.Mutex
+	allow []string
+	// on are the listeners asked for, by what the configuration calls
+	// them.
+	on     map[string]*listener
+	closed bool
 	// self is this machine on the tailnet, as tailscaled last said, and
 	// when; whoCache who connected from where.
 	self     tailscale.Self
@@ -46,60 +46,143 @@ type listeners struct {
 	isLocal func(netip.Addr) bool
 }
 
+// listener is one of the listeners, which stops, and drops the
+// connections it took, as its context ends.
+type listener struct {
+	spec    remote.Listen
+	ctx     context.Context
+	cancel  context.CancelFunc
+	servers []*http.Server // listeners.mu's
+	socket  string
+}
+
 // listen starts the network listeners.
 func (d *Daemon) listen() *listeners {
-	l := &listeners{d: d}
-	specs := d.opts.Listen
+	l := &listeners{d: d, on: map[string]*listener{}}
 	set := settings.Load()
+	specs := d.opts.Listen
 	if specs == nil {
 		specs = set.Listen
+		go l.follow(set)
 	}
-	l.allow = set.ListenAllow
+	l.set(specs, set.ListenAllow, true)
+	return l
+}
+
+// follow applies the configuration's listen and listen-allow as they
+// change, as Settings › Hosts turns this machine's listener on and off.
+func (l *listeners) follow(last settings.Settings) {
+	t := time.NewTicker(2 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-l.d.quit:
+			return
+		case <-t.C:
+		}
+		set := settings.Load()
+		if slices.Equal(set.Listen, last.Listen) && slices.Equal(set.ListenAllow, last.ListenAllow) {
+			continue
+		}
+		last = set
+		l.set(set.Listen, set.ListenAllow, false)
+	}
+}
+
+// set makes the listeners those of specs, stopping the others, and lets
+// in whom allow says. Once kerod has started, a Tailscale Serve socket
+// waits for the next kerod: the umask it takes would be any program's
+// kerod started meanwhile (see Run).
+func (l *listeners) set(specs, allow []string, boot bool) {
+	want := map[string]remote.Listen{}
 	for _, s := range specs {
 		spec, err := remote.ParseListen(s)
 		if err != nil {
-			d.log.Printf("listen: %v", err)
+			l.d.log.Printf("listen: %v", err)
 			continue
 		}
-		l.specs = append(l.specs, spec)
+		want[spec.String()] = spec
 	}
-	for _, spec := range l.specs {
-		switch spec.Kind {
-		case "tailnet":
-			go l.tailnet(spec)
-		case "tailnet-serve":
-			l.serve(spec)
+	var serve []*listener
+	defer func() {
+		// At once, before kerod starts any program.
+		for _, ln := range serve {
+			l.serve(ln)
+		}
+	}()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.closed {
+		return
+	}
+	l.allow = slices.Clone(allow)
+	for name, ln := range l.on {
+		if _, ok := want[name]; !ok {
+			l.d.log.Printf("no longer listening on %s", name)
+			ln.stop()
+			delete(l.on, name)
 		}
 	}
-	return l
+	for name, spec := range want {
+		if l.on[name] != nil {
+			continue
+		}
+		ln := &listener{spec: spec}
+		ln.ctx, ln.cancel = context.WithCancel(context.Background())
+		l.on[name] = ln
+		switch {
+		case spec.Kind == "tailnet":
+			go l.tailnet(ln)
+		case boot:
+			serve = append(serve, ln)
+		default:
+			l.d.log.Printf("listen %s: restart kerod to listen there (kero daemon restart)", name)
+		}
+	}
 }
 
 // active reports whether kerod listens on the network, for remote clients
 // to find it there: it then never exits for being idle.
-func (l *listeners) active() bool { return l != nil && len(l.specs) > 0 }
+func (l *listeners) active() bool {
+	if l == nil {
+		return false
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.on) > 0
+}
 
 func (l *listeners) close() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.closed = true
-	for _, s := range l.servers {
-		s.Close()
-	}
-	for _, p := range l.sockets {
-		os.Remove(p)
+	for _, ln := range l.on {
+		ln.stop()
 	}
 }
 
-// start serves a listener, unless they closed.
-func (l *listeners) start(ln net.Listener, via string) bool {
-	srv := &http.Server{Handler: l.handler(via), ReadHeaderTimeout: 10 * time.Second, ErrorLog: l.d.log}
+// stop stops a listener, and the connections it took; listeners.mu is
+// held.
+func (ln *listener) stop() {
+	ln.cancel()
+	for _, s := range ln.servers {
+		s.Close()
+	}
+	if ln.socket != "" {
+		os.Remove(ln.socket)
+	}
+}
+
+// start serves a listener, unless it stopped.
+func (l *listeners) start(lis *listener, ln net.Listener, via string) bool {
+	srv := &http.Server{Handler: l.handler(lis.ctx, via), ReadHeaderTimeout: 10 * time.Second, ErrorLog: l.d.log}
 	l.mu.Lock()
-	if l.closed {
+	if lis.ctx.Err() != nil {
 		l.mu.Unlock()
 		ln.Close()
 		return false
 	}
-	l.servers = append(l.servers, srv)
+	lis.servers = append(lis.servers, srv)
 	l.mu.Unlock()
 	l.d.log.Printf("listening on %s (%s)", ln.Addr(), via)
 	go srv.Serve(ln)
@@ -108,19 +191,19 @@ func (l *listeners) start(ln net.Listener, via string) bool {
 
 // tailnet listens on the machine's Tailscale addresses, once Tailscale is
 // up: kerod may start before it, as at boot.
-func (l *listeners) tailnet(spec remote.Listen) {
+func (l *listeners) tailnet(lis *listener) {
 	logged := false
 	for {
-		self, err := tailscale.Status(context.Background())
+		self, err := tailscale.Status(lis.ctx)
 		if err == nil && len(self.IPs) > 0 {
 			ok := 0
 			for _, ip := range self.IPs {
-				ln, err := net.Listen("tcp", net.JoinHostPort(ip.String(), spec.Port))
+				ln, err := net.Listen("tcp", net.JoinHostPort(ip.String(), lis.spec.Port))
 				if err != nil {
 					l.d.log.Printf("listen: %v", err)
 					continue
 				}
-				if !l.start(ln, "tailnet") {
+				if !l.start(lis, ln, "tailnet") {
 					return
 				}
 				ok++
@@ -128,12 +211,12 @@ func (l *listeners) tailnet(spec remote.Listen) {
 			if ok > 0 {
 				return
 			}
-		} else if !logged {
-			l.d.log.Printf("listen %s: %v; trying again as Tailscale comes up", spec, err)
+		} else if !logged && lis.ctx.Err() == nil {
+			l.d.log.Printf("listen %s: %v; trying again as Tailscale comes up", lis.spec, err)
 			logged = true
 		}
 		select {
-		case <-l.d.quit:
+		case <-lis.ctx.Done():
 			return
 		case <-time.After(10 * time.Second):
 		}
@@ -143,21 +226,23 @@ func (l *listeners) tailnet(spec remote.Listen) {
 // serve listens on a socket for Tailscale Serve, which only its user, and
 // tailscaled, as root, can connect to: the headers Serve adds, which tell
 // who connects, are then Serve's.
-func (l *listeners) serve(spec remote.Listen) {
-	path := spec.Path
+func (l *listeners) serve(lis *listener) {
+	path := lis.spec.Path
 	if path == "" {
 		path = filepath.Join(proto.Dir(), "serve.sock")
 	}
 	os.Remove(path)
 	ln, err := listenSocket(path)
 	if err != nil {
-		l.d.log.Printf("listen %s: %v", spec, err)
+		l.d.log.Printf("listen %s: %v", lis.spec, err)
 		return
 	}
 	l.mu.Lock()
-	l.sockets = append(l.sockets, path)
+	lis.socket = path
 	l.mu.Unlock()
-	l.start(ln, "tailnet-serve")
+	if !l.start(lis, ln, "tailnet-serve") {
+		os.Remove(path)
+	}
 }
 
 // selfStatus is this machine on the tailnet, as tailscaled last said, at
@@ -248,13 +333,18 @@ func (l *listeners) identify(r *http.Request, via string) (tailscale.Who, error)
 			return who, errors.New("Tailscale Serve did not say who connects: tagged devices connect to a tailnet:// listener")
 		}
 	}
-	if !tailscale.Allowed(who, l.selfStatus(ctx).Owner, l.allow) {
+	l.mu.Lock()
+	allow := l.allow
+	l.mu.Unlock()
+	if !tailscale.Allowed(who, l.selfStatus(ctx).Owner, allow) {
 		return who, errors.New(who.String() + " may not connect: the machine's owner lets them in with listen-allow")
 	}
 	return who, nil
 }
 
-func (l *listeners) handler(via string) http.Handler {
+// handler answers a listener's requests, whose connections end as ctx
+// does.
+func (l *listeners) handler(ctx context.Context, via string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(remote.MuxPath, func(w http.ResponseWriter, r *http.Request) {
 		// Only Kero: a browser sends an Origin with every WebSocket, and
@@ -279,7 +369,7 @@ func (l *listeners) handler(via string) http.Handler {
 			return
 		}
 		ws.SetReadLimit(64 << 20)
-		conn := websocket.NetConn(context.Background(), ws, websocket.MessageBinary)
+		conn := websocket.NetConn(ctx, ws, websocket.MessageBinary)
 		client := r.Header.Get(remote.ClientHeader)
 		l.d.log.Printf("%s connected over %s: %s", who, via, client)
 		err = l.d.remoteServer(identity{peer: who.String(), via: via, client: client}).Serve(conn)

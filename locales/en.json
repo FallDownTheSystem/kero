@@ -52,6 +52,7 @@
   "commonShowIn": "Show in {app}",
   "commonNone": "None",
   "commonRemove": "Remove",
+  "commonSave": "Save",
   "commonAdd": "Add",
   "commonInstall": "Install",
   "commonReinstall": "Reinstall",
@@ -662,6 +663,7 @@
   "hostCopyAddress": "Copy Address",
   "hostSettings": "Host Settings…",
   "hostRemove": "Remove Host…",
+  "hostEdit": "Edit Host",
   "hostRemoveTitle": "Remove {host}?",
   "@hostRemoveTitle": {
     "placeholders": {
@@ -894,6 +896,7 @@
   "setHostsDetail": "Other machines whose sessions show in the sidebar after this computer's. Kero reaches them over SSH with your keys and agent, through WSL, or through kerod's listener on your tailnet, and kero -H <name> drives them from the command line.",
   "setHostsNone": "No hosts",
   "setHostsNoneDetail": "Add a machine you reach with ssh. If Kero isn't installed there, Kero offers to install it.",
+  "setHostsDocs": "Setting up hosts",
   "setHostAdd": "Add a Host",
   "setHostAddDetail": "me@devbox or ssh://me@devbox:2222 over SSH, as ssh takes it with your ~/.ssh/config; wsl://Ubuntu for a WSL distribution; http://devbox:7373 or https://devbox.tail1234.ts.net for kerod's tailnet listener.",
   "setHostAddressPlaceholder": "me@devbox",
@@ -923,6 +926,11 @@
       }
     }
   },
+  "setListenTitle": "This Computer as a Host",
+  "setListen": "Let other machines connect",
+  "setListenDetail": "kerod listens at this computer's Tailscale addresses, for Kero on your other machines. Only your Tailscale account may connect.",
+  "setListenOn": "Add this computer as a host on your other machines at this address. Only your Tailscale account may connect.",
+  "setListenNoTailscale": "Tailscale isn't running here: kerod listens once it is.",
   "setHostSettingsSplit": "A host's own settings",
   "setHostSettingsSplitDetail": "The shell, environment, scrollback and session restore of a host's sessions come from its own configuration: run kero config edit on the host. Appearance, keyboard and notifications are this app's.",
   "setShellThisComputer": "These apply to this computer's sessions. Each host's come from its own configuration (Settings › Hosts).",

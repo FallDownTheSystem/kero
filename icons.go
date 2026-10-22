@@ -52,6 +52,9 @@ var (
 	globeIcon       = glyph("f7-globe")
 	chevronLeftIcon = glyph("f7-chevron-left")
 	reloadIcon      = glyph("f7-arrow-clockwise")
+	copyIcon        = glyph("f7-doc-on-doc")
+	linkIcon        = glyph("f7-arrow-up-right")
+	editIcon        = glyph("f7-pencil")
 )
 
 // programIcons are the logos of programs a pane may run, by the name kerod

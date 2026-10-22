@@ -73,6 +73,8 @@ type settingsState struct {
 	problems     []string                   // what the configuration file got wrong
 	scrolls      map[string]*ui.ScrollState // each page's, for its scroll edge
 	host         hostDraft                  // the Hosts page's form
+	hostEdit     hostDraft                  // a host's, as the user edits it
+	tailnet      tailnetLook                // this machine on the tailnet, for the Hosts page
 	confirm      *confirmation              // a question, asked in this window
 }
 
@@ -967,6 +969,23 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 	})
 	settingsGroup(c, pal, locales.SetProgramStatus(), locales.SetProgramStatusDetail(), nil)
 	codeBlock(c, pal, "kero report working \"Deploying\" --progress 40\nkero report blocked \"Approve the migration?\" --kind permission\nkero report done \"Deployed\"")
+}
+
+// docLink opens a page of Kero's documentation in the browser: the
+// accent's words and an arrow, under the group it tells more of.
+func docLink(c *ui.Context, pal *palette, key, label, url string) {
+	b := ui.ButtonBase(c.Key(key)).AlignSelf(ui.Start).Padding(2, 4).Gap(3).Radius(5).AlignItems(ui.Center).Label(label).Tooltip(url)
+	col := pal.accent
+	if b.Hovered() {
+		col = col.Mix(pal.text, 0.25)
+	}
+	b.TextColor(col).Children(func() {
+		ui.Text(c, label).FontSize(12.5).FontWeight(500)
+		ui.Icon(c, linkIcon).Size(11, 11)
+	})
+	if b.Clicked() {
+		mygo.Shell.OpenExternal(url)
+	}
 }
 
 func codeBlock(c *ui.Context, pal *palette, code string) {

@@ -73,7 +73,7 @@ WSL may stop a distribution a while after its last program started from Windows 
 
 ### Tailscale
 
-kerod can also listen on your tailnet, so that it needs no SSH at all. Tailscale tells kerod who connects, and by default only the Tailscale user who owns the machine gets in. Add these to the configuration on the host:
+kerod can also listen on your tailnet, so that it needs no SSH at all. Tailscale tells kerod who connects, and by default only the Tailscale user who owns the machine gets in. In the app on the host, turn on **Settings › Hosts › Let other machines connect**, which shows the address to add elsewhere. Or add this to the configuration on the host:
 
 ```ini
 # ~/.config/kero/config on the host
@@ -101,7 +101,7 @@ listen-allow = alice@example.com
 listen-allow = tag:ci
 ```
 
-kerod reads `listen` and `listen-allow` as it starts, so run `kero daemon restart` after changing them. It listens only when the configuration asks, and only on Tailscale. It refuses requests from web browsers, so a web page you visit can't reach it. Funnel's requests from the internet never get in. To keep it listening with the machine, run it as a service (below).
+kerod follows `listen` and `listen-allow` as they change, and a listener turned off drops the connections it took. A `tailnet-serve://` listener added while kerod runs waits for `kero daemon restart`. kerod listens only when the configuration asks, and only on Tailscale. It refuses requests from web browsers, so a web page you visit can't reach it. Funnel's requests from the internet never get in. To keep it listening with the machine, run it as a service (below).
 
 ## Running kerod as a service
 

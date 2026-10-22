@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -82,7 +84,7 @@ func TestTailnetListener(t *testing.T) {
 	d := listenDaemon(t)
 	// The test connects from loopback, as no peer of a tailnet does.
 	l := &listeners{d: d, allow: []string{"tag:ci"}, isLocal: func(netip.Addr) bool { return false }}
-	srv := httptest.NewServer(l.handler("tailnet"))
+	srv := httptest.NewServer(l.handler(context.Background(), "tailnet"))
 	defer srv.Close()
 	host, port, _ := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))
 	addr := remote.Addr{Scheme: "http", Host: host, Port: port}
@@ -115,7 +117,7 @@ func TestTailnetListener(t *testing.T) {
 	}
 	// From this machine itself, as another user's process could, whom
 	// tailscaled would take for the owner.
-	local := httptest.NewServer((&listeners{d: d}).handler("tailnet"))
+	local := httptest.NewServer((&listeners{d: d}).handler(context.Background(), "tailnet"))
 	defer local.Close()
 	_, lport, _ := net.SplitHostPort(strings.TrimPrefix(local.URL, "http://"))
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -188,7 +190,7 @@ func TestServeListener(t *testing.T) {
 	ts := &fakeTailscale{who: "alice@example.com"}
 	ts.serve(t)
 	l := &listeners{d: listenDaemon(t)}
-	h := l.handler("tailnet-serve")
+	h := l.handler(context.Background(), "tailnet-serve")
 	for _, c := range []struct {
 		header http.Header
 		ok     bool
@@ -214,5 +216,53 @@ func TestServeListener(t *testing.T) {
 				t.Errorf("%v: %d", c.header, rec.Code)
 			}
 		}
+	}
+}
+
+// The listeners follow the configuration: one turned on listens, and one
+// turned off listens no more; a Tailscale Serve socket waits for the next
+// kerod.
+func TestListenersSet(t *testing.T) {
+	(&fakeTailscale{}).serve(t)
+	probe, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := probe.Addr().String()
+	_, port, _ := net.SplitHostPort(addr)
+	probe.Close()
+
+	l := &listeners{d: listenDaemon(t), on: map[string]*listener{}}
+	defer l.close()
+	dials := func() bool {
+		c, err := net.DialTimeout("tcp", addr, time.Second)
+		if err == nil {
+			c.Close()
+		}
+		return err == nil
+	}
+	waitFor := func(want bool) {
+		t.Helper()
+		for end := time.Now().Add(5 * time.Second); dials() != want; {
+			if time.Now().After(end) {
+				t.Fatalf("listening on %s: want %v", addr, want)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+
+	sock := filepath.Join(t.TempDir(), "serve.sock")
+	l.set([]string{"tailnet://:" + port, "tailnet-serve://" + sock}, []string{"tag:ci"}, false)
+	waitFor(true)
+	if !l.active() || !slices.Equal(l.allow, []string{"tag:ci"}) {
+		t.Fatalf("active %v, allow %v", l.active(), l.allow)
+	}
+	if _, err := os.Stat(sock); err == nil {
+		t.Fatal("a Tailscale Serve socket started after kerod did")
+	}
+	l.set(nil, nil, false)
+	waitFor(false)
+	if l.active() {
+		t.Fatal("still active with no listeners")
 	}
 }

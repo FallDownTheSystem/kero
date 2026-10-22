@@ -1,21 +1,29 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"net"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/remote"
 	"kero/internal/settings"
+	"kero/internal/tailscale"
 
 	"kero/locales"
 )
 
-// hostDraft is the Hosts page's form, which adds a host.
+// hostDraft is the Hosts page's form, which adds a host, or a host's,
+// which edits it.
 type hostDraft struct {
 	name, addr string
 	err        string
+	// editing is the name of the host edited, "" for none.
+	editing string
 }
 
 // hostsPage is Settings › Hosts: the machines whose sessions the app
@@ -30,6 +38,7 @@ func (a *App) hostsPage(c *ui.Context, pal *palette) {
 			a.hostRow(c, pal, h)
 		}
 	})
+	docLink(c, pal, "hosts-docs", locales.SetHostsDocs(), "https://kero.sh/docs/remote")
 	settingsGroup(c, pal, locales.SetHostAdd(), locales.SetHostAddDetail(), func() {
 		d := &a.ss.host
 		ui.Row(c).Padding(10, 0).Gap(8).AlignItems(ui.Center).Children(func() {
@@ -45,7 +54,92 @@ func (a *App) hostsPage(c *ui.Context, pal *palette) {
 		}
 	})
 	codeBlock(c, pal, "# on the machine, once: the server build of Kero, kerod as a service\ncurl -fsSL https://github.com/egoist/kero/releases/latest/download/install-server.sh | sh\n# or on Windows, in PowerShell\nirm https://github.com/egoist/kero/releases/latest/download/install-server.ps1 | iex\n\n# from here\nkero hosts add devbox me@devbox\nkero -H devbox ls")
+	a.listenGroup(c, pal)
 	settingsGroup(c, pal, locales.SetHostSettingsSplit(), locales.SetHostSettingsSplitDetail(), nil)
+}
+
+// tailnetLook is this machine on the tailnet, as tailscaled last told
+// the Hosts page, and when.
+type tailnetLook struct {
+	self    tailscale.Self
+	err     error
+	at      time.Time
+	looking bool
+	copied  time.Time // when the address was copied, for a check mark
+}
+
+// listenGroup turns this machine into a host for Kero elsewhere: kerod's
+// listener on the tailnet, the configuration's tailnet:// listen, which
+// kerod follows as it changes.
+func (a *App) listenGroup(c *ui.Context, pal *palette) {
+	i := slices.IndexFunc(a.set.Listen, func(l string) bool {
+		spec, err := remote.ParseListen(l)
+		return err == nil && spec.Kind == "tailnet"
+	})
+	on := i >= 0
+	detail, addr := locales.SetListenDetail(), ""
+	if on {
+		spec, _ := remote.ParseListen(a.set.Listen[i])
+		detail, addr = a.listenAddress(spec.Port)
+	}
+	settingsGroup(c, pal, locales.SetListenTitle(), "", func() {
+		settingRow(c, pal, locales.SetListen(), detail, func() {
+			toggle(c.Key("listen"), &on, pal).OnClick(func() {
+				s := a.set.Clone()
+				s.Listen = slices.DeleteFunc(s.Listen, func(l string) bool {
+					spec, err := remote.ParseListen(l)
+					return err == nil && spec.Kind == "tailnet"
+				})
+				if on {
+					s.Listen = append(s.Listen, "tailnet://:"+remote.DefaultPort)
+				}
+				a.set = s
+			})
+		})
+		if addr == "" {
+			return
+		}
+		// The address to add elsewhere, in a field of its own to copy.
+		copied := time.Since(a.ss.tailnet.copied) < 1500*time.Millisecond
+		ui.Row(c).Margin(0, 0, 12, 0).Height(controlH+6).Padding(0, 3, 0, 10).Gap(8).AlignItems(ui.Center).Radius(7).Background(pal.control).Children(func() {
+			ui.Text(c, addr).Font("monospace").FontSize(12.5).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0).Grow(1).Selectable()
+			icon, label := copyIcon, locales.HostCopyAddress()
+			if copied {
+				icon, label = checkIcon, locales.ToastCopied()
+			}
+			iconButton(c, "copy-listen", icon, label, pal, func() {
+				c.WriteClipboard(addr)
+				a.ss.tailnet.copied = time.Now()
+				go func() {
+					time.Sleep(1500 * time.Millisecond)
+					a.update(func() {}) // the check mark goes
+				}()
+			})
+		})
+	})
+}
+
+// listenAddress says where Kero elsewhere finds this machine's listener,
+// asking tailscaled for its name now and then, and the address, once it
+// is known.
+func (a *App) listenAddress(port string) (detail, addr string) {
+	t := &a.ss.tailnet
+	if !t.looking && time.Since(t.at) > 30*time.Second {
+		t.looking = true
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			self, err := tailscale.Status(ctx)
+			cancel()
+			a.update(func() { t.self, t.err, t.at, t.looking = self, err, time.Now(), false })
+		}()
+	}
+	switch name := strings.TrimSuffix(t.self.DNSName, "."); {
+	case name != "":
+		return locales.SetListenOn(), "http://" + net.JoinHostPort(name, port)
+	case t.err != nil:
+		return locales.SetListenNoTailscale(), ""
+	}
+	return locales.SetListenDetail(), ""
 }
 
 // hostRow is a host in Settings › Hosts: how the app stands with it, and
@@ -54,6 +148,10 @@ func (a *App) hostRow(c *ui.Context, pal *palette, h *host) {
 	status := a.hostStatus(h)
 	if groupRows++; groupRows > 1 {
 		ui.Box(c).Height(1).Shrink(0).Background(pal.text.Alpha(0.07))
+	}
+	if d := &a.ss.hostEdit; d.editing == h.name {
+		a.hostEditor(c, pal, h)
+		return
 	}
 	ui.Column(c.Key("host-"+h.name)).Padding(11, 0).Gap(8).Children(func() {
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
@@ -68,6 +166,9 @@ func (a *App) hostRow(c *ui.Context, pal *palette, h *host) {
 					col = pal.danger
 				}
 				ui.Text(c, status).FontSize(12).TextColor(col).LineHeight(1.35).Selectable()
+			})
+			iconButton(c, "edit", editIcon, locales.HostEdit(), pal, func() {
+				a.ss.hostEdit = hostDraft{name: h.name, addr: h.cfg.Addr, editing: h.name}
 			})
 			iconButton(c, "reconnect", reloadIcon, locales.HostReconnect(), pal, func() { a.reconnectHost(h) })
 			iconButton(c, "remove", closeIcon, locales.HostRemove(), pal, func() { a.ss.confirm = a.removeHostConfirmation(h) })
@@ -102,6 +203,63 @@ func (a *App) hostRow(c *ui.Context, pal *palette, h *host) {
 			}
 		})
 	})
+}
+
+// hostEditor is a host's row as the user edits its address and name.
+func (a *App) hostEditor(c *ui.Context, pal *palette, h *host) {
+	d := &a.ss.hostEdit
+	ui.Column(c.Key("edit-"+h.name)).Padding(10, 0).Gap(8).Children(func() {
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			save := func() { a.saveHost(h) }
+			textField(c, "edit-addr", &d.addr, locales.SetHostAddressPlaceholder(), 0, pal).Font("monospace").OnSubmit(save)
+			textField(c, "edit-name", &d.name, locales.SetHostNamePlaceholder(defaultHostName(d.addr)), 130, pal).OnSubmit(save)
+			if fieldButton(c, "edit-cancel", locales.CommonCancel(), false, pal) {
+				*d = hostDraft{}
+			}
+			if fieldButton(c, "edit-save", locales.CommonSave(), true, pal) {
+				save()
+			}
+		})
+		if d.err != "" {
+			ui.Text(c, d.err).FontSize(12).TextColor(pal.danger)
+		}
+	})
+}
+
+// saveHost gives a host the address and name the user edited. A host
+// renamed keeps its connection; one of another address connects again.
+func (a *App) saveHost(h *host) {
+	d := &a.ss.hostEdit
+	addr := strings.TrimSpace(d.addr)
+	name := strings.TrimSpace(d.name)
+	if addr == "" {
+		d.err = locales.SetHostNeedsAddress()
+		return
+	}
+	if name == "" {
+		name = defaultHostName(addr)
+	}
+	parsed, err := settings.ParseHost(name + "=" + addr)
+	if err != nil {
+		d.err = err.Error()
+		return
+	}
+	if o := a.set.Host(parsed.Name); o != nil && !strings.EqualFold(o.Name, h.name) {
+		d.err = locales.SetHostNameTaken(parsed.Name)
+		return
+	}
+	s := a.set.Clone()
+	cfg := s.Host(h.name)
+	if cfg == nil { // removed meanwhile
+		*d = hostDraft{}
+		return
+	}
+	cfg.Name, cfg.Addr = parsed.Name, parsed.Addr
+	// syncHosts finds the host by its new name, and keeps it while its
+	// address stays.
+	h.name = parsed.Name
+	a.set = s
+	*d = hostDraft{}
 }
 
 func errorsIsNotInstalled(h *host) bool { return errors.Is(h.errKind, remote.ErrNotInstalled) }

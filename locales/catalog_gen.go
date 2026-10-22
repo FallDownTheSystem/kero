@@ -554,6 +554,16 @@ func (msgs Messages) CommonRemove() string {
 	return Catalog.Format(msgs.locale, "commonRemove", nil)
 }
 
+// CommonSave says "Save"
+// in the language the app shows.
+func CommonSave() string { return In(i18n.Locale()).CommonSave() }
+
+// CommonSave says "Save"
+// in the language of msgs.
+func (msgs Messages) CommonSave() string {
+	return Catalog.Format(msgs.locale, "commonSave", nil)
+}
+
 // CommonAdd says "Add"
 // in the language the app shows.
 func CommonAdd() string { return In(i18n.Locale()).CommonAdd() }
@@ -4250,6 +4260,16 @@ func (msgs Messages) HostRemove() string {
 	return Catalog.Format(msgs.locale, "hostRemove", nil)
 }
 
+// HostEdit says "Edit Host"
+// in the language the app shows.
+func HostEdit() string { return In(i18n.Locale()).HostEdit() }
+
+// HostEdit says "Edit Host"
+// in the language of msgs.
+func (msgs Messages) HostEdit() string {
+	return Catalog.Format(msgs.locale, "hostEdit", nil)
+}
+
 // HostRemoveTitle says "Remove {host}?"
 // in the language the app shows.
 func HostRemoveTitle(host string) string { return In(i18n.Locale()).HostRemoveTitle(host) }
@@ -4604,6 +4624,16 @@ func (msgs Messages) SetHostsNoneDetail() string {
 	return Catalog.Format(msgs.locale, "setHostsNoneDetail", nil)
 }
 
+// SetHostsDocs says "Setting up hosts"
+// in the language the app shows.
+func SetHostsDocs() string { return In(i18n.Locale()).SetHostsDocs() }
+
+// SetHostsDocs says "Setting up hosts"
+// in the language of msgs.
+func (msgs Messages) SetHostsDocs() string {
+	return Catalog.Format(msgs.locale, "setHostsDocs", nil)
+}
+
 // SetHostAdd says "Add a Host"
 // in the language the app shows.
 func SetHostAdd() string { return In(i18n.Locale()).SetHostAdd() }
@@ -4686,6 +4716,56 @@ func SetHostRemoteControlDetail(host string) string {
 // in the language of msgs.
 func (msgs Messages) SetHostRemoteControlDetail(host string) string {
 	return Catalog.Format(msgs.locale, "setHostRemoteControlDetail", map[string]any{"host": host})
+}
+
+// SetListenTitle says "This Computer as a Host"
+// in the language the app shows.
+func SetListenTitle() string { return In(i18n.Locale()).SetListenTitle() }
+
+// SetListenTitle says "This Computer as a Host"
+// in the language of msgs.
+func (msgs Messages) SetListenTitle() string {
+	return Catalog.Format(msgs.locale, "setListenTitle", nil)
+}
+
+// SetListen says "Let other machines connect"
+// in the language the app shows.
+func SetListen() string { return In(i18n.Locale()).SetListen() }
+
+// SetListen says "Let other machines connect"
+// in the language of msgs.
+func (msgs Messages) SetListen() string {
+	return Catalog.Format(msgs.locale, "setListen", nil)
+}
+
+// SetListenDetail says "kerod listens at this computer's Tailscale addresses, for Kero on your other machines. Only your Tailscale account ma…"
+// in the language the app shows.
+func SetListenDetail() string { return In(i18n.Locale()).SetListenDetail() }
+
+// SetListenDetail says "kerod listens at this computer's Tailscale addresses, for Kero on your other machines. Only your Tailscale account ma…"
+// in the language of msgs.
+func (msgs Messages) SetListenDetail() string {
+	return Catalog.Format(msgs.locale, "setListenDetail", nil)
+}
+
+// SetListenOn says "Add this computer as a host on your other machines at this address. Only your Tailscale account may connect."
+// in the language the app shows.
+func SetListenOn() string { return In(i18n.Locale()).SetListenOn() }
+
+// SetListenOn says "Add this computer as a host on your other machines at this address. Only your Tailscale account may connect."
+// in the language of msgs.
+func (msgs Messages) SetListenOn() string {
+	return Catalog.Format(msgs.locale, "setListenOn", nil)
+}
+
+// SetListenNoTailscale says "Tailscale isn't running here: kerod listens once it is."
+// in the language the app shows.
+func SetListenNoTailscale() string { return In(i18n.Locale()).SetListenNoTailscale() }
+
+// SetListenNoTailscale says "Tailscale isn't running here: kerod listens once it is."
+// in the language of msgs.
+func (msgs Messages) SetListenNoTailscale() string {
+	return Catalog.Format(msgs.locale, "setListenNoTailscale", nil)
 }
 
 // SetHostSettingsSplit says "A host's own settings"
