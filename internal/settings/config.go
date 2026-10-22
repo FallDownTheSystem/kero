@@ -120,7 +120,6 @@ var keys = []key{
 	mapChoice("background", "the window's wash", func(s *Settings) *string { return &s.Background },
 		[]string{"petal", "mist", "meadow", "dusk", "plain"}, []string{"rex", "mist", "meadow", "dusk", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
-	boolKey("dim-unfocused-panes", "fade the panes you're not in, when a session has several", func(s *Settings) *bool { return &s.DimUnfocused }),
 
 	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which Kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),
 	numberKey("font-size", "in points", func(s *Settings) float64 { return float64(s.FontSize) }, func(s *Settings, n float64) { s.FontSize = float32(n) }),
@@ -129,6 +128,7 @@ var keys = []key{
 	boolKey("font-ligatures", "join characters as the font draws them", func(s *Settings) *bool { return &s.Ligatures }),
 	boolKey("font-thicken", "a heavier stroke, as Ghostty's", func(s *Settings) *bool { return &s.Thicken }),
 	numberKey("minimum-contrast", "the least contrast text keeps with its background, 1 (none) to 21, as Ghostty's", func(s *Settings) float64 { return float64(s.MinContrast) }, func(s *Settings, n float64) { s.MinContrast = float32(min(max(n, 1), 21)) }),
+	boolKey("dim-unfocused-terminals", "fade the terminals you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimUnfocused }),
 	{name: "theme", doc: "terminal colors: kero, a Ghostty theme, or light:<theme>,dark:<theme>",
 		get: func(s *Settings) []string {
 			if s.LightTheme == s.DarkTheme {

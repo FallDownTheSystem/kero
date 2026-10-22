@@ -2190,21 +2190,21 @@ func (msgs Messages) SetTranslucentDetail() string {
 	return Catalog.Format(msgs.locale, "setTranslucentDetail", nil)
 }
 
-// SetDimUnfocused says "Dim unfocused panes"
+// SetDimUnfocused says "Dim unfocused terminals"
 // in the language the app shows.
 func SetDimUnfocused() string { return In(i18n.Locale()).SetDimUnfocused() }
 
-// SetDimUnfocused says "Dim unfocused panes"
+// SetDimUnfocused says "Dim unfocused terminals"
 // in the language of msgs.
 func (msgs Messages) SetDimUnfocused() string {
 	return Catalog.Format(msgs.locale, "setDimUnfocused", nil)
 }
 
-// SetDimUnfocusedDetail says "When a session has several panes, the ones you’re not in fade."
+// SetDimUnfocusedDetail says "When a session has several panes, the terminals you’re not in fade."
 // in the language the app shows.
 func SetDimUnfocusedDetail() string { return In(i18n.Locale()).SetDimUnfocusedDetail() }
 
-// SetDimUnfocusedDetail says "When a session has several panes, the ones you’re not in fade."
+// SetDimUnfocusedDetail says "When a session has several panes, the terminals you’re not in fade."
 // in the language of msgs.
 func (msgs Messages) SetDimUnfocusedDetail() string {
 	return Catalog.Format(msgs.locale, "setDimUnfocusedDetail", nil)

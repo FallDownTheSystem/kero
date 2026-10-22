@@ -50,13 +50,12 @@ kero config check             # report unknown keys and bad values
 
 ## Appearance
 
-| Key                   | Default  | Description                                                     |
-| --------------------- | -------- | --------------------------------------------------------------- |
-| `window-theme`        | `system` | The app's appearance: `system`, `light` or `dark`               |
-| `language`            | `system` | The app's language: `system`, `en` or `zh-Hans`                 |
-| `background`          | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
-| `window-translucent`  | `true`   | Let the desktop show through the window                         |
-| `dim-unfocused-panes` | `true`   | Fade the panes you're not in, when a session has several        |
+| Key                  | Default  | Description                                                     |
+| -------------------- | -------- | --------------------------------------------------------------- |
+| `window-theme`       | `system` | The app's appearance: `system`, `light` or `dark`               |
+| `language`           | `system` | The app's language: `system`, `en` or `zh-Hans`                 |
+| `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
+| `window-translucent` | `true`   | Let the desktop show through the window                         |
 
 ## Terminal
 
@@ -70,6 +69,7 @@ kero config check             # report unknown keys and bad values
 | `font-ligatures`      | `true`  | Join characters the way the font draws them                              |
 | `font-thicken`        | `false` | A heavier stroke, as in Ghostty                                          |
 | `minimum-contrast`    | `3`     | The least contrast text keeps with its background, from `1` (none) to `21`, so that colors meant for a dark background stay readable on a light one, as in Ghostty |
+| `dim-unfocused-terminals` | `true` | Fade the terminals you're not in, when a session has several panes |
 | `cursor-style`        | `block` | `block`, `bar` or `underline`; programs may change it                    |
 | `cursor-style-blink`  | `true`  | Blink the cursor                                                         |
 | `macos-option-as-alt` | `false` | Option sends Alt (Meta) to programs                                      |

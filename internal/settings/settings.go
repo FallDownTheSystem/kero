@@ -31,11 +31,10 @@ type Settings struct {
 	QuitConfirm       bool   `json:"quitConfirm"`       // tell, the first time, that quitting keeps sessions
 
 	// Appearance
-	Appearance   string `json:"appearance"`   // "system", "light" or "dark"
-	Language     string `json:"language"`     // "system", or one of Languages
-	Background   string `json:"background"`   // a wash, see Backgrounds
-	Vibrancy     bool   `json:"vibrancy"`     // the window's material under the wash
-	DimUnfocused bool   `json:"dimUnfocused"` // the panes the user is not in fade
+	Appearance string `json:"appearance"` // "system", "light" or "dark"
+	Language   string `json:"language"`   // "system", or one of Languages
+	Background string `json:"background"` // a wash, see Backgrounds
+	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
 
 	// Terminal
 	FontFamily   string  `json:"fontFamily"` // "" the font kero carries; "monospace" the system's
@@ -44,8 +43,9 @@ type Settings struct {
 	FontWeight   int     `json:"fontWeight"`
 	Ligatures    bool    `json:"ligatures"`
 	Thicken      bool    `json:"thicken"`
-	MinContrast  float32 `json:"minContrast"` // a WCAG ratio text keeps with its background
-	Cursor       string  `json:"cursor"`      // "block", "bar" or "underline"
+	MinContrast  float32 `json:"minContrast"`           // a WCAG ratio text keeps with its background
+	DimUnfocused bool    `json:"dimUnfocusedTerminals"` // the terminals the user is not in fade
+	Cursor       string  `json:"cursor"`                // "block", "bar" or "underline"
 	CursorBlink  bool    `json:"cursorBlink"`
 	LightTheme   string  `json:"lightTheme"` // "kero", or a Ghostty theme's name
 	DarkTheme    string  `json:"darkTheme"`
