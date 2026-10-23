@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.10
+
+- On Windows, pasting with Ctrl+V into a text field, such as a host's
+  address in **Settings › Hosts**, pastes once, not twice.
+
 ## 2.1.9
 
 - On a Mac, Command+Backspace clears the line you're typing in the
