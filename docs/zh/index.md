@@ -13,6 +13,8 @@ Kero 是一款面向编程智能体的终端，支持 macOS、Windows 和 Linux�
 
 ::: tip
 退出 Kero（<kbd>⌘</kbd> <kbd>Q</kbd>）不会结束会话。要全部结束，请使用 **Kero › 退出并结束所有会话…**（<kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>Q</kbd>）。
+
+菜单栏或通知区域中 Kero 图标的菜单也可以退出，保持会话运行，或结束所有会话。
 :::
 
 ## 为智能体而生
