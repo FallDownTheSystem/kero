@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.16
+
+- **Settings › General › Show app icon** on a Mac puts Kero in the Dock
+  and the menu bar, the Dock only, or the menu bar only. Windows and
+  Linux always show it in the notification area. Its menu opens Kero
+  and Settings and checks for updates. While the icon shows, closing
+  the window keeps Kero running there.
+- `kero events` prints what happens to sessions and panes as it
+  happens, such as a pane coming to need you, so a script can follow
+  every agent without polling `kero status`. On another machine, it
+  works once that host gets this update.
+- macOS no longer runs an AutoFill helper process for Kero.
+
 ## 2.1.15
 
 - yazi's image previews show the image, not a box of placeholder
