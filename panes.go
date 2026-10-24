@@ -225,7 +225,8 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 		// Another pane under the pointer: the menu is gone.
 		a.menuPane = ""
 	}
-	if a.set.FocusFollowsMouse && multi {
+	// A lone pane has the Explorer to take the focus back from.
+	if a.set.FocusFollowsMouse && (multi || a.prefs.Side != "") {
 		a.followMouse(c, s, p, card, hovered, focused)
 	}
 	// The card takes presses: one on its padding, beside the terminal,
@@ -292,33 +293,41 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 	card.AnimatePose(pose, ui.Animation{Spring: ui.SpringOptions{Duration: 420 * time.Millisecond, Bounce: 0.18}})
 }
 
-// followMouse focuses the pane the pointer moves into. Only the pointer
-// moving does: a pane that comes under a pointer standing still, as another
-// session shows or the layout changes, leaves the focus where the keyboard
-// put it. And only going in does, so the keyboard can take the focus from
-// the pane the pointer rests in.
+// followMouse focuses the pane the pointer moves into (pointerEntered):
+// the session's pane focused still takes the keyboard back from the
+// Explorer.
 func (a *App) followMouse(c *ui.Context, s *proto.Session, p *proto.Pane, card ui.Element, hovered, focused bool) {
-	x, y, over := card.PointerPosition()
-	if !over {
-		if a.hoverPane == p.ID {
-			a.hoverPane = ""
-		}
-		return
-	}
-	b := a.paneRef("card-" + p.ID).Bounds(c)
-	at := [2]float32{b.X + x, b.Y + y}
-	moved := at != a.hoverAt
-	a.hoverAt = at
-	// A press begun in another pane, as a selection dragged on past its
-	// edge, does not hover this one.
-	if !hovered || a.hoverPane == p.ID {
-		return
-	}
-	a.hoverPane = p.ID
-	if moved && !focused {
+	if a.pointerEntered(c, "card-"+p.ID, card, hovered) && (!focused || a.side.focused) {
 		a.setFocus(s, p.ID)
 		a.paneRef(p.ID).Focus()
 	}
+}
+
+// pointerEntered tells that the pointer moved into card, a pane's or the
+// Explorer's, bound to the paneRef ref, for focus-follows-mouse to focus
+// it. Only the pointer moving does: a card that comes under a pointer
+// standing still, as another session shows or the layout changes, leaves
+// the focus where the keyboard put it. And only going in does, so the
+// keyboard can take the focus from the card the pointer rests in.
+func (a *App) pointerEntered(c *ui.Context, ref string, card ui.Element, hovered bool) bool {
+	x, y, over := card.PointerPosition()
+	if !over {
+		if a.hoverPane == ref {
+			a.hoverPane = ""
+		}
+		return false
+	}
+	b := a.paneRef(ref).Bounds(c)
+	at := [2]float32{b.X + x, b.Y + y}
+	moved := at != a.hoverAt
+	a.hoverAt = at
+	// A press begun in another card, as a selection dragged on past its
+	// edge, does not hover this one.
+	if !hovered || a.hoverPane == ref {
+		return false
+	}
+	a.hoverPane = ref
+	return moved
 }
 
 // paneDrag is a pane dragged by its title to another place.

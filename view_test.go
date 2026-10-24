@@ -751,6 +751,44 @@ func TestFocusFollowsMouse(t *testing.T) {
 	}
 }
 
+// With focus-follows-mouse, the pointer going into the Explorer focuses
+// it, and going back into a pane focuses the pane.
+func TestFocusFollowsMouseExplorer(t *testing.T) {
+	a := testApp(t)
+	a.set.FocusFollowsMouse = true
+	a.prefs.Side = sideFiles
+	s := &a.st.Sessions[0]
+	// A file's pane, whose editor takes the keyboard where the tester has
+	// no terminal to.
+	s.Panes[0].File = "/tmp/a.txt"
+	f := a.editorOf(&s.Panes[0])
+	f.read(f.stamp, false, false, nil, []byte("a\n"), nil)
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	tt.Frame()
+	ar, _ := tt.Find("a.txt") // pane a's title
+	fr, ok := tt.Find("Files")
+	if !ok {
+		t.Fatalf("no Explorer; texts %q", tt.Texts())
+	}
+	move := func(x float32) {
+		tt.Move(x, 340)
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+	}
+	move(ar.X + 40)
+	move(fr.X + 20)
+	tt.Frame()
+	if !a.side.focused {
+		t.Fatal("the pointer went into the Explorer, which isn't focused")
+	}
+	move(ar.X + 40)
+	tt.Frame()
+	if a.side.focused || a.focusOf(s) != "a" {
+		t.Fatalf("back into a: Explorer focused %v, pane focus %q", a.side.focused, a.focusOf(s))
+	}
+}
+
 // writes is a Conn that keeps what the terminal sends to the program.
 type writes struct {
 	idleConn
