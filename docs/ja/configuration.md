@@ -60,7 +60,9 @@ kero config check             # 不明なキーと不正な値を報告
 | `sessions-sidebar`   | `left`     | セッションのサイドバーを置くウインドウの側: `left` または `right`。変更とファイルを示すエクスプローラーは反対側に置きます |
 | `pane-folder`        | `fit`      | ペインのヘッダーにフォルダをどう示すか: `hidden`、`folder`（名前）、`full`（パス）、または幅に収まる限り多くを示す `fit` |
 | `explorer-folder`    | `fit`      | エクスプローラーのヘッダーにフォルダをどう示すか。値は `pane-folder` と同じ |
-| `dim-unfocused-terminals` | `true` | セッションに複数のペインがあるとき、使用中でないペインを薄くする |
+| `dim-unfocused-terminals` | `true` | セッションに複数のペインがあるとき、使用中でないターミナルを薄くする |
+| `dim-unfocused-files` | `false` | セッションに複数のペインがあるとき、使用中でないエディタペインを薄くする |
+| `dim-unfocused-web` | `false` | セッションに複数のペインがあるとき、使用中でないブラウザペインを薄くする |
 | `dim-unfocused-explorer` | `false` | エクスプローラーを使用していない間、薄くする |
 
 ## ターミナル

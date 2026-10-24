@@ -60,7 +60,9 @@ kero config check             # report unknown keys and bad values
 | `sessions-sidebar`   | `left`   | The side of the window the sessions' sidebar takes: `left` or `right`; the Explorer, which shows Changes and Files, takes the other |
 | `pane-folder`        | `fit`    | What a pane's header shows of its folder: `hidden`, `folder` (its name), `full` (its path), or `fit`, the most of those that fits |
 | `explorer-folder`    | `fit`    | What the Explorer's header shows of its folder, as `pane-folder` |
-| `dim-unfocused-terminals` | `true` | Fade the panes you're not in, when a session has several |
+| `dim-unfocused-terminals` | `true` | Fade the terminals you're not in, when a session has several panes |
+| `dim-unfocused-files` | `false` | Fade the editor panes you're not in, when a session has several panes |
+| `dim-unfocused-web` | `false` | Fade the browser panes you're not in, when a session has several panes |
 | `dim-unfocused-explorer` | `false` | Fade the Explorer while you're not in it |
 
 ## Terminal

@@ -2316,44 +2316,64 @@ func (msgs Messages) SetTranslucentDetail() string {
 	return Catalog.Format(msgs.locale, "setTranslucentDetail", nil)
 }
 
-// SetDimUnfocused says "Dim unfocused panes"
+// SetDimUnfocused says "Dim unfocused"
 // in the language the app shows.
 func SetDimUnfocused() string { return In(i18n.Locale()).SetDimUnfocused() }
 
-// SetDimUnfocused says "Dim unfocused panes"
+// SetDimUnfocused says "Dim unfocused"
 // in the language of msgs.
 func (msgs Messages) SetDimUnfocused() string {
 	return Catalog.Format(msgs.locale, "setDimUnfocused", nil)
 }
 
-// SetDimUnfocusedDetail says "When a session has several panes, the terminals you’re not in fade."
+// SetDimUnfocusedDetail says "Fade what you’re not in: the panes of the kinds turned on, when a session has several, and the Explorer."
 // in the language the app shows.
 func SetDimUnfocusedDetail() string { return In(i18n.Locale()).SetDimUnfocusedDetail() }
 
-// SetDimUnfocusedDetail says "When a session has several panes, the terminals you’re not in fade."
+// SetDimUnfocusedDetail says "Fade what you’re not in: the panes of the kinds turned on, when a session has several, and the Explorer."
 // in the language of msgs.
 func (msgs Messages) SetDimUnfocusedDetail() string {
 	return Catalog.Format(msgs.locale, "setDimUnfocusedDetail", nil)
 }
 
-// SetDimExplorer says "Dim unfocused Explorer"
+// SetDimTerminal says "Terminal"
+// in the language the app shows.
+func SetDimTerminal() string { return In(i18n.Locale()).SetDimTerminal() }
+
+// SetDimTerminal says "Terminal"
+// in the language of msgs.
+func (msgs Messages) SetDimTerminal() string {
+	return Catalog.Format(msgs.locale, "setDimTerminal", nil)
+}
+
+// SetDimFiles says "Files"
+// in the language the app shows.
+func SetDimFiles() string { return In(i18n.Locale()).SetDimFiles() }
+
+// SetDimFiles says "Files"
+// in the language of msgs.
+func (msgs Messages) SetDimFiles() string {
+	return Catalog.Format(msgs.locale, "setDimFiles", nil)
+}
+
+// SetDimWeb says "Web"
+// in the language the app shows.
+func SetDimWeb() string { return In(i18n.Locale()).SetDimWeb() }
+
+// SetDimWeb says "Web"
+// in the language of msgs.
+func (msgs Messages) SetDimWeb() string {
+	return Catalog.Format(msgs.locale, "setDimWeb", nil)
+}
+
+// SetDimExplorer says "Explorer"
 // in the language the app shows.
 func SetDimExplorer() string { return In(i18n.Locale()).SetDimExplorer() }
 
-// SetDimExplorer says "Dim unfocused Explorer"
+// SetDimExplorer says "Explorer"
 // in the language of msgs.
 func (msgs Messages) SetDimExplorer() string {
 	return Catalog.Format(msgs.locale, "setDimExplorer", nil)
-}
-
-// SetDimExplorerDetail says "The Explorer, with Changes and Files, fades while you’re not in it."
-// in the language the app shows.
-func SetDimExplorerDetail() string { return In(i18n.Locale()).SetDimExplorerDetail() }
-
-// SetDimExplorerDetail says "The Explorer, with Changes and Files, fades while you’re not in it."
-// in the language of msgs.
-func (msgs Messages) SetDimExplorerDetail() string {
-	return Catalog.Format(msgs.locale, "setDimExplorerDetail", nil)
 }
 
 // SetBackground says "Background"
