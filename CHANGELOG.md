@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.14
+
+- On a Mac, Command+Left and Command+Right go to the start and end of
+  the line in the shell, as in Ghostty. Thanks @eliottwantz
+- Kero speaks Japanese: pick it under **Language** in Settings.
+- Powerline's rounded separators in prompts fill the line's height,
+  with no gap when the line height is above 1.
+- On Linux, closing Settings no longer closes the app.
+
 ## 2.1.13
 
 - Mouse clicks and drags work in herdr and other apps built on
