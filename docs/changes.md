@@ -40,9 +40,11 @@ The folder button in a pane's header, the panel's **Files** tab, or <kbd>⌥</kb
 
 Click a folder's arrow, or press <kbd>→</kbd> and <kbd>←</kbd>, to open and close it. Click a file to open it below the tree, highlighted as its language is, and edit it there: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, keeping its line endings. A file you edited stays open, marked unsaved, while you look at others. The wrap button above it wraps long lines at the view's width. Images show as pictures; binary files and those over 4 MB don't open. To keep a file beside your terminals, open it in an [editor pane](./panes.md#editor-panes).
 
+The buttons under the tree make a new file or folder in the folder you chose, or in the chosen file's folder: type its name, or a path such as `src/util/new.go`, and press <kbd>Return</kbd> (<kbd>Enter</kbd>), or <kbd>Esc</kbd> to leave it. A new file opens below the tree. The other buttons there refresh the tree and collapse its folders. A folder's menu makes a new file or folder in it, and opens a terminal there.
+
 A save writes the file only as it was when you opened it. When an agent or another program changed it since, Kero says so instead, and you **Reload** it, dropping your edits, or **Overwrite** it. While the file has no edits of yours, it follows the changes on disk.
 
-Double-click a file, or right-click it, to open it in your editor: the `editor` setting, as `code` or `zed`, or the app the system opens the file with. The menu also opens it in a pane, or with another app, shows it in File Explorer or Finder, and copies its path, or its path from the worktree.
+Double-click a file, or right-click it, to open it in your editor: the `editor` setting, as `code` or `zed`, or the app the system opens the file with. A folder's menu opens the folder in your editor too, or in the app the system opens text files with. The menu also opens it in a pane, or with another app, shows it in File Explorer or Finder, and copies its path, or its path from the worktree.
 
 ## From the command line
 
@@ -56,6 +58,14 @@ kero diff src/auth              # just these paths
 ```
 
 `kero status --json` and `kero ls --json` include each pane's branch and changes as `git`.
+
+`kero do` shows the panel's views, as an agent shows you what it did. They need Remote Control, in **Settings › Agents**:
+
+```sh
+kero do changes.show                 # the Changes view
+kero do files.show                   # the Files view
+kero do files.show path=src/main.go  # it, with this file open, or this folder
+```
 
 ## Turning it off
 
