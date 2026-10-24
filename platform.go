@@ -24,7 +24,7 @@ func fileManager() string {
 	return locales.FileManagerFiles()
 }
 
-// labelPad follows each context menu item's label, as padMenus sets it
+// labelPad follows each context or tray menu item's label, as padMenus sets it
 // for the app: the tests read the labels as they are.
 var labelPad string
 
