@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -70,6 +71,21 @@ type fileTree struct {
 	// another shows; shown is the one that shows, "" for none.
 	files map[string]*openFile
 	shown string
+	// adding is the file or folder the user names to make, nil for none;
+	// reveal a path to choose in the tree once its folder lists it.
+	adding *newEntry
+	reveal string
+}
+
+// newEntry is a file or folder the user names, to make in a folder of the
+// tree: New File and New Folder.
+type newEntry struct {
+	in    string // the folder
+	dir   bool
+	name  string
+	focus bool // the name's field takes the keyboard as it shows
+	busy  bool
+	err   string
 }
 
 // fileDir is a folder's listing: the paths in it, folders first.
@@ -100,6 +116,11 @@ type openFile struct {
 	binary  bool
 	large   bool
 	err     string
+	// fresh tells a file that may be none yet, as an editor pane's that
+	// kero split --file names: absent while it is, it opens empty, and its
+	// save makes it.
+	fresh  bool
+	absent bool
 }
 
 // modified tells that the file has edits not saved.
@@ -175,6 +196,83 @@ func hostJoin(dir, name string) string {
 	return dir + sep + name
 }
 
+// hostParent is the folder a path of a host is in, as hostJoin joins them.
+func hostParent(path string) string {
+	if i := strings.LastIndexAny(path, `/\`); i > 0 {
+		return path[:i]
+	}
+	return path
+}
+
+// join returns a path in a folder of the tree, written as the tree writes
+// its paths: rel's elements, either slash between them, each joined on.
+func (t *fileTree) join(dir, rel string) string {
+	for _, part := range strings.FieldsFunc(rel, func(r rune) bool { return r == '/' || r == '\\' }) {
+		dir = hostJoin(dir, part)
+	}
+	return dir
+}
+
+// within returns a path as the tree writes it, when it is in the tree's
+// folder: a path from a shell may have the other slashes, or on Windows,
+// letters of another case; a relative one is the folder's.
+func (t *fileTree) within(path string) (string, bool) {
+	norm := func(s string) string { return strings.TrimRight(strings.ReplaceAll(s, `\`, "/"), "/") }
+	root, p := norm(t.root), norm(path)
+	drive := len(root) > 1 && root[1] == ':'
+	if !strings.HasPrefix(p, "/") && !(len(p) > 1 && p[1] == ':') {
+		return t.join(t.root, path), true
+	}
+	switch {
+	case p == root || drive && strings.EqualFold(p, root):
+		return t.root, true
+	case len(p) <= len(root) || p[len(root)] != '/':
+		return "", false
+	case drive && !strings.EqualFold(p[:len(root)], root), !drive && p[:len(root)] != root:
+		return "", false
+	}
+	return t.join(t.root, p[len(root)+1:]), true
+}
+
+// revealPath chooses a path in the tree, opening the folders it is in,
+// once they list it.
+func (t *fileTree) revealPath(path string) {
+	t.reveal = path
+	for d := hostParent(path); len(d) > len(t.root); d = hostParent(d) {
+		t.isDir[d] = true
+		t.outline.Open.Add(d)
+	}
+}
+
+// revealed chooses the path to reveal once the tree shows it, and forgets
+// it once its folder is listed without it.
+func (t *fileTree) revealed() {
+	if t.reveal == "" {
+		return
+	}
+	for i := range t.outline.Rows() {
+		if t.outline.Item(i) == t.reveal {
+			t.chosen, t.reveal = i, ""
+			t.outline.List.ScrollIntoView(i)
+			return
+		}
+	}
+	if d := t.dirs[hostParent(t.reveal)]; d != nil && !d.busy && d.paths != nil && d.stamp == t.stamp && !slices.Contains(d.paths, t.reveal) {
+		t.reveal = ""
+	}
+}
+
+// refresh marks the tree's listings, and the file it shows, to be read
+// anew.
+func (t *fileTree) refresh() {
+	for _, d := range t.dirs {
+		d.stamp = "\x00"
+	}
+	if f := t.files[t.shown]; f != nil {
+		f.stamp = "\x00"
+	}
+}
+
 // filesView is the Files view: the tree, and the file chosen in it below.
 func (a *App) filesView(c *ui.Context, pal *palette, s *proto.Session) {
 	fs := &a.side.files
@@ -208,6 +306,10 @@ func (a *App) filesView(c *ui.Context, pal *palette, s *proto.Session) {
 		}
 		ui.Column(c.Key("tree")).Grow(share).Basis(0).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 			a.treeView(c, pal, t)
+			if t.adding != nil {
+				a.newEntryView(c, pal, t)
+			}
+			a.filesToolbar(c, pal, t)
 		})
 		if f != nil {
 			a.filesEdge(c, pal)
@@ -345,6 +447,7 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 			}
 		})
 	}).Grow(1).MinHeight(0).Padding(0, 6, 8, 6).FontSize(13)
+	t.revealed()
 	if tree.Changed() && t.chosen >= 0 && t.chosen < t.outline.Rows() {
 		if p := t.outline.Item(t.chosen); !t.isDir[p] {
 			a.openFile(t, p)
@@ -364,30 +467,42 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 }
 
 // fileMenu is the menu of a file or folder of the tree: what opens it in
-// a pane, and on this machine, for a host's but this one's, and what
+// a pane, a folder's new file, folder and terminal, then on this machine,
+// for a host's but this one's, its editor and file manager, and what
 // copies its path.
 func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir bool) {
-	if !dir && m.Item(locales.FilesOpenInPane()).Chosen() {
+	if dir {
+		if padItem(m, locales.FilesNewFile()).Chosen() {
+			a.defer_(func() { t.startAdding(path, false) })
+		}
+		if padItem(m, locales.FilesNewFolder()).Chosen() {
+			a.defer_(func() { t.startAdding(path, true) })
+		}
+		if padItem(m, locales.FilesNewTerminal()).Chosen() {
+			a.terminalIn(t.pane, path)
+		}
+		m.Separator()
+	} else if padItem(m, locales.FilesOpenInPane()).Chosen() {
 		a.openInPane(t.pane, path)
 	}
 	if !a.hostOf(t.pane).remote() {
-		if m.Item(locales.FilesOpenInEditor()).Chosen() {
+		if padItem(m, locales.FilesOpenInEditor()).Chosen() {
 			a.openInEditor(path)
 		}
-		if canOpenWith && !dir && m.Item(locales.FilesOpenWith()).Chosen() {
+		if canOpenWith && !dir && padItem(m, locales.FilesOpenWith()).Chosen() {
 			if err := openWith(path); err != nil {
 				a.toast(locales.FilesCantOpen(err.Error()))
 			}
 		}
-		if m.Item(locales.CommonShowIn(fileManager())).Chosen() {
+		if padItem(m, locales.CommonShowIn(fileManager())).Chosen() {
 			revealPath(path)
 		}
 		m.Separator()
 	}
-	if m.Item(locales.FilesCopyPath()).Chosen() {
+	if padItem(m, locales.FilesCopyPath()).Chosen() {
 		c.WriteClipboard(path)
 	}
-	if m.Item(locales.FilesCopyRelativePath()).Chosen() {
+	if padItem(m, locales.FilesCopyRelativePath()).Chosen() {
 		c.WriteClipboard(t.rel(path))
 	}
 }
@@ -426,6 +541,190 @@ func (a *App) openInPane(pane, path string) {
 	a.split(s, proto.CreateParams{Split: a.focusOf(s), Direction: "right", File: path})
 }
 
+// terminalIn opens a terminal in a folder of a pane's host, beside the
+// pane the user is in.
+func (a *App) terminalIn(pane, dir string) {
+	s := a.sessionOfPane(pane)
+	if s == nil {
+		return
+	}
+	a.split(s, proto.CreateParams{Split: a.focusOf(s), Direction: "right", Dir: dir})
+}
+
+// startAdding shows the field that names a new file or folder in a folder
+// of the tree, opening the folder.
+func (t *fileTree) startAdding(in string, dir bool) {
+	t.adding = &newEntry{in: in, dir: dir, focus: true}
+	if in != t.root {
+		t.outline.Open.Add(in)
+	}
+}
+
+// addingIn is the folder New File and New Folder make in: the folder
+// chosen in the tree, or the file's, else the tree's own.
+func (t *fileTree) addingIn() string {
+	if t.chosen < 0 || t.chosen >= t.outline.Rows() {
+		return t.root
+	}
+	p := t.outline.Item(t.chosen)
+	if t.isDir[p] {
+		return p
+	}
+	return hostParent(p)
+}
+
+// newEntryView is the field that names a new file or folder: Enter makes
+// it, through kerod (fs.create), and Escape leaves it.
+func (a *App) newEntryView(c *ui.Context, pal *palette, t *fileTree) {
+	n := t.adding
+	folder := proto.DirName(n.in) + "/"
+	if rel := t.rel(n.in); rel != "" {
+		folder = strings.ReplaceAll(rel, `\`, "/") + "/"
+	}
+	place := locales.FilesNewFileIn(folder)
+	if n.dir {
+		place = locales.FilesNewFolderIn(folder)
+	}
+	ui.Column(c.Key("adding")).Shrink(0).Padding(6, 10, 4, 10).Gap(4).AlignItems(ui.Stretch).Children(func() {
+		ui.Row(c.Key("field")).AlignItems(ui.Center).Gap(6).Children(func() {
+			svg := newFileIcon
+			if n.dir {
+				svg = newFolderIcon
+			}
+			ui.Icon(c, svg).Size(14, 14).TextColor(pal.textFaint).Shrink(0)
+			in := textField(c, "name", &n.name, place, 0, pal)
+			in.Tooltip(locales.FilesNewFileTip())
+			if n.focus {
+				in.Focus()
+				n.focus = false
+			}
+			in.OnSubmit(func() { a.addEntry(t, n) })
+			in.OnShortcut(0, ui.KeyEscape, func() { t.adding = nil })
+			if n.busy {
+				ui.Spinner(c).Size(12, 12)
+			}
+			iconButton(c, "cancel", closeIcon, locales.CommonCancel(), pal, func() { t.adding = nil })
+		})
+		if n.err != "" {
+			ui.Text(c, locales.FilesCantCreate(n.err)).FontSize(11.5).TextColor(pal.danger).LineHeight(1.3)
+		}
+	})
+}
+
+// addEntry makes the file or folder the user named, through the kerod of
+// the tree's host, then shows it: a file opens below the tree.
+func (a *App) addEntry(t *fileTree, n *newEntry) {
+	name := strings.TrimSpace(n.name)
+	if n.busy {
+		return
+	}
+	if name == "" {
+		t.adding = nil
+		return
+	}
+	h := a.hostOf(t.pane)
+	if h.cl == nil {
+		n.err = locales.HostNotConnected(h.name)
+		return
+	}
+	path, cl := t.join(n.in, name), h.cl
+	n.busy, n.err = true, ""
+	go func() {
+		var r proto.FSCreate
+		err := cl.Call("fs.create", proto.FSCreateParams{Path: path, Dir: n.dir}, &r)
+		a.update(func() { a.added(t, n, path, err) })
+	}()
+}
+
+// added shows what making a new file or folder came to: the new one,
+// chosen in the tree and, a file, open; or why there's none.
+func (a *App) added(t *fileTree, n *newEntry, path string, err error) {
+	n.busy = false
+	if err != nil {
+		n.err = err.Error()
+		return
+	}
+	if t.adding == n {
+		t.adding = nil
+	}
+	t.refresh()
+	t.revealPath(path)
+	if n.dir {
+		t.isDir[path] = true
+		return
+	}
+	a.openFile(t, path)
+}
+
+// filesToolbar is the tree's buttons, under it: they stay clear of the
+// panel's header, which keeps the window's controls in a narrow panel.
+func (a *App) filesToolbar(c *ui.Context, pal *palette, t *fileTree) {
+	ui.Row(c.Key("tools")).Height(stickyH).Shrink(0).Padding(0, 6).Gap(2).AlignItems(ui.Center).Background(pal.chip).Children(func() {
+		iconButton(c, "new-file", newFileIcon, locales.FilesNewFile(), pal, func() { a.defer_(func() { t.startAdding(t.addingIn(), false) }) })
+		iconButton(c, "new-folder", newFolderIcon, locales.FilesNewFolder(), pal, func() { a.defer_(func() { t.startAdding(t.addingIn(), true) }) })
+		ui.Spacer(c)
+		iconButton(c, "refresh", reloadIcon, locales.FilesRefresh(), pal, t.refresh)
+		iconButton(c, "collapse", collapseIcon, locales.FilesCollapse(), pal, func() { t.outline.Open.Clear() })
+	})
+}
+
+// showFiles shows the Files view, and in it a path, as kero do files.show
+// asks: the folders it is in open, a folder opens, and a file opens below
+// the tree.
+func (a *App) showFiles(path string) {
+	if a.prefs.Side != sideFiles {
+		a.prefs.Side = sideFiles
+		a.savePrefs()
+	}
+	s := a.session(a.selected)
+	if path == "" || s == nil {
+		return
+	}
+	pane, root := a.filesRoot(s)
+	if pane == nil {
+		a.toast(locales.FilesNotInTree(path))
+		return
+	}
+	t := a.tree(pane, root)
+	p, ok := t.within(path)
+	if !ok {
+		a.toast(locales.FilesNotInTree(path))
+		return
+	}
+	cl := a.hostOf(pane.ID).cl
+	if cl == nil {
+		return
+	}
+	go func() {
+		var st proto.FSStat
+		err := cl.Call("fs.stat", proto.FSStatParams{Path: p}, &st)
+		a.update(func() { a.shown(t, p, st, err) })
+	}()
+}
+
+// shown shows a path in the tree, as showFiles found it.
+func (a *App) shown(t *fileTree, path string, st proto.FSStat, err error) {
+	switch {
+	case err != nil:
+		a.toast(locales.FilesCantOpen(err.Error()))
+		return
+	case !st.Exists:
+		a.toast(locales.FilesCantOpen(locales.FilesGone()))
+		return
+	}
+	t.refresh()
+	if path == t.root {
+		return
+	}
+	t.revealPath(path)
+	if st.Dir {
+		t.isDir[path] = true
+		t.outline.Open.Add(path)
+		return
+	}
+	a.openFile(t, path)
+}
+
 // readFile reads a file from the kerod of a pane's host (fs.stat, then
 // fs.read): an image to show, else text, which goes in its editor as its
 // edits, keeping where it is scrolled. A file too large, or binary, is
@@ -436,24 +735,28 @@ func (a *App) readFile(pane, stamp string, f *openFile) {
 		return
 	}
 	f.busy = true
-	path := f.path
+	path, fresh := f.path, f.fresh
 	image := peekable[strings.ToLower(filepath.Ext(path))]
 	go func() {
 		var st proto.FSStat
 		var r proto.FSRead
 		var bm *ui.Bitmap
 		err := cl.Call("fs.stat", proto.FSStatParams{Path: path}, &st)
+		absent := err == nil && !st.Exists && fresh
 		large := err == nil && (image && st.Size > maxImage || !image && st.Size > maxPreview)
-		if err == nil && !st.Exists {
+		if err == nil && !st.Exists && !fresh {
 			err = errors.New(locales.FilesGone())
 		}
-		if err == nil && !large {
+		if err == nil && !large && !absent {
 			err = cl.Call("fs.read", proto.FSReadParams{Path: path, Max: max(maxImage, maxPreview)}, &r)
 		}
-		if err == nil && !large && image {
+		if err == nil && !large && !absent && image {
 			bm, err = ui.DecodeBitmap(r.Data)
 		}
-		a.update(func() { f.read(stamp, large, image, bm, r.Data, err) })
+		a.update(func() {
+			f.absent = absent
+			f.read(stamp, large, image && !absent, bm, r.Data, err)
+		})
 	}()
 }
 
@@ -477,6 +780,11 @@ func (f *openFile) read(stamp string, large, image bool, bm *ui.Bitmap, data []b
 		f.binary, f.st = true, nil
 	default:
 		f.binary, f.hash = false, git.Hash(data)
+		if f.absent {
+			// No file to find as it was read: fs.write makes it, unless
+			// another program did since.
+			f.hash = ""
+		}
 		text := strings.ReplaceAll(string(data), "\r\n", "\n")
 		if f.st == nil {
 			b := editor.NewBuffer(string(data))
@@ -557,6 +865,9 @@ func (a *App) fileButtons(c *ui.Context, pal *palette, pane string, f *openFile)
 	case f.modified():
 		ui.Text(c, locales.FilesUnsaved()).FontSize(11.5).TextColor(pal.attention).SingleLine().Shrink(0)
 		iconButton(c, "save", checkIcon, a.saveTip(), pal, func() { a.saveFile(pane, f, false) })
+	case f.absent && f.st != nil:
+		ui.Text(c, locales.FilesNew()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0).Tooltip(locales.FilesNewTip())
+		iconButton(c, "save", checkIcon, a.saveTip(), pal, func() { a.saveFile(pane, f, false) })
 	}
 	if f.st != nil {
 		wrap := ui.ButtonBase(c.Key("wrap")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FilesWrap()).Tooltip(locales.FilesWrap())
@@ -612,7 +923,7 @@ func (a *App) fileBody(c *ui.Context, pal *palette, pane string, f *openFile, re
 			}
 		}
 	})
-	if col.Shortcut(ui.Cmd, ui.KeyS) && f.modified() && !f.saving {
+	if col.Shortcut(ui.Cmd, ui.KeyS) && (f.modified() || f.absent) && !f.saving {
 		a.saveFile(pane, f, false)
 	}
 }
@@ -688,7 +999,7 @@ func (f *openFile) saved(version uint64, w proto.FSWrite, err error) {
 	case w.Changed:
 		f.changed = true
 	default:
-		f.changed, f.hash = false, w.Hash
+		f.changed, f.hash, f.absent = false, w.Hash, false
 		// Typed on as it saved: what was typed since is not saved.
 		if f.st.Buffer.Version() == version {
 			f.st.Buffer.MarkSaved()
