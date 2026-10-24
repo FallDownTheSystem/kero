@@ -289,6 +289,10 @@ func (a *App) filesView(c *ui.Context, pal *palette, s *proto.Session) {
 		working = working || p.Status == proto.Working
 	}
 	t.stamp = gitStamp(pane.Git)
+	if !a.set.HiddenFiles {
+		// Listed anew, without dotfiles, as the user hides them.
+		t.stamp += "|nodot"
+	}
 	a.syncTree(c, t, working)
 	if working {
 		c.After(5 * time.Second)
@@ -370,7 +374,8 @@ func (f *openFile) stale(stamp string, working bool) bool {
 	return f.stamp != stamp || working && time.Since(f.fetched) > 5*time.Second
 }
 
-// fetchDir asks kerod for a folder's listing: dotfiles too, but .git.
+// fetchDir asks kerod for a folder's listing, but .git: dotfiles too, as
+// the user chose (settings' HiddenFiles).
 func (a *App) fetchDir(t *fileTree, path string) {
 	d := t.dirs[path]
 	if d == nil {
@@ -379,10 +384,10 @@ func (a *App) fetchDir(t *fileTree, path string) {
 	}
 	cl := a.hostOf(t.pane).cl
 	d.busy = true
-	stamp := t.stamp
+	stamp, hidden := t.stamp, a.set.HiddenFiles
 	go func() {
 		var l proto.FSList
-		err := cl.Call("fs.list", proto.FSListParams{Dir: path, Hidden: true}, &l)
+		err := cl.Call("fs.list", proto.FSListParams{Dir: path, Hidden: hidden}, &l)
 		a.update(func() { t.listed(path, stamp, l, err) })
 	}()
 }
@@ -414,7 +419,8 @@ func (t *fileTree) listed(path, stamp string, l proto.FSList, err error) {
 
 // treeView is the tree: a folder's files, its folders opening on their
 // arrows, Right and Left, or a double click. Choosing a file opens it; a
-// double click, or Enter, opens it in the user's editor.
+// double click, or Enter, opens it in the user's editor or a file pane, as
+// the user chose (openChosen).
 func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 	d := t.dirs[t.root]
 	switch {
@@ -448,7 +454,9 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		})
 	}).Grow(1).MinHeight(0).Padding(0, 6, 8, 6).FontSize(13)
 	t.revealed()
-	if tree.Changed() && t.chosen >= 0 && t.chosen < t.outline.Rows() {
+	// The file chosen opens below, unless the user previews files from
+	// their menu only (settings' FilePreview).
+	if tree.Changed() && a.set.FilePreview && t.chosen >= 0 && t.chosen < t.outline.Rows() {
 		if p := t.outline.Item(t.chosen); !t.isDir[p] {
 			a.openFile(t, p)
 		}
@@ -460,14 +468,27 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 			t.outline.Open.Remove(p)
 		case t.isDir[p]:
 			t.outline.Open.Add(p)
-		case !a.hostOf(t.pane).remote():
-			a.openInEditor(p)
+		default:
+			a.openChosen(t, p)
 		}
 	}
 }
 
-// fileMenu is the menu of a file or folder of the tree: what opens it in
-// a pane, a folder's new file, folder and terminal, then on this machine,
+// openChosen opens a file of the tree as a double click does: in the
+// user's editor, or in a file pane, as the user chose (settings'
+// FileOpen); a host's but this one's, which no editor here opens, in a
+// pane.
+func (a *App) openChosen(t *fileTree, path string) {
+	if a.set.FileOpen == "pane" || a.hostOf(t.pane).remote() {
+		a.openInPane(t.pane, path)
+		return
+	}
+	a.openInEditor(path)
+}
+
+// fileMenu is the menu of a file or folder of the tree: what opens a file
+// below the tree or in a pane, a folder's new file, folder and terminal,
+// then on this machine,
 // for a host's but this one's, its editor and file manager, and what
 // copies its path.
 func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir bool) {
@@ -482,8 +503,13 @@ func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir 
 			a.terminalIn(t.pane, path)
 		}
 		m.Separator()
-	} else if padItem(m, locales.FilesOpenInPane()).Chosen() {
-		a.openInPane(t.pane, path)
+	} else {
+		if t.shown != path && padItem(m, locales.FilesPreview()).Chosen() {
+			a.openFile(t, path)
+		}
+		if padItem(m, locales.FilesOpenInPane()).Chosen() {
+			a.openInPane(t.pane, path)
+		}
 	}
 	if !a.hostOf(t.pane).remote() {
 		if padItem(m, locales.FilesOpenInEditor()).Chosen() {
@@ -532,13 +558,58 @@ func (a *App) openFile(t *fileTree, path string) {
 }
 
 // openInPane opens a file of a pane's host in an editor pane, beside the
-// pane the user is in.
+// pane the user is in; or, as the user chose (settings' FilePane), in the
+// editor pane they were in last, in place of its file, while it has no
+// edits not saved.
 func (a *App) openInPane(pane, path string) {
 	s := a.sessionOfPane(pane)
 	if s == nil {
 		return
 	}
+	if ep := a.lastEditor(s); a.set.FilePane == "replace" && ep != nil && a.editorUnsaved(ep.ID) == nil {
+		a.replaceFile(s.ID, ep.ID, path)
+		return
+	}
 	a.split(s, proto.CreateParams{Split: a.focusOf(s), Direction: "right", File: path})
+}
+
+// lastEditor returns the editor pane of a session the user was in last,
+// else its last; nil for none.
+func (a *App) lastEditor(s *proto.Session) *proto.Pane {
+	if p := s.PaneByID(a.lastEdit[s.ID]); p != nil && p.Editor() {
+		return p
+	}
+	for i := len(s.Panes) - 1; i >= 0; i-- {
+		if s.Panes[i].Editor() {
+			return &s.Panes[i]
+		}
+	}
+	return nil
+}
+
+// replaceFile shows a file in an editor pane in place of its own (pane.file),
+// and puts the user in it; a kerod that can't, as one before pane.file,
+// opens it in a pane of its own.
+func (a *App) replaceFile(sid, pane, path string) {
+	cl := a.hostOf(pane).cl
+	if cl == nil {
+		return
+	}
+	go func() {
+		var ok bool
+		err := cl.Call("pane.file", proto.FileParams{ID: pane, File: path}, &ok)
+		a.update(func() {
+			s := a.session(sid)
+			switch {
+			case s == nil:
+			case err != nil:
+				a.split(s, proto.CreateParams{Split: a.focusOf(s), Direction: "right", File: path})
+			case s.PaneByID(pane) != nil:
+				a.setFocus(s, pane)
+				a.paneRef(pane).Focus()
+			}
+		})
+	}()
 }
 
 // terminalIn opens a terminal in a folder of a pane's host, beside the
@@ -672,10 +743,7 @@ func (a *App) filesToolbar(c *ui.Context, pal *palette, t *fileTree) {
 // asks: the folders it is in open, a folder opens, and a file opens below
 // the tree.
 func (a *App) showFiles(path string) {
-	if a.prefs.Side != sideFiles {
-		a.prefs.Side = sideFiles
-		a.savePrefs()
-	}
+	a.showSide(sideFiles)
 	s := a.session(a.selected)
 	if path == "" || s == nil {
 		return
@@ -858,18 +926,29 @@ func (a *App) fileView(c *ui.Context, pal *palette, t *fileTree, f *openFile, wo
 	})
 }
 
-// fileButtons are what a file's header has to act on it: its save while
-// it has edits, the wrapping of its lines, and on this machine, its
-// editor.
+// fileButtons are what a file's header has to act on it: what it is
+// (fileStatus), then its actions (fileActions).
 func (a *App) fileButtons(c *ui.Context, pal *palette, pane string, f *openFile) {
+	a.fileStatus(c, pal, f)
+	a.fileActions(c, pal, pane, f)
+}
+
+// fileStatus tells that a file saves, has edits not saved, or is new.
+func (a *App) fileStatus(c *ui.Context, pal *palette, f *openFile) {
 	switch {
 	case f.saving:
 		ui.Spinner(c).Size(12, 12)
 	case f.modified():
 		ui.Text(c, locales.FilesUnsaved()).FontSize(11.5).TextColor(pal.attention).SingleLine().Shrink(0).Margin(0, 4, 0, 0)
-		iconButton(c, "save", checkIcon, a.saveTip(), pal, func() { a.saveFile(pane, f, false) })
 	case f.absent && f.st != nil:
 		ui.Text(c, locales.FilesNew()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0).Margin(0, 4, 0, 0).Tooltip(locales.FilesNewTip())
+	}
+}
+
+// fileActions are what acts on a file: its save while it has edits or is
+// new, the wrapping of its lines, and on this machine, its editor.
+func (a *App) fileActions(c *ui.Context, pal *palette, pane string, f *openFile) {
+	if !f.saving && (f.modified() || f.absent && f.st != nil) {
 		iconButton(c, "save", checkIcon, a.saveTip(), pal, func() { a.saveFile(pane, f, false) })
 	}
 	if f.st != nil {
@@ -883,7 +962,8 @@ func (a *App) fileButtons(c *ui.Context, pal *palette, pane string, f *openFile)
 // wrapButton toggles the wrapping of long lines, which the Files view, the
 // editor panes and the Changes view's diffs share: lit while they wrap.
 func (a *App) wrapButton(c *ui.Context, pal *palette) {
-	wrap := ui.ButtonBase(c.Key("wrap")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FilesWrap()).Tooltip(locales.FilesWrap())
+	// Apart from the buttons beside it, whose hover would touch it lit.
+	wrap := ui.ButtonBase(c.Key("wrap")).Size(28, 26).Margin(0, 2).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FilesWrap()).Tooltip(locales.FilesWrap())
 	switch {
 	case a.prefs.Wrap:
 		wrap.Background(pal.rowHover).TextColor(pal.text)
