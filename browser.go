@@ -342,7 +342,7 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		room := a.headerRoom(c, p, pad, 3*controlW+8+browserAddressRoom, top && right, multi)
 		a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold)
 		if top && right {
-			windowControls(c, pal, a.win)
+			a.edgeControls(c, pal, "-h")
 		}
 	})
 	return h, dragging

@@ -201,6 +201,21 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return true, pn.setPage(p.URL, p.Title)
 
+	case "pane.file":
+		var p proto.FileParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		file, err := editorFile(p.File)
+		if err != nil {
+			return nil, err
+		}
+		return true, pn.setFile(file)
+
 	case "browser":
 		var p proto.BrowserParams
 		if err := decode(&p); err != nil {

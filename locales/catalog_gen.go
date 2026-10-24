@@ -3512,6 +3512,356 @@ func (msgs Messages) SideClose() string {
 	return Catalog.Format(msgs.locale, "sideClose", nil)
 }
 
+// SideShow says "Show Panel"
+// in the language the app shows.
+func SideShow() string { return In(i18n.Locale()).SideShow() }
+
+// SideShow says "Show Panel"
+// in the language of msgs.
+func (msgs Messages) SideShow() string {
+	return Catalog.Format(msgs.locale, "sideShow", nil)
+}
+
+// SideHide says "Hide Panel"
+// in the language the app shows.
+func SideHide() string { return In(i18n.Locale()).SideHide() }
+
+// SideHide says "Hide Panel"
+// in the language of msgs.
+func (msgs Messages) SideHide() string {
+	return Catalog.Format(msgs.locale, "sideHide", nil)
+}
+
+// SideWiden says "Widen Panel"
+// in the language the app shows.
+func SideWiden() string { return In(i18n.Locale()).SideWiden() }
+
+// SideWiden says "Widen Panel"
+// in the language of msgs.
+func (msgs Messages) SideWiden() string {
+	return Catalog.Format(msgs.locale, "sideWiden", nil)
+}
+
+// SideRestore says "Restore Panel Width"
+// in the language the app shows.
+func SideRestore() string { return In(i18n.Locale()).SideRestore() }
+
+// SideRestore says "Restore Panel Width"
+// in the language of msgs.
+func (msgs Messages) SideRestore() string {
+	return Catalog.Format(msgs.locale, "sideRestore", nil)
+}
+
+// SplitTerminal says "Terminal"
+// in the language the app shows.
+func SplitTerminal() string { return In(i18n.Locale()).SplitTerminal() }
+
+// SplitTerminal says "Terminal"
+// in the language of msgs.
+func (msgs Messages) SplitTerminal() string {
+	return Catalog.Format(msgs.locale, "splitTerminal", nil)
+}
+
+// SplitBrowser says "Browser"
+// in the language the app shows.
+func SplitBrowser() string { return In(i18n.Locale()).SplitBrowser() }
+
+// SplitBrowser says "Browser"
+// in the language of msgs.
+func (msgs Messages) SplitBrowser() string {
+	return Catalog.Format(msgs.locale, "splitBrowser", nil)
+}
+
+// SplitFile says "New File"
+// in the language the app shows.
+func SplitFile() string { return In(i18n.Locale()).SplitFile() }
+
+// SplitFile says "New File"
+// in the language of msgs.
+func (msgs Messages) SplitFile() string {
+	return Catalog.Format(msgs.locale, "splitFile", nil)
+}
+
+// SplitFileTitle says "Open a File in the Pane"
+// in the language the app shows.
+func SplitFileTitle() string { return In(i18n.Locale()).SplitFileTitle() }
+
+// SplitFileTitle says "Open a File in the Pane"
+// in the language of msgs.
+func (msgs Messages) SplitFileTitle() string {
+	return Catalog.Format(msgs.locale, "splitFileTitle", nil)
+}
+
+// FilesOpenFile says "Open File…"
+// in the language the app shows.
+func FilesOpenFile() string { return In(i18n.Locale()).FilesOpenFile() }
+
+// FilesOpenFile says "Open File…"
+// in the language of msgs.
+func (msgs Messages) FilesOpenFile() string {
+	return Catalog.Format(msgs.locale, "filesOpenFile", nil)
+}
+
+// SetLayout says "Layout"
+// in the language the app shows.
+func SetLayout() string { return In(i18n.Locale()).SetLayout() }
+
+// SetLayout says "Layout"
+// in the language of msgs.
+func (msgs Messages) SetLayout() string {
+	return Catalog.Format(msgs.locale, "setLayout", nil)
+}
+
+// SetSessionsSide says "Sessions sidebar"
+// in the language the app shows.
+func SetSessionsSide() string { return In(i18n.Locale()).SetSessionsSide() }
+
+// SetSessionsSide says "Sessions sidebar"
+// in the language of msgs.
+func (msgs Messages) SetSessionsSide() string {
+	return Catalog.Format(msgs.locale, "setSessionsSide", nil)
+}
+
+// SetSessionsSideDetail says "The side of the window the sessions take. The Changes and Files panel takes the other."
+// in the language the app shows.
+func SetSessionsSideDetail() string { return In(i18n.Locale()).SetSessionsSideDetail() }
+
+// SetSessionsSideDetail says "The side of the window the sessions take. The Changes and Files panel takes the other."
+// in the language of msgs.
+func (msgs Messages) SetSessionsSideDetail() string {
+	return Catalog.Format(msgs.locale, "setSessionsSideDetail", nil)
+}
+
+// SetSideLeft says "Left"
+// in the language the app shows.
+func SetSideLeft() string { return In(i18n.Locale()).SetSideLeft() }
+
+// SetSideLeft says "Left"
+// in the language of msgs.
+func (msgs Messages) SetSideLeft() string {
+	return Catalog.Format(msgs.locale, "setSideLeft", nil)
+}
+
+// SetSideRight says "Right"
+// in the language the app shows.
+func SetSideRight() string { return In(i18n.Locale()).SetSideRight() }
+
+// SetSideRight says "Right"
+// in the language of msgs.
+func (msgs Messages) SetSideRight() string {
+	return Catalog.Format(msgs.locale, "setSideRight", nil)
+}
+
+// SetPanelPath says "Panel folder"
+// in the language the app shows.
+func SetPanelPath() string { return In(i18n.Locale()).SetPanelPath() }
+
+// SetPanelPath says "Panel folder"
+// in the language of msgs.
+func (msgs Messages) SetPanelPath() string {
+	return Catalog.Format(msgs.locale, "setPanelPath", nil)
+}
+
+// SetPanelPathDetail says "What the Changes and Files panel's header shows of the folder it shows."
+// in the language the app shows.
+func SetPanelPathDetail() string { return In(i18n.Locale()).SetPanelPathDetail() }
+
+// SetPanelPathDetail says "What the Changes and Files panel's header shows of the folder it shows."
+// in the language of msgs.
+func (msgs Messages) SetPanelPathDetail() string {
+	return Catalog.Format(msgs.locale, "setPanelPathDetail", nil)
+}
+
+// SetPathHidden says "Nothing"
+// in the language the app shows.
+func SetPathHidden() string { return In(i18n.Locale()).SetPathHidden() }
+
+// SetPathHidden says "Nothing"
+// in the language of msgs.
+func (msgs Messages) SetPathHidden() string {
+	return Catalog.Format(msgs.locale, "setPathHidden", nil)
+}
+
+// SetPathFolder says "Name"
+// in the language the app shows.
+func SetPathFolder() string { return In(i18n.Locale()).SetPathFolder() }
+
+// SetPathFolder says "Name"
+// in the language of msgs.
+func (msgs Messages) SetPathFolder() string {
+	return Catalog.Format(msgs.locale, "setPathFolder", nil)
+}
+
+// SetPathFull says "Path"
+// in the language the app shows.
+func SetPathFull() string { return In(i18n.Locale()).SetPathFull() }
+
+// SetPathFull says "Path"
+// in the language of msgs.
+func (msgs Messages) SetPathFull() string {
+	return Catalog.Format(msgs.locale, "setPathFull", nil)
+}
+
+// SetPathFit says "Fit"
+// in the language the app shows.
+func SetPathFit() string { return In(i18n.Locale()).SetPathFit() }
+
+// SetPathFit says "Fit"
+// in the language of msgs.
+func (msgs Messages) SetPathFit() string {
+	return Catalog.Format(msgs.locale, "setPathFit", nil)
+}
+
+// SetPaneFolder says "Pane folder"
+// in the language the app shows.
+func SetPaneFolder() string { return In(i18n.Locale()).SetPaneFolder() }
+
+// SetPaneFolder says "Pane folder"
+// in the language of msgs.
+func (msgs Messages) SetPaneFolder() string {
+	return Catalog.Format(msgs.locale, "setPaneFolder", nil)
+}
+
+// SetPaneFolderDetail says "What a pane's header shows of the folder it works in. Fit shows the path, else the name, as the room allows."
+// in the language the app shows.
+func SetPaneFolderDetail() string { return In(i18n.Locale()).SetPaneFolderDetail() }
+
+// SetPaneFolderDetail says "What a pane's header shows of the folder it works in. Fit shows the path, else the name, as the room allows."
+// in the language of msgs.
+func (msgs Messages) SetPaneFolderDetail() string {
+	return Catalog.Format(msgs.locale, "setPaneFolderDetail", nil)
+}
+
+// SetFileOpen says "Double-click a file"
+// in the language the app shows.
+func SetFileOpen() string { return In(i18n.Locale()).SetFileOpen() }
+
+// SetFileOpen says "Double-click a file"
+// in the language of msgs.
+func (msgs Messages) SetFileOpen() string {
+	return Catalog.Format(msgs.locale, "setFileOpen", nil)
+}
+
+// SetFileOpenDetail says "In the Files view, as Enter does. A file of another machine opens in a pane."
+// in the language the app shows.
+func SetFileOpenDetail() string { return In(i18n.Locale()).SetFileOpenDetail() }
+
+// SetFileOpenDetail says "In the Files view, as Enter does. A file of another machine opens in a pane."
+// in the language of msgs.
+func (msgs Messages) SetFileOpenDetail() string {
+	return Catalog.Format(msgs.locale, "setFileOpenDetail", nil)
+}
+
+// SetOpenEditor says "Open in Editor"
+// in the language the app shows.
+func SetOpenEditor() string { return In(i18n.Locale()).SetOpenEditor() }
+
+// SetOpenEditor says "Open in Editor"
+// in the language of msgs.
+func (msgs Messages) SetOpenEditor() string {
+	return Catalog.Format(msgs.locale, "setOpenEditor", nil)
+}
+
+// SetOpenPane says "Open in Pane"
+// in the language the app shows.
+func SetOpenPane() string { return In(i18n.Locale()).SetOpenPane() }
+
+// SetOpenPane says "Open in Pane"
+// in the language of msgs.
+func (msgs Messages) SetOpenPane() string {
+	return Catalog.Format(msgs.locale, "setOpenPane", nil)
+}
+
+// SetFilePane says "Files open in"
+// in the language the app shows.
+func SetFilePane() string { return In(i18n.Locale()).SetFilePane() }
+
+// SetFilePane says "Files open in"
+// in the language of msgs.
+func (msgs Messages) SetFilePane() string {
+	return Catalog.Format(msgs.locale, "setFilePane", nil)
+}
+
+// SetFilePaneDetail says "A file opened in a pane goes to a new pane, or replaces the file of the file pane you were in last, unless it has uns…"
+// in the language the app shows.
+func SetFilePaneDetail() string { return In(i18n.Locale()).SetFilePaneDetail() }
+
+// SetFilePaneDetail says "A file opened in a pane goes to a new pane, or replaces the file of the file pane you were in last, unless it has uns…"
+// in the language of msgs.
+func (msgs Messages) SetFilePaneDetail() string {
+	return Catalog.Format(msgs.locale, "setFilePaneDetail", nil)
+}
+
+// SetPaneNew says "New pane"
+// in the language the app shows.
+func SetPaneNew() string { return In(i18n.Locale()).SetPaneNew() }
+
+// SetPaneNew says "New pane"
+// in the language of msgs.
+func (msgs Messages) SetPaneNew() string {
+	return Catalog.Format(msgs.locale, "setPaneNew", nil)
+}
+
+// SetPaneReplace says "Last file pane"
+// in the language the app shows.
+func SetPaneReplace() string { return In(i18n.Locale()).SetPaneReplace() }
+
+// SetPaneReplace says "Last file pane"
+// in the language of msgs.
+func (msgs Messages) SetPaneReplace() string {
+	return Catalog.Format(msgs.locale, "setPaneReplace", nil)
+}
+
+// FilesPreview says "Preview"
+// in the language the app shows.
+func FilesPreview() string { return In(i18n.Locale()).FilesPreview() }
+
+// FilesPreview says "Preview"
+// in the language of msgs.
+func (msgs Messages) FilesPreview() string {
+	return Catalog.Format(msgs.locale, "filesPreview", nil)
+}
+
+// SetFilePreview says "Preview files"
+// in the language the app shows.
+func SetFilePreview() string { return In(i18n.Locale()).SetFilePreview() }
+
+// SetFilePreview says "Preview files"
+// in the language of msgs.
+func (msgs Messages) SetFilePreview() string {
+	return Catalog.Format(msgs.locale, "setFilePreview", nil)
+}
+
+// SetFilePreviewDetail says "Open the file you choose in the Files view below the tree. Off, a file's menu still has Preview."
+// in the language the app shows.
+func SetFilePreviewDetail() string { return In(i18n.Locale()).SetFilePreviewDetail() }
+
+// SetFilePreviewDetail says "Open the file you choose in the Files view below the tree. Off, a file's menu still has Preview."
+// in the language of msgs.
+func (msgs Messages) SetFilePreviewDetail() string {
+	return Catalog.Format(msgs.locale, "setFilePreviewDetail", nil)
+}
+
+// SetHiddenFiles says "Show dotfiles"
+// in the language the app shows.
+func SetHiddenFiles() string { return In(i18n.Locale()).SetHiddenFiles() }
+
+// SetHiddenFiles says "Show dotfiles"
+// in the language of msgs.
+func (msgs Messages) SetHiddenFiles() string {
+	return Catalog.Format(msgs.locale, "setHiddenFiles", nil)
+}
+
+// SetHiddenFilesDetail says "Files and folders whose names start with a dot, in the Files view."
+// in the language the app shows.
+func SetHiddenFilesDetail() string { return In(i18n.Locale()).SetHiddenFilesDetail() }
+
+// SetHiddenFilesDetail says "Files and folders whose names start with a dot, in the Files view."
+// in the language of msgs.
+func (msgs Messages) SetHiddenFilesDetail() string {
+	return Catalog.Format(msgs.locale, "setHiddenFilesDetail", nil)
+}
+
 // ChangesTurn says "Last Turn"
 // in the language the app shows.
 func ChangesTurn() string { return In(i18n.Locale()).ChangesTurn() }

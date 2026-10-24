@@ -56,6 +56,9 @@ kero config check             # report unknown keys and bad values
 | `language`           | `system` | The app's language: `system`, `en`, `ja` or `zh-Hans`           |
 | `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
 | `window-translucent` | `true`   | Let the desktop show through the window                         |
+| `sessions-sidebar`   | `left`   | The side of the window the sessions' sidebar takes: `left` or `right`; the Changes and Files panel takes the other |
+| `pane-folder`        | `fit`    | What a pane's header shows of its folder: `hidden`, `folder` (its name), `full` (its path), or `fit`, the most of those that fits |
+| `panel-path`         | `fit`    | What the Changes and Files panel's header shows of its folder, as `pane-folder` |
 
 ## Terminal
 
@@ -125,6 +128,10 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | Key      | Default | Description                                                                                                                        |
 | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `editor` | empty   | The command **Open in Editor** runs with a file's path, as `code`, `zed` or `"C:\Tools\editor.exe" -n`: empty opens a file with the app the system opens it with, and a folder with the app the system opens text files with |
+| `files-double-click` | `editor` | What a double click on a file in the Files view does: `editor` opens it in your editor, `pane` in an editor pane. A file of a remote host opens in a pane |
+| `files-pane` | `new` | Where a file opened in a pane goes: `new`, a pane of its own, or `replace`, the editor pane you were in last, unless it has unsaved edits |
+| `files-hidden` | `true` | Show dotfiles in the Files view |
+| `files-preview` | `true` | Open the file you choose in the Files view below the tree; off, its menu's **Preview** does |
 
 ## Browser
 
