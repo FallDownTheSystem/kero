@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.1.17
+
+- Codex 0.164's panes resume their own conversations after kerod
+  restarts, now that one Codex app server runs every pane's hooks. On
+  another machine, this works once that host gets this update. Thanks
+  @voidyuu for the report
+- `kero browser snapshot` prints what a page shows as roles and names,
+  each element with a ref that `click`, `type` and the rest take with
+  `--ref`. `kero browser screenshot` works on a pane not on screen, and
+  `kero browser cookies save` and `load` keep a browser's sign-ins, as
+  Playwright's storage state or a `cookies.txt`.
+- With Kero's icon showing, Command+W and the close button close the
+  main window rather than hide it, and Kero keeps running in the menu
+  bar or the notification area.
+- macOS 27 no longer runs an AutoFill helper process for Kero.
+
 ## 2.1.16
 
 - **Settings › General › Show app icon** on a Mac puts Kero in the Dock
