@@ -4454,6 +4454,16 @@ func (msgs Messages) FilesNewTip() string {
 	return Catalog.Format(msgs.locale, "filesNewTip", nil)
 }
 
+// PaneMore says "More"
+// in the language the app shows.
+func PaneMore() string { return In(i18n.Locale()).PaneMore() }
+
+// PaneMore says "More"
+// in the language of msgs.
+func (msgs Messages) PaneMore() string {
+	return Catalog.Format(msgs.locale, "paneMore", nil)
+}
+
 // TrayOpen says "Open Kero"
 // in the language the app shows.
 func TrayOpen() string { return In(i18n.Locale()).TrayOpen() }

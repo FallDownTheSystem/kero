@@ -439,6 +439,7 @@
   "filesNotInTree": "{path} はファイルビューのフォルダにありません",
   "filesNew": "新規ファイル",
   "filesNewTip": "ファイルはまだありません。保存すると作成されます",
+  "paneMore": "その他",
   "trayOpen": "Kero を開く",
   "trayQuit": "セッションを続けたまま終了",
   "trayTip": "Kero: {count} 個のセッションが実行中",

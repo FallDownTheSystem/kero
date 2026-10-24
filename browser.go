@@ -337,8 +337,10 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			gap.DragWindow()
 			rest.DragWindow()
 		}
-		// The room past the address bar takes the buttons as they show.
-		a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi)
+		// The room past the address bar takes the buttons as they show,
+		// folded in a narrow pane, which keeps the address its room.
+		room := a.headerRoom(c, p, pad, 3*controlW+8+browserAddressRoom, top && right, multi)
+		a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold)
 		if top && right {
 			windowControls(c, pal, a.win)
 		}
