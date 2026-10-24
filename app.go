@@ -47,9 +47,11 @@ type prefs struct {
 	SidebarHidden bool            `json:"sidebarHidden,omitempty"`
 	Collapsed     map[string]bool `json:"collapsed,omitempty"`
 	FontSize      float32         `json:"fontSize,omitempty"`
-	// Side is the view the side panel shows, "" while it is hidden, and
+	// Side is the view the side panel shows, "" while it is hidden;
+	// SideView the one it showed last, which showing it shows again; and
 	// SideWidth its width.
 	Side      string  `json:"side,omitempty"`
+	SideView  string  `json:"sideView,omitempty"`
 	SideWidth float32 `json:"sideWidth,omitempty"`
 	// EndedOpen and ArchivedOpen tell the sidebar's sections of the
 	// agents' ended conversations unfolded (session-history).
@@ -105,6 +107,7 @@ type App struct {
 	terms      map[string]*termEntry
 	webs       map[string]*webEntry // browser panes' pages, by pane
 	edits      map[string]*openFile // editor panes' files, by pane
+	lastEdit   map[string]string    // the editor pane the user was in last, by session
 	ads        adBlock              // what their pages block
 	icons      favicons             // and the icons they show
 	lru        []string
@@ -149,6 +152,11 @@ type App struct {
 	// the pointer was last over a pane, in the window.
 	hoverPane string
 	hoverAt   [2]float32
+
+	// menuPane is the pane whose header's button has its menu open, which
+	// keeps the header's controls built until another pane is hovered or
+	// an item is chosen.
+	menuPane string
 
 	// Panes dragged: the zone last under the pointer, the pane whose
 	// drop preview shows and since when, and the panes just moved, which
