@@ -363,18 +363,21 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 				ui.Text(c, tips[i]).FontSize(12.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0)
 			}
 			ui.Spacer(c)
-			split := a.diffSplit(width)
-			layoutIcon, layoutTip := splitRightIcon, locales.ChangesSplit()
-			if split {
-				layoutIcon, layoutTip = splitDownIcon, locales.ChangesUnified()
-			}
-			iconButton(c, "layout", layoutIcon, layoutTip, pal, func() {
-				set := a.set
-				set.DiffLayout = "split"
+			ui.Row(c.Key("tools")).Gap(0).AlignItems(ui.Center).Shrink(0).Children(func() {
+				a.wrapButton(c, pal)
+				split := a.diffSplit(width)
+				layoutIcon, layoutTip := splitRightIcon, locales.ChangesSplit()
 				if split {
-					set.DiffLayout = "unified"
+					layoutIcon, layoutTip = splitDownIcon, locales.ChangesUnified()
 				}
-				a.applySettings(set)
+				iconButton(c, "layout", layoutIcon, layoutTip, pal, func() {
+					set := a.set
+					set.DiffLayout = "split"
+					if split {
+						set.DiffLayout = "unified"
+					}
+					a.applySettings(set)
+				})
 			})
 		})
 	})
@@ -811,6 +814,7 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 	if a.diffSplit(width) {
 		d.Layout = editor.DiffSplit
 	}
+	d.Wrap = a.prefs.Wrap
 	working := false
 	for _, p := range s.Panes {
 		working = working || p.Status == proto.Working
