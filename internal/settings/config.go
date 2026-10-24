@@ -122,6 +122,9 @@ var keys = []key{
 	mapChoice("background", "the window's wash", func(s *Settings) *string { return &s.Background },
 		[]string{"petal", "mist", "meadow", "dusk", "plain"}, []string{"rex", "mist", "meadow", "dusk", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
+	choiceKey("sessions-sidebar", "the side of the window the sessions' sidebar takes; the Changes and Files panel takes the other", func(s *Settings) *string { return &s.SessionsSide }, "left", "right"),
+	choiceKey("panel-path", "what the Changes and Files panel's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.PanelPath }, "hidden", "folder", "full", "fit"),
+	choiceKey("pane-folder", "what a pane's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.PaneFolder }, "hidden", "folder", "full", "fit"),
 
 	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which Kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),
 	numberKey("font-size", "in points", func(s *Settings) float64 { return float64(s.FontSize) }, func(s *Settings, n float64) { s.FontSize = float32(n) }),
@@ -254,6 +257,10 @@ var keys = []key{
 	boolKey("git-status", "show the git branch and changes of each session", func(s *Settings) *bool { return &s.GitStatus }),
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
 	stringKey("editor", "the command Open in Editor runs with a file's path, as code or zed: empty for the app the system opens the file with, or a folder in the one it opens text files with", func(s *Settings) *string { return &s.Editor }),
+	choiceKey("files-double-click", "what a double click on a file in the Files view does: open it in the editor, or in a file pane", func(s *Settings) *string { return &s.FileOpen }, "editor", "pane"),
+	choiceKey("files-pane", "where a file opened in a pane goes: a new pane, or the file pane you were in last, in its place, unless it has unsaved edits", func(s *Settings) *string { return &s.FilePane }, "new", "replace"),
+	boolKey("files-hidden", "show dotfiles in the Files view", func(s *Settings) *bool { return &s.HiddenFiles }),
+	boolKey("files-preview", "open the file you choose in the Files view below its tree; off, its menu's Preview does", func(s *Settings) *bool { return &s.FilePreview }),
 	boolKey("browser-block-ads", "block ads and trackers in browser panes, with the browser-filter-list lists", func(s *Settings) *bool { return &s.BlockAds }),
 	{name: "browser-filter-list", doc: "a filter list browser-block-ads blocks with: " + strings.Join(adListIDs(), ", ") + ", or a list's https URL; repeat it, and leave it empty for none", list: true,
 		get: func(s *Settings) []string {

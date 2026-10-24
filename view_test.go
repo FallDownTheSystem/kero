@@ -120,7 +120,7 @@ func TestSidebarAnimationMonotonic(t *testing.T) {
 		prevX := float32(-1)
 		prevEdge := float32(-1)
 		for i := 0; i <= 20000; i++ {
-			ch := chromeFor(float32(i)/20000, width, bar)
+			ch := chromeFor(float32(i)/20000, width, bar, false)
 			x := ch.sideW + ch.mainPad + ch.headerPad // the title's left, in the window
 			edge := ch.sideW + ch.mainPad             // the card's left edge
 			for _, v := range []float32{ch.sideW, ch.mainPad, ch.headerPad} {
@@ -136,12 +136,33 @@ func TestSidebarAnimationMonotonic(t *testing.T) {
 			}
 			prevX, prevEdge = x, edge
 		}
-		if ch := chromeFor(1, width, bar); ch.headerPad != 16 || ch.mainPad != 0 || ch.sideW != width {
+		if ch := chromeFor(1, width, bar, false); ch.headerPad != 16 || ch.mainPad != 0 || ch.sideW != width {
 			t.Errorf("width %v shown: %+v", width, ch)
 		}
-		if ch := chromeFor(0, width, bar); ch.sideW != 0 || ch.mainPad != cardGap {
+		if ch := chromeFor(0, width, bar, false); ch.sideW != 0 || ch.mainPad != cardGap {
 			t.Errorf("width %v hidden: %+v", width, ch)
 		}
+	}
+}
+
+// With the sidebar at the window's right, the header at the left edge
+// keeps its room for the traffic lights and the panel's button as the
+// sidebar shows and hides, which only the right's padding follows.
+func TestSidebarRightChrome(t *testing.T) {
+	bar := ui.TitleBar{Left: 78, Height: 60}
+	hidden := chromeFor(0, 268, bar, false)
+	for _, p := range []float32{0, 0.3, 1} {
+		ch := chromeFor(p, 268, bar, true)
+		// One button where the sidebar has two.
+		if ch.headerPad != hidden.headerPad-sideButtonsW(1) || ch.buttonsLeft(bar) != hidden.buttonsLeft(bar) {
+			t.Errorf("progress %v: %+v, want the left edge as with the sidebar hidden, less a button, %+v", p, ch, hidden)
+		}
+	}
+	if ch := chromeFor(1, 268, bar, true); ch.mainPad != 0 || ch.sideW != 268 || ch.cardsRight() {
+		t.Errorf("shown: %+v", ch)
+	}
+	if ch := chromeFor(0, 268, bar, true); ch.mainPad != cardGap || !ch.cardsRight() {
+		t.Errorf("hidden: %+v", ch)
 	}
 }
 
@@ -152,7 +173,7 @@ func TestSidebarAnimationNoHolds(t *testing.T) {
 	frames := int(sidebarMotion.Duration / (time.Second / 60))
 	prev := float32(-1)
 	for i := 0; i <= frames; i++ {
-		w := chromeFor(ease(float32(i)/float32(frames)), 268, ui.TitleBar{}).sideW
+		w := chromeFor(ease(float32(i)/float32(frames)), 268, ui.TitleBar{}, false).sideW
 		if w == prev && w != 268 {
 			t.Errorf("frame %d: the sidebar held at %v before landing", i, w)
 		}
