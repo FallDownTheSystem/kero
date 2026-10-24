@@ -92,7 +92,7 @@ func (a *App) trayMenu() *mygo.Menu {
 		mygo.App.Focus()
 		click(it, w)
 	}
-	return mygo.NewMenu([]*mygo.MenuItem{
+	items := []*mygo.MenuItem{
 		{Label: locales.TrayOpen(mygo.App.Name()), Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
 		{Label: actionTitle(quickAction), Click: func(*mygo.MenuItem, *mygo.Window) { a.update(a.showQuick) }},
 		mygo.Separator(),
@@ -108,7 +108,15 @@ func (a *App) trayMenu() *mygo.Menu {
 			a.showWindow()
 			a.update(a.quitAndEnd)
 		}},
-	})
+	}
+	// MyGo measures the items as a context menu's, short of their labels
+	// on Windows (padMenus).
+	for _, it := range items {
+		if it.Label != "" {
+			it.Label += labelPad
+		}
+	}
+	return mygo.NewMenu(items)
 }
 
 // showWindow brings the main window to the front, made anew if it was
