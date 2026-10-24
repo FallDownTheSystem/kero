@@ -105,12 +105,12 @@ func runApp() {
 		a.update(func() { a.active = false; a.reportView() })
 	})
 	mygo.App.OnActivate(func(hasVisible bool) {
-		if !hasVisible && a.win != nil {
-			a.win.Show()
+		if !hasVisible {
+			a.showWindow()
 		}
 	})
+	mygo.App.OnWindowAllClosed(a.lastWindowClosed)
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
-		a.quitting = true
 		a.savePrefs()
 	})
 	// Windows leaves an icon in the notification area after its app until
@@ -125,24 +125,7 @@ func runApp() {
 		mygo.App.SetActivationPolicy(activationPolicy(a.set))
 	}
 	mygo.App.WhenReady(func() {
-		a.win = mygo.NewWindow(framed(mygo.WindowOptions{
-			Title:     "Kero",
-			Width:     1180,
-			Height:    760,
-			MinWidth:  560,
-			MinHeight: 360,
-			StateKey:  "main",
-			Vibrancy:  vibrancyFor(a.set),
-			Content:   ui.View(a.view),
-		}))
-		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.claimShown(); a.reportView() }) })
-		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
-		a.win.OnClose(func(e *mygo.CloseEvent) {
-			if a.hidesOnClose() {
-				e.PreventDefault()
-				a.win.Hide()
-			}
-		})
+		a.openWindow()
 		a.applyTray()
 		a.idleTime = mygo.Power.IdleTime
 		go a.watchReturn()
@@ -153,6 +136,26 @@ func runApp() {
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// openWindow makes the main window: as Kero starts, and again after
+// closing it left Kero running in the menu bar or the notification area.
+func (a *App) openWindow() {
+	a.win = mygo.NewWindow(framed(mygo.WindowOptions{
+		Title:     "Kero",
+		Width:     1180,
+		Height:    760,
+		MinWidth:  560,
+		MinHeight: 360,
+		StateKey:  "main",
+		Vibrancy:  vibrancyFor(a.set),
+		Content:   ui.View(a.view),
+	}))
+	a.winOpen = true
+	a.updateTitle()
+	a.win.OnFocus(func() { a.update(func() { a.focused = true; a.claimShown(); a.reportView() }) })
+	a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
+	a.win.OnClosed(a.windowClosed)
 }
 
 // newSessionIn starts a session in a directory of a host, in its project.

@@ -72,9 +72,11 @@ type termEntry struct {
 // App is the app's state. It lives on the main thread: other goroutines
 // change it through Window.Update.
 type App struct {
-	win      *mygo.Window
-	tray     *mygo.Tray // the icon in the menu bar or notification area, while it shows
-	quitting bool       // a quit began: closing the window no longer hides it
+	// win is the main window, and winOpen whether it is open: closed, it
+	// still takes the updates of Window.Update, which run without it.
+	win     *mygo.Window
+	winOpen bool
+	tray    *mygo.Tray // the icon in the menu bar or notification area, while it shows
 
 	// hosts are the kerods the app shows, this machine's first; st is
 	// what they hold, each host's sessions and projects after the one's
@@ -229,9 +231,7 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 		}
 		a.selectSession(m.Select)
 		if a.win != nil {
-			a.win.Show()
-			a.win.Focus()
-			mygo.App.Focus()
+			a.showWindow()
 		}
 	case "action":
 		if !a.remoteControl(h) {
@@ -326,8 +326,7 @@ func (a *App) showNotification(id, title, body string) {
 	n.OnClick(func() {
 		a.update(func() {
 			a.selectSession(id)
-			a.win.Show()
-			a.win.Focus()
+			a.showWindow()
 		})
 		n.Close()
 	})

@@ -15,8 +15,8 @@ import (
 
 // Kero's icon in the menu bar on macOS, as Settings › General chooses
 // (settings.AppIcons), and always in the notification area on Windows and
-// Linux. While it shows, closing the window hides it there, and Kero keeps
-// running until the user quits.
+// Linux. While it shows, closing the window leaves Kero running there,
+// until the user quits; the icon opens the window again.
 
 // trayTemplate is the frog of the app's icon, black on transparent for
 // macOS to tint: 14 points tall in the menu bar's 18, as other apps'
@@ -105,11 +105,14 @@ func (a *App) trayMenu() *mygo.Menu {
 	})
 }
 
-// showWindow brings the main window back, as from the menu bar where
-// closing it hid it.
+// showWindow brings the main window to the front, made anew if it was
+// closed.
 func (a *App) showWindow() {
 	if a.win == nil {
 		return
+	}
+	if !a.winOpen {
+		a.openWindow()
 	}
 	if a.win.IsMinimized() {
 		a.win.Restore()
@@ -119,7 +122,24 @@ func (a *App) showWindow() {
 	mygo.App.Focus()
 }
 
-// hidesOnClose tells whether closing the main window hides it, rather than
-// quitting: while the app's icon shows in the menu bar or the notification
-// area, which brings it back. A Linux desktop without a tray has no icon.
-func (a *App) hidesOnClose() bool { return !a.quitting && a.tray != nil }
+// windowClosed lets go of what the main window showed: its panes'
+// terminals and pages, which a window made anew attaches again.
+func (a *App) windowClosed() {
+	a.winOpen, a.focused = false, false
+	for id := range a.terms {
+		a.dropTerm(id)
+	}
+	for id := range a.webs {
+		a.dropWeb(id)
+	}
+	a.reportView()
+}
+
+// lastWindowClosed quits, unless the app's icon shows in the menu bar or
+// the notification area, which opens the window again. A Linux desktop
+// without a tray has no icon.
+func (a *App) lastWindowClosed() {
+	if a.tray == nil {
+		mygo.App.Quit()
+	}
+}
