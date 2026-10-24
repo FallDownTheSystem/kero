@@ -522,6 +522,18 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				a.set.Editor = strings.TrimSpace(a.ss.editorDraft)
 			}
 		})
+		settingRow(c, pal, locales.SetFileOpen(), locales.SetFileOpenDetail(), func() {
+			segmented(c, "file-open", &s.FileOpen, []string{"editor", "pane"}, []string{locales.SetOpenEditor(), locales.SetOpenPane()})
+		})
+		settingRow(c, pal, locales.SetFilePane(), locales.SetFilePaneDetail(), func() {
+			segmented(c, "file-pane", &s.FilePane, []string{"new", "replace"}, []string{locales.SetPaneNew(), locales.SetPaneReplace()})
+		})
+		settingRow(c, pal, locales.SetFilePreview(), locales.SetFilePreviewDetail(), func() {
+			toggle(c.Key("file-preview"), &s.FilePreview, pal)
+		})
+		settingRow(c, pal, locales.SetHiddenFiles(), locales.SetHiddenFilesDetail(), func() {
+			toggle(c.Key("hidden-files"), &s.HiddenFiles, pal)
+		})
 	})
 	// Windows and Linux always show the icon, in the notification area.
 	if runtime.GOOS == "darwin" {
@@ -652,6 +664,19 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, locales.SetTranslucent(), locales.SetTranslucentDetail(), func() {
 			toggle(c.Key("vibrancy"), &s.Vibrancy, pal)
+		})
+	})
+	settingsGroup(c, pal, locales.SetLayout(), "", func() {
+		settingRow(c, pal, locales.SetSessionsSide(), locales.SetSessionsSideDetail(), func() {
+			segmented(c, "sessions-side", &s.SessionsSide, []string{"left", "right"}, []string{locales.SetSideLeft(), locales.SetSideRight()})
+		})
+		folders := []string{"hidden", "folder", "full", "fit"}
+		folderLabels := []string{locales.SetPathHidden(), locales.SetPathFolder(), locales.SetPathFull(), locales.SetPathFit()}
+		settingRow(c, pal, locales.SetPaneFolder(), locales.SetPaneFolderDetail(), func() {
+			segmented(c, "pane-folder", &s.PaneFolder, folders, folderLabels)
+		})
+		settingRow(c, pal, locales.SetPanelPath(), locales.SetPanelPathDetail(), func() {
+			segmented(c, "panel-path", &s.PanelPath, folders, folderLabels)
 		})
 	})
 	ui.Column(c).Gap(8).Children(func() {

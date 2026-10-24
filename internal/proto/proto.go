@@ -761,6 +761,12 @@ type (
 		URL   string `json:"url"`
 		Title string `json:"title,omitempty"`
 	}
+	// FileParams give an editor pane another file to show (pane.file):
+	// absolute, of the host, as CreateParams' File.
+	FileParams struct {
+		ID   string `json:"id"`
+		File string `json:"file"`
+	}
 	// BrowserParams ask a browser pane's page to do something (browser),
 	// which the app showing it does.
 	BrowserParams struct {

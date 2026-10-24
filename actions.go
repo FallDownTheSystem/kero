@@ -105,10 +105,7 @@ func (a *App) run(id string, args map[string]string) {
 	case "files.toggle":
 		a.toggleSide(sideFiles)
 	case "changes.show":
-		if a.prefs.Side != sideChanges {
-			a.prefs.Side = sideChanges
-			a.savePrefs()
-		}
+		a.showSide(sideChanges)
 	case "files.show":
 		a.showFiles(args["path"])
 	case "text.bigger":
