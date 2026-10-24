@@ -25,6 +25,7 @@ kero new -n api -d ~/code/api    # セッションを開始し、その ID を�
 kero new -- npm run dev          # コマンドを実行するセッションを開始
 kero split --down -- npm test    # このペインの横にペイン
 kero split --url localhost:3000  # ページを表示するブラウザペイン
+kero split --file src/main.go    # ファイルのエディタペイン
 kero rename api backend          # セッション名を変更
 kero focus backend               # アプリで表示
 kero close backend               # セッションを終える（ペインを指定するとそのペイン）

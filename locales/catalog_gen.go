@@ -2438,6 +2438,16 @@ func (msgs Messages) SetWeightLight() string {
 	return Catalog.Format(msgs.locale, "setWeightLight", nil)
 }
 
+// SetWeightSemilight says "Semilight"
+// in the language the app shows.
+func SetWeightSemilight() string { return In(i18n.Locale()).SetWeightSemilight() }
+
+// SetWeightSemilight says "Semilight"
+// in the language of msgs.
+func (msgs Messages) SetWeightSemilight() string {
+	return Catalog.Format(msgs.locale, "setWeightSemilight", nil)
+}
+
 // SetWeightRegular says "Regular"
 // in the language the app shows.
 func SetWeightRegular() string { return In(i18n.Locale()).SetWeightRegular() }
@@ -3462,6 +3472,16 @@ func (msgs Messages) ActionToggleChanges() string {
 	return Catalog.Format(msgs.locale, "actionToggleChanges", nil)
 }
 
+// ActionToggleFiles says "Toggle Files"
+// in the language the app shows.
+func ActionToggleFiles() string { return In(i18n.Locale()).ActionToggleFiles() }
+
+// ActionToggleFiles says "Toggle Files"
+// in the language of msgs.
+func (msgs Messages) ActionToggleFiles() string {
+	return Catalog.Format(msgs.locale, "actionToggleFiles", nil)
+}
+
 // SideChanges says "Changes"
 // in the language the app shows.
 func SideChanges() string { return In(i18n.Locale()).SideChanges() }
@@ -3470,6 +3490,16 @@ func SideChanges() string { return In(i18n.Locale()).SideChanges() }
 // in the language of msgs.
 func (msgs Messages) SideChanges() string {
 	return Catalog.Format(msgs.locale, "sideChanges", nil)
+}
+
+// SideFiles says "Files"
+// in the language the app shows.
+func SideFiles() string { return In(i18n.Locale()).SideFiles() }
+
+// SideFiles says "Files"
+// in the language of msgs.
+func (msgs Messages) SideFiles() string {
+	return Catalog.Format(msgs.locale, "sideFiles", nil)
 }
 
 // SideClose says "Close Panel"
@@ -3872,6 +3902,46 @@ func (msgs Messages) SetDiffAuto() string {
 	return Catalog.Format(msgs.locale, "setDiffAuto", nil)
 }
 
+// SetFiles says "Files"
+// in the language the app shows.
+func SetFiles() string { return In(i18n.Locale()).SetFiles() }
+
+// SetFiles says "Files"
+// in the language of msgs.
+func (msgs Messages) SetFiles() string {
+	return Catalog.Format(msgs.locale, "setFiles", nil)
+}
+
+// SetEditor says "Editor"
+// in the language the app shows.
+func SetEditor() string { return In(i18n.Locale()).SetEditor() }
+
+// SetEditor says "Editor"
+// in the language of msgs.
+func (msgs Messages) SetEditor() string {
+	return Catalog.Format(msgs.locale, "setEditor", nil)
+}
+
+// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens the file with the app the system opens it …"
+// in the language the app shows.
+func SetEditorDetail() string { return In(i18n.Locale()).SetEditorDetail() }
+
+// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens the file with the app the system opens it …"
+// in the language of msgs.
+func (msgs Messages) SetEditorDetail() string {
+	return Catalog.Format(msgs.locale, "setEditorDetail", nil)
+}
+
+// SetEditorSystem says "System default"
+// in the language the app shows.
+func SetEditorSystem() string { return In(i18n.Locale()).SetEditorSystem() }
+
+// SetEditorSystem says "System default"
+// in the language of msgs.
+func (msgs Messages) SetEditorSystem() string {
+	return Catalog.Format(msgs.locale, "setEditorSystem", nil)
+}
+
 // PageBrowser says "Browser"
 // in the language the app shows.
 func PageBrowser() string { return In(i18n.Locale()).PageBrowser() }
@@ -4030,6 +4100,258 @@ func ChangesExpandAll() string { return In(i18n.Locale()).ChangesExpandAll() }
 // in the language of msgs.
 func (msgs Messages) ChangesExpandAll() string {
 	return Catalog.Format(msgs.locale, "changesExpandAll", nil)
+}
+
+// FilesNoFolder says "No folder"
+// in the language the app shows.
+func FilesNoFolder() string { return In(i18n.Locale()).FilesNoFolder() }
+
+// FilesNoFolder says "No folder"
+// in the language of msgs.
+func (msgs Messages) FilesNoFolder() string {
+	return Catalog.Format(msgs.locale, "filesNoFolder", nil)
+}
+
+// FilesNoFolderDetail says "A session's files show here while one of its terminals works in a folder."
+// in the language the app shows.
+func FilesNoFolderDetail() string { return In(i18n.Locale()).FilesNoFolderDetail() }
+
+// FilesNoFolderDetail says "A session's files show here while one of its terminals works in a folder."
+// in the language of msgs.
+func (msgs Messages) FilesNoFolderDetail() string {
+	return Catalog.Format(msgs.locale, "filesNoFolderDetail", nil)
+}
+
+// FilesCantList says "Can't list the folder"
+// in the language the app shows.
+func FilesCantList() string { return In(i18n.Locale()).FilesCantList() }
+
+// FilesCantList says "Can't list the folder"
+// in the language of msgs.
+func (msgs Messages) FilesCantList() string {
+	return Catalog.Format(msgs.locale, "filesCantList", nil)
+}
+
+// FilesEmpty says "This folder is empty"
+// in the language the app shows.
+func FilesEmpty() string { return In(i18n.Locale()).FilesEmpty() }
+
+// FilesEmpty says "This folder is empty"
+// in the language of msgs.
+func (msgs Messages) FilesEmpty() string {
+	return Catalog.Format(msgs.locale, "filesEmpty", nil)
+}
+
+// FilesUnsaved says "Unsaved"
+// in the language the app shows.
+func FilesUnsaved() string { return In(i18n.Locale()).FilesUnsaved() }
+
+// FilesUnsaved says "Unsaved"
+// in the language of msgs.
+func (msgs Messages) FilesUnsaved() string {
+	return Catalog.Format(msgs.locale, "filesUnsaved", nil)
+}
+
+// FilesOpenInEditor says "Open in Editor"
+// in the language the app shows.
+func FilesOpenInEditor() string { return In(i18n.Locale()).FilesOpenInEditor() }
+
+// FilesOpenInEditor says "Open in Editor"
+// in the language of msgs.
+func (msgs Messages) FilesOpenInEditor() string {
+	return Catalog.Format(msgs.locale, "filesOpenInEditor", nil)
+}
+
+// FilesOpenWith says "Open With…"
+// in the language the app shows.
+func FilesOpenWith() string { return In(i18n.Locale()).FilesOpenWith() }
+
+// FilesOpenWith says "Open With…"
+// in the language of msgs.
+func (msgs Messages) FilesOpenWith() string {
+	return Catalog.Format(msgs.locale, "filesOpenWith", nil)
+}
+
+// FilesCantOpen says "Couldn't open it: {error}"
+// in the language the app shows.
+func FilesCantOpen(error string) string { return In(i18n.Locale()).FilesCantOpen(error) }
+
+// FilesCantOpen says "Couldn't open it: {error}"
+// in the language of msgs.
+func (msgs Messages) FilesCantOpen(error string) string {
+	return Catalog.Format(msgs.locale, "filesCantOpen", map[string]any{"error": error})
+}
+
+// FilesCopyPath says "Copy Path"
+// in the language the app shows.
+func FilesCopyPath() string { return In(i18n.Locale()).FilesCopyPath() }
+
+// FilesCopyPath says "Copy Path"
+// in the language of msgs.
+func (msgs Messages) FilesCopyPath() string {
+	return Catalog.Format(msgs.locale, "filesCopyPath", nil)
+}
+
+// FilesCopyRelativePath says "Copy Relative Path"
+// in the language the app shows.
+func FilesCopyRelativePath() string { return In(i18n.Locale()).FilesCopyRelativePath() }
+
+// FilesCopyRelativePath says "Copy Relative Path"
+// in the language of msgs.
+func (msgs Messages) FilesCopyRelativePath() string {
+	return Catalog.Format(msgs.locale, "filesCopyRelativePath", nil)
+}
+
+// FilesGone says "The file is gone"
+// in the language the app shows.
+func FilesGone() string { return In(i18n.Locale()).FilesGone() }
+
+// FilesGone says "The file is gone"
+// in the language of msgs.
+func (msgs Messages) FilesGone() string {
+	return Catalog.Format(msgs.locale, "filesGone", nil)
+}
+
+// FilesCloseFile says "Close File"
+// in the language the app shows.
+func FilesCloseFile() string { return In(i18n.Locale()).FilesCloseFile() }
+
+// FilesCloseFile says "Close File"
+// in the language of msgs.
+func (msgs Messages) FilesCloseFile() string {
+	return Catalog.Format(msgs.locale, "filesCloseFile", nil)
+}
+
+// FilesCantRead says "Can't read the file: {error}"
+// in the language the app shows.
+func FilesCantRead(error string) string { return In(i18n.Locale()).FilesCantRead(error) }
+
+// FilesCantRead says "Can't read the file: {error}"
+// in the language of msgs.
+func (msgs Messages) FilesCantRead(error string) string {
+	return Catalog.Format(msgs.locale, "filesCantRead", map[string]any{"error": error})
+}
+
+// FilesSave says "Save"
+// in the language the app shows.
+func FilesSave() string { return In(i18n.Locale()).FilesSave() }
+
+// FilesSave says "Save"
+// in the language of msgs.
+func (msgs Messages) FilesSave() string {
+	return Catalog.Format(msgs.locale, "filesSave", nil)
+}
+
+// FilesChangedOnDisk says "The file changed on disk since you opened it."
+// in the language the app shows.
+func FilesChangedOnDisk() string { return In(i18n.Locale()).FilesChangedOnDisk() }
+
+// FilesChangedOnDisk says "The file changed on disk since you opened it."
+// in the language of msgs.
+func (msgs Messages) FilesChangedOnDisk() string {
+	return Catalog.Format(msgs.locale, "filesChangedOnDisk", nil)
+}
+
+// FilesReload says "Reload"
+// in the language the app shows.
+func FilesReload() string { return In(i18n.Locale()).FilesReload() }
+
+// FilesReload says "Reload"
+// in the language of msgs.
+func (msgs Messages) FilesReload() string {
+	return Catalog.Format(msgs.locale, "filesReload", nil)
+}
+
+// FilesOverwrite says "Overwrite"
+// in the language the app shows.
+func FilesOverwrite() string { return In(i18n.Locale()).FilesOverwrite() }
+
+// FilesOverwrite says "Overwrite"
+// in the language of msgs.
+func (msgs Messages) FilesOverwrite() string {
+	return Catalog.Format(msgs.locale, "filesOverwrite", nil)
+}
+
+// FilesCantSave says "Couldn't save: {error}"
+// in the language the app shows.
+func FilesCantSave(error string) string { return In(i18n.Locale()).FilesCantSave(error) }
+
+// FilesCantSave says "Couldn't save: {error}"
+// in the language of msgs.
+func (msgs Messages) FilesCantSave(error string) string {
+	return Catalog.Format(msgs.locale, "filesCantSave", map[string]any{"error": error})
+}
+
+// FilesCollapse says "Collapse All"
+// in the language the app shows.
+func FilesCollapse() string { return In(i18n.Locale()).FilesCollapse() }
+
+// FilesCollapse says "Collapse All"
+// in the language of msgs.
+func (msgs Messages) FilesCollapse() string {
+	return Catalog.Format(msgs.locale, "filesCollapse", nil)
+}
+
+// FilesRefresh says "Refresh"
+// in the language the app shows.
+func FilesRefresh() string { return In(i18n.Locale()).FilesRefresh() }
+
+// FilesRefresh says "Refresh"
+// in the language of msgs.
+func (msgs Messages) FilesRefresh() string {
+	return Catalog.Format(msgs.locale, "filesRefresh", nil)
+}
+
+// FilesOpenInPane says "Open in Pane"
+// in the language the app shows.
+func FilesOpenInPane() string { return In(i18n.Locale()).FilesOpenInPane() }
+
+// FilesOpenInPane says "Open in Pane"
+// in the language of msgs.
+func (msgs Messages) FilesOpenInPane() string {
+	return Catalog.Format(msgs.locale, "filesOpenInPane", nil)
+}
+
+// FilesWrap says "Wrap Lines"
+// in the language the app shows.
+func FilesWrap() string { return In(i18n.Locale()).FilesWrap() }
+
+// FilesWrap says "Wrap Lines"
+// in the language of msgs.
+func (msgs Messages) FilesWrap() string {
+	return Catalog.Format(msgs.locale, "filesWrap", nil)
+}
+
+// FilesConfirmCloseTitle says "Close without saving?"
+// in the language the app shows.
+func FilesConfirmCloseTitle() string { return In(i18n.Locale()).FilesConfirmCloseTitle() }
+
+// FilesConfirmCloseTitle says "Close without saving?"
+// in the language of msgs.
+func (msgs Messages) FilesConfirmCloseTitle() string {
+	return Catalog.Format(msgs.locale, "filesConfirmCloseTitle", nil)
+}
+
+// FilesConfirmCloseDetail says "Your edits to {file} aren't saved, and go with the pane."
+// in the language the app shows.
+func FilesConfirmCloseDetail(file string) string {
+	return In(i18n.Locale()).FilesConfirmCloseDetail(file)
+}
+
+// FilesConfirmCloseDetail says "Your edits to {file} aren't saved, and go with the pane."
+// in the language of msgs.
+func (msgs Messages) FilesConfirmCloseDetail(file string) string {
+	return Catalog.Format(msgs.locale, "filesConfirmCloseDetail", map[string]any{"file": file})
+}
+
+// FilesDiscard says "Close Without Saving"
+// in the language the app shows.
+func FilesDiscard() string { return In(i18n.Locale()).FilesDiscard() }
+
+// FilesDiscard says "Close Without Saving"
+// in the language of msgs.
+func (msgs Messages) FilesDiscard() string {
+	return Catalog.Format(msgs.locale, "filesDiscard", nil)
 }
 
 // PageHosts says "Hosts"
