@@ -267,25 +267,76 @@ button {
     background 0.15s;
 }
 
-.lang-links {
-  display: flex;
+.lang-menu {
+  position: relative;
 }
 
-.lang-link {
+.lang-menu__button {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   height: 34px;
   padding: 0 10px;
+  border: 0;
   border-radius: 999px;
+  background: none;
   color: var(--text-2);
+  font: inherit;
   font-size: 14px;
   white-space: nowrap;
+  cursor: pointer;
   transition:
     color 0.15s,
     background 0.15s;
 }
 
-.lang-link:hover,
+.lang-menu__chevron {
+  transition: transform 0.15s;
+}
+
+.lang-menu__button[aria-expanded='true'] .lang-menu__chevron {
+  transform: rotate(180deg);
+}
+
+.lang-menu__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  box-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.35);
+  animation: search-fade 0.15s ease-out;
+}
+
+.lang-menu__list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.lang-menu__list a:hover {
+  color: var(--text);
+  background: var(--pill);
+}
+
+.lang-menu__list a[aria-current='page'] {
+  color: var(--text);
+}
+
+.lang-menu__button:hover,
+.lang-menu__button[aria-expanded='true'],
 .icon-link:hover {
   color: var(--text);
   background: var(--pill);
@@ -332,8 +383,35 @@ button {
 
 .mobile-nav__end {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding-top: 16px;
+}
+
+/* The phone's language menu opens in place, a row of its own under the
+   buttons. */
+.lang-menu--inline {
+  display: contents;
+}
+
+.mobile-nav__end .lang-menu__button {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--stroke);
+}
+
+.mobile-nav__end .lang-menu__list {
+  position: static;
+  order: 1;
+  flex-basis: 100%;
+  box-shadow: none;
+}
+
+.mobile-nav__end .lang-menu__list a {
+  display: flex;
+  height: 40px;
+  border: 0;
+  font-size: 16px;
 }
 
 .mobile-nav__end a {
