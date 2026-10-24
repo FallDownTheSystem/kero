@@ -38,13 +38,16 @@ type Settings struct {
 	Language   string `json:"language"`   // "system", or one of Languages
 	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
 	// SessionsSide is the window's side the sessions' sidebar takes, "left"
-	// or "right": the side panel, Changes and Files, takes the other.
+	// or "right": the Explorer, the side panel of Changes and Files, takes
+	// the other.
 	SessionsSide string `json:"sessionsSide"`
-	// PanelPath is what the side panel's header shows of its folder:
+	// ExplorerFolder is what the Explorer's header shows of its folder:
 	// "hidden", "folder" its name, "full" its path, or "fit" the most of
 	// those that fits; PaneFolder what a pane's header shows of its.
-	PanelPath  string `json:"panelPath"`
-	PaneFolder string `json:"paneFolder"`
+	ExplorerFolder string `json:"explorerFolder"`
+	PaneFolder     string `json:"paneFolder"`
+	// DimExplorer fades the Explorer while the user is not in it.
+	DimExplorer bool `json:"dimExplorer"`
 
 	// Terminal
 	FontFamily   string  `json:"fontFamily"` // "" the font kero carries; "monospace" the system's
@@ -55,7 +58,6 @@ type Settings struct {
 	Thicken      bool    `json:"thicken"`
 	MinContrast  float32 `json:"minContrast"`           // a WCAG ratio text keeps with its background
 	DimUnfocused bool    `json:"dimUnfocusedTerminals"` // the terminals the user is not in fade
-	DimPanel     bool    `json:"dimPanel"`              // the side panel fades while the user is not in it
 	Cursor       string  `json:"cursor"`                // "block", "bar" or "underline"
 	CursorBlink  bool    `json:"cursorBlink"`
 	LightTheme   string  `json:"lightTheme"` // one of KeroThemes by its Name, or a Ghostty theme's
@@ -174,7 +176,7 @@ func Default() Settings {
 		Language:        "system",
 		Vibrancy:        true,
 		SessionsSide:    "left",
-		PanelPath:       "fit",
+		ExplorerFolder:  "fit",
 		PaneFolder:      "fit",
 		DimUnfocused:    true,
 		FontSize:        13,
@@ -413,7 +415,7 @@ func (s *Settings) normalize() {
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
 	oneOf(&s.AppIcon, d.AppIcon, AppIcons...)
 	oneOf(&s.SessionsSide, d.SessionsSide, "left", "right")
-	oneOf(&s.PanelPath, d.PanelPath, "hidden", "folder", "full", "fit")
+	oneOf(&s.ExplorerFolder, d.ExplorerFolder, "hidden", "folder", "full", "fit")
 	oneOf(&s.PaneFolder, d.PaneFolder, "hidden", "folder", "full", "fit")
 	oneOf(&s.FileOpen, d.FileOpen, "editor", "pane")
 	oneOf(&s.FilePane, d.FilePane, "new", "replace")

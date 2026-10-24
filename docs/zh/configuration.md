@@ -58,9 +58,11 @@ kero config check             # 报告未知的配置项和无效的值
 | `window-theme`       | `system` | 应用外观：`system`、`light` 或 `dark`                            |
 | `language`           | `system` | 应用语言：`system`、`en`、`ja` 或 `zh-Hans`                      |
 | `window-translucent` | `true`   | 让桌面透过窗口显示出来                                          |
-| `sessions-sidebar`   | `left`   | 会话边栏所在的窗口一侧：`left` 或 `right`；改动和文件面板位于另一侧 |
+| `sessions-sidebar`   | `left`   | 会话边栏所在的窗口一侧：`left` 或 `right`；显示改动和文件的资源管理器位于另一侧 |
 | `pane-folder`        | `fit`    | 窗格标题栏如何显示其文件夹：`hidden`、`folder`（名称）、`full`（路径），或 `fit`，在放得下的范围内尽量多显示 |
-| `panel-path`         | `fit`    | 改动和文件面板的标题栏如何显示其文件夹，取值同 `pane-folder` |
+| `explorer-folder`    | `fit`    | 资源管理器的标题栏如何显示其文件夹，取值同 `pane-folder` |
+| `dim-unfocused-terminals` | `true` | 会话有多个窗格时，淡化未聚焦的窗格 |
+| `dim-unfocused-explorer` | `false` | 你不在资源管理器中时，淡化它 |
 
 ## 终端
 
@@ -74,8 +76,6 @@ kero config check             # 报告未知的配置项和无效的值
 | `font-ligatures`      | `true`  | 按字体的设计连写字符                                                     |
 | `font-thicken`        | `false` | 加粗笔画，同 Ghostty                                                     |
 | `minimum-contrast`    | `3`     | 文字与背景之间保持的最低对比度，从 `1`（不限制）到 `21`，让为深色背景设计的颜色在浅色背景上也清晰可读，同 Ghostty |
-| `dim-unfocused-terminals` | `true` | 会话有多个窗格时，淡化未聚焦的终端                                  |
-| `dim-unfocused-panel` | `false` | 你不在改动和文件面板中时，淡化该面板 |
 | `cursor-style`        | `block` | `block`、`bar` 或 `underline`；程序可以更改它                            |
 | `cursor-style-blink`  | `true`  | 光标闪烁                                                                 |
 | `macos-option-as-alt` | `false` | Option 键向程序发送 Alt（Meta）                                          |

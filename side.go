@@ -190,7 +190,7 @@ func (a *App) sideEdge(c *ui.Context, pal *palette, row float32, left bool) {
 }
 
 // folderShown is what a header shows of a folder, as mode (settings'
-// PaneFolder, PanelPath) asks: its path, full; its name; or "" for
+// PaneFolder, ExplorerFolder) asks: its path, full; its name; or "" for
 // neither. Fit asks for the most of them that fits the room the folder's
 // text and the gap after it, bound to key+"-dir" and key+"-gap", took as
 // last laid out, of which the folder takes gap more with its text shown,
@@ -223,12 +223,12 @@ func (a *App) folderShown(c *ui.Context, mode, full, name, key string, size, gap
 }
 
 // sideFolder is what the panel's header shows of its folder, as the user
-// chose (settings' PanelPath).
+// chose (settings' ExplorerFolder).
 func (a *App) sideFolder(c *ui.Context, s *proto.Session, dir string) string {
 	if dir == "" {
 		return ""
 	}
-	return a.folderShown(c, a.set.PanelPath, a.hostOf(s.ID).shortDir(dir), proto.DirName(dir), "side", 13, 8, 0)
+	return a.folderShown(c, a.set.ExplorerFolder, a.hostOf(s.ID).shortDir(dir), proto.DirName(dir), "side", 13, 8, 0)
 }
 
 // sidePanel is the panel's card: its header, then its view. left and right
@@ -240,8 +240,8 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 		Focusable().Bind(a.paneRef("side-card"))
 	a.side.focused = card.FocusWithin()
 	// While the user is elsewhere, the panel fades as a terminal they are
-	// not in does, as they chose (settings' DimPanel).
-	dim := a.set.DimPanel && !a.side.focused
+	// not in does, as they chose (settings' DimExplorer).
+	dim := a.set.DimExplorer && !a.side.focused
 	bg := pal.card
 	if dim {
 		bg = pal.cardDim
@@ -293,7 +293,7 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 				a.changesView(c, pal, s, width)
 			}
 		})
-		if a.set.DimPanel {
+		if a.set.DimExplorer {
 			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
 			v.Opacity(v.Animate("on", b2f(dim), 160*time.Millisecond))
 		}

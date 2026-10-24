@@ -503,14 +503,14 @@ func TestPanelButtons(t *testing.T) {
 	a := testApp(t)
 	tt := ui.NewTester(a.view, 1280, 720)
 	tt.Frame()
-	closed, _ := tt.Find(a.tip("Show Panel", "changes.toggle"))
-	if err := tt.Click(a.tip("Show Panel", "changes.toggle")); err != nil {
+	closed, _ := tt.Find(a.tip("Show Explorer", "changes.toggle"))
+	if err := tt.Click(a.tip("Show Explorer", "changes.toggle")); err != nil {
 		t.Fatalf("%v; texts %q", err, tt.Texts())
 	}
 	tt.Frame()
 	tt.Frame()
 	// The toggle stays where it was, now in the panel's header.
-	if open, _ := tt.Find(a.tip("Hide Panel", "changes.toggle")); open.X != closed.X || open.Y != closed.Y {
+	if open, _ := tt.Find(a.tip("Hide Explorer", "changes.toggle")); open.X != closed.X || open.Y != closed.Y {
 		t.Errorf("the panel's toggle moved from %v to %v as it opened", closed, open)
 	}
 	if a.prefs.Side != sideChanges {
@@ -520,7 +520,7 @@ func TestPanelButtons(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if err := tt.Click(a.tip("Hide Panel", "files.toggle")); err != nil {
+	if err := tt.Click(a.tip("Hide Explorer", "files.toggle")); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -530,7 +530,7 @@ func TestPanelButtons(t *testing.T) {
 	a.toggleSide(a.sideView())
 	tt.Frame()
 	before, _ := tt.Find("Files")
-	if err := tt.Click("Widen Panel"); err != nil {
+	if err := tt.Click("Widen Explorer"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -539,7 +539,7 @@ func TestPanelButtons(t *testing.T) {
 	if wide.X >= before.X-100 {
 		t.Errorf("the widened panel's tab is at %v, from %v", wide.X, before.X)
 	}
-	if err := tt.Click("Restore Panel Width"); err != nil {
+	if err := tt.Click("Restore Explorer Width"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

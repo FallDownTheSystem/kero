@@ -682,8 +682,14 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetPaneFolder(), locales.SetPaneFolderDetail(), func() {
 			segmented(c, "pane-folder", &s.PaneFolder, folders, folderLabels)
 		})
-		settingRow(c, pal, locales.SetPanelPath(), locales.SetPanelPathDetail(), func() {
-			segmented(c, "panel-path", &s.PanelPath, folders, folderLabels)
+		settingRow(c, pal, locales.SetExplorerFolder(), locales.SetExplorerFolderDetail(), func() {
+			segmented(c, "explorer-folder", &s.ExplorerFolder, folders, folderLabels)
+		})
+		settingRow(c, pal, locales.SetDimUnfocused(), locales.SetDimUnfocusedDetail(), func() {
+			toggle(c.Key("dim-unfocused"), &s.DimUnfocused, pal)
+		})
+		settingRow(c, pal, locales.SetDimExplorer(), locales.SetDimExplorerDetail(), func() {
+			toggle(c.Key("dim-explorer"), &s.DimExplorer, pal)
 		})
 	})
 	ui.Column(c).Gap(8).Children(func() {
@@ -903,14 +909,6 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, locales.SetThicken(), locales.SetThickenDetail(), func() {
 			toggle(c.Key("thicken"), &s.Thicken, pal)
-		})
-	})
-	settingsGroup(c, pal, "", "", func() {
-		settingRow(c, pal, locales.SetDimUnfocused(), locales.SetDimUnfocusedDetail(), func() {
-			toggle(c.Key("dim-unfocused"), &s.DimUnfocused, pal)
-		})
-		settingRow(c, pal, locales.SetDimPanel(), locales.SetDimPanelDetail(), func() {
-			toggle(c.Key("dim-panel"), &s.DimPanel, pal)
 		})
 	})
 	settingsGroup(c, pal, locales.SetCursor(), "", func() {
