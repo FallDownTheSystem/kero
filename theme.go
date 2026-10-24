@@ -56,6 +56,10 @@ type palette struct {
 	popover   ui.Color
 	kbd       ui.Color
 	kbdBorder ui.Color
+
+	// code is the theme of code on a card (cardPalette): of its terminal,
+	// or of its files; nil for the window's own palettes.
+	code *terminal.Theme
 }
 
 var lightPalette = palette{
