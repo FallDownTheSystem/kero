@@ -251,6 +251,7 @@ var keys = []key{
 	boolKey("remote-updates", "let Kero on another machine that connects update the Kero app here to its version, which restarts it", func(s *Settings) *bool { return &s.RemoteUpdates }),
 	boolKey("git-status", "show the git branch and changes of each session", func(s *Settings) *bool { return &s.GitStatus }),
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
+	stringKey("editor", "the command Open in Editor runs with a file's path, as code or zed: empty for the app the system opens the file with", func(s *Settings) *string { return &s.Editor }),
 	boolKey("browser-block-ads", "block ads and trackers in browser panes, with the browser-filter-list lists", func(s *Settings) *bool { return &s.BlockAds }),
 	{name: "browser-filter-list", doc: "a filter list browser-block-ads blocks with: " + strings.Join(adListIDs(), ", ") + ", or a list's https URL; repeat it, and leave it empty for none", list: true,
 		get: func(s *Settings) []string {

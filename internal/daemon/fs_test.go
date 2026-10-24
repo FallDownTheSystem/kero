@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"kero/internal/git"
 	"kero/internal/proto"
 )
 
@@ -74,6 +75,47 @@ func TestFSListAndStat(t *testing.T) {
 	}
 	if _, err := fsRead(proto.FSReadParams{Path: dir}); err == nil {
 		t.Error("read a directory")
+	}
+}
+
+// A save writes the file only as it was read, and through a link to the
+// file it names.
+func TestFSWrite(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "main.go")
+	os.WriteFile(path, []byte("old"), 0o644)
+	w, err := fsWrite(proto.FSWriteParams{Path: path, Hash: git.Hash([]byte("old")), Data: []byte("new")})
+	if err != nil || w.Changed || w.Hash != git.Hash([]byte("new")) {
+		t.Fatalf("wrote %+v, %v", w, err)
+	}
+	if b, _ := os.ReadFile(path); string(b) != "new" {
+		t.Errorf("the file holds %q", b)
+	}
+	// Another program wrote it since it was read.
+	if w, err := fsWrite(proto.FSWriteParams{Path: path, Hash: git.Hash([]byte("old")), Data: []byte("mine")}); err != nil || !w.Changed {
+		t.Errorf("wrote over another's change: %+v, %v", w, err)
+	}
+	if b, _ := os.ReadFile(path); string(b) != "new" {
+		t.Errorf("the file holds %q after a refused write", b)
+	}
+	if _, err := fsWrite(proto.FSWriteParams{Path: filepath.Join(dir, "none"), Data: []byte("x")}); err == nil {
+		t.Error("wrote a file that is none")
+	}
+	if _, err := fsWrite(proto.FSWriteParams{Path: dir, Data: []byte("x")}); err == nil {
+		t.Error("wrote a directory")
+	}
+	link := filepath.Join(dir, "link.go")
+	if err := os.Symlink(path, link); err != nil {
+		t.Skip("no symbolic links here:", err)
+	}
+	if _, err := fsWrite(proto.FSWriteParams{Path: link, Hash: git.Hash([]byte("new")), Data: []byte("linked")}); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := os.Lstat(link); st.Mode()&os.ModeSymlink == 0 {
+		t.Error("the write replaced the link")
+	}
+	if b, _ := os.ReadFile(path); string(b) != "linked" {
+		t.Errorf("the linked file holds %q", b)
 	}
 }
 
