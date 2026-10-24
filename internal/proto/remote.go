@@ -157,6 +157,16 @@ type (
 		Hash    string `json:"hash,omitempty"`
 		Changed bool   `json:"changed,omitempty"`
 	}
+	// FSCreateParams make a file of the host, empty, or a folder (Dir), as
+	// the Files view's New File and New Folder do, with the folders it is
+	// in; never over what is there.
+	FSCreateParams struct {
+		Path string `json:"path"`
+		Dir  bool   `json:"dir,omitempty"`
+	}
+	FSCreate struct {
+		Path string `json:"path"` // absolute
+	}
 	// PasteFileParams put a file the user pasted or dropped into a pane on
 	// the host, in a directory of kero's, for the program to read by its
 	// path.

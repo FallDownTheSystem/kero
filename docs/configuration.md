@@ -129,7 +129,7 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 
 | Key      | Default | Description                                                                                                                        |
 | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `editor` | empty   | The command **Open in Editor** runs with a file's path, as `code`, `zed` or `"C:\Tools\editor.exe" -n`: empty opens the file with the app the system opens it with |
+| `editor` | empty   | The command **Open in Editor** runs with a file's path, as `code`, `zed` or `"C:\Tools\editor.exe" -n`: empty opens a file with the app the system opens it with, and a folder with the app the system opens text files with |
 
 ## Browser
 
