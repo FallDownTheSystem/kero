@@ -8,4 +8,4 @@
 
 All as [Iconify](https://iconify.design) serves them: `https://api.iconify.design/f7/<name>.svg`.
 
-`tray-template.png` is the frog of the app's icon (`resources/icon.png`) as a silhouette, black on transparent for macOS to tint in the menu bar, with its eyes, mouth and paws cut out of it: 23×18 points at 2×. `tray.png` is the app's icon at 64×64, for the notification area of Windows and Linux.
+`tray-template.png` is the frog of the app's icon (`resources/icon.png`) as a silhouette of its green, without the dark outline, black on transparent for macOS to tint in the menu bar, with its eyes, mouth and paws cut out of it: 11 points tall, centered in 15×18 points, at 2×. `tray.png` is the app's icon at 64×64, for the notification area of Windows and Linux.
