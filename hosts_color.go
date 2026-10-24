@@ -50,13 +50,13 @@ func (pal *palette) hostColor(h *host) ui.Color {
 
 // colorMenu sets a host's color, in its settings.
 func (a *App) colorMenu(m *ui.Menu, h *host) {
-	m.Submenu(locales.HostColor(), func(m *ui.Menu) {
-		if m.Item(locales.HostColorAuto()).Checked(h.cfg.Color == "").Chosen() {
+	padSub(m, locales.HostColor(), func(m *ui.Menu) {
+		if padItem(m, locales.HostColorAuto()).Checked(h.cfg.Color == "").Chosen() {
 			a.setHostColor(h, "")
 		}
 		m.Separator()
 		for _, name := range settings.HostColors {
-			if m.Item(colorLabel(name)).Checked(h.cfg.Color == name).Chosen() {
+			if padItem(m, colorLabel(name)).Checked(h.cfg.Color == name).Chosen() {
 				a.setHostColor(h, name)
 			}
 		}

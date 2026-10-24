@@ -49,7 +49,10 @@ Open one from the Files view: right-click a file and choose **Open in Pane**, or
 
 ```sh
 kero split --file src/main.go
+kero new --file src/main.go     # in a session of its own
 ```
+
+A file that isn't there yet opens empty, marked new, in a folder that is: saving it makes it.
 
 ## Browser panes
 

@@ -86,7 +86,8 @@ func TestBrowserPane(t *testing.T) {
 }
 
 // An editor pane runs no shell either: it keeps its file, in the file's
-// folder, which a restore brings back; a folder, or no file, is refused.
+// folder, which a restore brings back; a folder, or a file of no folder,
+// is refused, and a file not yet there, which its save makes, is not.
 func TestEditorPane(t *testing.T) {
 	d := testDaemon(t)
 	dir := t.TempDir()
@@ -95,8 +96,13 @@ func TestEditorPane(t *testing.T) {
 	if _, err := d.create(proto.CreateParams{File: dir}); err == nil {
 		t.Error("an editor of a folder")
 	}
-	if _, err := d.create(proto.CreateParams{File: filepath.Join(dir, "none.go")}); err == nil {
-		t.Error("an editor of no file")
+	if _, err := d.create(proto.CreateParams{File: filepath.Join(dir, "none", "x.go")}); err == nil {
+		t.Error("an editor of a file of no folder")
+	}
+	if s, err := d.create(proto.CreateParams{File: filepath.Join(dir, "new.go")}); err != nil {
+		t.Errorf("no editor of a new file: %v", err)
+	} else {
+		d.removeSession(s.ID)
 	}
 	s, err := d.create(proto.CreateParams{File: file})
 	if err != nil {
