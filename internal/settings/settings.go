@@ -45,7 +45,10 @@ type Settings struct {
 	// those that fits; PaneFolder what a pane's header shows of its.
 	ExplorerFolder string `json:"explorerFolder"`
 	PaneFolder     string `json:"paneFolder"`
-	// DimExplorer fades the Explorer while the user is not in it.
+	// DimFiles and DimWeb fade the file and browser panes the user is not
+	// in, as DimUnfocused does the terminals; DimExplorer the Explorer.
+	DimFiles    bool `json:"dimUnfocusedFiles"`
+	DimWeb      bool `json:"dimUnfocusedWeb"`
 	DimExplorer bool `json:"dimExplorer"`
 
 	// Terminal

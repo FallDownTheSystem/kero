@@ -60,7 +60,9 @@ kero config check             # 报告未知的配置项和无效的值
 | `sessions-sidebar`   | `left`   | 会话边栏所在的窗口一侧：`left` 或 `right`；显示改动和文件的资源管理器位于另一侧 |
 | `pane-folder`        | `fit`    | 窗格标题栏如何显示其文件夹：`hidden`、`folder`（名称）、`full`（路径），或 `fit`，在放得下的范围内尽量多显示 |
 | `explorer-folder`    | `fit`    | 资源管理器的标题栏如何显示其文件夹，取值同 `pane-folder` |
-| `dim-unfocused-terminals` | `true` | 会话有多个窗格时，淡化未聚焦的窗格 |
+| `dim-unfocused-terminals` | `true` | 会话有多个窗格时，淡化未聚焦的终端 |
+| `dim-unfocused-files` | `false` | 会话有多个窗格时，淡化未聚焦的编辑器窗格 |
+| `dim-unfocused-web` | `false` | 会话有多个窗格时，淡化未聚焦的浏览器窗格 |
 | `dim-unfocused-explorer` | `false` | 你不在资源管理器中时，淡化它 |
 
 ## 终端
