@@ -57,6 +57,9 @@ type prefs struct {
 	ArchivedOpen bool `json:"archivedOpen,omitempty"`
 	// QuickSession is the session the quick terminal shows (quick.go).
 	QuickSession string `json:"quickSession,omitempty"`
+	// Wrap wraps the lines of the files the Files view and editor panes
+	// show at their width.
+	Wrap bool `json:"wrap,omitempty"`
 }
 
 const (
@@ -101,6 +104,7 @@ type App struct {
 	selected   string
 	terms      map[string]*termEntry
 	webs       map[string]*webEntry // browser panes' pages, by pane
+	edits      map[string]*openFile // editor panes' files, by pane
 	ads        adBlock              // what their pages block
 	icons      favicons             // and the icons they show
 	lru        []string
@@ -610,7 +614,7 @@ func (g *gated) Read(p []byte) (int, error) {
 // ensureTerm attaches a terminal to a session, unless one is.
 func (a *App) ensureTerm(id string) {
 	h := a.hostOf(id)
-	if a.terms[id] != nil || h.conn != connReady || a.isBrowser(id) {
+	if a.terms[id] != nil || h.conn != connReady || !a.isTerminal(id) {
 		return
 	}
 	e := &termEntry{started: time.Now()}
@@ -1334,6 +1338,13 @@ func (a *App) closeAllSessions(g group) {
 }
 
 func (a *App) restartSession(id string) {
+	// An editor's file is read anew, unless it has edits, which it keeps.
+	if s := a.sessionOfPane(id); s != nil && s.PaneByID(id).Editor() {
+		if f := a.edits[id]; f != nil && !f.modified() {
+			f.stamp = "\x00"
+		}
+		return
+	}
 	a.call(id, "restart", proto.IDParams{ID: id}, nil)
 }
 

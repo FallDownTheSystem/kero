@@ -82,6 +82,9 @@ type Settings struct {
 	WorktreeBase string `json:"worktreeBase"`
 	WorktreeDir  string `json:"worktreeDir"`
 
+	// Files
+	Editor string `json:"editor"` // the command Open in Editor runs with a path; "" the app the system opens it with
+
 	// Browser
 	BlockAds bool     `json:"blockAds"` // in browser panes, with AdLists
 	AdLists  []string `json:"adLists"`  // the filter lists: adblock.Catalog's IDs, or URLs

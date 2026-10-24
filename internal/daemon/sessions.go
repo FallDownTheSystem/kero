@@ -243,18 +243,27 @@ func (d *Daemon) cleanDir(dir string) (string, error) {
 	return dir, nil
 }
 
-// startPane makes a pane and starts its shell; a browser's has none.
+// startPane makes a pane and starts its shell; a browser's and an
+// editor's have none.
 func (d *Daemon) startPane(sid string, p proto.CreateParams, dir string) (*pane, error) {
 	now := time.Now().UnixMilli()
 	info := proto.Pane{
 		ID: newID(), Dir: dir, Command: p.Command, Status: proto.Idle, Since: now, Created: now,
 		Cols: p.Cols, Rows: p.Rows,
 	}
-	if p.URL != "" {
+	switch {
+	case p.URL != "":
 		info.URL, info.Command = proto.BrowserURL(p.URL), nil
+	case p.File != "":
+		file, err := editorFile(p.File)
+		if err != nil {
+			return nil, err
+		}
+		// Its folder is the file's, as a shell split from it starts in.
+		info.File, info.Dir, info.Command = file, filepath.Dir(file), nil
 	}
 	pn, err := newPane(d, sid, info)
-	if err != nil || pn.info.Browser() {
+	if err != nil || !pn.info.Terminal() {
 		return pn, err
 	}
 	if err := pn.start(p.Command, p.Env); err != nil {
@@ -262,6 +271,20 @@ func (d *Daemon) startPane(sid string, p proto.CreateParams, dir string) (*pane,
 		return nil, err
 	}
 	return pn, nil
+}
+
+// editorFile is the file an editor pane is asked to show, absolute: one
+// that is, and no folder.
+func editorFile(path string) (string, error) {
+	file := hostPath(path, "")
+	st, err := os.Stat(file)
+	switch {
+	case err != nil:
+		return "", err
+	case st.IsDir():
+		return "", fmt.Errorf("%s is a folder, not a file", file)
+	}
+	return file, nil
 }
 
 // create starts a session, or a pane of one with p.Split.
