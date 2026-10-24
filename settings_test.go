@@ -11,6 +11,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
+	"kero/internal/proto"
 	"kero/internal/settings"
 
 	"kero/locales"
@@ -103,6 +104,41 @@ func TestSegmentedChoiceSticks(t *testing.T) {
 	}
 	if a.set.Appearance != "system" || settings.Load().Appearance != "system" {
 		t.Fatalf("appearance %q, saved %q, after choosing System", a.set.Appearance, settings.Load().Appearance)
+	}
+}
+
+// Each kind of pane fades or not as its segment of Dim unfocused says, on
+// its own, and the choice is saved.
+func TestDimToggles(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "appearance"
+	tt := ui.NewTester(a.settingsView, 820, 640)
+	tt.Frame()
+	for _, label := range []string{"Dim unfocused: Terminal", "Dim unfocused: Web"} {
+		if err := tt.Click(label); err != nil {
+			t.Fatal(err)
+		}
+		for range 3 {
+			tt.Frame()
+		}
+	}
+	if a.set.DimUnfocused || a.set.DimFiles || !a.set.DimWeb || a.set.DimExplorer {
+		t.Fatalf("terminal %v, files %v, web %v, explorer %v: want web alone", a.set.DimUnfocused, a.set.DimFiles, a.set.DimWeb, a.set.DimExplorer)
+	}
+	if s := settings.Load(); s.DimUnfocused || !s.DimWeb {
+		t.Fatalf("saved terminal %v, web %v", s.DimUnfocused, s.DimWeb)
+	}
+	for _, c := range []struct {
+		p    proto.Pane
+		want bool
+	}{
+		{proto.Pane{}, false},
+		{proto.Pane{File: "/tmp/a.go"}, false},
+		{proto.Pane{URL: "https://example.com"}, true},
+	} {
+		if got := a.dims(&c.p); got != c.want {
+			t.Errorf("%+v dims %v: want %v", c.p, got, c.want)
+		}
 	}
 }
 
