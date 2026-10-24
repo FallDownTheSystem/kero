@@ -475,6 +475,41 @@ func segmented(c *ui.Context, key string, value *string, ids, labels []string) {
 	seg.Track.OnChange(func() { *value = ids[i] })
 }
 
+// toggles turns each of ons on or off on its own, as macOS's segmented
+// control that selects any: segmented's look, each segment on filled.
+// Each segment is named for assistive technology after the setting, name,
+// as its label alone does not say what it turns on.
+func toggles(c *ui.Context, key, name string, ons []*bool, labels []string) {
+	pal := paletteFor(c)
+	track, thumb := ui.RGBA(0, 0, 0, 0.06), ui.Hex("#ffffff")
+	if pal.dark {
+		track, thumb = ui.RGBA(255, 255, 255, 0.07), ui.RGBA(255, 255, 255, 0.2)
+	}
+	ui.Row(c.Key(key)).Height(24).Padding(2).Radius(7).Background(track).AlignItems(ui.Center).Children(func() {
+		for n, label := range labels {
+			if n > 0 {
+				// A separator, where neither segment beside it is on.
+				sep := ui.Box(c).Width(1).Height(12).Shrink(0)
+				if !*ons[n] && !*ons[n-1] {
+					sep.Background(pal.text.Alpha(0.14))
+				}
+			}
+			s := ui.ToggleBase(c.Key(label), ons[n]).Label(name+": "+label).FillHeight().Padding(0, 12).Radius(5).Center()
+			if *ons[n] {
+				s.Background(thumb)
+				if pal.dark {
+					s.Shadow(0, 1, 1, 0, ui.RGBA(0, 0, 0, 0.25))
+				} else {
+					s.Shadow(0, 0.5, 1.5, 0, ui.RGBA(0, 0, 0, 0.16)).Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.04))
+				}
+			}
+			s.Children(func() {
+				ui.Text(c, label).FontSize(12.5).SingleLine().TextColor(pal.text)
+			})
+		}
+	})
+}
+
 func (a *App) generalPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	settingsGroup(c, pal, locales.SetSessions(), locales.SetSessionsDetail(a.tip(strings.TrimSuffix(actionTitle("app.quitAll"), "…"), "app.quitAll")), func() {
@@ -682,10 +717,8 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 			segmented(c, "explorer-folder", &s.ExplorerFolder, folders, folderLabels)
 		})
 		settingRow(c, pal, locales.SetDimUnfocused(), locales.SetDimUnfocusedDetail(), func() {
-			toggle(c.Key("dim-unfocused"), &s.DimUnfocused, pal)
-		})
-		settingRow(c, pal, locales.SetDimExplorer(), locales.SetDimExplorerDetail(), func() {
-			toggle(c.Key("dim-explorer"), &s.DimExplorer, pal)
+			toggles(c, "dim-unfocused", locales.SetDimUnfocused(), []*bool{&s.DimUnfocused, &s.DimFiles, &s.DimWeb, &s.DimExplorer},
+				[]string{locales.SetDimTerminal(), locales.SetDimFiles(), locales.SetDimWeb(), locales.SetDimExplorer()})
 		})
 	})
 	ui.Column(c).Gap(8).Children(func() {

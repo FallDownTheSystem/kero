@@ -47,8 +47,7 @@ func settingsIndex() []searchEntry {
 		{"appearance", locales.SetTranslucent(), "window-translucent vibrancy blur material transparency"},
 		{"appearance", locales.SetSessionsSide(), "sessions-sidebar sidebar left right swap side panel changes files layout"},
 		{"appearance", locales.SetExplorerFolder(), "explorer-folder explorer panel path folder header changes files hide fit"},
-		{"appearance", locales.SetDimUnfocused(), "dim-unfocused-terminals panes terminals fade inactive split opacity veil blur"},
-		{"appearance", locales.SetDimExplorer(), "dim-unfocused-explorer explorer panel changes files fade inactive opacity veil"},
+		{"appearance", locales.SetDimUnfocused(), "dim-unfocused-terminals dim-unfocused-files dim-unfocused-web dim-unfocused-explorer panes terminals files editor web browser explorer panel fade inactive split opacity veil blur"},
 		{"appearance", locales.SetPaneFolder(), "pane-folder path folder header pane directory hide fit"},
 		{"appearance", locales.SetBackground(), "background wash petal mist meadow dusk plain gradient color"},
 
