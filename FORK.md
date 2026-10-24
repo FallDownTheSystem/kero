@@ -4,7 +4,8 @@ This repository is FallDownTheSystem/kero, a fork of
 [egoist/kero](https://github.com/egoist/kero). It keeps a few features of
 its own (the Files view, editor panes, the Files toolbar and CLI additions,
 ending all sessions from the app icon's menu, the Explorer and split-menu
-layout and its settings) as commits
+layout and its settings, theme previews, the theme editor and the files'
+own theme) as commits
 on top of upstream's `main`, and is built and
 installed on Windows only.
 
