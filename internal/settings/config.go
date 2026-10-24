@@ -123,7 +123,8 @@ var keys = []key{
 		[]string{"petal", "mist", "meadow", "dusk", "plain"}, []string{"rex", "mist", "meadow", "dusk", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
 	choiceKey("sessions-sidebar", "the side of the window the sessions' sidebar takes; the Changes and Files panel takes the other", func(s *Settings) *string { return &s.SessionsSide }, "left", "right"),
-	choiceKey("panel-path", "what the Changes and Files panel's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.PanelPath }, "hidden", "folder", "full", "fit"),
+	choiceKey("explorer-folder", "what the Explorer's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.ExplorerFolder }, "hidden", "folder", "full", "fit"),
+	boolKey("dim-unfocused-explorer", "fade the Explorer while you're not in it", func(s *Settings) *bool { return &s.DimExplorer }),
 	choiceKey("pane-folder", "what a pane's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.PaneFolder }, "hidden", "folder", "full", "fit"),
 
 	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which Kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),
@@ -134,7 +135,6 @@ var keys = []key{
 	boolKey("font-thicken", "a heavier stroke, as Ghostty's", func(s *Settings) *bool { return &s.Thicken }),
 	numberKey("minimum-contrast", "the least contrast text keeps with its background, 1 (none) to 21, as Ghostty's", func(s *Settings) float64 { return float64(s.MinContrast) }, func(s *Settings, n float64) { s.MinContrast = float32(min(max(n, 1), 21)) }),
 	boolKey("dim-unfocused-terminals", "fade the terminals you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimUnfocused }),
-	boolKey("dim-unfocused-panel", "fade the Changes and Files panel while you're not in it", func(s *Settings) *bool { return &s.DimPanel }),
 	{name: "theme", doc: "terminal colors: kero, a Ghostty theme, or light:<theme>,dark:<theme>",
 		get: func(s *Settings) []string {
 			if s.LightTheme == s.DarkTheme {
