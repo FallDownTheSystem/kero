@@ -25,6 +25,7 @@ kero new -n api -d ~/code/api    # start a session, print its id
 kero new -- npm run dev          # start one running a command
 kero split --down -- npm test    # a pane beside this one
 kero split --url localhost:3000  # a browser pane showing a page
+kero split --file src/main.go    # an editor pane of a file
 kero rename api backend          # rename a session
 kero focus backend               # show it in the app
 kero close backend               # end a session (or, given a pane, the pane)

@@ -198,8 +198,8 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 	focused := p.ID == a.focusOf(s)
 	bg := pal.card
 	// A browser's page stays opaque, so its toolbar does too, and neither
-	// fades: a page is read, not typed into, from beside it.
-	if multi && !focused && !p.Browser() && a.set.DimUnfocused {
+	// fades: a page is read, not typed into, from beside it; so is a file.
+	if multi && !focused && p.Terminal() && a.set.DimUnfocused {
 		bg = pal.cardDim
 	}
 	card := ui.Column(c.Key("pane-" + p.ID)).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Radius(14).Clip().Bind(a.paneRef("card-" + p.ID))
@@ -236,14 +236,18 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 
 	dragging := false
 	card.Children(func() {
-		if p.Browser() {
+		switch {
+		case p.Browser():
 			// A browser's address bar is its header.
 			dragging = a.paneBrowser(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
-		} else {
+		case p.Editor():
+			dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
+			a.paneEditor(c, pal, s, p)
+		default:
 			dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
 			a.paneTerminal(c, pal, s, p)
 		}
-		if multi && !p.Browser() && a.set.DimUnfocused {
+		if multi && p.Terminal() && a.set.DimUnfocused {
 			// The terminals the user is not in fade, text and all.
 			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
 			v.Opacity(v.Animate("on", b2f(!focused), 160*time.Millisecond))
@@ -476,6 +480,9 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		if p.Git != nil {
 			a.gitChip(c, pal, s, p)
 		}
+		if p.Editor() {
+			a.editorChips(c, pal, p)
+		}
 		// The header's empty stretch moves the window, as a title bar
 		// does, and zooms it on a double click: the header around it
 		// takes clicks, which focus the pane.
@@ -514,6 +521,11 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 		}
 		iconButton(c, "split-r", splitRightIcon, a.tip(locales.ActionSplitRight(), "pane.split.right"), pal, func() { a.splitPane(s, p.ID, "right") })
 		iconButton(c, "split-d", splitDownIcon, a.tip(locales.ActionSplitDown(), "pane.split.down"), pal, func() { a.splitPane(s, p.ID, "down") })
+		iconButton(c, "browser", globeIcon, a.tip(locales.ActionNewBrowser(), "pane.browser"), pal, func() {
+			a.split(s, proto.CreateParams{Split: p.ID, Direction: "right", URL: proto.BlankURL})
+		})
+		a.sideButton(c, pal, s, p, "changes", diffIcon, locales.ActionToggleChanges(), "changes.toggle", sideChanges)
+		a.sideButton(c, pal, s, p, "files", folderIcon, locales.ActionToggleFiles(), "files.toggle", sideFiles)
 		if multi {
 			sid, pid := s.ID, p.ID
 			zoom := func() { a.defer_(func() { a.zoomPane(a.session(sid), pid) }) }
@@ -524,6 +536,21 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 			}
 			iconButton(c, "close", closeIcon, a.tip(locales.PaneClose(), "pane.close"), pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
 		}
+	})
+}
+
+// sideButton is a header's button that shows a view of the side panel for
+// its pane, or hides the panel while it shows that view.
+func (a *App) sideButton(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, key string, svg *ui.SVG, title, action, view string) {
+	sid, pid := s.ID, p.ID
+	iconButton(c, key, svg, a.tip(title, action), pal, func() {
+		a.defer_(func() {
+			// The view is of the pane the user is in: this one.
+			if s := a.session(sid); s != nil && a.prefs.Side != view {
+				a.setFocus(s, pid)
+			}
+			a.toggleSide(view)
+		})
 	})
 }
 
@@ -665,7 +692,7 @@ func (a *App) split(s *proto.Session, p proto.CreateParams) {
 		return
 	}
 	h := a.hostOf(s.ID)
-	if pane := s.PaneByID(p.Split); pane != nil && !pane.Browser() {
+	if pane := s.PaneByID(p.Split); pane != nil && pane.Terminal() {
 		p.Cols, p.Rows = pane.Cols, pane.Rows
 		if p.Direction == "down" || p.Direction == "up" {
 			p.Rows = max(p.Rows/2, 4)
@@ -721,6 +748,23 @@ func (a *App) closePane(s *proto.Session, pane string, ask bool) {
 	if s == nil {
 		return
 	}
+	// An editor's edits not saved go with it: the user says so.
+	if f := a.editorUnsaved(pane); ask && f != nil {
+		sid := s.ID
+		a.confirm = &confirmation{
+			open:    true,
+			title:   locales.FilesConfirmCloseTitle(),
+			detail:  locales.FilesConfirmCloseDetail(proto.DirName(f.path)),
+			action:  locales.FilesDiscard(),
+			destroy: true,
+			run: func() {
+				if s := a.session(sid); s != nil {
+					a.closePane(s, pane, false)
+				}
+			},
+		}
+		return
+	}
 	if len(s.Panes) <= 1 {
 		a.closeSession(s.ID, ask)
 		return
@@ -769,6 +813,7 @@ func (a *App) closePane(s *proto.Session, pane string, ask bool) {
 	}
 	a.dropTerm(pane)
 	a.dropWeb(pane)
+	delete(a.edits, pane)
 	a.call(pane, "pane.close", proto.IDParams{ID: pane}, nil)
 	a.focusTerminal()
 }
