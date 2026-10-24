@@ -418,8 +418,8 @@ func (t *fileTree) listed(path, stamp string, l proto.FSList, err error) {
 	d.paths = paths
 }
 
-// treeView is the tree: a folder's files, its folders opening on their
-// arrows, Right and Left, or a double click. Choosing a file opens it; a
+// treeView is the tree: a folder's files, its folders opening on a click,
+// Right and Left, or Enter. Choosing a file opens it; a
 // double click, or Enter, opens it in the user's editor or a file pane, as
 // the user chose (openChosen).
 func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
@@ -435,6 +435,7 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		a.sideMessage(c, pal, locales.FilesEmpty(), "")
 		return
 	}
+	clicked := ""
 	tree := ui.Outline(c.Key("outline"), &t.outline, d.paths, t.children, func(path string) {
 		dir := t.isDir[path]
 		svg := docIcon
@@ -443,6 +444,12 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		}
 		row := ui.Row(c).Grow(1).MinWidth(0).Gap(7).AlignItems(ui.Center)
 		row.ContextMenu(func(m *ui.Menu) { a.fileMenu(c, m, t, path, dir) })
+		// The list tells no click on a row, only a new choice, which a
+		// click on the folder chosen does not make: a folder's row takes the
+		// click itself, to open on it.
+		if dir && row.Clicked() && row.ClickModifiers() == 0 {
+			clicked = path
+		}
 		row.Children(func() {
 			ui.Icon(c, svg).Size(14, 14).Shrink(0).Opacity(0.7)
 			ui.Text(c, proto.DirName(path)).FontSize(13).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
@@ -455,6 +462,19 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		})
 	}).Grow(1).MinHeight(0).Padding(0, 6, 8, 6).FontSize(13)
 	t.revealed()
+	if clicked != "" {
+		for i := range t.outline.Rows() {
+			if t.outline.Item(i) == clicked {
+				t.chosen = i
+			}
+		}
+		if t.outline.Open.Has(clicked) {
+			t.outline.Open.Remove(clicked)
+		} else {
+			t.outline.Open.Add(clicked)
+		}
+		tree.Focus()
+	}
 	// The file chosen opens below, unless the user previews files from
 	// their menu only (settings' FilePreview).
 	if tree.Changed() && a.set.FilePreview && t.chosen >= 0 && t.chosen < t.outline.Rows() {
