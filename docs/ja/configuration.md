@@ -71,6 +71,7 @@ kero config check             # 不明なキーと不正な値を報告
 | キー                  | デフォルト | 説明                                                                     |
 | --------------------- | ---------- | ------------------------------------------------------------------------ |
 | `theme`               | `kero`     | ターミナルの色: `kero`、任意の Ghostty テーマ、または `light:<theme>,dark:<theme>` |
+| `file-theme`          | `terminal` | エディタのペインとエクスプローラのコードの色: ターミナルのテーマには `terminal`、それ以外は `theme` と同じ書き方 |
 | `font-family`         |            | 空欄なら Kero に付属の JetBrains Mono Nerd Font、`monospace` ならシステムのもの、またはインストール済みの任意のファミリー |
 | `font-size`           | `13`       | ポイント単位                                                             |
 | `font-weight`         | `400`      | `100` から `900`                                                         |
@@ -84,6 +85,8 @@ kero config check             # 不明なキーと不正な値を報告
 | `copy-on-select`      | `false`    | 選択したものをクリップボードにコピーする                                 |
 | `clipboard-read`      | `ask`      | プログラムによるクリップボードの読み取り（OSC 52）: `ask`、`allow`、`deny` |
 | `right-click-action`  | `context-menu` | `context-menu`、`paste`、`copy-or-paste`                             |
+
+独自のテーマは、Ghostty のテーマフォルダにある Ghostty 形式のファイルです: `$XDG_CONFIG_HOME/ghostty/themes`（設定されている場合）、それ以外は Windows で `%LOCALAPPDATA%\ghostty\themes`、その他で `~/.config/ghostty/themes`。設定 › ターミナルで、メニューのテーマにポインタを置くとプレビューでき、「テーマをカスタマイズ」で使用中のテーマのすべての色を編集して、独自のテーマとしてそこに保存できます。テーマの背景はターミナルのペインの背景になり、ファイルのテーマの背景はエディタのペインとエクスプローラの背景になります。そこに表示されるコードはファイルのテーマの 16 色を使います: キーワードはマゼンタ、文字列は緑、型は黄、関数は青、コメントは明るい黒。ファイルのテーマは設定 › 外観 › ファイルの色で選びます。既定ではターミナルのテーマと同じです。
 
 ## シェル
 

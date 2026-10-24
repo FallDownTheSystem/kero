@@ -71,6 +71,7 @@ kero config check             # 报告未知的配置项和无效的值
 | 配置项                | 默认值  | 说明                                                                     |
 | --------------------- | ------- | ------------------------------------------------------------------------ |
 | `theme`               | `kero`  | 终端配色：`kero`、任意 Ghostty 主题，或 `light:<theme>,dark:<theme>`      |
+| `file-theme`          | `terminal` | 编辑器窗格和资源管理器中代码的配色：`terminal` 表示使用终端的主题，否则写法同 `theme` |
 | `font-family`         |         | 留空则使用 Kero 自带的 JetBrains Mono Nerd Font；设为 `monospace` 则使用系统等宽字体；也可以填任何已安装的字体族 |
 | `font-size`           | `13`    | 单位为磅                                                                 |
 | `font-weight`         | `400`   | `100` 到 `900`                                                           |
@@ -84,6 +85,8 @@ kero config check             # 报告未知的配置项和无效的值
 | `copy-on-select`      | `false` | 选中内容即复制到剪贴板                                                   |
 | `clipboard-read`      | `ask`   | 程序读取剪贴板（OSC 52）时：`ask`、`allow` 或 `deny`                     |
 | `right-click-action`  | `context-menu` | `context-menu`、`paste` 或 `copy-or-paste`                        |
+
+你自己的主题是 Ghostty 主题文件夹中 Ghostty 格式的文件：设置了 `$XDG_CONFIG_HOME` 时为 `$XDG_CONFIG_HOME/ghostty/themes`，否则在 Windows 上为 `%LOCALAPPDATA%\ghostty\themes`，在其他系统上为 `~/.config/ghostty/themes`。在“设置 › 终端”中，将指针移到菜单中的主题上即可预览；使用“自定主题”可编辑当前主题的每种颜色，并将结果作为你自己的主题存储在该文件夹中。主题的背景即终端窗格的背景，文件主题的背景即编辑器窗格和资源管理器的背景，其中的代码使用文件主题的 16 种颜色：关键字为品红色，字符串为绿色，类型为黄色，函数为蓝色，注释为明亮的黑色。在“设置 › 外观 › 文件颜色”中选择文件主题，默认与终端相同。
 
 ## Shell
 

@@ -89,6 +89,39 @@ func numberKey(name, doc string, get func(*Settings) float64, set func(*Settings
 		}}
 }
 
+// themeKey is a theme for light windows and one for dark, which f returns:
+// one name for both, or light:<theme>,dark:<theme>.
+func themeKey(name, doc string, f func(*Settings) (light, dark *string)) key {
+	return key{name: name, doc: doc,
+		get: func(s *Settings) []string {
+			light, dark := f(s)
+			if *light == *dark {
+				return []string{*light}
+			}
+			return []string{"light:" + *light + ",dark:" + *dark}
+		},
+		set: func(s *Settings, v []string) error {
+			light, dark := f(s)
+			val := v[len(v)-1]
+			if !strings.Contains(val, ":") {
+				*light, *dark = val, val
+				return nil
+			}
+			for _, part := range strings.Split(val, ",") {
+				k, t, ok := strings.Cut(strings.TrimSpace(part), ":")
+				switch {
+				case ok && k == "light":
+					*light = strings.TrimSpace(t)
+				case ok && k == "dark":
+					*dark = strings.TrimSpace(t)
+				default:
+					return fmt.Errorf("%q: write light:<theme>,dark:<theme>", val)
+				}
+			}
+			return nil
+		}}
+}
+
 // mapChoice maps the values of a choice in the file to those of Settings.
 func mapChoice(name, doc string, f func(*Settings) *string, file, ours []string) key {
 	return key{name: name, doc: doc + " (" + strings.Join(file, ", ") + ")",
@@ -138,32 +171,10 @@ var keys = []key{
 	boolKey("font-thicken", "a heavier stroke, as Ghostty's", func(s *Settings) *bool { return &s.Thicken }),
 	numberKey("minimum-contrast", "the least contrast text keeps with its background, 1 (none) to 21, as Ghostty's", func(s *Settings) float64 { return float64(s.MinContrast) }, func(s *Settings, n float64) { s.MinContrast = float32(min(max(n, 1), 21)) }),
 	boolKey("dim-unfocused-terminals", "fade the terminals you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimUnfocused }),
-	{name: "theme", doc: "terminal colors: kero, a Ghostty theme, or light:<theme>,dark:<theme>",
-		get: func(s *Settings) []string {
-			if s.LightTheme == s.DarkTheme {
-				return []string{s.LightTheme}
-			}
-			return []string{"light:" + s.LightTheme + ",dark:" + s.DarkTheme}
-		},
-		set: func(s *Settings, v []string) error {
-			val := v[len(v)-1]
-			if !strings.Contains(val, ":") {
-				s.LightTheme, s.DarkTheme = val, val
-				return nil
-			}
-			for _, part := range strings.Split(val, ",") {
-				k, t, ok := strings.Cut(strings.TrimSpace(part), ":")
-				switch {
-				case ok && k == "light":
-					s.LightTheme = strings.TrimSpace(t)
-				case ok && k == "dark":
-					s.DarkTheme = strings.TrimSpace(t)
-				default:
-					return fmt.Errorf("%q: write light:<theme>,dark:<theme>", val)
-				}
-			}
-			return nil
-		}},
+	themeKey("theme", "terminal colors: kero, a Ghostty theme, or light:<theme>,dark:<theme>",
+		func(s *Settings) (*string, *string) { return &s.LightTheme, &s.DarkTheme }),
+	themeKey("file-theme", "the colors of code in editor panes and the Explorer: terminal for the terminals' theme, else as theme",
+		func(s *Settings) (*string, *string) { return &s.FileLightTheme, &s.FileDarkTheme }),
 	choiceKey("cursor-style", "programs may change it", func(s *Settings) *string { return &s.Cursor }, "block", "bar", "underline"),
 	boolKey("cursor-style-blink", "", func(s *Settings) *bool { return &s.CursorBlink }),
 	boolKey("macos-option-as-alt", "Option sends Alt (Meta) to programs", func(s *Settings) *bool { return &s.OptionAsAlt }),
