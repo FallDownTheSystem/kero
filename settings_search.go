@@ -60,6 +60,7 @@ func settingsIndex() []searchEntry {
 		{"appearance", locales.SetLightWindows(), "theme colors color scheme ghostty palette terminal"},
 		{"appearance", locales.SetDarkWindows(), "theme colors color scheme ghostty palette terminal"},
 		{"terminal", locales.SetDimUnfocused(), "dim-unfocused-terminals panes fade inactive split opacity veil blur"},
+		{"terminal", locales.SetDimPanel(), "dim-unfocused-panel panel changes files fade inactive opacity veil"},
 		{"terminal", locales.SetShape(), "cursor-style cursor block bar underline caret"},
 		{"terminal", locales.SetBlink(), "cursor-style-blink cursor caret"},
 		{"terminal", locales.SetOptionMeta(), "macos-option-as-alt alt meta emacs readline keyboard"},
