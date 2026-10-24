@@ -123,8 +123,10 @@ var keys = []key{
 	choiceKey("window-theme", "the app's appearance", func(s *Settings) *string { return &s.Appearance }, "system", "light", "dark"),
 	choiceKey("language", "the app's language; system follows the system's", func(s *Settings) *string { return &s.Language }, append([]string{"system"}, Languages...)...),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
-	choiceKey("sessions-sidebar", "the side of the window the sessions' sidebar takes; the Changes and Files panel takes the other", func(s *Settings) *string { return &s.SessionsSide }, "left", "right"),
+	choiceKey("sessions-sidebar", "the side of the window the sessions' sidebar takes; the Explorer takes the other", func(s *Settings) *string { return &s.SessionsSide }, "left", "right"),
 	choiceKey("explorer-folder", "what the Explorer's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.ExplorerFolder }, "hidden", "folder", "full", "fit"),
+	boolKey("dim-unfocused-files", "fade the file panes you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimFiles }),
+	boolKey("dim-unfocused-web", "fade the browser panes you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimWeb }),
 	boolKey("dim-unfocused-explorer", "fade the Explorer while you're not in it", func(s *Settings) *bool { return &s.DimExplorer }),
 	choiceKey("pane-folder", "what a pane's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.PaneFolder }, "hidden", "folder", "full", "fit"),
 

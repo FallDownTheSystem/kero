@@ -193,16 +193,29 @@ func (a *App) divider(c *ui.Context, pal *palette, s *proto.Session, l *proto.La
 	}
 }
 
+// dims tells whether pane p fades while the user is not in it, as the
+// user chose for its kind.
+func (a *App) dims(p *proto.Pane) bool {
+	switch {
+	case p.Browser():
+		return a.set.DimWeb
+	case p.Editor():
+		return a.set.DimFiles
+	}
+	return a.set.DimUnfocused
+}
+
 // paneCard is a pane: a card with a header and the terminal. top, left and
 // right tell that it touches the window's edges, where the header drags
 // the window, keeps clear of the traffic lights on macOS, and holds the
 // window controls elsewhere (windowControls).
 func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi bool) {
 	focused := p.ID == a.focusOf(s)
+	dim := multi && a.dims(p)
 	bg := pal.card
-	// A browser's page stays opaque, so its toolbar does too, and neither
-	// fades: a page is read, not typed into, from beside it; so is a file.
-	if multi && !focused && p.Terminal() && a.set.DimUnfocused {
+	// A browser's page stays opaque, so its toolbar does too: the veil
+	// alone fades it.
+	if dim && !focused && !p.Browser() {
 		bg = pal.cardDim
 	}
 	card := ui.Column(c.Key("pane-" + p.ID)).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Radius(14).Clip().Bind(a.paneRef("card-" + p.ID))
@@ -254,8 +267,9 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 			dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
 			a.paneTerminal(c, pal, s, p)
 		}
-		if multi && p.Terminal() && a.set.DimUnfocused {
-			// The terminals the user is not in fade, text and all.
+		if dim {
+			// The panes the user is not in fade, text and all; a page too,
+			// as what paints after a web view shows over it.
 			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
 			v.Opacity(v.Animate("on", b2f(!focused), 160*time.Millisecond))
 		}
