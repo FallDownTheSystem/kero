@@ -31,7 +31,7 @@ const copy = {
     notes: (v: string) => `${v} release notes`,
     yours: 'Your system',
     platformNotes: {
-      mac: 'Open the disk image and drag Kero into your Applications folder.',
+      mac: 'Install with Homebrew, or open the disk image and drag Kero into your Applications folder.',
       windows: 'Run the installer, which needs no administrator rights. Kero needs Windows 10 1809 or later.',
       linux: 'Install the package, or run the script to install Kero in ~/.local without root.',
     },
@@ -53,7 +53,7 @@ const copy = {
     notes: (v: string) => `${v} 更新说明`,
     yours: '你的系统',
     platformNotes: {
-      mac: '打开磁盘映像，把 Kero 拖进“应用程序”文件夹。',
+      mac: '用 Homebrew 安装，或打开磁盘映像，把 Kero 拖进“应用程序”文件夹。',
       windows: '运行安装程序，无需管理员权限。Kero 需要 Windows 10 1809 或更高版本。',
       linux: '安装软件包，或运行脚本把 Kero 装到 ~/.local，无需 root。',
     },
@@ -72,7 +72,10 @@ export function downloadHead(locale: Locale) {
   return pageHead(locale, '/download', copy[locale].title, copy[locale].description);
 }
 
-const INSTALL_SCRIPT = `curl -fsSL ${GITHUB_URL}/releases/latest/download/install.sh | sh`;
+const INSTALL_SCRIPTS: Partial<Record<OS, string>> = {
+  mac: 'brew install --cask kero',
+  linux: `curl -fsSL ${GITHUB_URL}/releases/latest/download/install.sh | sh`,
+};
 
 type OS = 'mac' | 'windows' | 'linux';
 type Arch = 'arm' | 'x86';
@@ -184,10 +187,12 @@ export default function DownloadPage(props: { locale: Locale; version: string })
                   )}
                 </For>
               </div>
-              <Show when={p.os === 'linux'}>
-                <pre class="platform__script">
-                  <span class="t-accent">$</span> {INSTALL_SCRIPT}
-                </pre>
+              <Show when={INSTALL_SCRIPTS[p.os]}>
+                {(script) => (
+                  <pre class="platform__script">
+                    <span class="t-accent">$</span> {script()}
+                  </pre>
+                )}
               </Show>
             </article>
           )}
