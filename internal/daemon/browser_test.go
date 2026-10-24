@@ -201,3 +201,66 @@ func TestSelectSendsStateFirst(t *testing.T) {
 		t.Fatalf("then %+v", second)
 	}
 }
+
+// A watcher, as kero events, hears of the state and the notices, in
+// order, but is no app: it has no page to answer for, nor actions to run.
+func TestWatch(t *testing.T) {
+	d := testDaemon(t)
+	w := &controlConn{out: make(chan proto.Message, 8), done: make(chan struct{})}
+	if ok, err := d.call(w, "watch", nil); err != nil || ok != true {
+		t.Fatalf("watch: %v, %v", ok, err)
+	}
+	next := func() proto.Message {
+		select {
+		case m := <-w.out:
+			return m
+		case <-time.After(time.Second):
+			t.Fatal("no event")
+			return proto.Message{}
+		}
+	}
+	if m := next(); m.Event != "state" || m.State == nil || len(m.State.Sessions) != 0 {
+		t.Fatalf("first %+v", m)
+	}
+
+	go d.broadcastLoop()
+	defer close(d.changeCh)
+	s, err := d.create(proto.CreateParams{URL: "localhost:3000"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.removeSession(s.ID)
+	if m := next(); m.Event != "state" || m.State == nil || len(m.State.Sessions) != 1 {
+		t.Fatalf("after create %+v", m)
+	}
+	d.notice(proto.Notice{Session: s.ID, Body: "done"})
+	if m := next(); m.Event != "notice" || m.Notice == nil || m.Notice.Body != "done" {
+		t.Fatalf("notice %+v", m)
+	}
+
+	cli := &controlConn{done: make(chan struct{})}
+	call := func(method string, params any) (any, error) {
+		raw, _ := json.Marshal(params)
+		return d.call(cli, method, raw)
+	}
+	if ok, err := call("do", proto.DoParams{Action: "sidebar.toggle"}); err != nil || ok != false {
+		t.Errorf("do with a watcher alone: %v, %v", ok, err)
+	}
+	if ok, err := call("select", proto.FocusParams{Session: s.ID}); err != nil || ok != false {
+		t.Errorf("select with a watcher alone: %v, %v", ok, err)
+	}
+	if _, err := call("browser", proto.BrowserParams{ID: s.ID, Op: "text"}); err == nil || !strings.Contains(err.Error(), "not open") {
+		t.Errorf("browser with a watcher alone: %v", err)
+	}
+	for {
+		select {
+		case m := <-w.out:
+			if m.Event != "state" {
+				t.Errorf("a watcher got %+v", m)
+			}
+			continue
+		case <-time.After(100 * time.Millisecond):
+		}
+		break
+	}
+}

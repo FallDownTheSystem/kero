@@ -40,6 +40,20 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		c.event(proto.Message{Event: "state", State: &st})
 		return true, nil
 
+	case "watch":
+		// As subscribe, but for a watcher, not an app (Daemon.watchers).
+		// The first state goes out under the lock the later ones do, so
+		// none of them comes before it.
+		d.mu.Lock()
+		if d.watchers == nil {
+			d.watchers = map[*controlConn]struct{}{}
+		}
+		d.watchers[c] = struct{}{}
+		st := d.stateLocked()
+		c.event(proto.Message{Event: "state", State: &st})
+		d.mu.Unlock()
+		return true, nil
+
 	case "create", "split":
 		var p proto.CreateParams
 		if err := decode(&p); err != nil {

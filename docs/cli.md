@@ -85,6 +85,37 @@ echo "go test exited with $?"
 
 The pane stays open after the command, with its output, so you can `kero read` it. Waiting for a command doesn't work with `cmd` as the shell, which can't tell when one ends.
 
+## Watching
+
+`kero events` prints what happens to sessions and panes as it happens, one line per event, until you stop it. A script can follow every agent at once this way, without polling `kero status`.
+
+```sh
+kero events                               # every session
+kero events api                           # one session, or one pane
+kero events -p kero                       # one project's sessions
+kero events --for waiting,error           # only panes going to these statuses
+kero events --json | jq -r .name          # one JSON object per line
+kero events --for waiting --once          # exit after the first one
+```
+
+```
+12:04:31  api x78n9ss  working → waiting  Allow Bash: rm -rf dist?
+12:04:40  api  renamed api → backend
+```
+
+| Event | When | Fields |
+| --- | --- | --- |
+| `pane.status` | A pane's status changes | `pane`, `from`, `to`, `message`, `kind`, `agent`; `exitCode` when it goes to exited |
+| `command.exited` | The command a pane started with ends, and its shell goes on | `pane`, `exitCode` |
+| `pane.created`, `pane.closed` | A pane starts or closes | `pane` |
+| `session.created`, `session.closed` | A session starts or closes | |
+| `session.renamed` | A session's name changes | `from`, `to` |
+| `notice` | A program in a session sends a desktop notification | `title`, `body` |
+
+With `--json`, every event also has `event`, `time` (unix ms), `session`, `project` and `name`, the session's name as the sidebar shows it.
+
+`kero events` reports what changes from now on: for what is there already, use `kero ls --json`. Given a target, it stops when the target closes. `--once` exits after the first event that matches, with `1` if the target closes first or `--timeout` passes. kerod sends its state when it settles, so a status that lasts only a moment, such as a blip of working, may not show.
+
 ## Browsing
 
 `kero browser` drives a browser pane's page the way `kero send` and `kero read` drive a terminal: it clicks, types, reads the page and takes pictures of it. Its target is a browser pane, or a session, for its browser. With no target, it drives the browser of the session it runs in.
