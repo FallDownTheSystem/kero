@@ -82,7 +82,7 @@ func (a *App) applyTray() {
 }
 
 // trayMenu is the icon's menu: the window, Settings, updates, and
-// quitting.
+// quitting, keeping the sessions or ending them.
 func (a *App) trayMenu() *mygo.Menu {
 	// The updater's window in front, as from the menu bar alone, where the
 	// app may not be.
@@ -103,6 +103,11 @@ func (a *App) trayMenu() *mygo.Menu {
 		check,
 		mygo.Separator(),
 		{Label: locales.MenuQuitApp(mygo.App.Name()), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
+		// It asks first, in the window.
+		{Label: actionTitle("app.quitAll"), Click: func(*mygo.MenuItem, *mygo.Window) {
+			a.showWindow()
+			a.update(a.quitAndEnd)
+		}},
 	})
 }
 
