@@ -121,6 +121,12 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `git-status`  | `true`  | Show each session's branch and [changes](./changes.md)                                            |
 | `diff-layout` | `auto`  | Diffs in the changes panel: `unified`, `split` (side by side), or `auto`, side by side once it's wide |
 
+## Files
+
+| Key      | Default | Description                                                                                                                        |
+| -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `editor` | empty   | The command **Open in Editor** runs with a file's path, as `code`, `zed` or `"C:\Tools\editor.exe" -n`: empty opens the file with the app the system opens it with |
+
 ## Browser
 
 | Key                   | Default                    | Description                                                                         |

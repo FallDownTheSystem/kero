@@ -47,6 +47,7 @@ Usage:
       -w, --wait                  wait for cmd to end, exit with its status
       -u, --url <url>             a browser showing url, not a shell, as
                                   a dev server's page: localhost:3000
+      --file <path>               an editor of the file, not a shell
   kero send <target> <text…>    type text into a pane
       -e                          interpret \n \r \t \e \xHH escapes
       --enter                     press Enter after it
@@ -382,7 +383,7 @@ func run(args []string, host string) error {
 		return nil
 
 	case "split":
-		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout", "u": "url", "url": "url"},
+		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout", "u": "url", "url": "url", "file": "file"},
 			map[string]string{"right": "right", "down": "down", "left": "left", "up": "up", "json": "json", "f": "focus", "focus": "focus", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
@@ -405,9 +406,20 @@ func run(args []string, host string) error {
 		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
 			return usageErr("kero split --url shows a page, and runs no command")
 		}
+		file := f.vals["file"]
+		if file != "" && (len(command) > 0 || f.set["wait"] || f.vals["url"] != "") {
+			return usageErr("kero split --file shows a file, and runs no command")
+		}
+		// A path of the shell it is typed in, as kerod has no idea of its
+		// folder.
+		if file != "" && !filepath.IsAbs(file) {
+			if abs, err := filepath.Abs(file); err == nil {
+				file = abs
+			}
+		}
 		var s proto.Session
 		if err := c.Call("split", proto.CreateParams{Split: t.ref(), Direction: dir, Ratio: ratio,
-			Dir: f.vals["dir"], Command: command, URL: f.vals["url"]}, &s); err != nil {
+			Dir: f.vals["dir"], Command: command, URL: f.vals["url"], File: file}, &s); err != nil {
 			return err
 		}
 		if f.set["focus"] {
@@ -1077,16 +1089,23 @@ func listSessions(st proto.State) {
 		}
 		return s
 	}
-	// A browser's program is the browser, and its place its page.
+	// A browser's program is the browser, and its place its page; an
+	// editor's, the editor and its file.
 	program := func(p proto.Pane) string {
-		if p.Browser() {
+		switch {
+		case p.Browser():
 			return "browser"
+		case p.Editor():
+			return "editor"
 		}
 		return orDash(p.Process)
 	}
 	where := func(p proto.Pane) string {
-		if p.Browser() {
+		switch {
+		case p.Browser():
 			return p.URL
+		case p.Editor():
+			return proto.ShortDir(p.File)
 		}
 		return proto.ShortDir(p.WorkDir())
 	}

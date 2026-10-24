@@ -25,6 +25,7 @@ kero new -n api -d ~/code/api    # 新建会话，并打印它的 id
 kero new -- npm run dev          # 新建一个运行某条命令的会话
 kero split --down -- npm test    # 在当前窗格旁新建一个窗格
 kero split --url localhost:3000  # 新建一个显示网页的浏览器窗格
+kero split --file src/main.go    # 新建一个文件的编辑器窗格
 kero rename api backend          # 重命名会话
 kero focus backend               # 在 app 中显示它
 kero close backend               # 结束会话（如果给的是窗格，则关闭该窗格）

@@ -21,9 +21,8 @@ import (
 // The side panel stands at the right of a session's panes, a card of its
 // own, with what the session's worktree is about. It has views, each a
 // list whose item opens in the panel as a file: Changes, the files the
-// session's agent or the user changed, each opening as its diff; a Files
-// view, the worktree's tree, each file opening as its text, is to join it
-// with the same header, list and file.
+// session's agent or the user changed, each opening as its diff; and Files
+// (files.go), the worktree's tree, each file opening as its text.
 
 // sideChanges is the Changes view's id, as prefs.Side holds it.
 const sideChanges = "changes"
@@ -40,6 +39,7 @@ type sideState struct {
 	drag    float32 // the width as a drag of the edge began, 0 while none
 	focused bool    // the panel has the keyboard: its Escape, its diff's find
 	changes changesState
+	files   filesState
 	// theme is the diffs' colors, made again only as the window's
 	// appearance or the terminals' themes change.
 	theme    *editor.Theme
@@ -147,27 +147,82 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, s *proto.Session, width flo
 		Focusable().Bind(a.paneRef("side-card"))
 	raised(card, pal)
 	a.side.focused = card.FocusWithin()
+	files := a.prefs.Side == sideFiles
 	card.Children(func() {
-		ui.Row(c.Key("hdr")).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, 16).Gap(8).Children(func() {
-			// What the view shows, as a pane's header shows its program.
-			ui.Icon(c, diffIcon).Size(14, 14).TextColor(pal.textFaint)
-			ui.Text(c, locales.SideChanges()).FontSize(14).FontWeight(600).TextColor(pal.text).SingleLine().Shrink(0)
-			if dir := a.changesDir(s); dir != "" {
-				ui.Text(c, a.hostOf(s.ID).shortDir(dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Tooltip(dir)
+		ui.Row(c.Key("hdr")).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, 10).Gap(2).Children(func() {
+			// The views, as tabs: the one shown says what the panel shows,
+			// as a pane's header says its program.
+			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle")
+			a.sideTab(c, pal, sideFiles, folderIcon, locales.SideFiles(), "files.toggle")
+			dir := a.changesDir(s)
+			if files {
+				_, dir = a.filesRoot(s)
+			}
+			if dir != "" {
+				ui.Text(c, a.hostOf(s.ID).shortDir(dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Margin(0, 0, 0, 6).Tooltip(dir)
 			}
 			ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch).DragWindow()
-			iconButton(c, "close-side", closeIcon, a.tip(locales.SideClose(), "changes.toggle"), pal, func() { a.defer_(func() { a.toggleSide(a.prefs.Side) }) })
+			if files {
+				a.filesTools(c, pal)
+			}
+			toggle := "changes.toggle"
+			if files {
+				toggle = "files.toggle"
+			}
+			iconButton(c, "close-side", closeIcon, a.tip(locales.SideClose(), toggle), pal, func() { a.defer_(func() { a.toggleSide(a.prefs.Side) }) })
 			if right {
 				windowControls(c, pal, a.win)
 			}
 		})
 		ui.Column(c.Key("body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-			a.changesView(c, pal, s, width)
+			if files {
+				a.filesView(c, pal, s)
+			} else {
+				a.changesView(c, pal, s, width)
+			}
 		})
 	})
 	if card.Shortcut(0, ui.KeyEscape) {
 		a.focusTerminal()
 	}
+}
+
+// sideTab is a view's tab in the panel's header, which shows it.
+func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, label, action string) {
+	on := a.prefs.Side == view || view == sideChanges && a.prefs.Side != sideFiles
+	b := ui.ButtonBase(c.Key("tab-"+view)).Height(28).Padding(0, 8).Gap(6).Radius(8).AlignItems(ui.Center).Shrink(0).
+		TextColor(pal.textMuted).Label(label).Tooltip(a.tip(label, action))
+	switch {
+	case on:
+		b.Background(pal.rowHover).TextColor(pal.text)
+	case b.Hovered() || b.Pressed():
+		b.Background(pal.rowHover.Alpha(0.5)).TextColor(pal.text)
+	}
+	b.Children(func() {
+		ui.Icon(c, svg).Size(14, 14).Opacity(0.8)
+		ui.Text(c, label).FontSize(13.5).FontWeight(600).SingleLine()
+	})
+	if b.Clicked() && !on {
+		a.defer_(func() { a.toggleSide(view) })
+	}
+}
+
+// filesTools are the Files view's buttons in the panel's header.
+func (a *App) filesTools(c *ui.Context, pal *palette) {
+	t := a.side.files.shown
+	if t == nil {
+		return
+	}
+	iconButton(c, "collapse", chevronUpIcon, locales.FilesCollapse(), pal, func() { t.outline.Open.Clear() })
+	iconButton(c, "refresh", reloadIcon, locales.FilesRefresh(), pal, func() {
+		// Stale, they are listed anew, and the file shown read anew.
+		for _, d := range t.dirs {
+			d.stamp = "\x00"
+		}
+		if f := t.files[t.shown]; f != nil {
+			f.stamp = "\x00"
+		}
+	})
 }
 
 // --- the Changes view ---

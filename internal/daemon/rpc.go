@@ -189,7 +189,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		if pn.term == nil {
-			return nil, fmt.Errorf("pane %s is a browser, which takes no input", pn.info.ID)
+			return nil, fmt.Errorf("pane %s is no terminal, and takes no input", pn.info.ID)
 		}
 		pn.input([]byte(p.Data))
 		return true, nil
@@ -485,6 +485,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		return fsRead(p)
+
+	case "fs.write":
+		var p proto.FSWriteParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsWrite(p)
 
 	case "paste.file":
 		var p proto.PasteFileParams

@@ -30,6 +30,7 @@ prefix works), or a session's name; a session stands for its focused pane.
     kero new -n review -- claude              # a session of its own
     kero new -n tests -d ~/code/app -- go test ./...
     kero split --url localhost:3000           # a browser pane, to show the user a page
+    kero split --file src/main.go             # an editor pane, to show the user a file
 
 ## Drive it
 
