@@ -153,14 +153,18 @@ type Project struct {
 }
 
 // Pane is a terminal the daemon keeps running: a shell in a
-// pseudo-terminal, one of a session's; or, with a URL, a browser, which
-// the app shows and the daemon only keeps the place and page of.
+// pseudo-terminal, one of a session's; or, with a URL, a browser, or with
+// a File, an editor, which the app shows and the daemon only keeps the
+// place and page or file of.
 type Pane struct {
 	ID    string `json:"id"`
 	Title string `json:"title,omitempty"` // set by the program (OSC 0/2), or the page
 	// URL is the page a browser pane shows, as the app last told: set,
 	// the pane runs no shell.
-	URL     string   `json:"url,omitempty"`
+	URL string `json:"url,omitempty"`
+	// File is the file an editor pane shows, absolute, of the host: set,
+	// the pane runs no shell.
+	File    string   `json:"file,omitempty"`
 	Dir     string   `json:"dir,omitempty"` // the shell's working directory
 	Command []string `json:"command,omitempty"`
 	// Process is the foreground program, "" while the shell is.
@@ -396,6 +400,9 @@ func Lead(panes []Pane, focus string) int {
 // foreground set, else the program, else the shell, else its directory's
 // name.
 func (p *Pane) PaneName() string {
+	if p.Editor() {
+		return DirName(p.File)
+	}
 	if p.Browser() {
 		if t := strings.TrimSpace(p.Title); t != "" {
 			return t
@@ -423,8 +430,15 @@ func (p *Pane) PaneName() string {
 	return "shell"
 }
 
-// Browser reports whether the pane is a browser's, not a terminal's.
+// Browser reports whether the pane is a browser's.
 func (p *Pane) Browser() bool { return p.URL != "" }
+
+// Editor reports whether the pane is a file's editor.
+func (p *Pane) Editor() bool { return p.File != "" }
+
+// Terminal reports whether the pane is a terminal's, a shell's: neither a
+// browser's nor an editor's, which the app shows alone.
+func (p *Pane) Terminal() bool { return !p.Browser() && !p.Editor() }
 
 // WorkDir is where the pane works: the foreground program's directory,
 // else the shell's.
@@ -473,9 +487,9 @@ func (s *Session) DisplayName(from string) string {
 			return p.Agent
 		}
 	}
-	// A session of browsers alone goes by its page: beside a terminal,
-	// a browser names it no more than a shell does.
-	if p.Browser() && !s.hasTerminal() {
+	// A session of browsers or editors alone goes by its page or file:
+	// beside a terminal, one names it no more than a shell does.
+	if !p.Terminal() && !s.hasTerminal() {
 		return p.PaneName()
 	}
 	if p.Dir != "" {
@@ -489,7 +503,7 @@ func (s *Session) DisplayName(from string) string {
 
 func (s *Session) hasTerminal() bool {
 	for i := range s.Panes {
-		if !s.Panes[i].Browser() {
+		if s.Panes[i].Terminal() {
 			return true
 		}
 	}
@@ -713,8 +727,10 @@ type (
 		Dir     string   `json:"dir,omitempty"` // "" the project's, else home
 		Command []string `json:"command,omitempty"`
 		Env     []string `json:"env,omitempty"`
-		// URL makes a browser pane showing it, instead of a shell.
+		// URL makes a browser pane showing it, instead of a shell; File an
+		// editor pane of the file, absolute, of the host.
 		URL   string `json:"url,omitempty"`
+		File  string `json:"file,omitempty"`
 		After string `json:"after,omitempty"` // put it after this session
 		Cols  int    `json:"cols,omitempty"`
 		Rows  int    `json:"rows,omitempty"`

@@ -64,6 +64,8 @@ type settingsState struct {
 	envDraft     string
 	shellDraft   string
 	shellEditing bool
+	editorDraft  string
+	editorEdit   bool
 	loginOpen    bool // open at login, as the system says
 	updates      updatePrefs
 	cliPath      string
@@ -514,6 +516,20 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				[]string{locales.SetDiffAuto(), locales.ChangesUnified(), locales.ChangesSplit()})
 		})
 	})
+	settingsGroup(c, pal, locales.SetFiles(), "", func() {
+		settingRow(c, pal, locales.SetEditor(), locales.SetEditorDetail(), func() {
+			if !a.ss.editorEdit {
+				a.ss.editorDraft = s.Editor
+			}
+			in := textField(c, "editor", &a.ss.editorDraft, locales.SetEditorSystem(), 220, pal).Font("monospace")
+			a.ss.editorEdit = in.Focused()
+			// Kept as it is submitted, or as the field loses the focus.
+			in.OnSubmit(func() { a.set.Editor = strings.TrimSpace(a.ss.editorDraft) })
+			if !a.ss.editorEdit && strings.TrimSpace(a.ss.editorDraft) != s.Editor {
+				a.set.Editor = strings.TrimSpace(a.ss.editorDraft)
+			}
+		})
+	})
 	// Windows and Linux always show the icon, in the notification area.
 	if runtime.GOOS == "darwin" {
 		detail := ""
@@ -853,8 +869,8 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			ui.Textf(c, "%.2f×", s.LineHeight).FontSize(12.5).TextColor(pal.textMuted).Width(40).FontFeatures("tnum")
 		})
 		settingRow(c, pal, locales.SetWeight(), "", func() {
-			popup(c, "weight", &s.FontWeight, []int{300, 400, 500, 600}, func(w int) string {
-				return map[int]string{300: locales.SetWeightLight(), 400: locales.SetWeightRegular(), 500: locales.SetWeightMedium(), 600: locales.SetWeightSemibold()}[w]
+			popup(c, "weight", &s.FontWeight, []int{300, 350, 400, 500, 600}, func(w int) string {
+				return map[int]string{300: locales.SetWeightLight(), 350: locales.SetWeightSemilight(), 400: locales.SetWeightRegular(), 500: locales.SetWeightMedium(), 600: locales.SetWeightSemibold()}[w]
 			}, 140, pal)
 		})
 		settingRow(c, pal, locales.SetLigatures(), locales.SetLigaturesDetail(), func() {

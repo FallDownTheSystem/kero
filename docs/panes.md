@@ -37,8 +37,19 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 | `-d`, `--dir <dir>`                   | Start it in another directory                  |
 | `-w`, `--wait`                        | Wait for its command to end, and exit with its status |
 | `-u`, `--url <url>`                   | Open a browser showing the page instead of a shell |
+| `--file <path>`                       | Open an editor of the file instead of a shell  |
 
 Run inside Kero, `kero split` splits the pane it runs in. Elsewhere, name a target: `kero split my-session --down`.
+
+## Editor panes
+
+An editor pane shows a file beside your terminals, highlighted as its language is, to read and edit: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, only as it was when it was read, as in the [Files view](./changes.md#files). It splits, zooms, moves and closes like any pane, and comes back on the same file when Kero restarts. Closing it with edits not saved asks first.
+
+Open one from the Files view: right-click a file and choose **Open in Pane**, or click the split button above a file. From a shell, or an agent:
+
+```sh
+kero split --file src/main.go
+```
 
 ## Browser panes
 
@@ -49,7 +60,7 @@ A browser pane shows a web page beside your terminals: the dev server an agent i
 | New browser pane | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>B</kbd> |
 | Open location    | <kbd>⌘</kbd> <kbd>L</kbd>              |
 
-Type an address in its bar, such as `localhost:3000` or `github.com`, or words to search for. An address typed in the command palette (<kbd>⌘</kbd> <kbd>P</kbd>) opens in a new browser pane too. <kbd>⌘</kbd> <kbd>F</kbd> finds text in the page.
+The globe button in a pane's header opens one beside that pane. Type an address in its bar, such as `localhost:3000` or `github.com`, or words to search for. An address typed in the command palette (<kbd>⌘</kbd> <kbd>P</kbd>) opens in a new browser pane too. <kbd>⌘</kbd> <kbd>F</kbd> finds text in the page.
 
 From a shell, or an agent, open one with `--url`:
 

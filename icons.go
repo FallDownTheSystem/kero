@@ -35,6 +35,8 @@ var (
 	chevronUpIcon   = glyph("f7-chevron-up")
 	chevronDownIcon = glyph("f7-chevron-down")
 	folderIcon      = glyph("f7-folder")
+	docIcon         = glyph("f7-doc")
+	wrapIcon        = glyph("lucide-wrap-text")
 	searchIcon      = glyph("f7-search")
 	terminalIcon    = glyph("meteor-terminal")
 	returnIcon      = glyph("f7-return")
@@ -81,6 +83,9 @@ func init() {
 func programIcon(p *proto.Pane) *ui.SVG {
 	if p.Browser() {
 		return globeIcon
+	}
+	if p.Editor() {
+		return docIcon
 	}
 	for _, name := range []string{p.Agent, p.Process, p.Runtime} {
 		if i := programIcons[name]; i != nil {
