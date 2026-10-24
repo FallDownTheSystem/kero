@@ -600,6 +600,7 @@
   "filesNotInTree": "{path} isn't in the folder the Files view shows",
   "filesNew": "New file",
   "filesNewTip": "The file isn't there yet: saving it makes it",
+  "paneMore": "More",
   "actionShowFiles": "Show Files",
   "actionShowChanges": "Show Changes",
   "pageHosts": "Hosts",

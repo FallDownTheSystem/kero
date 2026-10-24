@@ -445,6 +445,7 @@
   "filesNotInTree": "{path} はファイルビューのフォルダにありません",
   "filesNew": "新規ファイル",
   "filesNewTip": "ファイルはまだありません。保存すると作成されます",
+  "paneMore": "その他",
   "actionShowFiles": "ファイルを表示",
   "actionShowChanges": "変更を表示",
   "pageHosts": "ホスト",

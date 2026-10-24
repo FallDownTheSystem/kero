@@ -445,6 +445,7 @@
   "filesNotInTree": "{path} 不在文件视图显示的文件夹中",
   "filesNew": "新文件",
   "filesNewTip": "文件尚不存在：保存时创建",
+  "paneMore": "更多",
   "actionShowFiles": "显示文件",
   "actionShowChanges": "显示改动",
   "pageHosts": "主机",

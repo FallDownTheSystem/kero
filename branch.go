@@ -10,31 +10,36 @@ import (
 	"kero/locales"
 )
 
+// The git chip's widths: whole, with its branch, and with its counts alone.
+const (
+	gitChipFull   = 230
+	gitChipCounts = 90
+)
+
 // gitChip is a pane's branch and its changes since HEAD, after its title:
-// a click shows the changes panel. In a narrow pane, whose header the
-// title and its controls fill, it shows its counts alone, or nothing.
-func (a *App) gitChip(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane) {
+// a click shows the changes panel. It takes the form its room in the
+// header (headerRoom) has space for: its branch and counts, its counts
+// alone, or nothing; never a branch cut down to an ellipsis, nor more than
+// the room, which it would draw over the buttons beside it.
+func (a *App) gitChip(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, room float32) {
 	g := p.Git
-	room := a.paneRef("card-" + p.ID).Bounds(c).W
-	if room > 0 && room < 320 {
+	if room < gitChipCounts || room < gitChipFull && g.Files == 0 {
 		return
 	}
-	compact := room > 0 && room < 460
+	compact := room < gitChipFull
 	summary := gitSummary(g)
-	// It gives up its room before the title does: its branch shrinks
-	// first, down to its counts.
-	b := ui.ButtonBase(c.Key("git")).Height(24).Padding(0, 8).Gap(5).Radius(7).AlignItems(ui.Center).Shrink(8).
+	b := ui.ButtonBase(c.Key("git")).Height(24).Padding(0, 8).Gap(5).Radius(7).AlignItems(ui.Center).Shrink(0).
 		Label(summary).Tooltip(summary + "\n" + a.tip(locales.GitShowChanges(), "changes.toggle"))
 	if b.Hovered() || a.prefs.Side == sideChanges {
 		b.Background(pal.rowHover)
 	}
 	b.Children(func() {
 		ui.Icon(c, branchIcon).Size(12, 12).TextColor(pal.textFaint).Shrink(0)
-		if compact && g.Files > 0 {
+		if compact {
 			a.lineCounts(c, pal, g.Added, g.Removed, 12)
 			return
 		}
-		ui.Text(c, branchName(g)).FontSize(12.5).TextColor(pal.textMuted).SingleLine().Ellipsis("…").MinWidth(0).MaxWidth(180)
+		ui.Text(c, branchName(g)).FontSize(12.5).TextColor(pal.textMuted).SingleLine().Ellipsis("…").MinWidth(0).MaxWidth(min(180, room-120))
 		if st := gitState(g.State); st != "" {
 			ui.Text(c, st).FontSize(12).TextColor(pal.attention).SingleLine().Shrink(0)
 		}
