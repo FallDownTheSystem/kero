@@ -12,12 +12,14 @@ import (
 	"strings"
 	"time"
 
+	"kero/internal/git"
 	"kero/internal/proto"
 )
 
 // The methods a client on another machine sees the host's files through:
 // a folder to open a project in, a path a pane printed, an image to
-// preview, a file pasted into a pane. They read and write what the user
+// preview, a file pasted into a pane, a file the Files view shows and
+// saves. They read and write what the user
 // kerod runs as can, as the panes' programs do.
 
 // maxEntries bounds a directory's listing.
@@ -115,6 +117,53 @@ func fsRead(p proto.FSReadParams) (proto.FSRead, error) {
 	}
 	b, err := io.ReadAll(io.LimitReader(f, limit))
 	return proto.FSRead{Data: b}, err
+}
+
+// fsWrite writes a file that exists anew, as its editor saves it, through
+// a file beside it renamed over it, which keeps its mode: a reader never
+// sees it half written. A link is written through, to the file it names,
+// which the rename would otherwise put a file in place of.
+func fsWrite(p proto.FSWriteParams) (proto.FSWrite, error) {
+	if len(p.Data) > maxRead {
+		return proto.FSWrite{}, fmt.Errorf("a file written is at most %d MB", maxRead>>20)
+	}
+	full, err := filepath.EvalSymlinks(hostPath(p.Path, ""))
+	if err != nil {
+		return proto.FSWrite{}, err
+	}
+	fi, err := os.Stat(full)
+	if err != nil {
+		return proto.FSWrite{}, err
+	}
+	if !fi.Mode().IsRegular() {
+		return proto.FSWrite{}, fmt.Errorf("%s is no file", p.Path)
+	}
+	b, err := os.ReadFile(full)
+	if err != nil {
+		return proto.FSWrite{}, err
+	}
+	if git.Hash(b) != p.Hash {
+		return proto.FSWrite{Changed: true}, nil
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(full), ".kero-*")
+	if err != nil {
+		return proto.FSWrite{}, err
+	}
+	_, err = tmp.Write(p.Data)
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Chmod(tmp.Name(), fi.Mode().Perm())
+	}
+	if err == nil {
+		err = os.Rename(tmp.Name(), full)
+	}
+	if err != nil {
+		os.Remove(tmp.Name())
+		return proto.FSWrite{}, err
+	}
+	return proto.FSWrite{Hash: git.Hash(p.Data)}, nil
 }
 
 // maxPaste bounds a pasted file, which comes in a request of a control
