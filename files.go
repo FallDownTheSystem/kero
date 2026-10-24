@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 
@@ -727,10 +728,18 @@ func (a *App) added(t *fileTree, n *newEntry, path string, err error) {
 	a.openFile(t, path)
 }
 
+// bottomBar is a bar under a view, as the tree's toolbar and an editor
+// pane's bar: the material of Settings' header, with its hairline at the
+// bar's top.
+func bottomBar(c *ui.Context, key string, pal *palette) ui.Element {
+	return ui.Row(c.Key(key)).Height(stickyH).Shrink(0).Gap(2).AlignItems(ui.Center).
+		Material(glass.ScrollEdge{Hard: true, Bottom: true, Background: pal.card})
+}
+
 // filesToolbar is the tree's buttons, under it: they stay clear of the
 // panel's header, which keeps the window's controls in a narrow panel.
 func (a *App) filesToolbar(c *ui.Context, pal *palette, t *fileTree) {
-	ui.Row(c.Key("tools")).Height(stickyH).Shrink(0).Padding(0, 6).Gap(2).AlignItems(ui.Center).Background(pal.chip).Children(func() {
+	bottomBar(c, "tools", pal).Padding(0, 6).Children(func() {
 		iconButton(c, "new-file", newFileIcon, locales.FilesNewFile(), pal, func() { a.defer_(func() { t.startAdding(t.addingIn(), false) }) })
 		iconButton(c, "new-folder", newFolderIcon, locales.FilesNewFolder(), pal, func() { a.defer_(func() { t.startAdding(t.addingIn(), true) }) })
 		ui.Spacer(c)
