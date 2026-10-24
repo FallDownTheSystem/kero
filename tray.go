@@ -18,7 +18,7 @@ import (
 // running until the user quits.
 
 // trayTemplate is the frog of the app's icon, black on transparent for
-// macOS to tint: 11 points tall in the menu bar's 18, as other apps'
+// macOS to tint: 14 points tall in the menu bar's 18, as other apps'
 // icons are, at 2×.
 //
 //go:embed icons/tray-template.png
