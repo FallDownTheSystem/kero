@@ -47,15 +47,15 @@ func (a *App) showTray() {
 		return
 	}
 	menu := mygo.NewMenu([]*mygo.MenuItem{
-		{Label: locales.TrayOpen(), Click: func(*mygo.MenuItem, *mygo.Window) { a.update(a.showWindow) }},
+		{Label: locales.TrayOpen() + labelPad, Click: func(*mygo.MenuItem, *mygo.Window) { a.update(a.showWindow) }},
 		mygo.Separator(),
-		{Label: locales.TrayQuit(), Click: func(*mygo.MenuItem, *mygo.Window) {
+		{Label: locales.TrayQuit() + labelPad, Click: func(*mygo.MenuItem, *mygo.Window) {
 			a.update(func() {
 				a.quitting = true
 				mygo.App.Quit()
 			})
 		}},
-		{Label: locales.ActionQuitAll(), Click: func(*mygo.MenuItem, *mygo.Window) {
+		{Label: locales.ActionQuitAll() + labelPad, Click: func(*mygo.MenuItem, *mygo.Window) {
 			// It asks first, in the window.
 			a.update(func() {
 				a.showWindow()
