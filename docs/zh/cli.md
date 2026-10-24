@@ -26,6 +26,7 @@ kero new -- npm run dev          # 新建一个运行某条命令的会话
 kero split --down -- npm test    # 在当前窗格旁新建一个窗格
 kero split --url localhost:3000  # 新建一个显示网页的浏览器窗格
 kero split --file src/main.go    # 新建一个文件的编辑器窗格
+kero new --file notes/plan.md    # 新建独立的编辑器会话；保存时创建文件
 kero rename api backend          # 重命名会话
 kero focus backend               # 在 app 中显示它
 kero close backend               # 结束会话（如果给的是窗格，则关闭该窗格）
@@ -42,6 +43,7 @@ kero restart <pane>              # 重新启动已退出窗格的 shell
 | `-f`, `--focus`             | 在 app 中显示它                                 |
 | `-w`, `--wait`              | 等待它的命令结束，并以该命令的退出码退出        |
 | `-u`, `--url <url>`         | 打开显示该网页的浏览器，而不是 shell            |
+| `--file <path>`             | 打开该文件的编辑器，而不是 shell                |
 
 ## 输入与读取
 
@@ -215,7 +217,10 @@ kero actions                     # 列出所有操作
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
+kero do files.show path=src/main.go
 ```
+
+相对路径的 `path=` 或 `dir=` 是相对于运行 `kero do` 时所在的文件夹。
 
 ## 退出码
 

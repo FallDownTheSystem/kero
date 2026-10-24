@@ -98,8 +98,19 @@ func TestFSWrite(t *testing.T) {
 	if b, _ := os.ReadFile(path); string(b) != "new" {
 		t.Errorf("the file holds %q after a refused write", b)
 	}
-	if _, err := fsWrite(proto.FSWriteParams{Path: filepath.Join(dir, "none"), Data: []byte("x")}); err == nil {
-		t.Error("wrote a file that is none")
+	if _, err := fsWrite(proto.FSWriteParams{Path: filepath.Join(dir, "none"), Hash: git.Hash([]byte("x")), Data: []byte("x")}); err == nil {
+		t.Error("wrote a file that is gone")
+	}
+	// A file the editor found none of is made, unless one is there since.
+	fresh := filepath.Join(dir, "fresh.go")
+	if w, err := fsWrite(proto.FSWriteParams{Path: fresh, Data: []byte("made")}); err != nil || w.Changed || w.Hash != git.Hash([]byte("made")) {
+		t.Errorf("made %+v, %v", w, err)
+	}
+	if b, _ := os.ReadFile(fresh); string(b) != "made" {
+		t.Errorf("the new file holds %q", b)
+	}
+	if w, err := fsWrite(proto.FSWriteParams{Path: fresh, Data: []byte("again")}); err != nil || !w.Changed {
+		t.Errorf("made a file over one: %+v, %v", w, err)
 	}
 	if _, err := fsWrite(proto.FSWriteParams{Path: dir, Data: []byte("x")}); err == nil {
 		t.Error("wrote a directory")
@@ -116,6 +127,34 @@ func TestFSWrite(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(path); string(b) != "linked" {
 		t.Errorf("the linked file holds %q", b)
+	}
+}
+
+// New File and New Folder make what they name, in folders made as need be,
+// and never over what is there.
+func TestFSCreate(t *testing.T) {
+	dir := t.TempDir()
+	r, err := fsCreate(proto.FSCreateParams{Path: filepath.Join(dir, "src", "main.go")})
+	if err != nil || r.Path != filepath.Join(dir, "src", "main.go") {
+		t.Fatalf("created %+v, %v", r, err)
+	}
+	if b, err := os.ReadFile(r.Path); err != nil || len(b) != 0 {
+		t.Errorf("the file holds %q, %v", b, err)
+	}
+	os.WriteFile(r.Path, []byte("mine"), 0o644)
+	if _, err := fsCreate(proto.FSCreateParams{Path: r.Path}); err == nil {
+		t.Error("created a file over one")
+	}
+	if b, _ := os.ReadFile(r.Path); string(b) != "mine" {
+		t.Errorf("the file holds %q after a refused create", b)
+	}
+	if _, err := fsCreate(proto.FSCreateParams{Path: filepath.Join(dir, "src"), Dir: true}); err == nil {
+		t.Error("created a folder over one")
+	}
+	if r, err := fsCreate(proto.FSCreateParams{Path: filepath.Join(dir, "docs", "api"), Dir: true}); err != nil {
+		t.Fatal(err)
+	} else if st, err := os.Stat(r.Path); err != nil || !st.IsDir() {
+		t.Errorf("no folder at %s: %v", r.Path, err)
 	}
 }
 

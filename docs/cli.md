@@ -26,6 +26,7 @@ kero new -- npm run dev          # start one running a command
 kero split --down -- npm test    # a pane beside this one
 kero split --url localhost:3000  # a browser pane showing a page
 kero split --file src/main.go    # an editor pane of a file
+kero new --file notes/plan.md    # a session of an editor, of a file its save makes
 kero rename api backend          # rename a session
 kero focus backend               # show it in the app
 kero close backend               # end a session (or, given a pane, the pane)
@@ -42,6 +43,7 @@ kero restart <pane>              # start an exited pane's shell again
 | `-f`, `--focus`             | Show it in the app                              |
 | `-w`, `--wait`              | Wait for its command to end, and exit with its status |
 | `-u`, `--url <url>`         | Open a browser showing the page instead of a shell |
+| `--file <path>`             | Open an editor of the file instead of a shell   |
 
 ## Typing and reading
 
@@ -214,7 +216,10 @@ kero actions                     # list them
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
+kero do files.show path=src/main.go
 ```
+
+A relative `path=` or `dir=` is of the folder you run `kero do` in.
 
 ## Exit status
 

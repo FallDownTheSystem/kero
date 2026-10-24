@@ -26,6 +26,7 @@ kero new -- npm run dev          # コマンドを実行するセッションを
 kero split --down -- npm test    # このペインの横にペイン
 kero split --url localhost:3000  # ページを表示するブラウザペイン
 kero split --file src/main.go    # ファイルのエディタペイン
+kero new --file notes/plan.md    # 独立したエディタセッション。保存時にファイルを作成
 kero rename api backend          # セッション名を変更
 kero focus backend               # アプリで表示
 kero close backend               # セッションを終える（ペインを指定するとそのペイン）
@@ -42,6 +43,7 @@ kero restart <pane>              # 終了したペインのシェルを再び開
 | `-f`, `--focus`             | アプリで表示する                                |
 | `-w`, `--wait`              | コマンドの終了を待ち、その終了ステータスで終了する |
 | `-u`, `--url <url>`         | シェルの代わりに、ページを表示するブラウザを開く |
+| `--file <path>`             | シェルの代わりに、ファイルのエディタを開く      |
 
 ## 入力と読み取り
 
@@ -216,7 +218,10 @@ kero actions                     # 一覧を表示
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
+kero do files.show path=src/main.go
 ```
+
+相対パスの `path=` または `dir=` は、`kero do` を実行したディレクトリを基準にします。
 
 ## 終了ステータス
 
