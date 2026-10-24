@@ -4,7 +4,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -24,6 +26,33 @@ func allowForeground() {
 	const asfwAny = ^uintptr(0)
 	allowSetForegroundWindow.Call(asfwAny)
 }
+
+var assocQueryString = windows.NewLazySystemDLL("shlwapi.dll").NewProc("AssocQueryStringW")
+
+// folderEditor is the program the system opens text files with, to open a
+// folder in when no editor is set: the system would open the folder in
+// Explorer. Notepad, the system's own, opens no folder, so there's none.
+func folderEditor() string {
+	const assocstrExecutable = 2
+	ext, _ := windows.UTF16PtrFromString(".txt")
+	buf := make([]uint16, windows.MAX_PATH)
+	n := uint32(len(buf))
+	if hr, _, _ := assocQueryString.Call(0, assocstrExecutable, uintptr(unsafe.Pointer(ext)), 0, uintptr(unsafe.Pointer(&buf[0])), uintptr(unsafe.Pointer(&n))); hr != 0 {
+		return ""
+	}
+	exe := windows.UTF16ToString(buf)
+	if strings.EqualFold(filepath.Base(exe), "notepad.exe") {
+		return ""
+	}
+	return exe
+}
+
+// padMenus widens the context menus' items by a space: MyGo takes the
+// width of a check, SM_CXMENUCHECK, off each item it draws, for what
+// Windows adds, but Windows adds a fixed 24 pixels; past 150% scale the
+// check is wider, and the widest item's last letter is cut off (29 at
+// 175%: 4 pixels short). A space is wider than what's missing.
+func padMenus() { labelPad = " " }
 
 // canOpenWith tells that the system can ask which app opens a file.
 const canOpenWith = true

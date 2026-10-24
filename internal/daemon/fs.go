@@ -122,12 +122,16 @@ func fsRead(p proto.FSReadParams) (proto.FSRead, error) {
 // fsWrite writes a file that exists anew, as its editor saves it, through
 // a file beside it renamed over it, which keeps its mode: a reader never
 // sees it half written. A link is written through, to the file it names,
-// which the rename would otherwise put a file in place of.
+// which the rename would otherwise put a file in place of. No Hash is a
+// file the editor found none of, made now, unless one is there since.
 func fsWrite(p proto.FSWriteParams) (proto.FSWrite, error) {
 	if len(p.Data) > maxRead {
 		return proto.FSWrite{}, fmt.Errorf("a file written is at most %d MB", maxRead>>20)
 	}
 	full, err := filepath.EvalSymlinks(hostPath(p.Path, ""))
+	if errors.Is(err, os.ErrNotExist) && p.Hash == "" {
+		return fsWriteNew(hostPath(p.Path, ""), p.Data)
+	}
 	if err != nil {
 		return proto.FSWrite{}, err
 	}
@@ -164,6 +168,54 @@ func fsWrite(p proto.FSWriteParams) (proto.FSWrite, error) {
 		return proto.FSWrite{}, err
 	}
 	return proto.FSWrite{Hash: git.Hash(p.Data)}, nil
+}
+
+// fsWriteNew makes a file an editor saves for the first time, in a folder
+// that is: one made since by another program is left as it is.
+func fsWriteNew(path string, data []byte) (proto.FSWrite, error) {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, os.ErrExist) {
+		return proto.FSWrite{Changed: true}, nil
+	}
+	if err != nil {
+		return proto.FSWrite{}, err
+	}
+	_, err = f.Write(data)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(path)
+		return proto.FSWrite{}, err
+	}
+	return proto.FSWrite{Hash: git.Hash(data)}, nil
+}
+
+// fsCreate makes an empty file, or a folder, and the folders it is in that
+// are not yet: a name the user types may hold a folder, as "src/main.go".
+// What is there already stays, and tells the user so.
+func fsCreate(p proto.FSCreateParams) (proto.FSCreate, error) {
+	if strings.TrimSpace(p.Path) == "" {
+		return proto.FSCreate{}, errors.New("no path to create")
+	}
+	full := hostPath(p.Path, "")
+	if _, err := os.Lstat(full); err == nil {
+		return proto.FSCreate{}, fmt.Errorf("%s already exists", filepath.Base(full))
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return proto.FSCreate{}, err
+	}
+	if p.Dir {
+		if err := os.Mkdir(full, 0o755); err != nil {
+			return proto.FSCreate{}, err
+		}
+		return proto.FSCreate{Path: full}, nil
+	}
+	f, err := os.OpenFile(full, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return proto.FSCreate{}, err
+	}
+	return proto.FSCreate{Path: full}, f.Close()
 }
 
 // maxPaste bounds a pasted file, which comes in a request of a control

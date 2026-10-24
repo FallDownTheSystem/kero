@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -23,6 +24,18 @@ func fileManager() string {
 	return locales.FileManagerFiles()
 }
 
+// labelPad follows each context menu item's label, as padMenus sets it
+// for the app: the tests read the labels as they are.
+var labelPad string
+
+// padItem adds an item to a context menu, its label padded (labelPad).
+func padItem(m *ui.Menu, label string) *ui.MenuItem { return m.Item(label + labelPad) }
+
+// padSub adds a submenu to a context menu, its label padded (labelPad).
+func padSub(m *ui.Menu, label string, build func(*ui.Menu)) {
+	m.Submenu(label+labelPad, build)
+}
+
 // openPath opens a file or folder in the app that opens it.
 func openPath(path string) { mygo.Shell.OpenPath(path) }
 
@@ -31,9 +44,17 @@ func revealPath(path string) { mygo.Shell.ShowItemInFolder(path) }
 
 // openInEditor opens a file or folder with editor, a command as the
 // configuration's editor holds it, as "code" or `"C:\Tools\zed.exe" -n`,
-// with the path after its words; an empty one opens it as openPath does.
+// with the path after its words; an empty one opens a file as openPath
+// does, and a folder in folderEditor.
 func openInEditor(editor, path string) error {
 	words := commandWords(editor)
+	if len(words) == 0 {
+		if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+			if exe := folderEditor(); exe != "" {
+				words = []string{exe}
+			}
+		}
+	}
 	if len(words) == 0 {
 		allowForeground()
 		openPath(path)
