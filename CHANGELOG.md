@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.15
+
+- yazi's image previews show the image, not a box of placeholder
+  characters, locally and over SSH. Thanks @voidyuu for the report
+
 ## 2.1.14
 
 - On a Mac, Command+Left and Command+Right go to the start and end of
