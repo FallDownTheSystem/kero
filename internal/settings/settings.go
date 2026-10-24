@@ -55,6 +55,7 @@ type Settings struct {
 	Thicken      bool    `json:"thicken"`
 	MinContrast  float32 `json:"minContrast"`           // a WCAG ratio text keeps with its background
 	DimUnfocused bool    `json:"dimUnfocusedTerminals"` // the terminals the user is not in fade
+	DimPanel     bool    `json:"dimPanel"`              // the side panel fades while the user is not in it
 	Cursor       string  `json:"cursor"`                // "block", "bar" or "underline"
 	CursorBlink  bool    `json:"cursorBlink"`
 	LightTheme   string  `json:"lightTheme"` // "kero", or a Ghostty theme's name

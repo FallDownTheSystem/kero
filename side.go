@@ -236,10 +236,17 @@ func (a *App) sideFolder(c *ui.Context, s *proto.Session, dir string) string {
 // holds that side's buttons: at the left (sidebarButtons) clear of the
 // traffic lights, at the right with the window's controls (edgeControls).
 func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, width float32, left, right bool) {
-	card := ui.Column(c.Key("side")).Width(width).Shrink(0).MinHeight(0).Radius(14).Clip().Background(pal.card).
+	card := ui.Column(c.Key("side")).Width(width).Shrink(0).MinHeight(0).Radius(14).Clip().
 		Focusable().Bind(a.paneRef("side-card"))
-	raised(card, pal)
 	a.side.focused = card.FocusWithin()
+	// While the user is elsewhere, the panel fades as a terminal they are
+	// not in does, as they chose (settings' DimPanel).
+	dim := a.set.DimPanel && !a.side.focused
+	bg := pal.card
+	if dim {
+		bg = pal.cardDim
+	}
+	raised(card.Background(card.AnimateColor("bg", bg, ui.Animation{Duration: 140 * time.Millisecond})), pal)
 	files := a.prefs.Side == sideFiles
 	// The side's buttons and the window's controls take the header's room
 	// at the window's edge: in a narrow panel the tabs give theirs, down to
@@ -286,6 +293,10 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 				a.changesView(c, pal, s, width)
 			}
 		})
+		if a.set.DimPanel {
+			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
+			v.Opacity(v.Animate("on", b2f(dim), 160*time.Millisecond))
+		}
 	})
 	if card.Shortcut(0, ui.KeyEscape) {
 		a.focusTerminal()

@@ -386,6 +386,8 @@
   "setTranslucentDetail": "Let the desktop show through the window’s background.",
   "setDimUnfocused": "Dim unfocused terminals",
   "setDimUnfocusedDetail": "When a session has several panes, the terminals you’re not in fade.",
+  "setDimPanel": "Dim the unfocused panel",
+  "setDimPanelDetail": "The Changes and Files panel fades while you’re not in it.",
   "setBackground": "Background",
   "bgPetal": "Petal",
   "bgMist": "Mist",
