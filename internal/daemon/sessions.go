@@ -271,12 +271,17 @@ func (d *Daemon) startPane(sid string, p proto.CreateParams, dir string) (*pane,
 	return pn, nil
 }
 
-// editorFile is the file an editor pane is asked to show, absolute: one
-// that is, and no folder.
+// editorFile is the file an editor pane is asked to show, absolute: no
+// folder, and one that is, or one to make in a folder that is, which its
+// first save makes.
 func editorFile(path string) (string, error) {
 	file := hostPath(path, "")
 	st, err := os.Stat(file)
 	switch {
+	case errors.Is(err, os.ErrNotExist):
+		if dir, err := os.Stat(filepath.Dir(file)); err != nil || !dir.IsDir() {
+			return "", fmt.Errorf("no folder %s to make %s in", filepath.Dir(file), filepath.Base(file))
+		}
 	case err != nil:
 		return "", err
 	case st.IsDir():

@@ -30,6 +30,10 @@ const sideChanges = "changes"
 const (
 	defaultSide = 420 // the panel's width, as it first opens
 	minSide     = 300
+	// compactSide is the width below which the header's tabs show their
+	// icons alone, beside the window's controls: the tabs' labels, the
+	// close button and the controls take some 320.
+	compactSide = 360
 	minPanes    = 360 // the room the panel leaves the panes
 	splitWidth  = 760 // past which diff-layout auto shows diffs side by side
 )
@@ -148,12 +152,16 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, s *proto.Session, width flo
 	raised(card, pal)
 	a.side.focused = card.FocusWithin()
 	files := a.prefs.Side == sideFiles
+	// The window's controls take the header's room at the window's edge:
+	// in a narrow panel the tabs give theirs, down to their icons, so that
+	// the controls stay in it.
+	compact := right && ownControls && width < compactSide
 	card.Children(func() {
 		ui.Row(c.Key("hdr")).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, 10).Gap(2).Children(func() {
 			// The views, as tabs: the one shown says what the panel shows,
 			// as a pane's header says its program.
-			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle")
-			a.sideTab(c, pal, sideFiles, folderIcon, locales.SideFiles(), "files.toggle")
+			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle", compact)
+			a.sideTab(c, pal, sideFiles, folderIcon, locales.SideFiles(), "files.toggle", compact)
 			dir := a.changesDir(s)
 			if files {
 				_, dir = a.filesRoot(s)
@@ -162,9 +170,6 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, s *proto.Session, width flo
 				ui.Text(c, a.hostOf(s.ID).shortDir(dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Margin(0, 0, 0, 6).Tooltip(dir)
 			}
 			ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch).DragWindow()
-			if files {
-				a.filesTools(c, pal)
-			}
 			toggle := "changes.toggle"
 			if files {
 				toggle = "files.toggle"
@@ -187,11 +192,15 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, s *proto.Session, width flo
 	}
 }
 
-// sideTab is a view's tab in the panel's header, which shows it.
-func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, label, action string) {
+// sideTab is a view's tab in the panel's header, which shows it: its icon
+// alone while compact.
+func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, label, action string, compact bool) {
 	on := a.prefs.Side == view || view == sideChanges && a.prefs.Side != sideFiles
 	b := ui.ButtonBase(c.Key("tab-"+view)).Height(28).Padding(0, 8).Gap(6).Radius(8).AlignItems(ui.Center).Shrink(0).
 		TextColor(pal.textMuted).Label(label).Tooltip(a.tip(label, action))
+	if compact {
+		b.Padding(0, 7)
+	}
 	switch {
 	case on:
 		b.Background(pal.rowHover).TextColor(pal.text)
@@ -200,29 +209,13 @@ func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, lab
 	}
 	b.Children(func() {
 		ui.Icon(c, svg).Size(14, 14).Opacity(0.8)
-		ui.Text(c, label).FontSize(13.5).FontWeight(600).SingleLine()
+		if !compact {
+			ui.Text(c, label).FontSize(13.5).FontWeight(600).SingleLine()
+		}
 	})
 	if b.Clicked() && !on {
 		a.defer_(func() { a.toggleSide(view) })
 	}
-}
-
-// filesTools are the Files view's buttons in the panel's header.
-func (a *App) filesTools(c *ui.Context, pal *palette) {
-	t := a.side.files.shown
-	if t == nil {
-		return
-	}
-	iconButton(c, "collapse", chevronUpIcon, locales.FilesCollapse(), pal, func() { t.outline.Open.Clear() })
-	iconButton(c, "refresh", reloadIcon, locales.FilesRefresh(), pal, func() {
-		// Stale, they are listed anew, and the file shown read anew.
-		for _, d := range t.dirs {
-			d.stamp = "\x00"
-		}
-		if f := t.files[t.shown]; f != nil {
-			f.stamp = "\x00"
-		}
-	})
 }
 
 // --- the Changes view ---

@@ -200,6 +200,149 @@ func TestEditorPane(t *testing.T) {
 	}
 }
 
+// New File, from the tree's toolbar or a folder's menu, names a file in
+// the folder chosen; once kerod makes it, it is chosen in the tree, and
+// opens below it.
+func TestFilesNew(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	a.prefs.Side = sideFiles
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tr := a.side.files.shown
+	tr.listed("/tmp/demo", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: "src", Dir: true}, {Name: "main.go"}}}, nil)
+	tt.Frame()
+
+	if err := tt.RightClick("src"); err != nil {
+		t.Fatal(err)
+	}
+	items := tt.Menu()
+	for _, want := range []string{"New File…", "New Folder…", "New Terminal Here", "Open in Editor", "Copy Relative Path"} {
+		if !slices.Contains(items, want) {
+			t.Errorf("a folder's menu has no %q: %q", want, items)
+		}
+	}
+	if slices.Contains(items, "Open in Pane") {
+		t.Errorf("a folder's menu opens it in a pane: %q", items)
+	}
+	if err := tt.ChooseMenuItem("New File…"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	n := tr.adding
+	if n == nil || n.in != "/tmp/demo/src" || n.dir {
+		t.Fatalf("New File names %+v", n)
+	}
+	if !tr.outline.Open.Has("/tmp/demo/src") {
+		t.Error("the folder a file is new in stayed closed")
+	}
+
+	// The field has the keyboard; Enter makes the file, through kerod.
+	tt.Type("util/new.go")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if n.name != "util/new.go" || n.err == "" {
+		t.Errorf("typed %q; made a file with no kerod to make it: %q", n.name, n.err)
+	}
+	a.added(tr, n, tr.join(n.in, n.name), nil)
+	if tr.adding != nil {
+		t.Error("the name's field stayed")
+	}
+	if tr.shown != "/tmp/demo/src/util/new.go" || tr.reveal != tr.shown || !tr.outline.Open.Has("/tmp/demo/src/util") {
+		t.Errorf("the new file shows %q, reveals %q", tr.shown, tr.reveal)
+	}
+
+	// The toolbar's, with nothing chosen, names one in the tree's folder.
+	tr.chosen = -1
+	tt.Frame()
+	if err := tt.Click("New Folder…"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if tr.adding == nil || tr.adding.in != "/tmp/demo" || !tr.adding.dir {
+		t.Errorf("the toolbar's New Folder names %+v", tr.adding)
+	}
+	if err := tt.Click("Cancel"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tr.adding != nil {
+		t.Error("Cancel left the field")
+	}
+}
+
+// A path the CLI names is the tree's, as the tree writes its paths.
+func TestFilesWithin(t *testing.T) {
+	unix := &fileTree{root: "/tmp/demo"}
+	win := &fileTree{root: "C:/src/kero"}
+	for _, c := range []struct {
+		t    *fileTree
+		in   string
+		want string
+		ok   bool
+	}{
+		{unix, "/tmp/demo/src/a.go", "/tmp/demo/src/a.go", true},
+		{unix, "/tmp/demo", "/tmp/demo", true},
+		{unix, "/tmp/demos/a.go", "", false},
+		{unix, "/etc/passwd", "", false},
+		{unix, "src/a.go", "/tmp/demo/src/a.go", true},
+		{win, `C:\src\kero\files.go`, `C:/src/kero\files.go`, true},
+		{win, `c:\SRC\kero\internal\cli`, `C:/src/kero\internal\cli`, true},
+		{win, `D:\src\kero\files.go`, "", false},
+	} {
+		got, ok := c.t.within(c.in)
+		if got != c.want || ok != c.ok {
+			t.Errorf("within(%q) of %s = %q, %v; want %q, %v", c.in, c.t.root, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+// An editor pane of a file not there yet opens empty, as a new file, to be
+// made by its save.
+func TestEditorNewFile(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/plan.md", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	f := a.edits["b"]
+	if f == nil || !f.fresh {
+		t.Fatalf("the pane's file is %+v", f)
+	}
+	f.absent = true
+	f.read("", false, false, nil, nil, nil)
+	tt.Frame()
+	if f.st == nil || f.err != "" || f.hash != "" || !tt.HasText("New file") {
+		t.Fatalf("a new file opened as %+v; texts %q", f, tt.Texts())
+	}
+	f.saved(f.st.Buffer.Version(), proto.FSWrite{Hash: "h"}, nil)
+	tt.Frame()
+	if f.absent || tt.HasText("New file") {
+		t.Error("a saved new file still shows as new")
+	}
+}
+
+// In a narrow panel, the header's tabs show their icons alone, and leave
+// the window's controls their room.
+func TestSideHeaderNarrow(t *testing.T) {
+	a := testApp(t)
+	a.prefs.Side = sideFiles
+	a.prefs.SideWidth = minSide
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	if r, ok := tt.Find("Changes"); !ok || r.W > 36 {
+		t.Errorf("a narrow panel's Changes tab is %v wide", r.W)
+	}
+	a.prefs.SideWidth = defaultSide
+	tt.Frame()
+	if r, ok := tt.Find("Changes"); !ok || r.W < 60 {
+		t.Errorf("a wide panel's Changes tab is %v wide", r.W)
+	}
+}
+
 // The view's tab shows it, and the panel's other view with the other's.
 func TestFilesTab(t *testing.T) {
 	a := testApp(t)

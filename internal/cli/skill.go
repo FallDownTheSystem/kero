@@ -31,6 +31,10 @@ prefix works), or a session's name; a session stands for its focused pane.
     kero new -n tests -d ~/code/app -- go test ./...
     kero split --url localhost:3000           # a browser pane, to show the user a page
     kero split --file src/main.go             # an editor pane, to show the user a file
+    kero split --file notes/plan.md           # a file not there yet: saving it makes it
+    kero new --file src/main.go               # an editor in a session of its own
+    kero do files.show path=src/main.go       # show it in the side panel's Files view
+    kero do changes.show                      # show the worktree's changes
 
 ## Drive it
 

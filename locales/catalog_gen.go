@@ -4026,11 +4026,11 @@ func (msgs Messages) SetEditor() string {
 	return Catalog.Format(msgs.locale, "setEditor", nil)
 }
 
-// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens the file with the app the system opens it …"
+// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens a file with the app the system opens it wi…"
 // in the language the app shows.
 func SetEditorDetail() string { return In(i18n.Locale()).SetEditorDetail() }
 
-// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens the file with the app the system opens it …"
+// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens a file with the app the system opens it wi…"
 // in the language of msgs.
 func (msgs Messages) SetEditorDetail() string {
 	return Catalog.Format(msgs.locale, "setEditorDetail", nil)
@@ -4456,6 +4456,126 @@ func FilesDiscard() string { return In(i18n.Locale()).FilesDiscard() }
 // in the language of msgs.
 func (msgs Messages) FilesDiscard() string {
 	return Catalog.Format(msgs.locale, "filesDiscard", nil)
+}
+
+// FilesNewFile says "New File…"
+// in the language the app shows.
+func FilesNewFile() string { return In(i18n.Locale()).FilesNewFile() }
+
+// FilesNewFile says "New File…"
+// in the language of msgs.
+func (msgs Messages) FilesNewFile() string {
+	return Catalog.Format(msgs.locale, "filesNewFile", nil)
+}
+
+// FilesNewFolder says "New Folder…"
+// in the language the app shows.
+func FilesNewFolder() string { return In(i18n.Locale()).FilesNewFolder() }
+
+// FilesNewFolder says "New Folder…"
+// in the language of msgs.
+func (msgs Messages) FilesNewFolder() string {
+	return Catalog.Format(msgs.locale, "filesNewFolder", nil)
+}
+
+// FilesNewFileIn says "New file in {folder}"
+// in the language the app shows.
+func FilesNewFileIn(folder string) string { return In(i18n.Locale()).FilesNewFileIn(folder) }
+
+// FilesNewFileIn says "New file in {folder}"
+// in the language of msgs.
+func (msgs Messages) FilesNewFileIn(folder string) string {
+	return Catalog.Format(msgs.locale, "filesNewFileIn", map[string]any{"folder": folder})
+}
+
+// FilesNewFolderIn says "New folder in {folder}"
+// in the language the app shows.
+func FilesNewFolderIn(folder string) string { return In(i18n.Locale()).FilesNewFolderIn(folder) }
+
+// FilesNewFolderIn says "New folder in {folder}"
+// in the language of msgs.
+func (msgs Messages) FilesNewFolderIn(folder string) string {
+	return Catalog.Format(msgs.locale, "filesNewFolderIn", map[string]any{"folder": folder})
+}
+
+// FilesNewFileTip says "A name, or a path in the folder, as src/main.go. Enter makes it, Esc leaves it."
+// in the language the app shows.
+func FilesNewFileTip() string { return In(i18n.Locale()).FilesNewFileTip() }
+
+// FilesNewFileTip says "A name, or a path in the folder, as src/main.go. Enter makes it, Esc leaves it."
+// in the language of msgs.
+func (msgs Messages) FilesNewFileTip() string {
+	return Catalog.Format(msgs.locale, "filesNewFileTip", nil)
+}
+
+// FilesCantCreate says "Couldn't create it: {error}"
+// in the language the app shows.
+func FilesCantCreate(error string) string { return In(i18n.Locale()).FilesCantCreate(error) }
+
+// FilesCantCreate says "Couldn't create it: {error}"
+// in the language of msgs.
+func (msgs Messages) FilesCantCreate(error string) string {
+	return Catalog.Format(msgs.locale, "filesCantCreate", map[string]any{"error": error})
+}
+
+// FilesNewTerminal says "New Terminal Here"
+// in the language the app shows.
+func FilesNewTerminal() string { return In(i18n.Locale()).FilesNewTerminal() }
+
+// FilesNewTerminal says "New Terminal Here"
+// in the language of msgs.
+func (msgs Messages) FilesNewTerminal() string {
+	return Catalog.Format(msgs.locale, "filesNewTerminal", nil)
+}
+
+// FilesNotInTree says "{path} isn't in the folder the Files view shows"
+// in the language the app shows.
+func FilesNotInTree(path string) string { return In(i18n.Locale()).FilesNotInTree(path) }
+
+// FilesNotInTree says "{path} isn't in the folder the Files view shows"
+// in the language of msgs.
+func (msgs Messages) FilesNotInTree(path string) string {
+	return Catalog.Format(msgs.locale, "filesNotInTree", map[string]any{"path": path})
+}
+
+// FilesNew says "New file"
+// in the language the app shows.
+func FilesNew() string { return In(i18n.Locale()).FilesNew() }
+
+// FilesNew says "New file"
+// in the language of msgs.
+func (msgs Messages) FilesNew() string {
+	return Catalog.Format(msgs.locale, "filesNew", nil)
+}
+
+// FilesNewTip says "The file isn't there yet: saving it makes it"
+// in the language the app shows.
+func FilesNewTip() string { return In(i18n.Locale()).FilesNewTip() }
+
+// FilesNewTip says "The file isn't there yet: saving it makes it"
+// in the language of msgs.
+func (msgs Messages) FilesNewTip() string {
+	return Catalog.Format(msgs.locale, "filesNewTip", nil)
+}
+
+// ActionShowFiles says "Show Files"
+// in the language the app shows.
+func ActionShowFiles() string { return In(i18n.Locale()).ActionShowFiles() }
+
+// ActionShowFiles says "Show Files"
+// in the language of msgs.
+func (msgs Messages) ActionShowFiles() string {
+	return Catalog.Format(msgs.locale, "actionShowFiles", nil)
+}
+
+// ActionShowChanges says "Show Changes"
+// in the language the app shows.
+func ActionShowChanges() string { return In(i18n.Locale()).ActionShowChanges() }
+
+// ActionShowChanges says "Show Changes"
+// in the language of msgs.
+func (msgs Messages) ActionShowChanges() string {
+	return Catalog.Format(msgs.locale, "actionShowChanges", nil)
 }
 
 // PageHosts says "Hosts"

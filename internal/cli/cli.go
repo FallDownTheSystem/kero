@@ -39,6 +39,8 @@ Usage:
       -f, --focus                 show it in the app
       -w, --wait                  wait for cmd to end, exit with its status
       -u, --url <url>             a browser showing url, not a shell
+      --file <path>               an editor of the file, not a shell; a file
+                                  not there yet is made as it is saved
       --worktree <branch>         in a git worktree of its own, on a new
                                   branch from the default branch
       --base <ref>                the branch to start it from instead
@@ -50,7 +52,8 @@ Usage:
       -w, --wait                  wait for cmd to end, exit with its status
       -u, --url <url>             a browser showing url, not a shell, as
                                   a dev server's page: localhost:3000
-      --file <path>               an editor of the file, not a shell
+      --file <path>               an editor of the file, not a shell; a file
+                                  not there yet is made as it is saved
   kero send <target> <text…>    type text into a pane
       -e                          interpret \n \r \t \e \xHH escapes
       --enter                     press Enter after it
@@ -121,7 +124,8 @@ Usage:
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear
   kero do <action> [key=value…]  run an action of the app, as its menus do
-                                (needs Remote Control, in Settings › Agents)
+                                (needs Remote Control, in Settings › Agents),
+                                as kero do files.show path=src/main.go
   kero actions                  list the actions kero do runs
   kero config path|show|edit|check
                                 the configuration file: where it is, every
@@ -216,6 +220,19 @@ func Run(args []string) int {
 		return 4
 	}
 	return 1
+}
+
+// hereFile makes a path the user typed absolute, of the shell's folder it
+// is typed in, which kerod and the app have no idea of; on another host
+// (-H) it stays as it is, for kerod there to make of its home.
+func hereFile(path, host string) string {
+	if path == "" || host != "" || filepath.IsAbs(path) || strings.HasPrefix(path, "~") {
+		return path
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
 }
 
 func usageErr(format string, args ...any) error {
@@ -356,7 +373,7 @@ func run(args []string, host string) error {
 	case "new":
 		f, err := parse(args,
 			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout",
-				"u": "url", "url": "url", "worktree": "worktree", "base": "base"},
+				"u": "url", "url": "url", "file": "file", "worktree": "worktree", "base": "base"},
 			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
@@ -367,6 +384,15 @@ func run(args []string, host string) error {
 		}
 		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
 			return usageErr("kero new --url shows a page, and runs no command")
+		}
+		file := hereFile(f.vals["file"], host)
+		if file != "" && (len(command) > 0 || f.set["wait"] || f.vals["url"] != "") {
+			return usageErr("kero new --file shows a file, and runs no command")
+		}
+		// The file is resolved here, in this checkout, not in the worktree
+		// the session would start in.
+		if file != "" && f.vals["worktree"] != "" {
+			return usageErr("kero new --file shows a file of this checkout, not of a new --worktree")
 		}
 		if f.vals["base"] != "" && f.vals["worktree"] == "" {
 			return usageErr("kero new --base starts a --worktree's branch")
@@ -379,7 +405,7 @@ func run(args []string, host string) error {
 		}
 		var s proto.Session
 		if err := c.Call("create", proto.CreateParams{
-			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: f.vals["url"],
+			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: f.vals["url"], File: file,
 			After: os.Getenv("KERO_SESSION"), Worktree: f.vals["worktree"], Base: f.vals["base"],
 		}, &s); err != nil {
 			return err
@@ -423,16 +449,9 @@ func run(args []string, host string) error {
 		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
 			return usageErr("kero split --url shows a page, and runs no command")
 		}
-		file := f.vals["file"]
+		file := hereFile(f.vals["file"], host)
 		if file != "" && (len(command) > 0 || f.set["wait"] || f.vals["url"] != "") {
 			return usageErr("kero split --file shows a file, and runs no command")
-		}
-		// A path of the shell it is typed in, as kerod has no idea of its
-		// folder.
-		if file != "" && !filepath.IsAbs(file) {
-			if abs, err := filepath.Abs(file); err == nil {
-				file = abs
-			}
 		}
 		var s proto.Session
 		if err := c.Call("split", proto.CreateParams{Split: t.ref(), Direction: dir, Ratio: ratio,
@@ -727,6 +746,9 @@ func run(args []string, host string) error {
 			k, v, ok := strings.Cut(arg, "=")
 			if !ok {
 				return usageErr("%q is not key=value", arg)
+			}
+			if k == "path" || k == "dir" {
+				v = hereFile(v, host)
 			}
 			kv[k] = v
 		}

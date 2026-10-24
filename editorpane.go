@@ -21,8 +21,9 @@ func (a *App) editorOf(p *proto.Pane) *openFile {
 	}
 	f := a.edits[p.ID]
 	if f == nil || f.path != p.File {
-		// Of no stamp a session has: read as it shows.
-		f = &openFile{path: p.File, stamp: "\x00"}
+		// Of no stamp a session has: read as it shows. Its file may be one
+		// to make, as kero split --file names it.
+		f = &openFile{path: p.File, stamp: "\x00", fresh: true}
 		a.edits[p.ID] = f
 	}
 	return f
