@@ -239,6 +239,9 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 	card := ui.Column(c.Key("side")).Width(width).Shrink(0).MinHeight(0).Radius(14).Clip().
 		Focusable().Bind(a.paneRef("side-card"))
 	a.side.focused = card.FocusWithin()
+	if a.set.FocusFollowsMouse && a.pointerEntered(c, "side-card", card, card.Hovered()) && !a.side.focused {
+		a.paneRef("side-card").Focus()
+	}
 	// While the user is elsewhere, the panel fades as a terminal they are
 	// not in does, as they chose (settings' DimExplorer).
 	dim := a.set.DimExplorer && !a.side.focused
