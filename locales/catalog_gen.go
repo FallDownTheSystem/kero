@@ -2380,6 +2380,26 @@ func (msgs Messages) SetDimUnfocusedDetail() string {
 	return Catalog.Format(msgs.locale, "setDimUnfocusedDetail", nil)
 }
 
+// SetDimPanel says "Dim the unfocused panel"
+// in the language the app shows.
+func SetDimPanel() string { return In(i18n.Locale()).SetDimPanel() }
+
+// SetDimPanel says "Dim the unfocused panel"
+// in the language of msgs.
+func (msgs Messages) SetDimPanel() string {
+	return Catalog.Format(msgs.locale, "setDimPanel", nil)
+}
+
+// SetDimPanelDetail says "The Changes and Files panel fades while you’re not in it."
+// in the language the app shows.
+func SetDimPanelDetail() string { return In(i18n.Locale()).SetDimPanelDetail() }
+
+// SetDimPanelDetail says "The Changes and Files panel fades while you’re not in it."
+// in the language of msgs.
+func (msgs Messages) SetDimPanelDetail() string {
+	return Catalog.Format(msgs.locale, "setDimPanelDetail", nil)
+}
+
 // SetBackground says "Background"
 // in the language the app shows.
 func SetBackground() string { return In(i18n.Locale()).SetBackground() }

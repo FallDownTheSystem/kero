@@ -76,7 +76,7 @@ func (a *App) paneEditor(c *ui.Context, pal *palette, s *proto.Session, p *proto
 // file, not yet saved or typed in, of this machine, one that opens a file
 // of it there instead, which the system's dialog chooses.
 func (a *App) editorBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, f *openFile) {
-	ui.Row(c.Key("bar")).Height(stickyH).Shrink(0).Padding(0, 6, 0, 12).Gap(2).AlignItems(ui.Center).Background(pal.chip).Children(func() {
+	bottomBar(c, "bar", pal).Padding(0, 6, 0, 12).Children(func() {
 		a.fileStatus(c, pal, f)
 		ui.Spacer(c)
 		if f.absent && f.st != nil && !f.modified() && !a.hostOf(p.ID).remote() {
