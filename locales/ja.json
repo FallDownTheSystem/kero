@@ -222,6 +222,8 @@
   "setTranslucentDetail": "ウインドウの背景からデスクトップが透けて見えます。",
   "setDimUnfocused": "フォーカスのないターミナルを暗くする",
   "setDimUnfocusedDetail": "セッションに複数のペインがあるとき、使用中でないターミナルが薄くなります。",
+  "setDimPanel": "フォーカスのないパネルを暗くする",
+  "setDimPanelDetail": "変更とファイルのパネルを使用していない間、パネルが薄くなります。",
   "setBackground": "背景",
   "bgPetal": "花びら",
   "bgMist": "霧",

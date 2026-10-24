@@ -836,6 +836,9 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetDimUnfocused(), locales.SetDimUnfocusedDetail(), func() {
 			toggle(c.Key("dim-unfocused"), &s.DimUnfocused, pal)
 		})
+		settingRow(c, pal, locales.SetDimPanel(), locales.SetDimPanelDetail(), func() {
+			toggle(c.Key("dim-panel"), &s.DimPanel, pal)
+		})
 	})
 	settingsGroup(c, pal, locales.SetCursor(), "", func() {
 		settingRow(c, pal, locales.SetShape(), locales.SetShapeDetail(), func() {
