@@ -15,7 +15,7 @@ In the sidebar, a session on a branch other than the repository's default one, s
 
 ## The changes panel
 
-Click a pane's branch, or the panel button at the window's top right, or press <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>G</kbd>, to open the changes panel at the right of the session. The panel button shows the view the panel showed last, and stays at the window's corner as the panel opens, to close it again. The **Widen** button in the panel's header gives it all the room the panes leave, until you click it again. With `sessions-sidebar = right`, the sessions take the window's right and the panel its left, with its button at the top left. It lists the files that changed, with what each adds and removes, since one of:
+Click a pane's branch, or the Explorer button at the window's top right, or press <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>G</kbd>, to open the Explorer on the changes, at the right of the session. The Explorer button shows the view the Explorer showed last, and stays at the window's corner as the Explorer opens, to close it again. The **Widen Explorer** button in the Explorer's header gives it all the room the panes leave, until you click it again. With `sessions-sidebar = right`, the sessions take the window's right and the Explorer its left, with its button at the top left. It lists the files that changed, with what each adds and removes, since one of:
 
 - **Last Turn**: where the session's agent last started working, so you see what it did in its latest turn, and nothing that changed before it. Kero takes a snapshot of the worktree as the agent starts, without touching your index or files.
 - **Uncommitted**: the last commit, untracked files included.
