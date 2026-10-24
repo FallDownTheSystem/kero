@@ -49,7 +49,10 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 
 ```sh
 kero split --file src/main.go
+kero new --file src/main.go     # 在独立会话中
 ```
+
+如果目标文件尚不存在，但其所在文件夹已存在，它会以空文件的形式打开，并标记为 **新文件**；保存时会创建该文件。
 
 ## 浏览器窗格
 
