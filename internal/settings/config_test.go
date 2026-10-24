@@ -10,6 +10,21 @@ import (
 	"kero/internal/actions"
 )
 
+// The files' theme is written as the terminals', and follows theirs by
+// default.
+func TestFileTheme(t *testing.T) {
+	s, probs := parse("file-theme = light:GitHub Light Default,dark:lofi\n")
+	if len(probs) != 0 || s.FileLightTheme != "GitHub Light Default" || s.FileDarkTheme != "lofi" {
+		t.Fatalf("parsed %q %q, problems %q", s.FileLightTheme, s.FileDarkTheme, probs)
+	}
+	if s, _ := parse(""); s.FileLightTheme != "terminal" || s.FileDarkTheme != "terminal" {
+		t.Errorf("default %q %q, want terminal", s.FileLightTheme, s.FileDarkTheme)
+	}
+	if s, _ := parse("file-theme = Nord\n"); s.FileLightTheme != "Nord" || s.FileDarkTheme != "Nord" {
+		t.Errorf("one theme for both: %q %q", s.FileLightTheme, s.FileDarkTheme)
+	}
+}
+
 func TestFormatKeepsTheUsersFile(t *testing.T) {
 	file := `# my kero
 font-size = 14
