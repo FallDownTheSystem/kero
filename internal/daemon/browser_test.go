@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -82,6 +83,56 @@ func TestBrowserPane(t *testing.T) {
 	if tp.setPage("https://kero.sh", "") == nil {
 		t.Error("set a terminal's page")
 	}
+}
+
+// An editor pane runs no shell either: it keeps its file, in the file's
+// folder, which a restore brings back; a folder, or no file, is refused.
+func TestEditorPane(t *testing.T) {
+	d := testDaemon(t)
+	dir := t.TempDir()
+	file := filepath.Join(dir, "main.go")
+	os.WriteFile(file, []byte("package main\n"), 0o644)
+	if _, err := d.create(proto.CreateParams{File: dir}); err == nil {
+		t.Error("an editor of a folder")
+	}
+	if _, err := d.create(proto.CreateParams{File: filepath.Join(dir, "none.go")}); err == nil {
+		t.Error("an editor of no file")
+	}
+	s, err := d.create(proto.CreateParams{File: file})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Panes) != 1 || s.Panes[0].File != file || s.Panes[0].Dir != dir || s.Panes[0].Terminal() {
+		t.Fatalf("panes %+v", s.Panes)
+	}
+	p := d.findPane(s.Panes[0].ID)
+	if p.term != nil || p.proc != nil {
+		t.Fatal("an editor pane has a terminal")
+	}
+	if _, _, _, ok := p.attach(newAttachment(nil)); ok {
+		t.Error("attached to an editor pane")
+	}
+	if got := p.readText(false, 0); got != file+"\n" {
+		t.Errorf("read %q", got)
+	}
+	if p.setPage("https://kero.sh", "") == nil {
+		t.Error("set an editor's page")
+	}
+	d.saveState()
+
+	r := testDaemon(t)
+	r.dir = d.dir
+	r.restore()
+	if len(r.sessions) != 1 || len(r.sessions[0].panes) != 1 {
+		t.Fatalf("restored %d sessions", len(r.sessions))
+	}
+	if info := r.sessions[0].panes[0].info; info.File != file || info.Dir != dir || !info.Restored || r.sessions[0].panes[0].term != nil {
+		t.Errorf("restored %+v", info)
+	}
+	if err := r.removeSession(r.sessions[0].id); err != nil {
+		t.Fatal(err)
+	}
+	d.removeSession(s.ID)
 }
 
 // A browser call goes to the apps, which have the page, and comes back

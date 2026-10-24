@@ -124,6 +124,12 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `worktree-base` | `default` | What a [session's own worktree](./changes.md#sessions-in-their-own-worktree) branches from: `default`, the repository's default branch, or `current`, the branch of the session you're in |
 | `worktree-dir` |        | Where sessions' own worktrees go, each under its repository's name; empty for `.kero/worktrees` in the repository |
 
+## Files
+
+| Key      | Default | Description                                                                                                                        |
+| -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `editor` | empty   | The command **Open in Editor** runs with a file's path, as `code`, `zed` or `"C:\Tools\editor.exe" -n`: empty opens the file with the app the system opens it with |
+
 ## Browser
 
 | Key                   | Default                    | Description                                                                         |

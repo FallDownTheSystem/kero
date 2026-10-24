@@ -26,8 +26,9 @@ const idleHold = 700 * time.Millisecond
 // pane is a shell the daemon keeps running in a pseudo-terminal, with a
 // terminal emulator of its own (libghostty-vt, headless) that keeps its
 // screen and scrollback for the clients that attach later; or a browser
-// (info.URL), which the app shows: it has neither, only its place in its
-// session and the page the app last told.
+// (info.URL) or an editor (info.File), which the app shows: it has
+// neither, only its place in its session and the page the app last told,
+// or its file.
 type pane struct {
 	d   *Daemon
 	sid string // the session's it belongs to
@@ -111,7 +112,7 @@ func (h *headless) Close() error {
 func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 	s := &pane{d: d, sid: sid, info: info, clients: map[*attachment]struct{}{}, changed: make(chan struct{})}
 	s.info.Progress = -1
-	if s.info.Browser() {
+	if !s.info.Terminal() {
 		return s, nil
 	}
 	if s.info.Cols <= 0 || s.info.Rows <= 0 {
@@ -814,11 +815,11 @@ func (s *pane) history(force bool) []byte {
 }
 
 // readText returns the session's text: the screen, or with scrollback; a
-// browser's is its page's title and URL.
+// browser's is its page's title and URL, an editor's its file.
 func (s *pane) readText(scrollback bool, lines int) string {
 	s.mu.Lock()
 	if s.term == nil {
-		text := strings.TrimSpace(s.info.Title + "\n" + s.info.URL)
+		text := strings.TrimSpace(s.info.Title + "\n" + s.info.URL + s.info.File)
 		s.mu.Unlock()
 		return text + "\n"
 	}

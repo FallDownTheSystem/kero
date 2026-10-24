@@ -37,8 +37,19 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 | `-d`, `--dir <dir>`                   | 在另一个目录中启动                             |
 | `-w`, `--wait`                        | 等待其命令结束，并以该命令的状态码退出         |
 | `-u`, `--url <url>`                   | 打开浏览器显示该页面，而不是 shell             |
+| `--file <path>`                       | 打开该文件的编辑器，而不是 shell               |
 
 在 Kero 中运行时，`kero split` 会拆分它所在的窗格。在其他地方运行时，需要指定目标：`kero split my-session --down`。
+
+## 编辑器窗格
+
+编辑器窗格在终端旁显示一个文件，按其语言高亮，可阅读和编辑：<kbd>⌘</kbd> <kbd>S</kbd>（<kbd>Ctrl</kbd> <kbd>S</kbd>）保存，与[文件视图](./changes.md#files)一样，只在文件仍是读取时的样子时才写入。它像其他窗格一样可以拆分、放大、移动和关闭，Kero 重启后会回到同一个文件。有未保存的编辑时关闭它，会先询问你。
+
+从文件视图打开：右键点击文件并选择**在窗格中打开**，或点击文件上方的拆分按钮。在 shell 中或由智能体：
+
+```sh
+kero split --file src/main.go
+```
 
 ## 浏览器窗格
 
@@ -49,7 +60,7 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 | 新建浏览器窗格   | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>B</kbd> |
 | 打开地址         | <kbd>⌘</kbd> <kbd>L</kbd>              |
 
-在地址栏中输入网址，例如 `localhost:3000` 或 `github.com`，或者输入要搜索的词。在命令面板（<kbd>⌘</kbd> <kbd>P</kbd>）中输入的网址也会在新的浏览器窗格中打开。<kbd>⌘</kbd> <kbd>F</kbd> 可在页面中查找文本。
+窗格标题栏中的地球按钮会在该窗格旁打开一个。在地址栏中输入网址，例如 `localhost:3000` 或 `github.com`，或者输入要搜索的词。在命令面板（<kbd>⌘</kbd> <kbd>P</kbd>）中输入的网址也会在新的浏览器窗格中打开。<kbd>⌘</kbd> <kbd>F</kbd> 可在页面中查找文本。
 
 在 shell 中或由智能体用 `--url` 打开：
 

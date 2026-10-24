@@ -206,6 +206,15 @@ func (a *App) isBrowser(id string) bool {
 	return false
 }
 
+// isTerminal reports whether a pane is a terminal's, as one the app does
+// not know yet is: neither a browser's nor an editor's.
+func (a *App) isTerminal(id string) bool {
+	if s := a.sessionOfPane(id); s != nil {
+		return s.PaneByID(id).Terminal()
+	}
+	return true
+}
+
 // openBrowser opens a browser pane beside the pane the user is in, or the
 // address bar of the browser they are in.
 func (a *App) openBrowser(url string) {
