@@ -2422,11 +2422,11 @@ func (msgs Messages) SetTranslucentDetail() string {
 	return Catalog.Format(msgs.locale, "setTranslucentDetail", nil)
 }
 
-// SetDimUnfocused says "Dim unfocused terminals"
+// SetDimUnfocused says "Dim unfocused panes"
 // in the language the app shows.
 func SetDimUnfocused() string { return In(i18n.Locale()).SetDimUnfocused() }
 
-// SetDimUnfocused says "Dim unfocused terminals"
+// SetDimUnfocused says "Dim unfocused panes"
 // in the language of msgs.
 func (msgs Messages) SetDimUnfocused() string {
 	return Catalog.Format(msgs.locale, "setDimUnfocused", nil)
@@ -2442,24 +2442,24 @@ func (msgs Messages) SetDimUnfocusedDetail() string {
 	return Catalog.Format(msgs.locale, "setDimUnfocusedDetail", nil)
 }
 
-// SetDimPanel says "Dim the unfocused panel"
+// SetDimExplorer says "Dim unfocused Explorer"
 // in the language the app shows.
-func SetDimPanel() string { return In(i18n.Locale()).SetDimPanel() }
+func SetDimExplorer() string { return In(i18n.Locale()).SetDimExplorer() }
 
-// SetDimPanel says "Dim the unfocused panel"
+// SetDimExplorer says "Dim unfocused Explorer"
 // in the language of msgs.
-func (msgs Messages) SetDimPanel() string {
-	return Catalog.Format(msgs.locale, "setDimPanel", nil)
+func (msgs Messages) SetDimExplorer() string {
+	return Catalog.Format(msgs.locale, "setDimExplorer", nil)
 }
 
-// SetDimPanelDetail says "The Changes and Files panel fades while you’re not in it."
+// SetDimExplorerDetail says "The Explorer, with Changes and Files, fades while you’re not in it."
 // in the language the app shows.
-func SetDimPanelDetail() string { return In(i18n.Locale()).SetDimPanelDetail() }
+func SetDimExplorerDetail() string { return In(i18n.Locale()).SetDimExplorerDetail() }
 
-// SetDimPanelDetail says "The Changes and Files panel fades while you’re not in it."
+// SetDimExplorerDetail says "The Explorer, with Changes and Files, fades while you’re not in it."
 // in the language of msgs.
-func (msgs Messages) SetDimPanelDetail() string {
-	return Catalog.Format(msgs.locale, "setDimPanelDetail", nil)
+func (msgs Messages) SetDimExplorerDetail() string {
+	return Catalog.Format(msgs.locale, "setDimExplorerDetail", nil)
 }
 
 // SetBackground says "Background"
@@ -3698,41 +3698,41 @@ func (msgs Messages) SideClose() string {
 	return Catalog.Format(msgs.locale, "sideClose", nil)
 }
 
-// SideShow says "Show Panel"
+// SideShow says "Show Explorer"
 // in the language the app shows.
 func SideShow() string { return In(i18n.Locale()).SideShow() }
 
-// SideShow says "Show Panel"
+// SideShow says "Show Explorer"
 // in the language of msgs.
 func (msgs Messages) SideShow() string {
 	return Catalog.Format(msgs.locale, "sideShow", nil)
 }
 
-// SideHide says "Hide Panel"
+// SideHide says "Hide Explorer"
 // in the language the app shows.
 func SideHide() string { return In(i18n.Locale()).SideHide() }
 
-// SideHide says "Hide Panel"
+// SideHide says "Hide Explorer"
 // in the language of msgs.
 func (msgs Messages) SideHide() string {
 	return Catalog.Format(msgs.locale, "sideHide", nil)
 }
 
-// SideWiden says "Widen Panel"
+// SideWiden says "Widen Explorer"
 // in the language the app shows.
 func SideWiden() string { return In(i18n.Locale()).SideWiden() }
 
-// SideWiden says "Widen Panel"
+// SideWiden says "Widen Explorer"
 // in the language of msgs.
 func (msgs Messages) SideWiden() string {
 	return Catalog.Format(msgs.locale, "sideWiden", nil)
 }
 
-// SideRestore says "Restore Panel Width"
+// SideRestore says "Restore Explorer Width"
 // in the language the app shows.
 func SideRestore() string { return In(i18n.Locale()).SideRestore() }
 
-// SideRestore says "Restore Panel Width"
+// SideRestore says "Restore Explorer Width"
 // in the language of msgs.
 func (msgs Messages) SideRestore() string {
 	return Catalog.Format(msgs.locale, "sideRestore", nil)
@@ -3808,11 +3808,11 @@ func (msgs Messages) SetSessionsSide() string {
 	return Catalog.Format(msgs.locale, "setSessionsSide", nil)
 }
 
-// SetSessionsSideDetail says "The side of the window the sessions take. The Changes and Files panel takes the other."
+// SetSessionsSideDetail says "The side of the window the sessions take. The Explorer, with Changes and Files, takes the other."
 // in the language the app shows.
 func SetSessionsSideDetail() string { return In(i18n.Locale()).SetSessionsSideDetail() }
 
-// SetSessionsSideDetail says "The side of the window the sessions take. The Changes and Files panel takes the other."
+// SetSessionsSideDetail says "The side of the window the sessions take. The Explorer, with Changes and Files, takes the other."
 // in the language of msgs.
 func (msgs Messages) SetSessionsSideDetail() string {
 	return Catalog.Format(msgs.locale, "setSessionsSideDetail", nil)
@@ -3838,24 +3838,24 @@ func (msgs Messages) SetSideRight() string {
 	return Catalog.Format(msgs.locale, "setSideRight", nil)
 }
 
-// SetPanelPath says "Panel folder"
+// SetExplorerFolder says "Explorer folder"
 // in the language the app shows.
-func SetPanelPath() string { return In(i18n.Locale()).SetPanelPath() }
+func SetExplorerFolder() string { return In(i18n.Locale()).SetExplorerFolder() }
 
-// SetPanelPath says "Panel folder"
+// SetExplorerFolder says "Explorer folder"
 // in the language of msgs.
-func (msgs Messages) SetPanelPath() string {
-	return Catalog.Format(msgs.locale, "setPanelPath", nil)
+func (msgs Messages) SetExplorerFolder() string {
+	return Catalog.Format(msgs.locale, "setExplorerFolder", nil)
 }
 
-// SetPanelPathDetail says "What the Changes and Files panel's header shows of the folder it shows."
+// SetExplorerFolderDetail says "What the Explorer's header shows of the folder it shows. Fit shows the path, else the name, as the room allows."
 // in the language the app shows.
-func SetPanelPathDetail() string { return In(i18n.Locale()).SetPanelPathDetail() }
+func SetExplorerFolderDetail() string { return In(i18n.Locale()).SetExplorerFolderDetail() }
 
-// SetPanelPathDetail says "What the Changes and Files panel's header shows of the folder it shows."
+// SetExplorerFolderDetail says "What the Explorer's header shows of the folder it shows. Fit shows the path, else the name, as the room allows."
 // in the language of msgs.
-func (msgs Messages) SetPanelPathDetail() string {
-	return Catalog.Format(msgs.locale, "setPanelPathDetail", nil)
+func (msgs Messages) SetExplorerFolderDetail() string {
+	return Catalog.Format(msgs.locale, "setExplorerFolderDetail", nil)
 }
 
 // SetPathHidden says "Nothing"
@@ -4418,11 +4418,11 @@ func (msgs Messages) SetDiffLayout() string {
 	return Catalog.Format(msgs.locale, "setDiffLayout", nil)
 }
 
-// SetDiffLayoutDetail says "Auto shows diffs unified while the changes panel is narrow, and side by side once it's wide."
+// SetDiffLayoutDetail says "Auto shows diffs unified while the Explorer is narrow, and side by side once it's wide."
 // in the language the app shows.
 func SetDiffLayoutDetail() string { return In(i18n.Locale()).SetDiffLayoutDetail() }
 
-// SetDiffLayoutDetail says "Auto shows diffs unified while the changes panel is narrow, and side by side once it's wide."
+// SetDiffLayoutDetail says "Auto shows diffs unified while the Explorer is narrow, and side by side once it's wide."
 // in the language of msgs.
 func (msgs Messages) SetDiffLayoutDetail() string {
 	return Catalog.Format(msgs.locale, "setDiffLayoutDetail", nil)

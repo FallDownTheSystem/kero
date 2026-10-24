@@ -58,9 +58,11 @@ kero config check             # report unknown keys and bad values
 | `language`           | `system` | The app's language: `system`, `en`, `ja` or `zh-Hans`           |
 | `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
 | `window-translucent` | `true`   | Let the desktop show through the window                         |
-| `sessions-sidebar`   | `left`   | The side of the window the sessions' sidebar takes: `left` or `right`; the Changes and Files panel takes the other |
+| `sessions-sidebar`   | `left`   | The side of the window the sessions' sidebar takes: `left` or `right`; the Explorer, which shows Changes and Files, takes the other |
 | `pane-folder`        | `fit`    | What a pane's header shows of its folder: `hidden`, `folder` (its name), `full` (its path), or `fit`, the most of those that fits |
-| `panel-path`         | `fit`    | What the Changes and Files panel's header shows of its folder, as `pane-folder` |
+| `explorer-folder`    | `fit`    | What the Explorer's header shows of its folder, as `pane-folder` |
+| `dim-unfocused-terminals` | `true` | Fade the panes you're not in, when a session has several |
+| `dim-unfocused-explorer` | `false` | Fade the Explorer while you're not in it |
 
 ## Terminal
 
@@ -74,8 +76,6 @@ kero config check             # report unknown keys and bad values
 | `font-ligatures`      | `true`  | Join characters the way the font draws them                              |
 | `font-thicken`        | `false` | A heavier stroke, as in Ghostty                                          |
 | `minimum-contrast`    | `3`     | The least contrast text keeps with its background, from `1` (none) to `21`, so that colors meant for a dark background stay readable on a light one, as in Ghostty |
-| `dim-unfocused-terminals` | `true` | Fade the terminals you're not in, when a session has several panes |
-| `dim-unfocused-panel` | `false` | Fade the Changes and Files panel while you're not in it |
 | `cursor-style`        | `block` | `block`, `bar` or `underline`; programs may change it                    |
 | `cursor-style-blink`  | `true`  | Blink the cursor                                                         |
 | `macos-option-as-alt` | `false` | Option sends Alt (Meta) to programs                                      |
