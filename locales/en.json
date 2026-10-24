@@ -594,6 +594,16 @@
   "filesNotInTree": "{path} isn't in the folder the Files view shows",
   "filesNew": "New file",
   "filesNewTip": "The file isn't there yet: saving it makes it",
+  "trayOpen": "Open Kero",
+  "trayQuit": "Quit, Keep Sessions Running",
+  "trayTip": "{count, plural, one {Kero: # session running} other {Kero: # sessions running}}",
+  "@trayTip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "actionShowFiles": "Show Files",
   "actionShowChanges": "Show Changes",
   "pageHosts": "Hosts",

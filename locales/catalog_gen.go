@@ -4454,6 +4454,36 @@ func (msgs Messages) FilesNewTip() string {
 	return Catalog.Format(msgs.locale, "filesNewTip", nil)
 }
 
+// TrayOpen says "Open Kero"
+// in the language the app shows.
+func TrayOpen() string { return In(i18n.Locale()).TrayOpen() }
+
+// TrayOpen says "Open Kero"
+// in the language of msgs.
+func (msgs Messages) TrayOpen() string {
+	return Catalog.Format(msgs.locale, "trayOpen", nil)
+}
+
+// TrayQuit says "Quit, Keep Sessions Running"
+// in the language the app shows.
+func TrayQuit() string { return In(i18n.Locale()).TrayQuit() }
+
+// TrayQuit says "Quit, Keep Sessions Running"
+// in the language of msgs.
+func (msgs Messages) TrayQuit() string {
+	return Catalog.Format(msgs.locale, "trayQuit", nil)
+}
+
+// TrayTip says "{count, plural, one {Kero: # session running} other {Kero: # sessions running}}"
+// in the language the app shows.
+func TrayTip(count int) string { return In(i18n.Locale()).TrayTip(count) }
+
+// TrayTip says "{count, plural, one {Kero: # session running} other {Kero: # sessions running}}"
+// in the language of msgs.
+func (msgs Messages) TrayTip(count int) string {
+	return Catalog.Format(msgs.locale, "trayTip", map[string]any{"count": count})
+}
+
 // ActionShowFiles says "Show Files"
 // in the language the app shows.
 func ActionShowFiles() string { return In(i18n.Locale()).ActionShowFiles() }

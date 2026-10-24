@@ -13,6 +13,8 @@ Sessions don't run inside the app. They run in **kerod**, a small daemon that Ke
 
 ::: tip
 Quitting Kero (<kbd>⌘</kbd> <kbd>Q</kbd>) leaves your sessions running. To end them all, use **Kero › Quit and End All Sessions…** (<kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>Q</kbd>).
+
+On Windows, closing the window while sessions run keeps Kero in the notification area. Click its icon to open the window again; right-click it to quit, keeping the sessions running, or to end them all and quit.
 :::
 
 ## Built for agents

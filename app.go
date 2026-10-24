@@ -76,6 +76,10 @@ type termEntry struct {
 // change it through Window.Update.
 type App struct {
 	win *mygo.Window
+	// tray is the notification area's icon while the window is hidden in
+	// it (tray.go); quitting, that the app quits, which a close then does.
+	tray     *mygo.Tray
+	quitting bool
 
 	// hosts are the kerods the app shows, this machine's first; st is
 	// what they hold, each host's sessions and projects after the one's

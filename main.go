@@ -95,10 +95,7 @@ func runApp() {
 		})
 	})
 	mygo.App.OnSecondInstance(func([]string, string) {
-		if a.win != nil {
-			a.win.Restore()
-			a.win.Focus()
-		}
+		a.update(a.showWindow)
 	})
 	mygo.App.OnDidBecomeActive(func() {
 		mygo.ClearNotifications()
@@ -128,6 +125,7 @@ func runApp() {
 		}))
 		a.win.OnFocus(func() { a.update(func() { a.focused = true; a.claimShown(); a.reportView() }) })
 		a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
+		a.keepInTray()
 		a.idleTime = mygo.Power.IdleTime
 		go a.watchReturn()
 		a.connect()

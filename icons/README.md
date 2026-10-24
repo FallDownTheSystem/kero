@@ -6,4 +6,6 @@
 - `octicon-*.svg`: [Octicons](https://primer.style/octicons) (MIT, © GitHub), for what Framework7 has no icon of, as a file's diff.
 - `lucide-*.svg`: [Lucide](https://lucide.dev) (ISC, © Lucide Contributors), with a heavier stroke than Iconify serves (`stroke-width`), as SF Symbols' semibold: 2.5 for `chevrons-up-down`, 3 for `check`; `wrap-text`, `file-plus`, `folder-plus` and `chevrons-down-up` keep their 2, as the Files view's tools beside Framework7's.
 
-All as [Iconify](https://iconify.design) serves them: `https://api.iconify.design/f7/<name>.svg`.
+- `tray.png`: Kero's own icon (`resources/icon.png`) at 32×32, for the notification area.
+
+All but `tray.png` as [Iconify](https://iconify.design) serves them: `https://api.iconify.design/f7/<name>.svg`.
