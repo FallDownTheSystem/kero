@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.12
+
+- Pasting an image alone, such as a screenshot, into a pane pastes the
+  path of a file with it, which agents like Claude Code attach as an
+  image. Before, it pasted nothing. Thanks @jorben
+- **Settings › Terminal › Font** lists every monospaced font you have
+  installed, such as Nerd Font builds, not only the common ones.
+  Thanks @smallnest
+- The Changes panel no longer closes the app when it shows Python code
+  with a single-quoted f-string, such as `f'{x}'`.
+
 ## 2.1.11
 
 - You can drag the terminal's scroll bar. It shows when you scroll or
