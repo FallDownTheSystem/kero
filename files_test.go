@@ -43,7 +43,14 @@ func TestFilesView(t *testing.T) {
 		t.Error("the tree lists .git")
 	}
 
-	tr.outline.Open.Add("/tmp/demo/src")
+	// A click on a folder chooses it and opens it.
+	if err := tt.Click("src"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tr.outline.Open.Has("/tmp/demo/src") || tr.chosen < 0 || tr.outline.Item(tr.chosen) != "/tmp/demo/src" {
+		t.Fatalf("a click on src didn't open and choose it: open %v, chosen %d", tr.outline.Open.Has("/tmp/demo/src"), tr.chosen)
+	}
 	tr.listed("/tmp/demo/src", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: "util.go"}}}, nil)
 	tt.Frame()
 	if !tt.HasText("util.go") {
