@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -372,9 +373,200 @@ func TestPaneHeaderNarrow(t *testing.T) {
 	if err := tt.Click("More"); err != nil {
 		t.Fatal(err)
 	}
-	if items := tt.Menu(); !slices.Contains(items, "Split Right") || !slices.Contains(items, "Toggle Files") {
+	if items := tt.Menu(); !slices.Equal(items, []string{"Split Right", "Split Down"}) {
 		t.Errorf("the folded controls' menu: %q", items)
 	}
+}
+
+// A split button's menu offers what goes in the new pane.
+func TestSplitMenu(t *testing.T) {
+	a := testApp(t)
+	// A pane alone shows its buttons only while the pointer is over it.
+	s := &a.st.Sessions[0]
+	s.Panes, s.Layout = s.Panes[:1], nil
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tt.Move(700, 300)
+	tt.Frame()
+	if err := tt.RightClick("Split Right"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	if items := tt.Menu(); !slices.Equal(items, []string{"Terminal", "Browser", "New File"}) {
+		t.Errorf("the split button's menu: %q", items)
+	}
+	// The menu takes the pointer off the header, whose buttons hide: the
+	// item chosen still reaches its button.
+	tt.Move(100, 400)
+	tt.Frame()
+	if err := tt.ChooseMenuItem("Terminal"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.menuPane != "" {
+		t.Errorf("the item chosen did not reach the split button, of pane %q", a.menuPane)
+	}
+}
+
+// A new file's pane, not yet typed in, offers to open a file instead; one
+// typed in, or saved, doesn't.
+func TestNewFilePaneOpenFile(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/untitled.txt", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	f := &openFile{path: "/tmp/untitled.txt", fresh: true, absent: true, st: &editor.State{Buffer: editor.NewBuffer("")}}
+	a.edits = map[string]*openFile{"b": f}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	if !tt.HasText("Open File…") {
+		t.Errorf("a new file's pane can't open a file; texts %q", tt.Texts())
+	}
+	shot(t, tt, "new-file-pane")
+	f.st.Buffer.Edit(editor.Edit{Text: "hi"})
+	tt.Frame()
+	if tt.HasText("Open File…") {
+		t.Error("a new file typed in offers to open another in its place")
+	}
+}
+
+// Without previews, a file chosen in the tree stays closed until its
+// menu's Preview opens it below the tree.
+func TestFilesNoPreview(t *testing.T) {
+	a := testApp(t)
+	a.st.Sessions[0].Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	a.prefs.Side = sideFiles
+	a.set.FilePreview = false
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tr := a.side.files.shown
+	tr.listed("/tmp/demo", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: "main.go"}}}, nil)
+	tt.Frame()
+	if err := tt.Click("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tr.shown != "" {
+		t.Fatalf("a file chosen opened below the tree: %q", tr.shown)
+	}
+	if err := tt.RightClick("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Preview"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	tt.Frame()
+	if tr.shown != "/tmp/demo/main.go" {
+		t.Errorf("Preview opened %q", tr.shown)
+	}
+}
+
+// A pane's header fits its folder to its room: the path where it fits, else
+// the name, else nothing; and the pointer, which shows the header's
+// controls, doesn't change which.
+func TestPaneFolderFit(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	dir := "/srv/projects/clients/acme/website/frontend"
+	s.Panes, s.Layout = s.Panes[:1], nil
+	s.Panes[0].Dir = dir
+	tt := ui.NewTester(a.view, 1280, 720)
+	for range 3 {
+		tt.Frame()
+	}
+	if !tt.HasText(dir) {
+		t.Errorf("a wide header lacks the path; texts %q", tt.Texts())
+	}
+	tt.SetSize(560, 720)
+	for range 3 {
+		tt.Frame()
+	}
+	if tt.HasText(dir) || !tt.HasText("frontend") {
+		t.Errorf("a narrow header shows %q", tt.Texts())
+	}
+	tt.Move(400, 30)
+	for range 3 {
+		tt.Frame()
+	}
+	if !tt.HasText("frontend") {
+		t.Errorf("the pointer over the header changes its folder; texts %q", tt.Texts())
+	}
+	a.set.PaneFolder = "hidden"
+	tt.SetSize(1280, 720)
+	tt.Frame()
+	if tt.HasText(dir) || tt.HasText("frontend") {
+		t.Errorf("a hidden folder shows; texts %q", tt.Texts())
+	}
+}
+
+// One button shows and hides the side panel, with the view it showed last;
+// another widens it to all the room the panes leave, and back to its width.
+func TestPanelButtons(t *testing.T) {
+	a := testApp(t)
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	closed, _ := tt.Find(a.tip("Show Panel", "changes.toggle"))
+	if err := tt.Click(a.tip("Show Panel", "changes.toggle")); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	tt.Frame()
+	// The toggle stays where it was, now in the panel's header.
+	if open, _ := tt.Find(a.tip("Hide Panel", "changes.toggle")); open.X != closed.X || open.Y != closed.Y {
+		t.Errorf("the panel's toggle moved from %v to %v as it opened", closed, open)
+	}
+	if a.prefs.Side != sideChanges {
+		t.Fatalf("the panel shows %q, want Changes first", a.prefs.Side)
+	}
+	if err := tt.Click("Files"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click(a.tip("Hide Panel", "files.toggle")); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.prefs.Side != "" || a.sideView() != sideFiles {
+		t.Fatalf("hidden, the panel shows %q and comes back with %q", a.prefs.Side, a.sideView())
+	}
+	a.toggleSide(a.sideView())
+	tt.Frame()
+	before, _ := tt.Find("Files")
+	if err := tt.Click("Widen Panel"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	wide, _ := tt.Find("Files")
+	if wide.X >= before.X-100 {
+		t.Errorf("the widened panel's tab is at %v, from %v", wide.X, before.X)
+	}
+	if err := tt.Click("Restore Panel Width"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if back, _ := tt.Find("Files"); back.X != before.X || a.prefs.SideWidth != 0 {
+		t.Errorf("restored, the tab is at %v, from %v; width %v", back.X, before.X, a.prefs.SideWidth)
+	}
+}
+
+// With the sessions at the window's right, the side panel takes its left.
+func TestSessionsRight(t *testing.T) {
+	a := testApp(t)
+	a.set.SessionsSide = "right"
+	a.prefs.Side = sideChanges
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	tab, ok1 := tt.Find("Changes")
+	name, ok2 := tt.Find("demo")
+	if !ok1 || !ok2 {
+		t.Fatalf("no panel or sidebar; texts %q", tt.Texts())
+	}
+	if tab.X > 300 || name.X < 900 {
+		t.Errorf("the panel's tab at %v, the session's name at %v", tab.X, name.X)
+	}
+	shot(t, tt, "sessions-right")
 }
 
 // The view's tab shows it, and the panel's other view with the other's.

@@ -58,6 +58,9 @@ kero config check             # 报告未知的配置项和无效的值
 | `window-theme`       | `system` | 应用外观：`system`、`light` 或 `dark`                            |
 | `language`           | `system` | 应用语言：`system`、`en`、`ja` 或 `zh-Hans`                      |
 | `window-translucent` | `true`   | 让桌面透过窗口显示出来                                          |
+| `sessions-sidebar`   | `left`   | 会话边栏所在的窗口一侧：`left` 或 `right`；改动和文件面板位于另一侧 |
+| `pane-folder`        | `fit`    | 窗格标题栏如何显示其文件夹：`hidden`、`folder`（名称）、`full`（路径），或 `fit`，在放得下的范围内尽量多显示 |
+| `panel-path`         | `fit`    | 改动和文件面板的标题栏如何显示其文件夹，取值同 `pane-folder` |
 
 ## 终端
 
@@ -130,6 +133,10 @@ kero config check             # 报告未知的配置项和无效的值
 | 键       | 默认值 | 说明                                                                                                                  |
 | -------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
 | `editor` | 空     | **在编辑器中打开**运行的命令，后接文件路径，如 `code`、`zed` 或 `"C:\Tools\editor.exe" -n`；留空则用系统打开该文件的应用打开文件，用系统打开文本文件的应用打开文件夹 |
+| `files-double-click` | `editor` | 在文件视图中双击文件时：`editor` 在编辑器中打开，`pane` 在编辑器窗格中打开。远程主机上的文件在窗格中打开 |
+| `files-pane` | `new` | 在窗格中打开的文件去向：`new` 为新窗格，`replace` 为上次使用的编辑器窗格（除非它有未保存的编辑） |
+| `files-hidden` | `true` | 在文件视图中显示点文件 |
+| `files-preview` | `true` | 在文件视图中选中的文件在树下方打开；关闭后，可从其菜单中的**预览**打开 |
 
 <a id="browser"></a>
 

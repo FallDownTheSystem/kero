@@ -42,6 +42,10 @@ const (
 type sideState struct {
 	drag    float32 // the width as a drag of the edge began, 0 while none
 	focused bool    // the panel has the keyboard: its Escape, its diff's find
+	// wide widens the panel to all the room the panes leave, until the user
+	// turns it off, hides the panel or drags its edge: prefs' SideWidth
+	// stays, which it comes back to.
+	wide    bool
 	changes changesState
 	files   filesState
 	// theme is the diffs' colors, made again only as the window's
@@ -96,18 +100,51 @@ type sideFile struct {
 // toggleSide shows a view of the panel, or hides the panel when it shows
 // it.
 func (a *App) toggleSide(view string) {
-	if a.prefs.Side == view {
-		a.prefs.Side = ""
-		a.side.focused = false
-		a.focusTerminal()
-	} else {
-		a.prefs.Side = view
+	if a.prefs.Side != view {
+		a.showSide(view)
+		return
 	}
+	a.prefs.Side = ""
+	a.side.focused, a.side.wide = false, false
+	a.focusTerminal()
 	a.savePrefs()
 }
 
+// showSide shows a view of the panel.
+func (a *App) showSide(view string) {
+	if a.prefs.Side == view && a.prefs.SideView == view {
+		return
+	}
+	a.prefs.Side, a.prefs.SideView = view, view
+	a.savePrefs()
+}
+
+// sideView is the view the panel shows, else the one it showed last, which
+// showing it again shows.
+func (a *App) sideView() string {
+	switch {
+	case a.prefs.Side != "":
+		return a.prefs.Side
+	case a.prefs.SideView == sideFiles:
+		return sideFiles
+	}
+	return sideChanges
+}
+
+// sideAction is the action that shows and hides a view of the panel.
+func sideAction(view string) string {
+	if view == sideFiles {
+		return "files.toggle"
+	}
+	return "changes.toggle"
+}
+
+// sideLeft tells that the panel stands at the left of the panes: the
+// sessions' sidebar takes the window's right.
+func (a *App) sideLeft() bool { return a.set.SessionsSide == "right" }
+
 // sideWidth is the panel's width in a row of width w, leaving the panes
-// their room.
+// their room: all the room they leave while widened (sideState.wide).
 func (a *App) sideWidth(w float32) float32 {
 	sw := a.prefs.SideWidth
 	if sw == 0 {
@@ -115,12 +152,17 @@ func (a *App) sideWidth(w float32) float32 {
 	}
 	if w > 0 {
 		sw = min(sw, w-minPanes)
+		if a.side.wide {
+			sw = w - minPanes
+		}
 	}
 	return max(sw, minSide)
 }
 
-// sideEdge is the gap between the panes and the panel, which a drag moves.
-func (a *App) sideEdge(c *ui.Context, pal *palette, row float32) {
+// sideEdge is the gap between the panes and the panel, which a drag moves;
+// left tells that the panel is at the left of it. A drag of a widened
+// panel takes its width from where it is.
+func (a *App) sideEdge(c *ui.Context, pal *palette, row float32, left bool) {
 	d := ui.Box(c.Key("side-edge")).Width(paneGap).Shrink(0).Cursor(ui.CursorResizeColumn)
 	if d.Hovered() || d.Pressed() {
 		d.Draw(func(p *ui.Painter, r ui.Rect) {
@@ -129,35 +171,90 @@ func (a *App) sideEdge(c *ui.Context, pal *palette, row float32) {
 	}
 	if dx, _, ok := d.Dragged(); ok {
 		if a.side.drag == 0 {
-			a.side.drag = a.sideWidth(row)
+			a.side.drag, a.side.wide = a.sideWidth(row), false
 		}
-		a.side.drag -= dx
+		if left {
+			a.side.drag += dx
+		} else {
+			a.side.drag -= dx
+		}
 		a.prefs.SideWidth = min(max(a.side.drag, minSide), max(row-minPanes, minSide))
 	} else if a.side.drag != 0 && !d.Pressed() {
 		a.side.drag = 0
 		a.savePrefs()
 	}
 	if d.DoubleClicked() {
-		a.prefs.SideWidth = defaultSide
+		a.prefs.SideWidth, a.side.wide = defaultSide, false
 		a.savePrefs()
 	}
 }
 
-// sidePanel is the panel's card: its header, then its view. top and right
-// tell that it touches the window's top and right edges, where its header
-// drags the window and holds the window's controls (windowControls).
-func (a *App) sidePanel(c *ui.Context, pal *palette, s *proto.Session, width float32, right bool) {
+// folderShown is what a header shows of a folder, as mode (settings'
+// PaneFolder, PanelPath) asks: its path, full; its name; or "" for
+// neither. Fit asks for the most of them that fits the room the folder's
+// text and the gap after it, bound to key+"-dir" and key+"-gap", took as
+// last laid out, of which the folder takes gap more with its text shown,
+// and less is taken as it comes and goes, as a header's controls.
+func (a *App) folderShown(c *ui.Context, mode, full, name, key string, size, gap, less float32) string {
+	switch mode {
+	case "hidden":
+		return ""
+	case "folder":
+		return name
+	case "full":
+		return full
+	}
+	text, after := a.paneRef(key+"-dir").Bounds(c), a.paneRef(key+"-gap").Bounds(c)
+	if after.H == 0 && text.H == 0 {
+		// Not laid out yet: the next frame knows the room.
+		c.Invalidate()
+		return ""
+	}
+	room := text.W + after.W - max(less, 0)
+	if text.W == 0 {
+		room -= gap
+	}
+	for _, s := range []string{full, name} {
+		if w, _ := c.MeasureText(0, ui.Span{Text: s, Size: size}); w <= room {
+			return s
+		}
+	}
+	return ""
+}
+
+// sideFolder is what the panel's header shows of its folder, as the user
+// chose (settings' PanelPath).
+func (a *App) sideFolder(c *ui.Context, s *proto.Session, dir string) string {
+	if dir == "" {
+		return ""
+	}
+	return a.folderShown(c, a.set.PanelPath, a.hostOf(s.ID).shortDir(dir), proto.DirName(dir), "side", 13, 8, 0)
+}
+
+// sidePanel is the panel's card: its header, then its view. left and right
+// tell that it touches the window's left and right edges, where its header
+// holds that side's buttons: at the left (sidebarButtons) clear of the
+// traffic lights, at the right with the window's controls (edgeControls).
+func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, width float32, left, right bool) {
 	card := ui.Column(c.Key("side")).Width(width).Shrink(0).MinHeight(0).Radius(14).Clip().Background(pal.card).
 		Focusable().Bind(a.paneRef("side-card"))
 	raised(card, pal)
 	a.side.focused = card.FocusWithin()
 	files := a.prefs.Side == sideFiles
-	// The window's controls take the header's room at the window's edge:
-	// in a narrow panel the tabs give theirs, down to their icons, so that
-	// the controls stay in it.
-	compact := right && ownControls && width < compactSide
+	// The side's buttons and the window's controls take the header's room
+	// at the window's edge: in a narrow panel the tabs give theirs, down to
+	// their icons, so that the controls stay in it.
+	compact := (right || left) && width < compactSide
+	// The first tab's icon starts where a header's title does.
+	pad := float32(10)
+	if left {
+		pad = a.chrome.headerPad - 8
+	}
 	card.Children(func() {
-		ui.Row(c.Key("hdr")).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, 10).Gap(2).Children(func() {
+		ui.Row(c.Key("hdr")).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, pad).Gap(2).Children(func() {
+			if left {
+				a.sidebarButtons(c, pal, bar, shown)
+			}
 			// The views, as tabs: the one shown says what the panel shows,
 			// as a pane's header says its program.
 			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle", compact)
@@ -166,17 +263,20 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, s *proto.Session, width flo
 			if files {
 				_, dir = a.filesRoot(s)
 			}
-			if dir != "" {
-				ui.Text(c, a.hostOf(s.ID).shortDir(dir)).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Margin(0, 0, 0, 6).Tooltip(dir)
+			if name := a.sideFolder(c, s, dir); name != "" {
+				ui.Text(c, name).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Margin(0, 0, 0, 6).Tooltip(dir).Bind(a.paneRef("side-dir"))
 			}
-			ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch).DragWindow()
-			toggle := "changes.toggle"
-			if files {
-				toggle = "files.toggle"
+			ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch).DragWindow().Bind(a.paneRef("side-gap"))
+			if a.side.wide {
+				iconButton(c, "wide", unzoomIcon, locales.SideRestore(), pal, func() { a.side.wide = false })
+			} else {
+				iconButton(c, "wide", zoomIcon, locales.SideWiden(), pal, func() { a.side.wide = true })
 			}
-			iconButton(c, "close-side", closeIcon, a.tip(locales.SideClose(), toggle), pal, func() { a.defer_(func() { a.toggleSide(a.prefs.Side) }) })
+			// The panel's own button, which hides it, is at the window's
+			// edge it stands at: the left's with the sidebar's buttons,
+			// the right's with the window's controls.
 			if right {
-				windowControls(c, pal, a.win)
+				a.edgeControls(c, pal, "-p")
 			}
 		})
 		ui.Column(c.Key("body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
@@ -214,7 +314,7 @@ func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, lab
 		}
 	})
 	if b.Clicked() && !on {
-		a.defer_(func() { a.toggleSide(view) })
+		a.defer_(func() { a.showSide(view) })
 	}
 }
 

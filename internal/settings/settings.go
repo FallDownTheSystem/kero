@@ -37,6 +37,14 @@ type Settings struct {
 	Appearance string `json:"appearance"` // "system", "light" or "dark"
 	Language   string `json:"language"`   // "system", or one of Languages
 	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
+	// SessionsSide is the window's side the sessions' sidebar takes, "left"
+	// or "right": the side panel, Changes and Files, takes the other.
+	SessionsSide string `json:"sessionsSide"`
+	// PanelPath is what the side panel's header shows of its folder:
+	// "hidden", "folder" its name, "full" its path, or "fit" the most of
+	// those that fits; PaneFolder what a pane's header shows of its.
+	PanelPath  string `json:"panelPath"`
+	PaneFolder string `json:"paneFolder"`
 
 	// Terminal
 	FontFamily   string  `json:"fontFamily"` // "" the font kero carries; "monospace" the system's
@@ -89,6 +97,18 @@ type Settings struct {
 
 	// Files
 	Editor string `json:"editor"` // the command Open in Editor runs with a path; "" the app the system opens it with
+	// FileOpen is what a double click on a file of the Files view does:
+	// "editor" opens it in Editor, "pane" in a file pane.
+	FileOpen string `json:"fileOpen"`
+	// FilePane is where a file opened in a pane goes: "new", a pane of its
+	// own; "replace", the file pane the user was in last, unless it has
+	// edits not saved.
+	FilePane string `json:"filePane"`
+	// HiddenFiles shows dotfiles in the Files view.
+	HiddenFiles bool `json:"hiddenFiles"`
+	// FilePreview opens the file chosen in the Files view's tree below it;
+	// without, only its menu's Preview does.
+	FilePreview bool `json:"filePreview"`
 
 	// Browser
 	BlockAds bool     `json:"blockAds"` // in browser panes, with AdLists
@@ -152,6 +172,9 @@ func Default() Settings {
 		Appearance:      "system",
 		Language:        "system",
 		Vibrancy:        true,
+		SessionsSide:    "left",
+		PanelPath:       "fit",
+		PaneFolder:      "fit",
 		DimUnfocused:    true,
 		FontSize:        13,
 		LineHeight:      1.22,
@@ -175,6 +198,10 @@ func Default() Settings {
 		GitStatus:       true,
 		DiffLayout:      "auto",
 		WorktreeBase:    "default",
+		FileOpen:        "editor",
+		FilePane:        "new",
+		HiddenFiles:     true,
+		FilePreview:     true,
 		BlockAds:        true,
 		AdLists:         slices.Clone(adblock.DefaultLists),
 	}
@@ -384,6 +411,11 @@ func (s *Settings) normalize() {
 	oneOf(&s.DiffLayout, d.DiffLayout, "auto", "unified", "split")
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
 	oneOf(&s.AppIcon, d.AppIcon, AppIcons...)
+	oneOf(&s.SessionsSide, d.SessionsSide, "left", "right")
+	oneOf(&s.PanelPath, d.PanelPath, "hidden", "folder", "full", "fit")
+	oneOf(&s.PaneFolder, d.PaneFolder, "hidden", "folder", "full", "fit")
+	oneOf(&s.FileOpen, d.FileOpen, "editor", "pane")
+	oneOf(&s.FilePane, d.FilePane, "new", "replace")
 	if s.FontSize < 8 || s.FontSize > 36 {
 		s.FontSize = d.FontSize
 	}

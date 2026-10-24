@@ -15,7 +15,7 @@ In the sidebar, a session on a branch other than the repository's default one, s
 
 ## The changes panel
 
-Click a pane's branch or the diff button in its header, or press <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>G</kbd>, to open the changes panel at the right of the session. It lists the files that changed, with what each adds and removes, since one of:
+Click a pane's branch, or the panel button at the window's top right, or press <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>G</kbd>, to open the changes panel at the right of the session. The panel button shows the view the panel showed last, and stays at the window's corner as the panel opens, to close it again. The **Widen** button in the panel's header gives it all the room the panes leave, until you click it again. With `sessions-sidebar = right`, the sessions take the window's right and the panel its left, with its button at the top left. It lists the files that changed, with what each adds and removes, since one of:
 
 - **Last Turn**: where the session's agent last started working, so you see what it did in its latest turn, and nothing that changed before it. Kero takes a snapshot of the worktree as the agent starts, without touching your index or files.
 - **Uncommitted**: the last commit, untracked files included.
@@ -61,15 +61,15 @@ kero close fix-login --remove-worktree --force   # even with uncommitted changes
 
 ## Files
 
-The folder button in a pane's header, the panel's **Files** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> on Windows and Linux), shows the files of the worktree of the pane you're in, or of its folder outside a repository. On a remote host, they're that host's.
+The panel's **Files** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> on Windows and Linux), shows the files of the worktree of the pane you're in, or of its folder outside a repository. On a remote host, they're that host's.
 
-Click a folder's arrow, or press <kbd>→</kbd> and <kbd>←</kbd>, to open and close it. Click a file to open it below the tree, highlighted as its language is, and edit it there: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, keeping its line endings. A file you edited stays open, marked unsaved, while you look at others. The wrap button above it wraps long lines at the view's width. Images show as pictures; binary files and those over 4 MB don't open. To keep a file beside your terminals, open it in an [editor pane](./panes.md#editor-panes).
+Click a folder's arrow, or press <kbd>→</kbd> and <kbd>←</kbd>, to open and close it. Click a file to open it below the tree, highlighted as its language is, and edit it there: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, keeping its line endings. A file you edited stays open, marked unsaved, while you look at others. The wrap button above it wraps long lines at the view's width. Images show as pictures; binary files and those over 4 MB don't open. With `files-preview` off, a click only chooses a file, and its menu's **Preview** opens it below the tree. To keep a file beside your terminals, open it in an [editor pane](./panes.md#editor-panes).
 
 The buttons under the tree make a new file or folder in the folder you chose, or in the chosen file's folder: type its name, or a path such as `src/util/new.go`, and press <kbd>Return</kbd> (<kbd>Enter</kbd>), or <kbd>Esc</kbd> to leave it. A new file opens below the tree. The other buttons there refresh the tree and collapse its folders. A folder's menu makes a new file or folder in it, and opens a terminal there.
 
 A save writes the file only as it was when you opened it. When an agent or another program changed it since, Kero says so instead, and you **Reload** it, dropping your edits, or **Overwrite** it. While the file has no edits of yours, it follows the changes on disk.
 
-Double-click a file, or right-click it, to open it in your editor: the `editor` setting, as `code` or `zed`, or the app the system opens the file with. A folder's menu opens the folder in your editor too, or in the app the system opens text files with. The menu also opens it in a pane, or with another app, shows it in File Explorer or Finder, and copies its path, or its path from the worktree.
+Double-click a file, or right-click it, to open it in your editor: the `editor` setting, as `code` or `zed`, or the app the system opens the file with. With `files-double-click = pane`, a double click opens it in an editor pane instead. Dotfiles show unless `files-hidden` is off. A folder's menu opens the folder in your editor too, or in the app the system opens text files with. The menu also opens it in a pane, or with another app, shows it in File Explorer or Finder, and copies its path, or its path from the worktree.
 
 ## From the command line
 

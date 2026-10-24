@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"time"
 	"unicode/utf8"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
@@ -90,9 +92,9 @@ func (a *App) focusTerminal() {
 }
 
 // panes shows a session's panes in their layout: the zoomed one alone.
-// right tells that they reach the window's right edge, which the side
-// panel takes while it shows.
-func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, right bool) {
+// left and right tell that they reach the window's left and right edges,
+// which the side panel or the sidebar take while they show.
+func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, left, right bool) {
 	multi := len(s.Panes) > 1
 	if z := s.PaneByID(s.Zoomed); z != nil || s.Layout == nil || !multi {
 		p := z
@@ -100,11 +102,11 @@ func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32,
 			p = s.FocusPane()
 		}
 		if p != nil {
-			a.paneCard(c, pal, bar, shown, s, p, true, true, right, multi)
+			a.paneCard(c, pal, bar, shown, s, p, true, left, right, multi)
 		}
 		return
 	}
-	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", true, true, right)
+	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", true, left, right)
 }
 
 func (a *App) layoutNode(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, l *proto.Layout, path string, top, left, right bool) {
@@ -206,6 +208,10 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 	card := ui.Column(c.Key("pane-" + p.ID)).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Radius(14).Clip().Bind(a.paneRef("card-" + p.ID))
 	paned(card.Background(card.AnimateColor("bg", bg, ui.Animation{Duration: 140 * time.Millisecond})), pal)
 	hovered := card.Hovered()
+	if hovered && a.menuPane != "" && a.menuPane != p.ID {
+		// Another pane under the pointer: the menu is gone.
+		a.menuPane = ""
+	}
 	if a.set.FocusFollowsMouse && multi {
 		a.followMouse(c, s, p, card, hovered, focused)
 	}
@@ -426,6 +432,7 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		a.paneRef(p.ID).Focus()
 	}
 	h.Children(func() {
+		room := a.headerRoom(c, p, pad, titleRoom, top && right, multi)
 		if top && left {
 			a.sidebarButtons(c, pal, bar, shown)
 		}
@@ -465,33 +472,43 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			}
 			// The home directory names itself "~", which the title may
 			// already say; another machine's, as scp writes it: devbox:~/api.
+			// The controls the pointer shows don't change what fits.
 			h := a.hostOf(p.ID)
-			if dir := h.shortDir(p.WorkDir()); dir != title || h.remote() {
-				if !h.remote() {
-					ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
-				} else {
-					// The host's name in its color, as the sidebar's strip
-					// marks it: no pane passes for another machine's.
-					ui.Row(c.Key("where")).Shrink(2).MinWidth(0).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, h.name+":").FontSize(13).FontWeight(500).TextColor(pal.hostColor(h)).SingleLine().Shrink(0)
-						ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
-					})
-				}
+			key := "pane-" + p.ID
+			gap := float32(8)
+			if h.remote() {
+				gap = 0 // the host's name stays, which the folder is in
+			}
+			dir := a.folderShown(c, a.set.PaneFolder, h.shortDir(p.WorkDir()), proto.DirName(p.WorkDir()), key, 13, gap,
+				room.controls-a.paneRef("ctl-"+p.ID).Bounds(c).W)
+			if dir == title && !h.remote() {
+				dir = ""
+			}
+			switch {
+			case h.remote():
+				// The host's name in its color, as the sidebar's strip
+				// marks it: no pane passes for another machine's.
+				ui.Row(c.Key("where")).Shrink(2).MinWidth(0).AlignItems(ui.Center).Children(func() {
+					label := h.name
+					if dir != "" {
+						label += ":"
+					}
+					ui.Text(c, label).FontSize(13).FontWeight(500).TextColor(pal.hostColor(h)).SingleLine().Shrink(0)
+					if dir != "" {
+						ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0).Bind(a.paneRef(key + "-dir"))
+					}
+				})
+			case dir != "":
+				ui.Text(c, dir).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Bind(a.paneRef(key + "-dir"))
 			}
 		})
-		room := a.headerRoom(c, p, pad, titleRoom, top && right, multi)
 		if p.Git != nil {
 			a.gitChip(c, pal, s, p, room.chip)
-		}
-		if p.Editor() {
-			ui.Row(c.Key("edit")).Gap(0).AlignItems(ui.Center).Shrink(0).Bind(a.paneRef("edit-" + p.ID)).Children(func() {
-				a.editorChips(c, pal, p)
-			})
 		}
 		// The header's empty stretch moves the window, as a title bar
 		// does, and zooms it on a double click: the header around it
 		// takes clicks, which focus the pane.
-		gap := ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch)
+		gap := ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch).Bind(a.paneRef("pane-" + p.ID + "-gap"))
 		if top {
 			gap.DragWindow()
 		}
@@ -500,22 +517,110 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		})
 		a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold)
 		if top && right {
-			windowControls(c, pal, a.win)
+			a.edgeControls(c, pal, "-h")
 		}
 	})
 	return dragging
 }
 
 // sidebarButtons are the sidebar's buttons, which the header at the
-// window's top left holds while the sidebar hides.
+// window's top left holds while the sidebar hides, and always while the
+// sidebar is at the window's right.
 func (a *App) sidebarButtons(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) {
-	if shown >= 0.5 {
+	fade := 1 - 2*shown
+	if a.chrome.right {
+		fade = 1
+	}
+	if fade <= 0 {
 		return
 	}
-	ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-		iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
-		iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
+	ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(fade).Children(func() {
+		a.leftButtons(c, pal, "-2")
 	})
+}
+
+// Each of the window's sides has the buttons of what stands at it: the
+// sessions' sidebar's, which shows and hides it and starts a session; or
+// the side panel's, which shows and hides it. They stay at the window's
+// top corner as what they show comes and goes, in the sidebar or panel
+// while it shows, else in the header there. key tells their copies apart.
+
+// leftButtons are the buttons of the window's top left.
+func (a *App) leftButtons(c *ui.Context, pal *palette, key string) {
+	if a.chrome.right {
+		a.panelButton(c, pal, key)
+		return
+	}
+	a.sessionButtons(c, pal, key)
+}
+
+// rightButtons are the buttons of the window's top right.
+func (a *App) rightButtons(c *ui.Context, pal *palette, key string) {
+	if a.chrome.right {
+		a.sessionButtons(c, pal, key)
+		return
+	}
+	a.panelButton(c, pal, key)
+}
+
+// rightButtonsW is the width of the buttons of the window's top right,
+// with the gap after them.
+func (a *App) rightButtonsW() float32 {
+	if a.chrome.right {
+		return sideButtonsW(2)
+	}
+	return sideButtonsW(1)
+}
+
+// sideButtonsW is the width of n of the sides' buttons, with the gap
+// after them.
+func sideButtonsW(n float32) float32 { return n * (controlW + 2) }
+
+// edgeControls are what the header at the window's top right ends with:
+// its side's buttons, then the window's controls. One row, so that they
+// stand where they do whatever the gap of the header they are in: the
+// panel's toggle stays put as the panel opens.
+func (a *App) edgeControls(c *ui.Context, pal *palette, key string) {
+	ui.Row(c.Key("edge")).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
+		a.rightButtons(c, pal, key)
+		windowControls(c, pal, a.win)
+	})
+}
+
+// sessionButtons show and hide the sessions' sidebar, at the window's
+// corner, and start a session.
+func (a *App) sessionButtons(c *ui.Context, pal *palette, key string) {
+	newSession := func() {
+		iconButton(c, "new-session"+key, plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
+	}
+	svg := sidebarIcon
+	if a.chrome.right {
+		svg = panelIcon
+		newSession()
+	}
+	tip := locales.SidebarHide()
+	if a.prefs.SidebarHidden {
+		tip = locales.SidebarShow()
+	}
+	iconButton(c, "sidebar"+key, svg, a.tip(tip, "sidebar.toggle"), pal, a.toggleSidebar)
+	if !a.chrome.right {
+		newSession()
+	}
+}
+
+// panelButton shows and hides the side panel, with the view it showed
+// last.
+func (a *App) panelButton(c *ui.Context, pal *palette, key string) {
+	svg := panelIcon
+	if a.chrome.right {
+		svg = sidebarIcon
+	}
+	view := a.sideView()
+	tip := locales.SideShow()
+	if a.prefs.Side != "" {
+		tip = locales.SideHide()
+	}
+	iconButton(c, "panel"+key, svg, a.tip(tip, sideAction(view)), pal, func() { a.defer_(func() { a.toggleSide(view) }) })
 }
 
 // shortTitle lets a title shrink only as far as its ellipsis still saves
@@ -531,10 +636,12 @@ func shortTitle(name ui.Element, title string) {
 }
 
 // paneRoom is how a pane's header fits its width: whether its controls
-// fold into a menu, and the room left for its git chip.
+// fold into a menu, the width they take as they show, and the room left
+// for its git chip.
 type paneRoom struct {
-	fold bool
-	chip float32
+	fold     bool
+	controls float32
+	chip     float32
 }
 
 const (
@@ -551,8 +658,8 @@ const (
 
 // headerRoom measures a pane's header as it was last laid out: its card's
 // width, less its padding, lead (what the header keeps for what leads it:
-// its title, or a browser's buttons and address), the window's controls,
-// the editor's buttons and the status chips, and the controls, folded when
+// its title, or a browser's buttons and address), the side's buttons and
+// the window's controls (edgeControls), the status chips, and the controls, folded when
 // they don't fit whole. The controls count while they hide too, so that
 // the chip keeps its form as the pointer comes and goes.
 func (a *App) headerRoom(c *ui.Context, p *proto.Pane, pad, lead float32, controls, multi bool) paneRoom {
@@ -563,34 +670,37 @@ func (a *App) headerRoom(c *ui.Context, p *proto.Pane, pad, lead float32, contro
 	}
 	const gap = 8
 	used := pad + 10 + lead
-	if controls && ownControls && a.win != nil {
-		used += windowControlsW + gap
-	}
-	for _, k := range []string{"edit-", "chips-"} {
-		if b := a.paneRef(k + p.ID).Bounds(c).W; b > 0 {
-			used += b + gap
+	if controls {
+		used += a.rightButtonsW() + gap
+		if ownControls && a.win != nil {
+			used += windowControlsW
 		}
 	}
-	full, folded := float32(5), float32(1)
+	if b := a.paneRef("chips-" + p.ID).Bounds(c).W; b > 0 {
+		used += b + gap
+	}
+	full, folded := float32(2), float32(1)
 	if multi {
-		full, folded = 7, 3
+		full, folded = 4, 3
 	}
 	var r paneRoom
+	r.controls = full * controlW
 	if w-used < full*controlW+gap {
-		r.fold = true
-		used += folded*controlW + gap
-	} else {
-		used += full*controlW + gap
+		r.fold, r.controls = true, folded*controlW
 	}
+	used += r.controls + gap
 	r.chip = w - used - gap
 	return r
 }
 
 // paneControls are a header's buttons acting on its pane, which show while
-// the pointer is over it. Folded, those that make panes and show the side
-// panel's views go in a menu, and zooming and closing stay.
+// the pointer is over it. Folded, those that make panes go in a menu, and
+// zooming and closing stay.
 func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, show, multi, fold bool) {
-	ctl := ui.Row(c.Key("controls")).Gap(0).AlignItems(ui.Center)
+	// The item chosen of a button's menu reaches it only as the button is
+	// built again, which the pointer, over the menu, may have left.
+	show = show || a.menuPane == p.ID
+	ctl := ui.Row(c.Key("controls")).Gap(0).AlignItems(ui.Center).Bind(a.paneRef("ctl-" + p.ID))
 	ctl.Opacity(ctl.Animate("shown", b2f(show), 120*time.Millisecond)).Children(func() {
 		if !show {
 			return
@@ -598,13 +708,8 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 		if fold {
 			a.moreControls(c, pal, s, p)
 		} else {
-			iconButton(c, "split-r", splitRightIcon, a.tip(locales.ActionSplitRight(), "pane.split.right"), pal, func() { a.splitPane(s, p.ID, "right") })
-			iconButton(c, "split-d", splitDownIcon, a.tip(locales.ActionSplitDown(), "pane.split.down"), pal, func() { a.splitPane(s, p.ID, "down") })
-			iconButton(c, "browser", globeIcon, a.tip(locales.ActionNewBrowser(), "pane.browser"), pal, func() {
-				a.split(s, proto.CreateParams{Split: p.ID, Direction: "right", URL: proto.BlankURL})
-			})
-			a.sideButton(c, pal, s, p, "changes", diffIcon, locales.ActionToggleChanges(), "changes.toggle", sideChanges)
-			a.sideButton(c, pal, s, p, "files", folderIcon, locales.ActionToggleFiles(), "files.toggle", sideFiles)
+			a.splitButton(c, pal, s, p, "right")
+			a.splitButton(c, pal, s, p, "down")
 		}
 		if multi {
 			sid, pid := s.ID, p.ID
@@ -619,27 +724,116 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 	})
 }
 
-// sideButton is a header's button that shows a view of the side panel for
-// its pane, or hides the panel while it shows that view.
-func (a *App) sideButton(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, key string, svg *ui.SVG, title, action, view string) {
+// splitButton is a header's button that splits its pane, right or down,
+// with a terminal; its menu, on a right click, with a browser or a file.
+func (a *App) splitButton(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, dir string) {
 	sid, pid := s.ID, p.ID
-	iconButton(c, key, svg, a.tip(title, action), pal, func() { a.sideFor(sid, pid, view) })
+	svg, title, action := splitRightIcon, locales.ActionSplitRight(), "pane.split.right"
+	if dir == "down" {
+		svg, title, action = splitDownIcon, locales.ActionSplitDown(), "pane.split.down"
+	}
+	b := ui.ButtonBase(c.Key("split-"+dir)).Size(controlW, 26).Radius(6).Center().TextColor(pal.textMuted).Label(title).Tooltip(a.tip(title, action))
+	if b.Pressed() {
+		b.Background(pal.rowHover.Alpha(0.12))
+	} else if b.Hovered() {
+		b.Background(pal.rowHover).TextColor(pal.text)
+	}
+	b.Children(func() { ui.Icon(c, svg).Size(16, 16) })
+	b.ContextMenu(func(m *ui.Menu) { a.splitMenu(m, sid, pid, dir, action) })
+	if b.Clicked() {
+		a.splitPane(s, pid, dir)
+	}
 }
 
-// sideFor shows a view of the side panel for a pane, or hides the panel
-// while it shows that view.
-func (a *App) sideFor(sid, pid, view string) {
-	a.defer_(func() {
-		// The view is of the pane the user is in: this one.
-		if s := a.session(sid); s != nil && a.prefs.Side != view {
-			a.setFocus(s, pid)
+// splitMenu is the menu of what a split of a pane, right or down, puts
+// beside it: a terminal, which action's shortcut makes; a browser; or a
+// new file, in the pane's folder, which its first save makes.
+func (a *App) splitMenu(m *ui.Menu, sid, pid, dir, action string) {
+	a.menuPane = pid
+	split := func(p proto.CreateParams) {
+		a.menuPane = ""
+		if s := a.session(sid); s != nil {
+			p.Split, p.Direction = pid, dir
+			a.split(s, p)
 		}
-		a.toggleSide(view)
-	})
+	}
+	if a.menuShortcut(padItem(m, locales.SplitTerminal()), action).Chosen() {
+		split(proto.CreateParams{})
+	}
+	if padItem(m, locales.SplitBrowser()).Chosen() {
+		split(proto.CreateParams{URL: proto.BlankURL})
+	}
+	if padItem(m, locales.SplitFile()).Chosen() {
+		a.menuPane = ""
+		a.untitled(sid, pid, func(path string) { split(proto.CreateParams{File: path}) })
+	}
+}
+
+// untitled finds a name for a new file in the folder of a pane, on its
+// host: untitled.txt, else untitled-2.txt and on, none a file there or a
+// pane's of the app shows; and gives its path to fn.
+func (a *App) untitled(sid, pid string, fn func(path string)) {
+	s := a.session(sid)
+	cl := a.hostOf(sid).cl
+	if s == nil || cl == nil {
+		return
+	}
+	dir := ""
+	if p := s.PaneByID(pid); p != nil {
+		dir = p.WorkDir()
+	}
+	if dir == "" {
+		a.toast(locales.FilesNoFolder())
+		return
+	}
+	open := map[string]bool{}
+	for _, s := range a.st.Sessions {
+		for _, p := range s.Panes {
+			if p.Editor() {
+				open[p.File] = true
+			}
+		}
+	}
+	go func() {
+		var path string
+		var err error
+		for i := 1; i <= 100 && path == "" && err == nil; i++ {
+			name := "untitled.txt"
+			if i > 1 {
+				name = fmt.Sprintf("untitled-%d.txt", i)
+			}
+			p := hostJoin(dir, name)
+			var st proto.FSStat
+			if err = cl.Call("fs.stat", proto.FSStatParams{Path: p}, &st); err == nil && !st.Exists && !open[p] {
+				path = p
+			}
+		}
+		a.update(func() {
+			switch {
+			case err != nil:
+				a.toast(locales.FilesCantCreate(err.Error()))
+			case path != "":
+				fn(path)
+			}
+		})
+	}()
+}
+
+// chooseFile asks the user for a file of this machine, with the system's
+// dialog, and gives it to fn.
+func (a *App) chooseFile(fn func(path string)) {
+	win := a.win
+	go func() {
+		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: win, Title: locales.SplitFileTitle(), ButtonLabel: locales.CommonOpen()})
+		if err != nil || len(paths) == 0 {
+			return
+		}
+		a.update(func() { fn(paths[0]) })
+	}()
 }
 
 // moreControls is the button of a narrow header's folded controls: a menu
-// of what makes panes beside it and shows the side panel's views.
+// of what makes panes beside it, each a menu of what goes there.
 func (a *App) moreControls(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane) {
 	sid, pid := s.ID, p.ID
 	b := ui.ButtonBase(c.Key("more")).Size(controlW, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.PaneMore()).Tooltip(locales.PaneMore())
@@ -650,29 +844,9 @@ func (a *App) moreControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 	}
 	b.Children(func() { ui.Icon(c, moreIcon).Size(16, 16) })
 	b.Menu(func(m *ui.Menu) {
-		split := func(dir string) {
-			if s := a.session(sid); s != nil {
-				a.splitPane(s, pid, dir)
-			}
-		}
-		if a.menuShortcut(padItem(m, locales.ActionSplitRight()), "pane.split.right").Chosen() {
-			split("right")
-		}
-		if a.menuShortcut(padItem(m, locales.ActionSplitDown()), "pane.split.down").Chosen() {
-			split("down")
-		}
-		if a.menuShortcut(padItem(m, locales.ActionNewBrowser()), "pane.browser").Chosen() {
-			if s := a.session(sid); s != nil {
-				a.split(s, proto.CreateParams{Split: pid, Direction: "right", URL: proto.BlankURL})
-			}
-		}
-		m.Separator()
-		if a.menuShortcut(padItem(m, locales.ActionToggleChanges()), "changes.toggle").Chosen() {
-			a.sideFor(sid, pid, sideChanges)
-		}
-		if a.menuShortcut(padItem(m, locales.ActionToggleFiles()), "files.toggle").Chosen() {
-			a.sideFor(sid, pid, sideFiles)
-		}
+		a.menuPane = pid
+		padSub(m, locales.ActionSplitRight(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "right", "pane.split.right") })
+		padSub(m, locales.ActionSplitDown(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "down", "pane.split.down") })
 	})
 }
 

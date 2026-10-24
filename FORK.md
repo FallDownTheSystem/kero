@@ -3,7 +3,9 @@
 This repository is FallDownTheSystem/kero, a fork of
 [egoist/kero](https://github.com/egoist/kero). It keeps a few features of
 its own (the Files view, editor panes, the Files toolbar and CLI additions,
-the tray icon) as commits on top of upstream's `main`, and is built and
+ending all sessions from the app icon's menu, the Explorer and split-menu
+layout and its settings) as commits
+on top of upstream's `main`, and is built and
 installed on Windows only.
 
 ## Remotes and branches
@@ -85,7 +87,9 @@ endings only (`git diff` shows nothing): `git checkout -- locales/catalog_gen.go
 - Follow upstream's style (see CLAUDE.md and the code around a change):
   tabs, CRLF, comments that say why, all three languages for text and docs.
 - `proto.Version` stays upstream's: the fork adds only optional fields and
-  new methods (`fs.create`), which older apps and kerods ignore.
+  new methods (`fs.create`, `pane.file`), which older apps and kerods
+  ignore; an app that calls one on an older kerod falls back, as
+  `replaceFile` opens a new pane.
 
 ## Building and installing
 
