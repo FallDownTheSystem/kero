@@ -94,6 +94,7 @@ func (a *App) trayMenu() *mygo.Menu {
 	}
 	return mygo.NewMenu([]*mygo.MenuItem{
 		{Label: locales.TrayOpen(mygo.App.Name()), Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
+		mygo.Separator(),
 		{Label: actionTitle("settings.open"), Click: func(*mygo.MenuItem, *mygo.Window) {
 			mygo.App.Focus()
 			a.update(func() { a.openSettings("") })
