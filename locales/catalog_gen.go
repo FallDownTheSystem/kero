@@ -4780,6 +4780,16 @@ func (msgs Messages) FilesNewTip() string {
 	return Catalog.Format(msgs.locale, "filesNewTip", nil)
 }
 
+// PaneMore says "More"
+// in the language the app shows.
+func PaneMore() string { return In(i18n.Locale()).PaneMore() }
+
+// PaneMore says "More"
+// in the language of msgs.
+func (msgs Messages) PaneMore() string {
+	return Catalog.Format(msgs.locale, "paneMore", nil)
+}
+
 // ActionShowFiles says "Show Files"
 // in the language the app shows.
 func ActionShowFiles() string { return In(i18n.Locale()).ActionShowFiles() }

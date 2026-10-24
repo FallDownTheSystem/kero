@@ -343,6 +343,40 @@ func TestSideHeaderNarrow(t *testing.T) {
 	}
 }
 
+// A narrow pane's header folds its controls into a menu, and its git chip
+// shows its counts alone, or nothing, rather than run over its buttons.
+func TestPaneHeaderNarrow(t *testing.T) {
+	a := testApp(t)
+	// The sidebar's rows on one line, without the branch the detailed ones
+	// show under the session's name.
+	a.set.SidebarRows = "compact"
+	s := &a.st.Sessions[0]
+	for i := range s.Panes {
+		s.Panes[i].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "feature-login", Files: 2, Added: 78}
+	}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("feature-login") || tt.HasText("More") {
+		t.Errorf("a wide header folds, or has no branch; texts %q", tt.Texts())
+	}
+	tt.SetSize(600, 720)
+	tt.Frame()
+	tt.Frame()
+	if tt.HasText("feature-login") {
+		t.Errorf("a narrow header shows the branch; texts %q", tt.Texts())
+	}
+	if !tt.HasText("More") {
+		t.Errorf("a narrow header's controls don't fold; texts %q", tt.Texts())
+	}
+	if err := tt.Click("More"); err != nil {
+		t.Fatal(err)
+	}
+	if items := tt.Menu(); !slices.Contains(items, "Split Right") || !slices.Contains(items, "Toggle Files") {
+		t.Errorf("the folded controls' menu: %q", items)
+	}
+}
+
 // The view's tab shows it, and the panel's other view with the other's.
 func TestFilesTab(t *testing.T) {
 	a := testApp(t)
