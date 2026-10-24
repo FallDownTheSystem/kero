@@ -57,9 +57,11 @@ kero config check             # 不明なキーと不正な値を報告
 | `language`           | `system`   | アプリの言語: `system`、`en`、`ja`、`zh-Hans`                   |
 | `background`         | `petal`    | ウインドウの背景: `petal`、`mist`、`meadow`、`dusk`、`plain`    |
 | `window-translucent` | `true`     | ウインドウからデスクトップを透けて見せる                        |
-| `sessions-sidebar`   | `left`     | セッションのサイドバーを置くウインドウの側: `left` または `right`。変更とファイルのパネルは反対側に置きます |
+| `sessions-sidebar`   | `left`     | セッションのサイドバーを置くウインドウの側: `left` または `right`。変更とファイルを示すエクスプローラーは反対側に置きます |
 | `pane-folder`        | `fit`      | ペインのヘッダーにフォルダをどう示すか: `hidden`、`folder`（名前）、`full`（パス）、または幅に収まる限り多くを示す `fit` |
-| `panel-path`         | `fit`      | 変更とファイルのパネルのヘッダーにフォルダをどう示すか。値は `pane-folder` と同じ |
+| `explorer-folder`    | `fit`      | エクスプローラーのヘッダーにフォルダをどう示すか。値は `pane-folder` と同じ |
+| `dim-unfocused-terminals` | `true` | セッションに複数のペインがあるとき、使用中でないペインを薄くする |
+| `dim-unfocused-explorer` | `false` | エクスプローラーを使用していない間、薄くする |
 
 ## ターミナル
 
@@ -73,8 +75,6 @@ kero config check             # 不明なキーと不正な値を報告
 | `font-ligatures`      | `true`     | フォントが描くとおりに文字をつなげる                                     |
 | `font-thicken`        | `false`    | Ghostty と同じく、線を太くする                                           |
 | `minimum-contrast`    | `3`        | テキストが背景に対して保つ最小のコントラスト。`1`（なし）から `21`。Ghostty と同じく、暗い背景向けの色が明るい背景でも読めるようにする |
-| `dim-unfocused-terminals` | `true` | セッションに複数のペインがあるとき、使用中でないターミナルを薄くする |
-| `dim-unfocused-panel` | `false` | 変更とファイルのパネルを使用していない間、薄くする |
 | `cursor-style`        | `block`    | `block`、`bar`、`underline`。プログラムが変更することがある              |
 | `cursor-style-blink`  | `true`     | カーソルを点滅させる                                                     |
 | `macos-option-as-alt` | `false`    | Option でプログラムに Alt（メタ）を送る                                  |
