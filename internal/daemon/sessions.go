@@ -28,6 +28,11 @@ type session struct {
 func (d *Daemon) state() proto.State {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	return d.stateLocked()
+}
+
+// stateLocked is state, with d.mu held.
+func (d *Daemon) stateLocked() proto.State {
 	st := proto.State{
 		Projects: slices.Clone(d.projects),
 		Sessions: make([]proto.Session, 0, len(d.sessions)),
