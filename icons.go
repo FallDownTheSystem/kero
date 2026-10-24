@@ -40,6 +40,7 @@ var (
 	newFileIcon     = glyph("lucide-file-plus")
 	newFolderIcon   = glyph("lucide-folder-plus")
 	collapseIcon    = glyph("lucide-chevrons-down-up")
+	moreIcon        = glyph("f7-ellipsis")
 	searchIcon      = glyph("f7-search")
 	terminalIcon    = glyph("meteor-terminal")
 	returnIcon      = glyph("f7-return")

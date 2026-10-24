@@ -847,9 +847,12 @@ func (a *App) fileView(c *ui.Context, pal *palette, t *fileTree, f *openFile, wo
 			ui.Text(c, strings.TrimSuffix(strings.TrimSuffix(rel, proto.DirName(f.path)), "/")).FontSize(12).TextColor(pal.textFaint).
 				SingleLine().Ellipsis("…").MinWidth(0).Shrink(1).Tooltip(f.path)
 			ui.Spacer(c)
-			a.fileButtons(c, pal, t.pane, f)
-			iconButton(c, "pane", splitRightIcon, locales.FilesOpenInPane(), pal, func() { a.openInPane(t.pane, f.path) })
-			iconButton(c, "close", closeIcon, locales.FilesCloseFile(), pal, func() { a.defer_(func() { t.shown, t.chosen = "", -1 }) })
+			// The buttons side by side, as the panes' controls are.
+			ui.Row(c.Key("buttons")).Gap(0).AlignItems(ui.Center).Shrink(0).Children(func() {
+				a.fileButtons(c, pal, t.pane, f)
+				iconButton(c, "pane", splitRightIcon, locales.FilesOpenInPane(), pal, func() { a.openInPane(t.pane, f.path) })
+				iconButton(c, "close", closeIcon, locales.FilesCloseFile(), pal, func() { a.defer_(func() { t.shown, t.chosen = "", -1 }) })
+			})
 		})
 		a.fileBody(c, pal, t.pane, f, nil)
 	})
@@ -863,28 +866,34 @@ func (a *App) fileButtons(c *ui.Context, pal *palette, pane string, f *openFile)
 	case f.saving:
 		ui.Spinner(c).Size(12, 12)
 	case f.modified():
-		ui.Text(c, locales.FilesUnsaved()).FontSize(11.5).TextColor(pal.attention).SingleLine().Shrink(0)
+		ui.Text(c, locales.FilesUnsaved()).FontSize(11.5).TextColor(pal.attention).SingleLine().Shrink(0).Margin(0, 4, 0, 0)
 		iconButton(c, "save", checkIcon, a.saveTip(), pal, func() { a.saveFile(pane, f, false) })
 	case f.absent && f.st != nil:
-		ui.Text(c, locales.FilesNew()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0).Tooltip(locales.FilesNewTip())
+		ui.Text(c, locales.FilesNew()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0).Margin(0, 4, 0, 0).Tooltip(locales.FilesNewTip())
 		iconButton(c, "save", checkIcon, a.saveTip(), pal, func() { a.saveFile(pane, f, false) })
 	}
 	if f.st != nil {
-		wrap := ui.ButtonBase(c.Key("wrap")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FilesWrap()).Tooltip(locales.FilesWrap())
-		switch {
-		case a.prefs.Wrap:
-			wrap.Background(pal.rowHover).TextColor(pal.text)
-		case wrap.Hovered() || wrap.Pressed():
-			wrap.Background(pal.rowHover.Alpha(0.5)).TextColor(pal.text)
-		}
-		wrap.Children(func() { ui.Icon(c, wrapIcon).Size(15, 15) })
-		if wrap.Clicked() {
-			a.prefs.Wrap = !a.prefs.Wrap
-			a.savePrefs()
-		}
+		a.wrapButton(c, pal)
 	}
 	if !a.hostOf(pane).remote() {
 		iconButton(c, "open", openFileIcon, locales.FilesOpenInEditor(), pal, func() { a.openInEditor(f.path) })
+	}
+}
+
+// wrapButton toggles the wrapping of long lines, which the Files view, the
+// editor panes and the Changes view's diffs share: lit while they wrap.
+func (a *App) wrapButton(c *ui.Context, pal *palette) {
+	wrap := ui.ButtonBase(c.Key("wrap")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FilesWrap()).Tooltip(locales.FilesWrap())
+	switch {
+	case a.prefs.Wrap:
+		wrap.Background(pal.rowHover).TextColor(pal.text)
+	case wrap.Hovered() || wrap.Pressed():
+		wrap.Background(pal.rowHover.Alpha(0.5)).TextColor(pal.text)
+	}
+	wrap.Children(func() { ui.Icon(c, wrapIcon).Size(15, 15) })
+	if wrap.Clicked() {
+		a.prefs.Wrap = !a.prefs.Wrap
+		a.savePrefs()
 	}
 }
 
