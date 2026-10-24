@@ -7,6 +7,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
+
+	"kero/locales"
 )
 
 // An editor pane shows a file of its host in the editor the Files view
@@ -55,14 +57,36 @@ func (a *App) paneEditor(c *ui.Context, pal *palette, s *proto.Session, p *proto
 	}
 	ref := a.paneRef(p.ID)
 	a.fileBody(c, pal, p.ID, f, ref)
+	a.editorBar(c, pal, s, p, f)
+	if a.focusOf(s) == p.ID || ref.Focused(c) {
+		// The pane a file opened in a pane replaces the file of, as the
+		// user chooses (openInPane).
+		if a.lastEdit == nil {
+			a.lastEdit = map[string]string{}
+		}
+		a.lastEdit[s.ID] = p.ID
+	}
 	if ref.Focused(c) && a.focusOf(s) != p.ID {
 		a.setFocus(s, p.ID)
 	}
 }
 
-// editorChips are an editor pane's header's buttons on its file.
-func (a *App) editorChips(c *ui.Context, pal *palette, p *proto.Pane) {
-	a.fileButtons(c, pal, p.ID, a.editorOf(p))
+// editorBar is an editor pane's bar below its file, as the Files view's
+// tree has one: what the file is, then its actions; and while it is a new
+// file, not yet saved or typed in, of this machine, one that opens a file
+// of it there instead, which the system's dialog chooses.
+func (a *App) editorBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, f *openFile) {
+	ui.Row(c.Key("bar")).Height(stickyH).Shrink(0).Padding(0, 6, 0, 12).Gap(2).AlignItems(ui.Center).Background(pal.chip).Children(func() {
+		a.fileStatus(c, pal, f)
+		ui.Spacer(c)
+		if f.absent && f.st != nil && !f.modified() && !a.hostOf(p.ID).remote() {
+			sid, pid := s.ID, p.ID
+			iconButton(c, "open-file", folderIcon, locales.FilesOpenFile(), pal, func() {
+				a.chooseFile(func(path string) { a.replaceFile(sid, pid, path) })
+			})
+		}
+		a.fileActions(c, pal, p.ID, f)
+	})
 }
 
 // editorUnsaved returns the file of an editor pane while it has edits not

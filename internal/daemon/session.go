@@ -492,6 +492,24 @@ func (s *pane) setPage(url, title string) error {
 	return nil
 }
 
+// setFile gives an editor pane another file to show, absolute (editorFile),
+// in its folder, as startPane gives it its first.
+func (s *pane) setFile(file string) error {
+	s.mu.Lock()
+	if !s.info.Editor() {
+		s.mu.Unlock()
+		return fmt.Errorf("pane %s is no editor", s.info.ID)
+	}
+	changed := s.info.File != file
+	s.info.File, s.info.Dir = file, filepath.Dir(file)
+	s.mu.Unlock()
+	if changed {
+		s.d.save()
+		s.d.changed()
+	}
+	return nil
+}
+
 // useTheme gives the panes, and those to come, a client's colors, which
 // programs asking about them get: Copilot CLI drew its input box dark on
 // a light background, as kerod's terminals answered with a dark theme.

@@ -54,6 +54,10 @@ kero new --file src/main.go     # in a session of its own
 
 A file that isn't there yet opens empty, marked new, in a folder that is: saving it makes it.
 
+Right-click a pane's split button, right or down, and choose **New File** for an empty `untitled.txt` in the pane's folder. Until you type in it, its bar's **Open File…** opens a file of your choice in its place. With `files-pane = replace`, a file opened in a pane takes the place of the one in the editor pane you were in last, unless that one has unsaved edits.
+
+The bar below the file says whether it's new or unsaved, and has its buttons: save, wrap long lines, and open it in your editor.
+
 ## Browser panes
 
 A browser pane shows a web page beside your terminals: the dev server an agent is working on, the docs it reads, the pull request it opened. It splits, zooms, moves and closes like any pane, and comes back on the same page when Kero restarts.
@@ -63,7 +67,7 @@ A browser pane shows a web page beside your terminals: the dev server an agent i
 | New browser pane | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>B</kbd> |
 | Open location    | <kbd>⌘</kbd> <kbd>L</kbd>              |
 
-The globe button in a pane's header opens one beside that pane. Type an address in its bar, such as `localhost:3000` or `github.com`, or words to search for. An address typed in the command palette (<kbd>⌘</kbd> <kbd>P</kbd>) opens in a new browser pane too. <kbd>⌘</kbd> <kbd>F</kbd> finds text in the page.
+Right-click a pane's split button and choose **Browser** to open one beside that pane. Type an address in its bar, such as `localhost:3000` or `github.com`, or words to search for. An address typed in the command palette (<kbd>⌘</kbd> <kbd>P</kbd>) opens in a new browser pane too. <kbd>⌘</kbd> <kbd>F</kbd> finds text in the page.
 
 From a shell, or an agent, open one with `--url`:
 
