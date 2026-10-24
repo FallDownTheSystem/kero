@@ -143,6 +143,20 @@ type (
 	FSRead struct {
 		Data []byte `json:"data"` // base64 in JSON
 	}
+	// FSWriteParams write a file of the host anew, as the Files view saves
+	// it: Data, when its content still hashes to Hash (git.Hash), so that
+	// a save never overwrites what another program wrote since.
+	FSWriteParams struct {
+		Path string `json:"path"`
+		Hash string `json:"hash"`
+		Data []byte `json:"data"`
+	}
+	// FSWrite is the hash of what was written; Changed: nothing was, as
+	// the file is no longer what Hash says.
+	FSWrite struct {
+		Hash    string `json:"hash,omitempty"`
+		Changed bool   `json:"changed,omitempty"`
+	}
 	// PasteFileParams put a file the user pasted or dropped into a pane on
 	// the host, in a directory of kero's, for the program to read by its
 	// path.
