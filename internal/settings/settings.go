@@ -109,6 +109,11 @@ type Settings struct {
 	// FilePreview opens the file chosen in the Files view's tree below it;
 	// without, only its menu's Preview does.
 	FilePreview bool `json:"filePreview"`
+	// FileLightTheme and FileDarkTheme are the colors of code in editor
+	// panes and the Explorer: "terminal" the terminals' theme, else a
+	// theme as LightTheme names one.
+	FileLightTheme string `json:"fileLightTheme"`
+	FileDarkTheme  string `json:"fileDarkTheme"`
 
 	// Browser
 	BlockAds bool     `json:"blockAds"` // in browser panes, with AdLists
@@ -200,6 +205,8 @@ func Default() Settings {
 		FilePane:        "new",
 		HiddenFiles:     true,
 		FilePreview:     true,
+		FileLightTheme:  "terminal",
+		FileDarkTheme:   "terminal",
 		BlockAds:        true,
 		AdLists:         slices.Clone(adblock.DefaultLists),
 	}
@@ -388,6 +395,12 @@ func (s *Settings) normalize() {
 	}
 	if s.DarkTheme == "" {
 		s.DarkTheme = d.DarkTheme
+	}
+	if s.FileLightTheme == "" {
+		s.FileLightTheme = d.FileLightTheme
+	}
+	if s.FileDarkTheme == "" {
+		s.FileDarkTheme = d.FileDarkTheme
 	}
 }
 

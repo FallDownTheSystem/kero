@@ -224,7 +224,7 @@ func TestSlider(t *testing.T) {
 	for _, dark := range []bool{false, true} {
 		a := testApp(t)
 		a.ss.page = "terminal"
-		tt := ui.NewTester(a.settingsView, 820, 640)
+		tt := ui.NewTester(a.settingsView, 820, buttonBottom(t, "1.22×")+120)
 		tt.SetDark(dark)
 		tt.Frame()
 		tt.Advance(time.Second)
@@ -371,7 +371,7 @@ func TestPopupButtons(t *testing.T) {
 		name := map[bool]string{false: "light", true: "dark"}[dark]
 		a := testApp(t)
 		a.ss.page = "terminal"
-		tt := ui.NewTester(a.settingsView, 820, 900)
+		tt := ui.NewTester(a.settingsView, 820, buttonBottom(t, "Regular")+200)
 		tt.SetDark(dark)
 		tt.Frame()
 		tt.Advance(time.Second)
@@ -440,11 +440,27 @@ func TestPopupButtons(t *testing.T) {
 	}
 }
 
+// buttonBottom returns where the Terminal page's button labeled label ends,
+// in a tall window: a window little taller has the button at its bottom.
+func buttonBottom(t *testing.T, label string) int {
+	t.Helper()
+	a := testApp(t)
+	a.ss.page = "terminal"
+	a.set.FontSize = 15
+	tt := ui.NewTester(a.settingsView, 820, 2000)
+	tt.Frame()
+	r, ok := tt.Find(label)
+	if !ok {
+		t.Fatalf("no %s button; texts %q", label, tt.Texts())
+	}
+	return int(r.Y + r.H)
+}
+
 // A pop-up button's menu opens over it, its current item on the button,
 // and stays in the window: near the window's bottom it moves up, where
 // it once went above the button, and further up, cut off by the top.
 func TestPopupMenuStaysInWindow(t *testing.T) {
-	for _, h := range []int{900, 400} {
+	for _, h := range []int{buttonBottom(t, "15 pt") + 400, buttonBottom(t, "15 pt") + 24} {
 		a := testApp(t)
 		a.ss.page = "terminal"
 		a.set.FontSize = 15
@@ -475,7 +491,7 @@ func TestPopupMenuStaysInWindow(t *testing.T) {
 			t.Fatalf("h %d: the menu did not open; texts %q", h, tt.Texts())
 		}
 		at, _ := tt.Find("12 pt")
-		if h == 900 {
+		if h > int(r.Y)+300 {
 			// Room enough: 15 pt lies on the button, three items under 12 pt.
 			if d := r.Y - (at.Y + 3*menuItemH); d < -4 || d > 4 {
 				t.Errorf("h %d: 12 pt at %v, the button at %v: 15 pt is not on the button", h, at, r)
@@ -524,7 +540,7 @@ func TestFontOptionsFollowLanguage(t *testing.T) {
 // The font menu stays in the window, however little room the window has
 // below its button.
 func TestSearchMenuStaysInWindow(t *testing.T) {
-	for _, h := range []int{900, 420} {
+	for _, h := range []int{buttonBottom(t, "JetBrains Mono Nerd Font") + 400, buttonBottom(t, "JetBrains Mono Nerd Font") + 24} {
 		a := testApp(t)
 		a.ss.page = "terminal"
 		tt := ui.NewTester(a.settingsView, 820, h)
@@ -605,7 +621,8 @@ func TestSearchMenuOneHighlight(t *testing.T) {
 func TestSearchMenuIsModal(t *testing.T) {
 	a := testApp(t)
 	a.ss.page = "terminal"
-	tt := ui.NewTester(a.settingsView, 820, 600)
+	// The font's button in the window, the page longer than it.
+	tt := ui.NewTester(a.settingsView, 820, buttonBottom(t, "JetBrains Mono Nerd Font")+100)
 	tt.Frame()
 	open := func() {
 		t.Helper()
