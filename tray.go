@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/updater"
 
 	"kero/internal/settings"
 
@@ -80,14 +81,24 @@ func (a *App) applyTray() {
 	}
 }
 
-// trayMenu is the icon's menu: the window, Settings, and quitting.
+// trayMenu is the icon's menu: the window, Settings, updates, and
+// quitting.
 func (a *App) trayMenu() *mygo.Menu {
+	// The updater's window in front, as from the menu bar alone, where the
+	// app may not be.
+	check := updater.MenuItem()
+	click := check.Click
+	check.Click = func(it *mygo.MenuItem, w *mygo.Window) {
+		mygo.App.Focus()
+		click(it, w)
+	}
 	return mygo.NewMenu([]*mygo.MenuItem{
 		{Label: locales.TrayOpen(mygo.App.Name()), Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
 		{Label: actionTitle("settings.open"), Click: func(*mygo.MenuItem, *mygo.Window) {
 			mygo.App.Focus()
 			a.update(func() { a.openSettings("") })
 		}},
+		check,
 		mygo.Separator(),
 		{Label: locales.MenuQuitApp(mygo.App.Name()), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 	})
