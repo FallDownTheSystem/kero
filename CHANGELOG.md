@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.21
+
+- In a narrow sidebar, a session's time, and its ⌘ number while you
+  hold ⌘, show whole beside a long name, which ends in an ellipsis
+  instead. Thanks @jamdaniels for the report
+
 ## 2.1.20
 
 - A quick terminal drops down from the top of the screen over any app
