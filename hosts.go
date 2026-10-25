@@ -14,6 +14,7 @@ import (
 
 	"github.com/egoist/mygo"
 
+	"kero/internal/build"
 	"kero/internal/client"
 	"kero/internal/proto"
 	"kero/internal/remote"
@@ -185,8 +186,10 @@ func relaunchForKerod(v string) {
 }
 
 // released tells a version of Kero that has a release to install: not a
-// development build's.
-func released(v string) bool { return v != "" && !strings.Contains(v, "dev") && !mygo.IsDev() }
+// development build's, nor the fork's, whose hosts are updated by hand.
+func released(v string) bool {
+	return v != "" && !strings.Contains(v, "dev") && !build.Fork(v) && !mygo.IsDev()
+}
 
 func (a *App) local() *host { return a.hosts[0] }
 
