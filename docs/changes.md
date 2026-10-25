@@ -52,7 +52,7 @@ The sync button beside it pulls what the branch is behind, then pushes what it's
 
 - **Fetch**, **Fetch from All Remotes** and **Fetch and Prune**.
 - **Pull**, as your git configuration says, or merging, rebasing, or fast-forward only.
-- **Push**, **Push with Force**, which pushes over the remote's branch only as last fetched, and **Push with Tags**. A push is of the branch alone, to where it pushes to.
+- **Push**, **Force Push**, which pushes over the remote's branch only as last fetched, and **Push with Tags**. A push is of the branch alone, to where it pushes to.
 - **Stash All Changes**, **Stash Staged Changes** and **Stash with Message…**.
 - **New Branch…**, **Undo Last Commit**, which keeps its changes staged, and **Refresh**.
 
@@ -70,7 +70,7 @@ Click a commit to see its files, and a file to see its diff. The changes not com
 - **Check Out**: the branch at the commit, or the commit itself, detached, when no branch is there.
 - **New Branch Here…** and **New Session in Worktree Here…**.
 - **Merge … into …**, with a merge commit too, and **Rebase … onto …**.
-- **Cherry-Pick**, **Revert Commit**, and **Reset to Here**: soft, keeping the changes since staged, mixed, keeping them unstaged, or hard, discarding them.
+- **Cherry-Pick**, **Revert Commit**, and **Reset to This Commit**: soft, keeping the changes since staged, mixed, keeping them unstaged, or hard, discarding them.
 
 ## Conflicts
 
