@@ -442,6 +442,39 @@ func TestLog(t *testing.T) {
 	}
 }
 
+// A branch made from origin/main tracks it: its push goes to a branch of
+// its own name, which it then tracks, and never over main.
+func TestPushBranchTrackingAnother(t *testing.T) {
+	ctx := context.Background()
+	r := opsRepo(t, map[string]string{"a.txt": "a\n"})
+	bare := filepath.Join(t.TempDir(), "remote.git")
+	gitIn(t, r.Root, "init", "-q", "--bare", bare)
+	gitIn(t, r.Root, "remote", "add", "origin", bare)
+	gitIn(t, r.Root, "push", "-q", "-u", "origin", "main")
+	main := strings.TrimSpace(gitIn(t, bare, "rev-parse", "main"))
+
+	gitIn(t, r.Root, "switch", "-q", "-c", "feature", "origin/main")
+	write(t, filepath.Join(r.Root, "f.txt"), "f\n")
+	r.Stage(ctx, nil)
+	r.Commit(ctx, CommitOptions{Message: "feature work"})
+	args, err := r.PushArgs(ctx, "feature", PushOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Push(ctx, args, nil); err != nil {
+		t.Fatalf("%q: %v", args, err)
+	}
+	if got := strings.TrimSpace(gitIn(t, bare, "rev-parse", "main")); got != main {
+		t.Errorf("%q pushed over main", args)
+	}
+	if got := strings.TrimSpace(gitIn(t, bare, "rev-parse", "feature")); got != strings.TrimSpace(gitIn(t, r.Root, "rev-parse", "HEAD")) {
+		t.Errorf("%q didn't push feature", args)
+	}
+	if st, _ := r.Status(ctx); st.Upstream != "origin/feature" {
+		t.Errorf("upstream %q after the push", st.Upstream)
+	}
+}
+
 func TestRemote(t *testing.T) {
 	ctx := context.Background()
 	r := opsRepo(t, map[string]string{"a.txt": "a\n"})
