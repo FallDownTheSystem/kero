@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -104,7 +105,9 @@ func projectClient(t *testing.T, handle func(string, json.RawMessage) (any, erro
 				Params json.RawMessage `json:"params"`
 			}
 			if err := dec.Decode(&req); err != nil {
-				if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+				// A client gone with an answer unread resets the
+				// connection, which is no more an error than EOF.
+				if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) && !errors.Is(err, syscall.ECONNRESET) {
 					t.Error(err)
 				}
 				return
