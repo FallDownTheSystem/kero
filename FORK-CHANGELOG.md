@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.20-fork.2
+
+- An open commit in the History tab shows all of its subject, wrapped
+- A commit's tooltip fits a GitHub noreply address on one line
+- **Write Message** keeps only the message, not what a launcher of the
+  agent prints as it starts
+
 ## 2.1.20-fork.1
 
 The fork on Kero 2.1.20, with its quick terminal, and on a fork of MyGo of
