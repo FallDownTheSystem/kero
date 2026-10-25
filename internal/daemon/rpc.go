@@ -565,6 +565,57 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.gitRevert(p)
 
+	case "git.index", "git.branches", "git.stashes":
+		var p proto.GitParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		switch method {
+		case "git.index":
+			return d.gitIndex(p)
+		case "git.branches":
+			return d.gitBranches(p)
+		}
+		return d.gitStashes(p)
+
+	case "git.op":
+		var p proto.GitOpParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitOp(p)
+
+	case "git.progress", "git.cancel":
+		var p proto.IDParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		if method == "git.cancel" {
+			return gitCancel(p.ID), nil
+		}
+		return gitProgress(p.ID), nil
+
+	case "git.log":
+		var p proto.GitLogParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitLog(p)
+
+	case "git.show":
+		var p proto.GitShowParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitShow(p)
+
+	case "git.message":
+		var p proto.GitMessageParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitMessage(p)
+
 	case "fs.list":
 		var p proto.FSListParams
 		if err := decode(&p); err != nil {

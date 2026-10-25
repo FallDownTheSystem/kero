@@ -304,7 +304,12 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 
 // field styles a text field's frame, around its input.
 func field(c *ui.Context, frame ui.Element, focused bool, pal *palette) ui.Element {
-	frame.Height(controlH+2).Padding(0, 8).Gap(6).Radius(7).AlignItems(ui.Center)
+	return fieldLook(c, frame.Height(controlH+2).AlignItems(ui.Center), focused, pal)
+}
+
+// fieldLook styles the frame of a field of any height, as a text area's.
+func fieldLook(c *ui.Context, frame ui.Element, focused bool, pal *palette) ui.Element {
+	frame.Padding(0, 8).Gap(6).Radius(7)
 	stroke := ui.RGBA(0, 0, 0, 0.13)
 	bg := ui.Hex("#ffffff")
 	if pal.dark {

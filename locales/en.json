@@ -1217,5 +1217,281 @@
     }
   },
   "endedDeleteAllDetail": "Kero forgets them; each agent keeps its own history of the conversation.",
-  "endedSetUpSkill": "Set up Kero's skill for your agents to list their ended conversations here"
+  "endedSetUpSkill": "Set up Kero's skill for your agents to list their ended conversations here",
+  "actionToggleHistory": "Toggle History",
+  "actionShowHistory": "Show History",
+  "sideHistory": "History",
+  "filesShowHistory": "Show History",
+  "setCommitMessage": "Commit message",
+  "setCommitMessageDetail": "The command that writes a commit message of what's staged, given the prompt on its standard input. Empty forks the conversation of the agent in the pane, which knows why it made the changes.",
+  "setCommitMessageAgent": "The pane's agent",
+  "gitAnAgent": "An agent",
+  "gitAgentWorking": "{agent} is working here",
+  "gitAgentWorkingDetail": "{action} changes the files it edits. Do it once the agent is done, or now?",
+  "gitAgentWorkingNow": "{action} changes a file the agent may be editing.",
+  "gitWhenDone": "When It's Done",
+  "gitNow": "Now",
+  "gitBusy": "{action} is still running",
+  "gitStillRunning": "Still running…",
+  "gitCancel": "Cancel",
+  "gitWaiting": "{action} waits for the agents here to finish",
+  "gitFailed": "{action} failed",
+  "gitDismiss": "Dismiss",
+  "gitShowOutput": "Show Output",
+  "gitHideOutput": "Hide Output",
+  "gitRunInTerminal": "Run in Terminal",
+  "gitSwitchBranch": "Switch Branch",
+  "gitMore": "More Git Actions",
+  "gitPublish": "Publish",
+  "gitPublishTip": "Publish Branch: push it to the remote, and follow the remote's branch from then on",
+  "gitSyncTip": "Sync with {upstream}: pull its commits, then push yours",
+  "gitFetchTip": "Fetch from {upstream}",
+  "gitFetch": "Fetch",
+  "gitFetchAll": "Fetch from All Remotes",
+  "gitFetchPrune": "Fetch and Prune",
+  "gitPull": "Pull",
+  "gitPullMerge": "Pull, Merging",
+  "gitPullRebase": "Pull, Rebasing",
+  "gitPullFF": "Pull, Fast-Forward Only",
+  "gitPush": "Push",
+  "gitPushForce": "Push with Force",
+  "gitPushForceTitle": "Push over {branch}'s remote branch?",
+  "gitPushForceDetail": "The commits of {upstream} that this branch hasn't are lost, but only as long as it is as it was last fetched: a push since stops it.",
+  "gitPushTags": "Push with Tags",
+  "gitStash": "Stash",
+  "gitStashAll": "Stash All Changes",
+  "gitStashStaged": "Stash Staged Changes",
+  "gitStashMessage": "Stash with Message…",
+  "gitStashMessageTitle": "Stash all changes",
+  "gitStashMessagePlaceholder": "What the stash holds",
+  "gitNewBranch": "New Branch…",
+  "gitNewBranchTitle": "New Branch",
+  "gitNewBranchDetail": "From the commit you're on, with your changes.",
+  "gitNewBranchAt": "From {at}.",
+  "gitBranchName": "Branch name",
+  "gitCreateBranch": "Create Branch",
+  "gitCreateNamed": "Create Branch “{name}”",
+  "gitUndoCommit": "Undo Last Commit",
+  "gitUndoCommitTitle": "Undo the last commit?",
+  "gitUndoCommitDetail": "Its changes come back staged, as they were before it.",
+  "gitRefresh": "Refresh",
+  "gitSwitchTo": "Switch to {name}",
+  "gitBranchFilter": "Switch to a branch, or name a new one",
+  "gitBranches": "Branches",
+  "gitRemoteBranches": "Remote Branches",
+  "gitBranchInWorktree": "Checked out in {path}",
+  "gitGone": "gone",
+  "gitInWorktree": "in a worktree",
+  "gitSwitch": "Switch",
+  "gitNewBranchFrom": "New Branch from Here…",
+  "gitOpenInWorktree": "New Session in Worktree",
+  "gitRenameBranch": "Rename…",
+  "gitRenameBranchTitle": "Rename {name}",
+  "gitRename": "Rename",
+  "gitRenameNamed": "Rename {name}",
+  "gitDeleteBranch": "Delete Branch",
+  "gitDeleteBranchTitle": "Delete the branch {name}?",
+  "gitDeleteBranchDetail": "Its commits stay, on the branches that have them.",
+  "gitDeleteUnmergedTitle": "{name} has commits no other branch has",
+  "gitDeleteUnmergedDetail": "Deleting it loses them, but for a while, in git's reflog.",
+  "gitDeleteAnyway": "Delete Anyway",
+  "gitDeleteNamed": "Delete {name}",
+  "gitSwitchDirtyTitle": "Switch with changes not committed?",
+  "gitSwitchDirtyDetail": "Stash {count, plural, one {the changed file} other {the # changed files}} and switch, or take them to {name}, when they don't conflict with it.",
+  "@gitSwitchDirtyDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStashAndSwitch": "Stash and Switch",
+  "gitStashSwitchMessage": "Before switching to {name}",
+  "gitTakeChanges": "Take Changes",
+  "gitMessage": "Commit message",
+  "gitMessagePlaceholder": "Message ({keys} to commit)",
+  "gitCommit": "Commit",
+  "gitCommitFiles": "{count, plural, one {Commit # File} other {Commit # Files}}",
+  "@gitCommitFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitAmend": "Amend Last Commit",
+  "gitCommitMerge": "Commit Merge",
+  "gitCommitTip": "Commit what's staged",
+  "gitResolveFirst": "{count, plural, one {Resolve the conflict first} other {Resolve the # conflicts first}}",
+  "@gitResolveFirst": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStageFirst": "Stage the changes to commit first",
+  "gitWriteFirst": "Write a message first",
+  "gitCommitOptions": "Commit Options",
+  "gitCommitAndPush": "Commit and Push",
+  "gitSignoff": "Sign Off",
+  "gitSkipHooks": "Skip Hooks",
+  "gitWriteMessage": "Write Message",
+  "gitWriteMessageTip": "Write the message with a coding agent",
+  "gitWriteMessageFork": "Write the message with a fork of {agent}'s conversation, which knows why it made the changes",
+  "gitWriteMessageCommand": "Write the message with {command}",
+  "gitStopWriting": "Stop Writing",
+  "gitWriteFailed": "No message: {error}",
+  "gitOpMerge": "merge",
+  "gitOpRebase": "rebase",
+  "gitOpCherryPick": "cherry-pick",
+  "gitOpRevert": "revert",
+  "gitOperationReady": "The {op} is under way.",
+  "gitOperationConflicts": "{count, plural, one {# conflict stops} other {# conflicts stop}} the {op}: resolve each, then mark it resolved.",
+  "@gitOperationConflicts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitContinue": "Continue",
+  "gitContinueTip": "Go on with the {op}",
+  "gitContinueOp": "Continue the {op}",
+  "gitAbort": "Abort",
+  "gitAbortTip": "Give up the {op}, back to where it started",
+  "gitAbortOp": "Abort the {op}",
+  "gitChanges": "Changes",
+  "gitStagedChanges": "Staged Changes",
+  "gitStage": "Stage",
+  "gitStageAll": "Stage All Changes",
+  "gitStageChangeTip": "Stage this change, for the next commit",
+  "gitUnstage": "Unstage",
+  "gitUnstageAll": "Unstage All Changes",
+  "gitUnstageChangeTip": "Take this change out of the next commit",
+  "gitDiscard": "Discard",
+  "gitDiscardAll": "Discard All Changes",
+  "gitDiscardChangeTip": "Put the lines back as they're staged",
+  "gitDiscardTitle": "Discard the changes to {name}?",
+  "gitDiscardDetail": "Its changes since it was last staged are lost.",
+  "gitDeleteTitle": "Delete {name}?",
+  "gitDeleteDetail": "It's untracked: git has no copy of it.",
+  "gitRestoreTitle": "Bring back {name}?",
+  "gitRestoreDetail": "It comes back as it's staged.",
+  "gitDiscardAllTitle": "Discard all changes not staged?",
+  "gitDiscardAllDetail": "{count, plural, one {The file goes back to how it's staged, or deleted when untracked.} other {The # files go back to how they're staged, and the untracked ones are deleted.}}",
+  "@gitDiscardAllDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitMarkResolved": "Mark Resolved",
+  "gitResolve": "Resolve the Conflict",
+  "gitOurs": "Ours",
+  "gitTheirs": "Theirs",
+  "gitUseSide": "Use {name}'s Version",
+  "gitUseSideTitle": "Use {name}'s version of {file}?",
+  "gitUseSideDetail": "The file becomes {name}'s version and is marked resolved. Its conflict markers, and any edits to it since the conflict, are lost.",
+  "gitResolveOp": "Resolve {file}",
+  "gitResolveWithAgent": "Resolve with Agent",
+  "gitResolveWithAgentTip": "Ask the agent in this worktree to resolve the conflicts and stage them",
+  "gitSentToAgent": "Sent the conflicts to {agent}",
+  "gitAgentSendFailed": "Can't send the conflicts to the agent: {error}",
+  "gitMergeInto": "Merge {name} into {branch}",
+  "gitMergeIntoNoFF": "Merge {name} into {branch} with a Merge Commit",
+  "gitMergeOp": "Merge {name}",
+  "gitRebase": "Rebase",
+  "gitRebaseOnto": "Rebase {branch} onto {name}",
+  "gitRebaseOp": "Rebase onto {name}",
+  "gitRebaseTitle": "Rebase {branch} onto {name}?",
+  "gitRebaseDetail": "The commits of {branch} that {name} doesn't have are made again on top of {name}. If {branch} is already pushed, it then needs a force push.",
+  "gitRebaseStashDetail": "{count, plural, one {The changed file is} other {The # changed files are}} stashed first and put back when the rebase ends, or kept in the stash if they conflict.",
+  "@gitRebaseStashDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStashAndRebase": "Stash and Rebase",
+  "gitChangeMoved": "The change moved: look at it again",
+  "gitStageFailed": "Can't stage it: {error}",
+  "gitNewBranchHere": "New Branch Here…",
+  "gitSessionHere": "New Session in Worktree Here…",
+  "gitSessionHereTitle": "New Session in Worktree",
+  "historyCantRead": "Can't read the history",
+  "historyNoMatch": "No commit matches",
+  "historyNone": "No commits yet",
+  "historyNoneDetail": "The branch's commits show here, as a graph.",
+  "historyMoreFound": "More commits match than show: type more.",
+  "historyOf": "History of {name}",
+  "historyOfFile": "Show History of the File",
+  "historyAllFiles": "All Files",
+  "historyBranch": "Branch",
+  "historyAll": "All",
+  "historyFilter": "Filter",
+  "historyFilterTip": "Finds commits by their message, author or hash",
+  "historyFirstParent": "First Parents Only: each merge as one commit",
+  "historyCopyHash": "Copy Hash",
+  "historyCopyBranch": "Copy Branch Name",
+  "historyStashes": "{count, plural, one {Stash: # entry} other {Stash: # entries}}",
+  "@historyStashes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyStashApply": "Apply Stash",
+  "historyStashPop": "Pop Stash",
+  "historyStashDrop": "Drop Stash",
+  "historyDropTitle": "Drop the stash's entry?",
+  "historyDropDetail": "“{message}” is lost.",
+  "historyUncommitted": "Uncommitted",
+  "historyShowUncommitted": "Show the changes not committed",
+  "historyCheckout": "Check Out",
+  "historyCheckoutBranch": "Check Out {name}",
+  "historyCherryPick": "Cherry-Pick",
+  "historyCherryPickOf": "Cherry-Pick {hash}",
+  "historyRevert": "Revert Commit",
+  "historyRevertOf": "Revert {hash}",
+  "historyReset": "Reset to Here",
+  "historyResetTo": "Reset to {hash}",
+  "historyResetTitle": "Reset {branch} to {hash}?",
+  "historyResetSoft": "Soft: Keep Changes Staged",
+  "historyResetSoftDetail": "The commits after it come back as changes, staged.",
+  "historyResetMixed": "Mixed: Keep Changes",
+  "historyResetMixedDetail": "The commits after it come back as changes, not staged.",
+  "historyResetHard": "Hard: Discard Changes",
+  "historyResetHardDetail": "The commits after it, and every change not committed, are lost.",
+  "gitClearLines": "Clear the Lines Selected",
+  "gitStageLines": "{count, plural, one {Stage # Line} other {Stage # Lines}}",
+  "@gitStageLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStageLinesTip": "Stage the lines selected for the next commit",
+  "gitUnstageLines": "{count, plural, one {Unstage # Line} other {Unstage # Lines}}",
+  "@gitUnstageLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitUnstageLinesTip": "Take the lines selected out of the next commit",
+  "gitDiscardLines": "{count, plural, one {Discard # Line} other {Discard # Lines}}",
+  "@gitDiscardLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitDiscardLinesTip": "Put the lines selected back as they are staged"
 }
