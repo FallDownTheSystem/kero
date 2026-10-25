@@ -242,19 +242,24 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 		a.paneRef(p.ID).Focus()
 	}
 
-	// Another pane dragged over this one: where it would go.
-	zone := zoneNone
-	if multi {
-		if d, over := ui.DragOver[paneDrag](card); over && d.session == s.ID && d.pane != p.ID {
-			if x, y, in := card.PointerPosition(); in {
-				b := a.paneRef("card-" + p.ID).Bounds(c)
-				zone = zoneAt(x/max(b.W, 1), y/max(b.H, 1))
-			}
+	// Another pane, or a file, dragged over this one: where it would go.
+	zone, file := zoneNone, false
+	if d, over := ui.DragOver[cardDrop](card); over && a.takesDrop(s, p, multi, d) {
+		if x, y, in := card.PointerPosition(); in {
+			b := a.paneRef("card-" + p.ID).Bounds(c)
+			_, file = d.(fileDrag)
+			// A file takes the place of an editor pane's only.
+			zone = zoneAt(x/max(b.W, 1), y/max(b.H, 1), !file || p.Editor())
 		}
-		if d, ok := ui.Drop[paneDrag](card); ok && d.session == s.ID && d.pane != p.ID {
-			sid, target := s.ID, p.ID
-			drop := a.lastZone
+	}
+	if d, ok := ui.Drop[cardDrop](card); ok && a.takesDrop(s, p, multi, d) {
+		sid, target := s.ID, p.ID
+		drop := a.lastZone
+		switch d := d.(type) {
+		case paneDrag:
 			a.defer_(func() { a.movePane(sid, d.pane, target, drop) })
+		case fileDrag:
+			a.defer_(func() { a.dropFile(sid, target, d.path, drop) })
 		}
 	}
 	if zone != zoneNone {
@@ -281,7 +286,7 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 			v.Opacity(v.Animate("on", b2f(!focused), 160*time.Millisecond))
 		}
 		if zone != zoneNone {
-			a.dropPreview(c, pal, p.ID, zone)
+			a.dropPreview(c, pal, p.ID, zone, file)
 		}
 	})
 
@@ -336,8 +341,20 @@ func (a *App) pointerEntered(c *ui.Context, ref string, card ui.Element, hovered
 	return moved
 }
 
+// cardDrop is what a pane's card takes dropped on it: a pane (paneDrag) or a
+// file (fileDrag). It is one type, as an element takes the values of the
+// last type it asks for (ui.Drop, ui.DragOver) only.
+type cardDrop interface{ dropsOnCard() }
+
 // paneDrag is a pane dragged by its title to another place.
 type paneDrag struct{ session, pane string }
+
+// fileDrag is a file of the Files view dragged onto a pane, the tree's pane
+// telling its host.
+type fileDrag struct{ pane, path string }
+
+func (paneDrag) dropsOnCard() {}
+func (fileDrag) dropsOnCard() {}
 
 // dropZone is where a pane dropped on another goes: beside it, on a side,
 // or in its place, which the other takes (swap).
@@ -353,9 +370,9 @@ const (
 )
 
 // zoneAt returns the zone under the pointer, at u, v of a pane (0 to 1):
-// its middle swaps, else the nearest edge.
-func zoneAt(u, v float32) dropZone {
-	if u > 0.3 && u < 0.7 && v > 0.3 && v < 0.7 {
+// its middle swaps, when middle, else the nearest edge.
+func zoneAt(u, v float32, middle bool) dropZone {
+	if middle && u > 0.3 && u < 0.7 && v > 0.3 && v < 0.7 {
 		return zoneSwap
 	}
 	best, zone := u, zoneLeft
@@ -375,9 +392,9 @@ func (z dropZone) side() string {
 }
 
 // dropPreview shows, over the pane under the pointer, the room the
-// dragged pane would take, gliding from zone to zone, with what dropping
-// does.
-func (a *App) dropPreview(c *ui.Context, pal *palette, target string, zone dropZone) {
+// dragged pane, or file, would take, gliding from zone to zone, with what
+// dropping does.
+func (a *App) dropPreview(c *ui.Context, pal *palette, target string, zone dropZone, file bool) {
 	key := target
 	a.previewShown = true
 	if a.previewKey != key {
@@ -399,6 +416,9 @@ func (a *App) dropPreview(c *ui.Context, pal *palette, target string, zone dropZ
 	}
 	if zone == zoneSwap {
 		glyph = swapIcon
+	}
+	if zone == zoneSwap && file {
+		label, glyph = locales.FilesOpenHere(), docIcon
 	}
 	fadeIn := min(float32(c.Now().Sub(a.previewSince))/float32(140*time.Millisecond), 1)
 	if fadeIn < 1 {
@@ -443,6 +463,37 @@ func (a *App) movePane(sid, pane, target string, zone dropZone) {
 	a.setFocus(s, pane)
 	a.paneRef(pane).Focus()
 	a.call(sid, "layout", proto.LayoutParams{Session: sid, Layout: s.Layout.Clone()}, nil)
+}
+
+// takesDrop tells whether pane p of session s takes what is dragged over
+// it: another pane of the session, as it shows beside others; a file of
+// its host.
+func (a *App) takesDrop(s *proto.Session, p *proto.Pane, multi bool, d cardDrop) bool {
+	switch d := d.(type) {
+	case paneDrag:
+		return multi && d.session == s.ID && d.pane != p.ID
+	case fileDrag:
+		return a.hostOf(d.pane) == a.hostOf(p.ID)
+	}
+	return false
+}
+
+// dropFile opens a file dropped on a pane in an editor pane beside it, on
+// the side it was dropped at; or in its place, an editor pane's file,
+// unless that has edits not saved, when it goes beside it.
+func (a *App) dropFile(sid, target, path string, zone dropZone) {
+	s := a.session(sid)
+	if s == nil || zone == zoneNone {
+		return
+	}
+	if zone == zoneSwap {
+		if a.editorUnsaved(target) == nil {
+			a.replaceFile(sid, target, path)
+			return
+		}
+		zone = zoneRight
+	}
+	a.split(s, proto.CreateParams{Split: target, Direction: zone.side(), File: path})
 }
 
 // paneHeader builds a pane's header, and reports whether its title is

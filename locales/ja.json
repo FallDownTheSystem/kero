@@ -516,6 +516,8 @@
   "filesCollapse": "すべて折りたたむ",
   "filesRefresh": "更新",
   "filesOpenInPane": "ペインで開く",
+  "filesOpenInNewPane": "新しいペインで開く",
+  "filesOpenHere": "ここで開く",
   "filesWrap": "行を折り返す",
   "filesConfirmCloseTitle": "保存せずに閉じますか？",
   "filesConfirmCloseDetail": "{file} への編集は保存されておらず、ペインとともに失われます。",
