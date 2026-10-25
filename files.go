@@ -781,6 +781,9 @@ func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir 
 		if a.set.FilePane == "replace" && padItem(m, locales.FilesOpenInNewPane()).Chosen() {
 			a.openInNewPane(t.pane, path)
 		}
+		if g := a.paneGit(t.pane); g != nil && g.Root == t.root && padItem(m, locales.FilesShowHistory()).Chosen() {
+			a.showHistory(strings.ReplaceAll(t.rel(path), `\`, "/"))
+		}
 	}
 	if !a.hostOf(t.pane).remote() {
 		if padItem(m, locales.FilesOpenInEditor()).Chosen() {

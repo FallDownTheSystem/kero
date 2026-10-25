@@ -63,6 +63,17 @@ var (
 	linkIcon        = glyph("f7-arrow-up-right")
 	editIcon        = glyph("f7-pencil")
 	archiveIcon     = icon(`<rect x="2" y="3" width="12" height="3" rx="1"/><path d="M3 6v6.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6M6.5 9h3"/>`)
+	minusIcon       = glyph("f7-minus")
+	syncIcon        = glyph("f7-arrow-up-arrow-down")
+	pushIcon        = glyph("f7-arrow-up")
+	pullIcon        = glyph("f7-arrow-down")
+	tagIcon         = glyph("f7-tag")
+	historyIcon     = glyph("lucide-git-graph")
+	commitIcon      = glyph("lucide-git-commit-horizontal")
+	mergeIcon       = glyph("lucide-git-merge")
+	warningIcon     = glyph("f7-exclamationmark-triangle")
+	clockIcon       = glyph("f7-clock")
+	sparklesIcon    = glyph("f7-sparkles")
 )
 
 // programIcons are the logos of programs a pane may run, by the name kerod
