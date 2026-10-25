@@ -109,8 +109,13 @@ func isCodex(program string) bool {
 // too, as a function of PowerShell's profile does. A shell it doesn't
 // know runs line's words as a program.
 func inShell(sh, line string) []string {
-	name := strings.ToLower(strings.TrimSuffix(filepath.Base(sh), filepath.Ext(sh)))
-	switch name {
+	// Either separator, as filepath.Base splits a Windows path only on
+	// Windows.
+	name := sh[strings.LastIndexAny(sh, `/\`)+1:]
+	if i := strings.LastIndexByte(name, '.'); i > 0 {
+		name = name[:i]
+	}
+	switch strings.ToLower(name) {
 	case "pwsh", "powershell":
 		return []string{sh, "-NoLogo", "-NonInteractive", "-Command", line}
 	case "cmd":
