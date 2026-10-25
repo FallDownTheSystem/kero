@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.20-fork.3
+
+- A **Menus** button (⋯) beside Settings in the sidebar has the menu
+  bar's menus, with their shortcuts, where Windows shows no menu bar
+- **New Session in Worktree…** in a project's menu in the sidebar
+
 ## 2.1.20-fork.2
 
 - An open commit in the History tab shows all of its subject, wrapped
