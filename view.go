@@ -265,17 +265,7 @@ func pointerTooltip(c *ui.Context, el ui.Element, key, s string) {
 	shown := false
 	ui.TooltipBase(c, el, func(tip ui.Element) {
 		shown = true
-		th := c.Theme()
-		fill, text := th.Inverse, th.InverseText
-		if fill == ui.Transparent {
-			fill = th.Text
-		}
-		if text == ui.Transparent {
-			text = th.Background
-		}
-		tip.MaxWidth(th.Space(80)).Padding(th.Space(1.25), th.Space(2)).Radius(th.Space(1.25)).
-			Background(fill).TextColor(text).FontSize(th.FontSize-1).Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, 0.2))
-		tip.Children(func() { ui.Text(c, s) })
+		tipLook(c, tip, c.Theme().Space(80), s)
 		if over {
 			tip.AttachTo(spot, ui.AnchorTopLeft, ui.AnchorTopLeft)
 		}
@@ -285,6 +275,33 @@ func pointerTooltip(c *ui.Context, el ui.Element, key, s string) {
 	} else {
 		delete(tipsAt, key)
 	}
+}
+
+// wideTooltip is Element.Tooltip, as wide as a line of an email address,
+// for tips of a commit's author and dates, whose lines Tooltip's width
+// breaks.
+func wideTooltip(c *ui.Context, el ui.Element, s string) {
+	el.Description(s)
+	ui.TooltipBase(c, el, func(tip ui.Element) {
+		tipLook(c, tip, 480, s)
+		tip.AttachTo(el, ui.AnchorTop, ui.AnchorBottom).Margin(0, 0, c.Theme().Space(1.5), 0)
+	})
+}
+
+// tipLook gives tip the look of the theme's tooltips, at most max wide,
+// and s for its text.
+func tipLook(c *ui.Context, tip ui.Element, max float32, s string) {
+	th := c.Theme()
+	fill, text := th.Inverse, th.InverseText
+	if fill == ui.Transparent {
+		fill = th.Text
+	}
+	if text == ui.Transparent {
+		text = th.Background
+	}
+	tip.MaxWidth(max).Padding(th.Space(1.25), th.Space(2)).Radius(th.Space(1.25)).
+		Background(fill).TextColor(text).FontSize(th.FontSize-1).Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, 0.2))
+	tip.Children(func() { ui.Text(c, s) })
 }
 
 func kbd(c *ui.Context, pal *palette, keys string) {

@@ -423,20 +423,29 @@ func graphBox(c *ui.Context, gw float32, draw func(p *ui.Painter, r ui.Rect)) {
 	ui.Box(c.Key("graph")).Width(gw).Shrink(0).AlignSelf(ui.Stretch).Draw(draw)
 }
 
+// commitRowH is the height of a commit's row, and of its first line open.
+const commitRowH = 26
+
 // commitRow is a commit's row: its graph, subject, refs and time, which a
 // click opens or closes.
 func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto.Pane, i int, gw float32, filtered bool) {
 	hs := &a.side.git.hist
 	cm := hs.commits[i]
 	open := hs.opened[cm.Hash] != nil
-	row := ui.Row(c.Key("row")).Height(26).Padding(0, 10, 0, 6).Gap(7).AlignItems(ui.Center).Radius(6)
+	row := ui.Row(c.Key("row")).Padding(0, 10, 0, 6).Gap(7).Radius(6)
+	if open {
+		// Open, the subject wraps, the rest of the row on its first line.
+		row.AlignItems(ui.Start)
+	} else {
+		row.Height(commitRowH).AlignItems(ui.Center)
+	}
 	if open {
 		row.Background(pal.rowHover.Alpha(0.6))
 	} else if row.Hovered() {
 		row.Background(pal.rowHover.Alpha(0.5))
 	}
 	when := time.Unix(cm.Time, 0)
-	row.Tooltip(cm.Author + " <" + cm.Email + ">\n" + when.Format("2006-01-02 15:04") + "\n" + shortHash(cm.Hash))
+	wideTooltip(c, row, cm.Author+" <"+cm.Email+">\n"+when.Format("2006-01-02 15:04")+"\n"+shortHash(cm.Hash))
 	if row.Clicked() {
 		a.toggleCommit(pane.ID, cm.Hash)
 	}
@@ -446,20 +455,37 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 	colors := a.laneColors(c, pal)
 	row.Children(func() {
 		if filtered {
-			ui.Box(c).Size(6, 6).Radius(3).Background(pal.textFaint).Shrink(0).Margin(0, 2, 0, 4)
+			ui.Row(c).Height(commitRowH).AlignItems(ui.Center).Shrink(0).Children(func() {
+				ui.Box(c).Size(6, 6).Radius(3).Background(pal.textFaint).Margin(0, 2, 0, 4)
+			})
 		} else {
 			gr := hs.graph[i]
 			graphBox(c, gw, func(p *ui.Painter, r ui.Rect) {
-				drawGraph(p, r, gr, colors, pal.card, hs.unpushed[cm.Hash], head)
+				// The commit's dot by the first line; below it, as the
+				// subject wraps, its lanes go on as the detail's.
+				top := r
+				top.H = min(r.H, commitRowH)
+				drawGraph(p, top, gr, colors, pal.card, hs.unpushed[cm.Hash], head)
+				if rest := r.H - top.H; rest > 0 {
+					drawLanes(p, ui.Rect{X: r.X, Y: r.Y + top.H, W: r.W, H: rest}, gr, colors)
+				}
 			})
 		}
 		fg := pal.text
 		if !hs.unpushed[cm.Hash] && !filtered {
 			fg = pal.text.Alpha(0.85)
 		}
-		ui.Text(c, cm.Subject).FontSize(13).TextColor(fg).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
-		a.refChips(c, pal, refs)
-		ui.Text(c, ago(cm.Time*1000, time.Now())).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
+		subject := ui.Text(c, cm.Subject).FontSize(13).TextColor(fg).Grow(1).MinWidth(0)
+		if open {
+			// Its first line centered in the row's height, as when closed.
+			subject.LineHeight(1.3).Padding(4.5, 0, 4.5, 0).Selectable()
+		} else {
+			subject.SingleLine().Ellipsis("…")
+		}
+		ui.Row(c).Height(commitRowH).Gap(7).AlignItems(ui.Center).MinWidth(0).Children(func() {
+			a.refChips(c, pal, refs)
+			ui.Text(c, ago(cm.Time*1000, time.Now())).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
+		})
 	})
 }
 
