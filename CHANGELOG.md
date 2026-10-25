@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.1.20
+
+- A quick terminal drops down from the top of the screen over any app
+  and goes back up when you press its shortcut again. Give it a
+  shortcut in Settings › Keyboard (**Quick Terminal**); **View › Quick
+  Terminal** and the menu bar icon open it too. Its session keeps
+  running while it's hidden.
+- On Windows, an agent finishing in the session you have selected
+  shows its notification while another app is in front. Thanks @Maasea
+  for the report
+- Return presses a confirmation's action, such as Close Pane, as its
+  ↩ says. Thanks @iamvicliu
+- On a Mac, after Kero updates itself, quitting an app you started in
+  a pane no longer ends every pane's shell.
+
 ## 2.1.19
 
 - **Session › New Session in Worktree…** (⌘⌥T) starts a session on a
