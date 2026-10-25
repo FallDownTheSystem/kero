@@ -5388,6 +5388,26 @@ func (msgs Messages) FilesOpenInPane() string {
 	return Catalog.Format(msgs.locale, "filesOpenInPane", nil)
 }
 
+// FilesOpenInNewPane says "Open in New Pane"
+// in the language the app shows.
+func FilesOpenInNewPane() string { return In(i18n.Locale()).FilesOpenInNewPane() }
+
+// FilesOpenInNewPane says "Open in New Pane"
+// in the language of msgs.
+func (msgs Messages) FilesOpenInNewPane() string {
+	return Catalog.Format(msgs.locale, "filesOpenInNewPane", nil)
+}
+
+// FilesOpenHere says "Open Here"
+// in the language the app shows.
+func FilesOpenHere() string { return In(i18n.Locale()).FilesOpenHere() }
+
+// FilesOpenHere says "Open Here"
+// in the language of msgs.
+func (msgs Messages) FilesOpenHere() string {
+	return Catalog.Format(msgs.locale, "filesOpenHere", nil)
+}
+
 // FilesWrap says "Wrap Lines"
 // in the language the app shows.
 func FilesWrap() string { return In(i18n.Locale()).FilesWrap() }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"slices"
 	"testing"
@@ -463,6 +464,182 @@ func TestFilesNoPreview(t *testing.T) {
 	tt.Frame()
 	if tr.shown != "/tmp/demo/main.go" {
 		t.Errorf("Preview opened %q", tr.shown)
+	}
+}
+
+// paneCalls makes the local host a kerod that lists one file, main.go, in
+// every folder, and tells the splits and pane.file calls it takes, as
+// "split <pane> <direction> <file>" and "file <pane> <file>".
+func paneCalls(t *testing.T, a *App) <-chan string {
+	t.Helper()
+	calls := make(chan string, 8)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "fs.list":
+			return proto.FSList{Entries: []proto.FSEntry{{Name: "main.go"}}}, nil
+		case "split":
+			var p proto.CreateParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			calls <- "split " + p.Split + " " + p.Direction + " " + p.File
+			return nil, errors.New("no panes in a test")
+		case "pane.file":
+			var p proto.FileParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			calls <- "file " + p.ID + " " + p.File
+			return true, nil
+		}
+		return nil, errors.New("unexpected method " + method)
+	})
+	a.local().cl = cl
+	return calls
+}
+
+// nextCall returns the next call paneCalls tells.
+func nextCall(t *testing.T, calls <-chan string) string {
+	t.Helper()
+	select {
+	case c := <-calls:
+		return c
+	case <-time.After(5 * time.Second):
+		t.Fatal("no call came")
+		return ""
+	}
+}
+
+// filesBeside opens the Files view of /tmp/demo, beside pane a and an
+// editor pane b of its README.md.
+func filesBeside(t *testing.T, a *App) {
+	t.Helper()
+	s := &a.st.Sessions[0]
+	s.Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/demo/README.md", Dir: "/tmp/demo", Status: proto.Idle, Progress: -1}
+	a.prefs.Side = sideFiles
+}
+
+// With files-pane = replace, a file's menu opens it in a pane of its own
+// too, beside Open in Pane, which takes the place of the editor pane's
+// file.
+func TestFilesOpenInNewPane(t *testing.T) {
+	a := testApp(t)
+	filesBeside(t, a)
+	calls := paneCalls(t, a)
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tr := a.side.files.shown
+	tr.listed("/tmp/demo", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: "main.go"}}}, nil)
+	tt.Frame()
+	if err := tt.RightClick("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	if items := tt.Menu(); slices.Contains(items, "Open in New Pane") {
+		t.Errorf("with files-pane = new, the menu has Open in New Pane: %q", items)
+	}
+	tt.CloseMenu()
+
+	a.set.FilePane = "replace"
+	tt.Frame()
+	if err := tt.RightClick("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Open in New Pane"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	tt.Frame()
+	if got := nextCall(t, calls); got != "split a right /tmp/demo/main.go" {
+		t.Errorf("Open in New Pane called %q", got)
+	}
+	if err := tt.RightClick("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Open in Pane"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := nextCall(t, calls); got != "file b /tmp/demo/main.go" {
+		t.Errorf("Open in Pane called %q", got)
+	}
+}
+
+// A row's menu opens from all of the row that shows hovered: its edges
+// above and below its name too, the list row's padding.
+func TestFilesRowEdges(t *testing.T) {
+	a := testApp(t)
+	filesBeside(t, a)
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tr := a.side.files.shown
+	tr.listed("/tmp/demo", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: "main.go"}}}, nil)
+	tt.Frame()
+	r, ok := tt.Find("main.go")
+	if !ok {
+		t.Fatalf("no main.go; texts %q", tt.Texts())
+	}
+	for _, y := range []float32{r.Y - 2, r.Y + r.H + 2} {
+		tt.RightClickAt(r.X+r.W/2, y)
+		if items := tt.Menu(); !slices.Contains(items, "Open in Pane") {
+			t.Errorf("a right-click at %v, beside main.go at %v to %v, opened %q", y, r.Y, r.Y+r.H, items)
+		}
+		tt.CloseMenu()
+		tt.Frame()
+	}
+}
+
+// A file dragged from the tree onto a pane opens beside it, on the side it
+// is dropped at, or, in the middle of an editor pane, in its place: a
+// terminal's middle is no place for it.
+func TestFilesDragToPane(t *testing.T) {
+	a := testApp(t)
+	filesBeside(t, a)
+	calls := paneCalls(t, a)
+	cards := map[string]ui.Rect{}
+	tt := ui.NewTester(func(c *ui.Context) {
+		a.view(c)
+		for _, id := range []string{"a", "b"} {
+			cards[id] = a.paneRef("card-" + id).Bounds(c)
+		}
+	}, 1280, 720)
+	tt.Frame()
+	tr := a.side.files.shown
+	tr.listed("/tmp/demo", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: "main.go"}}}, nil)
+	tt.Frame()
+	drop := func(x, y float32, label string, want string) {
+		t.Helper()
+		r, ok := tt.Find("main.go")
+		if !ok {
+			t.Fatalf("no main.go; texts %q", tt.Texts())
+		}
+		fx, fy := r.X+r.W/2, r.Y+r.H/2
+		// Pressed again so soon, the file would be double-clicked.
+		tt.Advance(time.Second)
+		tt.Press(fx, fy)
+		tt.Frame()
+		tt.Move(fx+12, fy)
+		tt.Frame()
+		tt.Move(x, y)
+		tt.Frame()
+		if !tt.HasText(label) {
+			t.Errorf("dragged to %v, %v: no %q; texts %q", x, y, label, tt.Texts())
+		}
+		if label != "Open Here" && tt.HasText("Open Here") {
+			t.Errorf("dragged to %v, %v: the file would open in the pane's place", x, y)
+		}
+		tt.Release(x, y)
+		tt.Frame()
+		if got := nextCall(t, calls); got != want {
+			t.Errorf("dropped at %v, %v: called %q, want %q", x, y, got, want)
+		}
+	}
+	b := cards["b"]
+	drop(b.X+b.W/2, b.Y+b.H/2, "Open Here", "file b /tmp/demo/main.go")
+	drop(b.X+b.W-20, b.Y+b.H/2, "Split Right", "split b right /tmp/demo/main.go")
+	t2 := cards["a"]
+	drop(t2.X+t2.W/2, t2.Y+t2.H*0.45, "Split Up", "split a up /tmp/demo/main.go")
+	if tr.shown != "" && tr.shown != "/tmp/demo/main.go" {
+		t.Errorf("a drag opened %q below the tree", tr.shown)
 	}
 }
 
