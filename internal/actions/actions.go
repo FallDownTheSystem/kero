@@ -61,10 +61,13 @@ var All = []Action{
 	{ID: "sidebar.toggle", Title: "Toggle Sidebar", Menu: "View", Keys: "CmdOrCtrl+B", Remote: true},
 	{ID: "changes.toggle", Title: "Toggle Changes", Menu: "View", Keys: "CmdOrCtrl+Alt+G", Remote: true},
 	{ID: "files.toggle", Title: "Toggle Files", Menu: "View", Keys: "CmdOrCtrl+Alt+E", Remote: true},
+	{ID: "history.toggle", Title: "Toggle History", Menu: "View", Keys: "CmdOrCtrl+Alt+Y", Remote: true},
 	// Show, as kero do runs them, never hide: files.show takes path=, a
-	// file or folder of the view's tree to show in it.
+	// file or folder of the view's tree to show in it; history.show a
+	// file, whose history to show.
 	{ID: "changes.show", Title: "Show Changes", Menu: "View", Remote: true},
 	{ID: "files.show", Title: "Show Files", Menu: "View", Remote: true},
+	{ID: "history.show", Title: "Show History", Menu: "View", Remote: true},
 	{ID: "text.bigger", Title: "Bigger", Menu: "View", Keys: "CmdOrCtrl+=", Remote: true},
 	{ID: "text.smaller", Title: "Smaller", Menu: "View", Keys: "CmdOrCtrl+-", Remote: true},
 	{ID: "text.reset", Title: "Actual Size", Menu: "View", Keys: "CmdOrCtrl+0", Remote: true},
@@ -109,6 +112,7 @@ var pcKeys = map[string]string{
 	"sidebar.toggle":      "Ctrl+Shift+B",
 	"changes.toggle":      "Ctrl+Shift+G",
 	"files.toggle":        "Ctrl+Shift+E",
+	"history.toggle":      "Ctrl+Shift+Y",
 	"text.bigger":         "Ctrl+=",
 	"text.smaller":        "Ctrl+-",
 	"text.reset":          "Ctrl+0",

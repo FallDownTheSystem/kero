@@ -238,6 +238,8 @@ type GitInfo struct {
 	Files   int `json:"files,omitempty"`
 	Added   int `json:"added,omitempty"`
 	Removed int `json:"removed,omitempty"`
+	// Staged counts the files the index changed since HEAD.
+	Staged int `json:"staged,omitempty"`
 	// State is an operation in progress: merge, rebase, cherry-pick or
 	// revert.
 	State string `json:"state,omitempty"`
@@ -930,7 +932,9 @@ type (
 	}
 
 	// GitParams ask about a pane's worktree, since a base: "turn" (its
-	// Turn), "head" or "branch" (where HEAD left the default branch).
+	// Turn), "head" or "branch" (where HEAD left the default branch); or
+	// of a file, between sides: "staged" (HEAD to the index), "unstaged"
+	// (the index to the working tree), or "rev" (From to To).
 	// Path and OldPath name a file, slash-separated from the worktree's
 	// root, the file of a rename was OldPath in the base.
 	GitParams struct {
@@ -941,6 +945,9 @@ type (
 		// Known is the hash of the file's text the client has (GitText),
 		// which git.file then sends again only when it changed.
 		Known string `json:"known,omitempty"`
+		// From and To are the sides of base "rev" (GitFile's).
+		From string `json:"from,omitempty"`
+		To   string `json:"to,omitempty"`
 	}
 	// GitChanges are the files changed since a base.
 	GitChanges struct {
@@ -959,25 +966,35 @@ type (
 		Added   int    `json:"added,omitempty"`
 		Removed int    `json:"removed,omitempty"`
 		Binary  bool   `json:"binary,omitempty"`
+		// From and To are the sides a commit's file is shown between, as
+		// git.file takes them for base "rev": tree-ishes, or none (":none").
+		From string `json:"from,omitempty"`
+		To   string `json:"to,omitempty"`
 	}
 	// GitText is a file's text in the base and now. Same: as Known, so
-	// nothing else is sent.
+	// nothing else is sent. Index is the hash of the index's text, when a
+	// side is the index's; Mixed, that a side's lines end both in \r\n and
+	// in \n, which an edit of a change would make all one.
 	GitText struct {
 		Old    string `json:"old,omitempty"`
 		New    string `json:"new,omitempty"`
 		Hash   string `json:"hash"`
+		Index  string `json:"index,omitempty"`
 		Same   bool   `json:"same,omitempty"`
 		Binary bool   `json:"binary,omitempty"`
 		Large  bool   `json:"large,omitempty"`
 		Patch  string `json:"patch,omitempty"`
+		Mixed  bool   `json:"mixed,omitempty"`
 	}
 	// GitWriteParams write a file of a pane's worktree back as it was in
 	// part (git.revert): Text, when its content still hashes to Hash.
+	// Anyway writes it while an agent works there, as the user said to.
 	GitWriteParams struct {
-		Pane string `json:"pane"`
-		Base string `json:"base"`
-		Path string `json:"path"`
-		Hash string `json:"hash"`
-		Text string `json:"text"`
+		Pane   string `json:"pane"`
+		Base   string `json:"base"`
+		Path   string `json:"path"`
+		Hash   string `json:"hash"`
+		Text   string `json:"text"`
+		Anyway bool   `json:"anyway,omitempty"`
 	}
 )
