@@ -76,7 +76,6 @@ func runApp() {
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
-	padMenus()
 	// Updates from Kero's GitHub releases, in a window of native UI.
 	mygo.Use(native.Plugin)
 	a := newApp()

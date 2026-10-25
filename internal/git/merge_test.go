@@ -103,6 +103,10 @@ func TestRebaseSides(t *testing.T) {
 	if ours, theirs := r.ConflictSides(ctx); ours != "main" || theirs != "feature" {
 		t.Errorf("rebase's sides %q, %q", ours, theirs)
 	}
+	// The merge editor's versions: the index's stages of the conflict.
+	if tx, err := r.Texts(ctx, SideOursStage, SideTheirsStage, "a.txt", ""); err != nil || tx.Old != "main\n" || tx.New != "feature\n" {
+		t.Errorf("a.txt's stages %q, %q (%v)", tx.Old, tx.New, err)
+	}
 	if err := r.ResolveSide(ctx, "a.txt", SideOurs); err != nil {
 		t.Fatal(err)
 	}

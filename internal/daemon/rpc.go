@@ -609,6 +609,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.gitShow(p)
 
+	case "git.rebasePlan":
+		var p proto.GitShowParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitRebasePlan(p)
+
 	case "git.message":
 		var p proto.GitMessageParams
 		if err := decode(&p); err != nil {

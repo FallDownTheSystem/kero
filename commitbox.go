@@ -128,17 +128,17 @@ func (a *App) commitBox(c *ui.Context, pal *palette, pane *proto.Pane, ix *proto
 			commitFace(opts, pal, can, !busy, 2, 8)
 			opts.Children(func() { ui.Icon(c, chevronDownIcon).Size(10, 10) })
 			opts.Menu(func(m *ui.Menu) {
-				if padItem(m, locales.GitCommitAndPush()).Disabled(!can || g.Branch == "").Chosen() {
+				if m.Item(locales.GitCommitAndPush()).Disabled(!can || g.Branch == "").Chosen() {
 					commit(true)
 				}
 				m.Separator()
-				if padItem(m, locales.GitAmend()).Checked(d.amend).Disabled(g.Head == "").Chosen() {
+				if m.Item(locales.GitAmend()).Checked(d.amend).Disabled(g.Head == "").Chosen() {
 					a.setAmend(pane, d, !d.amend)
 				}
-				if padItem(m, locales.GitSignoff()).Checked(d.signoff).Chosen() {
+				if m.Item(locales.GitSignoff()).Checked(d.signoff).Chosen() {
 					d.signoff = !d.signoff
 				}
-				if padItem(m, locales.GitSkipHooks()).Checked(d.noVerify).Chosen() {
+				if m.Item(locales.GitSkipHooks()).Checked(d.noVerify).Chosen() {
 					d.noVerify = !d.noVerify
 				}
 			})

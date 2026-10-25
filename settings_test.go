@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
+	"kero/internal/commitmsg"
 	"kero/internal/proto"
 	"kero/internal/settings"
 
@@ -40,6 +42,16 @@ func TestSettingsPages(t *testing.T) {
 			t.Errorf("page %s is tagged experimental", p.id)
 		}
 		shot(t, tt, "settings-"+p.id)
+	}
+}
+
+// The commit message command's text names its placeholder as it is
+// typed, which the catalog's braces would take for its own.
+func TestCommitMessagePlaceholder(t *testing.T) {
+	for _, loc := range []string{"en", "ja", "zh-Hans"} {
+		if s := locales.In(loc).SetCommitMessageDetail(); !strings.Contains(s, commitmsg.SessionPlaceholder) {
+			t.Errorf("%s: %q", loc, s)
+		}
 	}
 }
 

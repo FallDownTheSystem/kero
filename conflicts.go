@@ -57,10 +57,8 @@ func canMergeInto(g *proto.GitInfo) bool { return g != nil && g.State == "" && g
 func (a *App) resolveSide(pane *proto.Pane, f proto.GitFile, side, name string) {
 	id, root := pane.ID, pane.Git.Root
 	file := path.Base(f.Path)
-	a.keepSideFocus()
 	a.confirm = &confirmation{open: true, title: locales.GitUseSideTitle(name, file), detail: locales.GitUseSideDetail(name),
 		action: locales.GitUseSide(name), destroy: true, run: func() {
-			a.keepSideFocus()
 			a.guardedNow(id, root, locales.GitResolveOp(file), func() {
 				a.runGit(id, root, proto.GitOpParams{Op: "resolve", Path: f.Path, Mode: side}, locales.GitResolveOp(file), nil)
 			})
