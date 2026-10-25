@@ -20,3 +20,5 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )
+
+replace github.com/egoist/mygo => github.com/FallDownTheSystem/mygo v0.0.0-20261025183639-425de0f1cb35
