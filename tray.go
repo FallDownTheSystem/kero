@@ -109,13 +109,6 @@ func (a *App) trayMenu() *mygo.Menu {
 			a.update(a.quitAndEnd)
 		}},
 	}
-	// MyGo measures the items as a context menu's, short of their labels
-	// on Windows (padMenus).
-	for _, it := range items {
-		if it.Label != "" {
-			it.Label += labelPad
-		}
-	}
 	return mygo.NewMenu(items)
 }
 

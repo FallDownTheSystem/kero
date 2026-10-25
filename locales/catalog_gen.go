@@ -6826,11 +6826,11 @@ func (msgs Messages) SetCommitMessage() string {
 	return Catalog.Format(msgs.locale, "setCommitMessage", nil)
 }
 
-// SetCommitMessageDetail says "The command that writes a commit message of what's staged, given the prompt on its standard input. Empty forks the co…"
+// SetCommitMessageDetail says "The command that writes a commit message of what's staged. It runs in your shell and gets the prompt on its standard …"
 // in the language the app shows.
 func SetCommitMessageDetail() string { return In(i18n.Locale()).SetCommitMessageDetail() }
 
-// SetCommitMessageDetail says "The command that writes a commit message of what's staged, given the prompt on its standard input. Empty forks the co…"
+// SetCommitMessageDetail says "The command that writes a commit message of what's staged. It runs in your shell and gets the prompt on its standard …"
 // in the language of msgs.
 func (msgs Messages) SetCommitMessageDetail() string {
 	return Catalog.Format(msgs.locale, "setCommitMessageDetail", nil)
@@ -8168,6 +8168,86 @@ func (msgs Messages) GitMarkResolved() string {
 	return Catalog.Format(msgs.locale, "gitMarkResolved", nil)
 }
 
+// GitSaveAndMarkResolved says "Save and Mark Resolved"
+// in the language the app shows.
+func GitSaveAndMarkResolved() string { return In(i18n.Locale()).GitSaveAndMarkResolved() }
+
+// GitSaveAndMarkResolved says "Save and Mark Resolved"
+// in the language of msgs.
+func (msgs Messages) GitSaveAndMarkResolved() string {
+	return Catalog.Format(msgs.locale, "gitSaveAndMarkResolved", nil)
+}
+
+// GitOpenMergeEditor says "Open in Merge Editor"
+// in the language the app shows.
+func GitOpenMergeEditor() string { return In(i18n.Locale()).GitOpenMergeEditor() }
+
+// GitOpenMergeEditor says "Open in Merge Editor"
+// in the language of msgs.
+func (msgs Messages) GitOpenMergeEditor() string {
+	return Catalog.Format(msgs.locale, "gitOpenMergeEditor", nil)
+}
+
+// MergeConflictsLeft says "{count, plural, =0 {All conflicts resolved} one {# conflict left} other {# conflicts left}}"
+// in the language the app shows.
+func MergeConflictsLeft(count int) string { return In(i18n.Locale()).MergeConflictsLeft(count) }
+
+// MergeConflictsLeft says "{count, plural, =0 {All conflicts resolved} one {# conflict left} other {# conflicts left}}"
+// in the language of msgs.
+func (msgs Messages) MergeConflictsLeft(count int) string {
+	return Catalog.Format(msgs.locale, "mergeConflictsLeft", map[string]any{"count": count})
+}
+
+// MergePrevious says "Previous Conflict"
+// in the language the app shows.
+func MergePrevious() string { return In(i18n.Locale()).MergePrevious() }
+
+// MergePrevious says "Previous Conflict"
+// in the language of msgs.
+func (msgs Messages) MergePrevious() string {
+	return Catalog.Format(msgs.locale, "mergePrevious", nil)
+}
+
+// MergeNext says "Next Conflict"
+// in the language the app shows.
+func MergeNext() string { return In(i18n.Locale()).MergeNext() }
+
+// MergeNext says "Next Conflict"
+// in the language of msgs.
+func (msgs Messages) MergeNext() string {
+	return Catalog.Format(msgs.locale, "mergeNext", nil)
+}
+
+// MergeUseAll says "Use {name}'s Lines in All Conflicts"
+// in the language the app shows.
+func MergeUseAll(name string) string { return In(i18n.Locale()).MergeUseAll(name) }
+
+// MergeUseAll says "Use {name}'s Lines in All Conflicts"
+// in the language of msgs.
+func (msgs Messages) MergeUseAll(name string) string {
+	return Catalog.Format(msgs.locale, "mergeUseAll", map[string]any{"name": name})
+}
+
+// MergeShowText says "Show as Text"
+// in the language the app shows.
+func MergeShowText() string { return In(i18n.Locale()).MergeShowText() }
+
+// MergeShowText says "Show as Text"
+// in the language of msgs.
+func (msgs Messages) MergeShowText() string {
+	return Catalog.Format(msgs.locale, "mergeShowText", nil)
+}
+
+// MergeShowEditor says "Show Merge Editor"
+// in the language the app shows.
+func MergeShowEditor() string { return In(i18n.Locale()).MergeShowEditor() }
+
+// MergeShowEditor says "Show Merge Editor"
+// in the language of msgs.
+func (msgs Messages) MergeShowEditor() string {
+	return Catalog.Format(msgs.locale, "mergeShowEditor", nil)
+}
+
 // GitResolve says "Resolve Conflict"
 // in the language the app shows.
 func GitResolve() string { return In(i18n.Locale()).GitResolve() }
@@ -8388,6 +8468,292 @@ func GitStashAndRebase() string { return In(i18n.Locale()).GitStashAndRebase() }
 // in the language of msgs.
 func (msgs Messages) GitStashAndRebase() string {
 	return Catalog.Format(msgs.locale, "gitStashAndRebase", nil)
+}
+
+// GitRebaseInteractive says "Interactively Rebase {branch} onto {name}…"
+// in the language the app shows.
+func GitRebaseInteractive(branch string, name string) string {
+	return In(i18n.Locale()).GitRebaseInteractive(branch, name)
+}
+
+// GitRebaseInteractive says "Interactively Rebase {branch} onto {name}…"
+// in the language of msgs.
+func (msgs Messages) GitRebaseInteractive(branch string, name string) string {
+	return Catalog.Format(msgs.locale, "gitRebaseInteractive", map[string]any{"branch": branch, "name": name})
+}
+
+// RebaseTitle says "Interactive Rebase"
+// in the language the app shows.
+func RebaseTitle() string { return In(i18n.Locale()).RebaseTitle() }
+
+// RebaseTitle says "Interactive Rebase"
+// in the language of msgs.
+func (msgs Messages) RebaseTitle() string {
+	return Catalog.Format(msgs.locale, "rebaseTitle", nil)
+}
+
+// RebaseOnto says "Rebase {branch} onto {commit}"
+// in the language the app shows.
+func RebaseOnto(branch string, commit string) string {
+	return In(i18n.Locale()).RebaseOnto(branch, commit)
+}
+
+// RebaseOnto says "Rebase {branch} onto {commit}"
+// in the language of msgs.
+func (msgs Messages) RebaseOnto(branch string, commit string) string {
+	return Catalog.Format(msgs.locale, "rebaseOnto", map[string]any{"branch": branch, "commit": commit})
+}
+
+// RebasePick says "Pick"
+// in the language the app shows.
+func RebasePick() string { return In(i18n.Locale()).RebasePick() }
+
+// RebasePick says "Pick"
+// in the language of msgs.
+func (msgs Messages) RebasePick() string {
+	return Catalog.Format(msgs.locale, "rebasePick", nil)
+}
+
+// RebaseReword says "Reword"
+// in the language the app shows.
+func RebaseReword() string { return In(i18n.Locale()).RebaseReword() }
+
+// RebaseReword says "Reword"
+// in the language of msgs.
+func (msgs Messages) RebaseReword() string {
+	return Catalog.Format(msgs.locale, "rebaseReword", nil)
+}
+
+// RebaseEdit says "Edit"
+// in the language the app shows.
+func RebaseEdit() string { return In(i18n.Locale()).RebaseEdit() }
+
+// RebaseEdit says "Edit"
+// in the language of msgs.
+func (msgs Messages) RebaseEdit() string {
+	return Catalog.Format(msgs.locale, "rebaseEdit", nil)
+}
+
+// RebaseSquash says "Squash"
+// in the language the app shows.
+func RebaseSquash() string { return In(i18n.Locale()).RebaseSquash() }
+
+// RebaseSquash says "Squash"
+// in the language of msgs.
+func (msgs Messages) RebaseSquash() string {
+	return Catalog.Format(msgs.locale, "rebaseSquash", nil)
+}
+
+// RebaseFixup says "Fixup"
+// in the language the app shows.
+func RebaseFixup() string { return In(i18n.Locale()).RebaseFixup() }
+
+// RebaseFixup says "Fixup"
+// in the language of msgs.
+func (msgs Messages) RebaseFixup() string {
+	return Catalog.Format(msgs.locale, "rebaseFixup", nil)
+}
+
+// RebaseDrop says "Drop"
+// in the language the app shows.
+func RebaseDrop() string { return In(i18n.Locale()).RebaseDrop() }
+
+// RebaseDrop says "Drop"
+// in the language of msgs.
+func (msgs Messages) RebaseDrop() string {
+	return Catalog.Format(msgs.locale, "rebaseDrop", nil)
+}
+
+// RebasePickTip says "Keep the commit as it is"
+// in the language the app shows.
+func RebasePickTip() string { return In(i18n.Locale()).RebasePickTip() }
+
+// RebasePickTip says "Keep the commit as it is"
+// in the language of msgs.
+func (msgs Messages) RebasePickTip() string {
+	return Catalog.Format(msgs.locale, "rebasePickTip", nil)
+}
+
+// RebaseRewordTip says "Keep the commit, with a new message"
+// in the language the app shows.
+func RebaseRewordTip() string { return In(i18n.Locale()).RebaseRewordTip() }
+
+// RebaseRewordTip says "Keep the commit, with a new message"
+// in the language of msgs.
+func (msgs Messages) RebaseRewordTip() string {
+	return Catalog.Format(msgs.locale, "rebaseRewordTip", nil)
+}
+
+// RebaseEditTip says "Stop at the commit to change it, then continue"
+// in the language the app shows.
+func RebaseEditTip() string { return In(i18n.Locale()).RebaseEditTip() }
+
+// RebaseEditTip says "Stop at the commit to change it, then continue"
+// in the language of msgs.
+func (msgs Messages) RebaseEditTip() string {
+	return Catalog.Format(msgs.locale, "rebaseEditTip", nil)
+}
+
+// RebaseSquashTip says "Combine the commit with the one below it, and keep both messages"
+// in the language the app shows.
+func RebaseSquashTip() string { return In(i18n.Locale()).RebaseSquashTip() }
+
+// RebaseSquashTip says "Combine the commit with the one below it, and keep both messages"
+// in the language of msgs.
+func (msgs Messages) RebaseSquashTip() string {
+	return Catalog.Format(msgs.locale, "rebaseSquashTip", nil)
+}
+
+// RebaseFixupTip says "Combine the commit with the one below it, and keep only that one's message"
+// in the language the app shows.
+func RebaseFixupTip() string { return In(i18n.Locale()).RebaseFixupTip() }
+
+// RebaseFixupTip says "Combine the commit with the one below it, and keep only that one's message"
+// in the language of msgs.
+func (msgs Messages) RebaseFixupTip() string {
+	return Catalog.Format(msgs.locale, "rebaseFixupTip", nil)
+}
+
+// RebaseDropTip says "Remove the commit"
+// in the language the app shows.
+func RebaseDropTip() string { return In(i18n.Locale()).RebaseDropTip() }
+
+// RebaseDropTip says "Remove the commit"
+// in the language of msgs.
+func (msgs Messages) RebaseDropTip() string {
+	return Catalog.Format(msgs.locale, "rebaseDropTip", nil)
+}
+
+// RebaseHelp says "Drag commits to reorder them, the newest on top. Keys: P Pick, R Reword, E Edit, S Squash, F Fixup, D Drop; Alt+↑ a…"
+// in the language the app shows.
+func RebaseHelp() string { return In(i18n.Locale()).RebaseHelp() }
+
+// RebaseHelp says "Drag commits to reorder them, the newest on top. Keys: P Pick, R Reword, E Edit, S Squash, F Fixup, D Drop; Alt+↑ a…"
+// in the language of msgs.
+func (msgs Messages) RebaseHelp() string {
+	return Catalog.Format(msgs.locale, "rebaseHelp", nil)
+}
+
+// RebaseCommitTab says "Commit"
+// in the language the app shows.
+func RebaseCommitTab() string { return In(i18n.Locale()).RebaseCommitTab() }
+
+// RebaseCommitTab says "Commit"
+// in the language of msgs.
+func (msgs Messages) RebaseCommitTab() string {
+	return Catalog.Format(msgs.locale, "rebaseCommitTab", nil)
+}
+
+// RebaseChangesTab says "Changes"
+// in the language the app shows.
+func RebaseChangesTab() string { return In(i18n.Locale()).RebaseChangesTab() }
+
+// RebaseChangesTab says "Changes"
+// in the language of msgs.
+func (msgs Messages) RebaseChangesTab() string {
+	return Catalog.Format(msgs.locale, "rebaseChangesTab", nil)
+}
+
+// RebaseBackup says "Back up the current state to a temporary branch"
+// in the language the app shows.
+func RebaseBackup() string { return In(i18n.Locale()).RebaseBackup() }
+
+// RebaseBackup says "Back up the current state to a temporary branch"
+// in the language of msgs.
+func (msgs Messages) RebaseBackup() string {
+	return Catalog.Format(msgs.locale, "rebaseBackup", nil)
+}
+
+// RebaseNothing says "{branch} has no commits that {commit} doesn't have."
+// in the language the app shows.
+func RebaseNothing(branch string, commit string) string {
+	return In(i18n.Locale()).RebaseNothing(branch, commit)
+}
+
+// RebaseNothing says "{branch} has no commits that {commit} doesn't have."
+// in the language of msgs.
+func (msgs Messages) RebaseNothing(branch string, commit string) string {
+	return Catalog.Format(msgs.locale, "rebaseNothing", map[string]any{"branch": branch, "commit": commit})
+}
+
+// RebaseSquashFirst says "{action} needs a kept commit below it"
+// in the language the app shows.
+func RebaseSquashFirst(action string) string { return In(i18n.Locale()).RebaseSquashFirst(action) }
+
+// RebaseSquashFirst says "{action} needs a kept commit below it"
+// in the language of msgs.
+func (msgs Messages) RebaseSquashFirst(action string) string {
+	return Catalog.Format(msgs.locale, "rebaseSquashFirst", map[string]any{"action": action})
+}
+
+// RebaseAllDropped says "Keep at least one commit, or reset the branch instead"
+// in the language the app shows.
+func RebaseAllDropped() string { return In(i18n.Locale()).RebaseAllDropped() }
+
+// RebaseAllDropped says "Keep at least one commit, or reset the branch instead"
+// in the language of msgs.
+func (msgs Messages) RebaseAllDropped() string {
+	return Catalog.Format(msgs.locale, "rebaseAllDropped", nil)
+}
+
+// RebaseSubject says "Subject"
+// in the language the app shows.
+func RebaseSubject() string { return In(i18n.Locale()).RebaseSubject() }
+
+// RebaseSubject says "Subject"
+// in the language of msgs.
+func (msgs Messages) RebaseSubject() string {
+	return Catalog.Format(msgs.locale, "rebaseSubject", nil)
+}
+
+// RebaseBody says "Description"
+// in the language the app shows.
+func RebaseBody() string { return In(i18n.Locale()).RebaseBody() }
+
+// RebaseBody says "Description"
+// in the language of msgs.
+func (msgs Messages) RebaseBody() string {
+	return Catalog.Format(msgs.locale, "rebaseBody", nil)
+}
+
+// RebaseKeepMessage says "OK"
+// in the language the app shows.
+func RebaseKeepMessage() string { return In(i18n.Locale()).RebaseKeepMessage() }
+
+// RebaseKeepMessage says "OK"
+// in the language of msgs.
+func (msgs Messages) RebaseKeepMessage() string {
+	return Catalog.Format(msgs.locale, "rebaseKeepMessage", nil)
+}
+
+// RebaseNewMessage says "New message"
+// in the language the app shows.
+func RebaseNewMessage() string { return In(i18n.Locale()).RebaseNewMessage() }
+
+// RebaseNewMessage says "New message"
+// in the language of msgs.
+func (msgs Messages) RebaseNewMessage() string {
+	return Catalog.Format(msgs.locale, "rebaseNewMessage", nil)
+}
+
+// RebaseOp says "Interactive rebase"
+// in the language the app shows.
+func RebaseOp() string { return In(i18n.Locale()).RebaseOp() }
+
+// RebaseOp says "Interactive rebase"
+// in the language of msgs.
+func (msgs Messages) RebaseOp() string {
+	return Catalog.Format(msgs.locale, "rebaseOp", nil)
+}
+
+// RebaseLoadFailed says "Couldn't list the commits: {error}"
+// in the language the app shows.
+func RebaseLoadFailed(error string) string { return In(i18n.Locale()).RebaseLoadFailed(error) }
+
+// RebaseLoadFailed says "Couldn't list the commits: {error}"
+// in the language of msgs.
+func (msgs Messages) RebaseLoadFailed(error string) string {
+	return Catalog.Format(msgs.locale, "rebaseLoadFailed", map[string]any{"error": error})
 }
 
 // GitChangeMoved says "The change was updated. Review it and try again."

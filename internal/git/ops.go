@@ -66,8 +66,14 @@ var retriable = map[string]bool{"add": true, "reset": true, "checkout": true, "u
 // all it printed; progress, when set, gets each line as git prints it,
 // those it rewrites in place (\r) too.
 func (r Repo) write(ctx context.Context, stdin string, progress func(string), args ...string) (string, error) {
+	return r.writeWith(ctx, nil, stdin, progress, args...)
+}
+
+// writeWith runs git as write does, with env's variables set over those
+// write sets.
+func (r Repo) writeWith(ctx context.Context, env []string, stdin string, progress func(string), args ...string) (string, error) {
 	for try := 1; ; try++ {
-		out, err := r.writeOnce(ctx, stdin, progress, args...)
+		out, err := r.writeOnce(ctx, env, stdin, progress, args...)
 		// A command of one step fails on a held lock before it changes
 		// anything, so trying it again is safe; one of several, as a pull
 		// or a stash's pop, may have done some of them, which a second
@@ -83,7 +89,7 @@ func (r Repo) write(ctx context.Context, stdin string, progress func(string), ar
 	}
 }
 
-func (r Repo) writeOnce(ctx context.Context, stdin string, progress func(string), args ...string) (string, error) {
+func (r Repo) writeOnce(ctx context.Context, env []string, stdin string, progress func(string), args ...string) (string, error) {
 	git := command()
 	if git == "" {
 		return "", ErrNoGit
@@ -91,6 +97,7 @@ func (r Repo) writeOnce(ctx context.Context, stdin string, progress func(string)
 	cmd := exec.CommandContext(ctx, git, append([]string{"-c", "core.quotepath=false", "-c", "color.ui=false"}, args...)...)
 	cmd.Dir = r.Root
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_EDITOR=true", "GIT_SEQUENCE_EDITOR=true", "GIT_MERGE_AUTOEDIT=no")
+	cmd.Env = append(cmd.Env, env...) // the last of a variable is the one it gets
 	// Canceled, git is interrupted, as Ctrl+C does, so that it removes its
 	// locks, as index.lock, which killed it would leave to block every git
 	// after it; killed when it can't be, as on Windows, or doesn't end.

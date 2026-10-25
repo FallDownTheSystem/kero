@@ -3,6 +3,7 @@ package commitmsg
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -34,13 +35,57 @@ func TestWords(t *testing.T) {
 }
 
 func TestCommand(t *testing.T) {
-	argv, forked, err := Command("my-writer --short", &Agent{Name: "claude", ID: "abc"})
-	if err != nil || forked || !slices.Equal(argv, []string{"my-writer", "--short"}) {
-		t.Errorf("the user's command: %q %v %v", argv, forked, err)
+	claude := &Agent{Name: "claude", ID: "abc"}
+	// The user's command runs in their shell, as typed at its prompt, where
+	// their profile's functions are.
+	for _, c := range []struct {
+		sh   string
+		want []string
+	}{
+		{`C:\Program Files\PowerShell\7\pwsh.exe`, []string{`C:\Program Files\PowerShell\7\pwsh.exe`, "-NoLogo", "-NonInteractive", "-Command", "my-writer --short"}},
+		{"/bin/zsh", []string{"/bin/zsh", "-l", "-i", "-c", "my-writer --short"}},
+		{"/usr/bin/fish", []string{"/usr/bin/fish", "-l", "-c", "my-writer --short"}},
+		{`C:\Windows\System32\cmd.exe`, []string{`C:\Windows\System32\cmd.exe`, "/C", "my-writer --short"}},
+		{"nu", []string{"my-writer", "--short"}},
+	} {
+		argv, forked, err := Command("my-writer --short", claude, c.sh)
+		if err != nil || forked || !slices.Equal(argv, c.want) {
+			t.Errorf("in %s: %q %v %v", c.sh, argv, forked, err)
+		}
+	}
+	// {session} forks the pane's agent's conversation by the user's command.
+	argv, forked, _ := Command("cc -p --resume {session} --fork-session", claude, "pwsh")
+	if !forked || argv[len(argv)-1] != "cc -p --resume abc --fork-session" {
+		t.Errorf("with the session: %q %v", argv, forked)
+	}
+	// With no conversation to fork, it can't run: an agent's new run does.
+	if argv, forked, _ := Command("cc -p --resume {session}", nil, "pwsh"); forked || slices.Contains(argv, "cc") || strings.Contains(strings.Join(argv, " "), "{session}") {
+		t.Errorf("with no session: %q %v", argv, forked)
+	}
+	// Codex's runs as it is, for the file its message goes to.
+	if argv, _, _ := Command("codex exec fork {session} -", &Agent{Name: "codex", ID: "t1"}, "pwsh"); !slices.Equal(argv, []string{"codex", "exec", "fork", "t1", "-"}) {
+		t.Errorf("codex: %q", argv)
 	}
 	// An id that would be an option is no conversation to fork.
-	if argv, forked, _ := Command("", &Agent{Name: "claude", ID: "--help"}); forked || slices.Contains(argv, "--help") {
+	if argv, forked, _ := Command("", &Agent{Name: "claude", ID: "--help"}, "pwsh"); forked || slices.Contains(argv, "--help") {
 		t.Errorf("forked %q", argv)
+	}
+	if argv, forked, _ := Command("x --resume {session}", &Agent{Name: "claude", ID: "--help"}, "pwsh"); forked || strings.Contains(strings.Join(argv, " "), "--help") {
+		t.Errorf("forked by the user's command %q", argv)
+	}
+}
+
+// The user's command finds what their shell's profile defines, and gets
+// the prompt on its stdin.
+func TestCommandInShell(t *testing.T) {
+	sh, err := exec.LookPath("pwsh")
+	if err != nil {
+		t.Skip("no pwsh")
+	}
+	argv := inShell(sh, "function writer { [Console]::In.ReadLine() }; writer")
+	msg, err := Write(context.Background(), t.TempDir(), argv, "Fix the login\nmore\n")
+	if err != nil || msg != "Fix the login" {
+		t.Errorf("wrote %q, %v", msg, err)
 	}
 }
 

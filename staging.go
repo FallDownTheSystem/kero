@@ -58,7 +58,6 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			return
 		}
 		iconButton(c, "discard-all", revertIcon, locales.GitDiscardAll(), pal, func() {
-			a.keepSideFocus()
 			a.discard(id, root, list, locales.GitDiscardAllTitle(), locales.GitDiscardAllDetail(len(list)), locales.GitDiscardAll())
 		})
 		iconButton(c, "stage-all", plusIcon, locales.GitStageAll(), pal, func() {
@@ -85,18 +84,10 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 	})
 }
 
-// keepSideFocus keeps the keyboard focus in the panel as a button clicked
-// there goes, as its file moves to the other section: else it would be of
-// nothing, and the panel would fade as when the user is elsewhere.
-func (a *App) keepSideFocus() {
-	a.paneRef("side-card").Focus()
-}
-
 // moveFiles is what of files the Changes view keeps as they move from a
 // section to the other, staged or unstaged: each folded or not, as it was,
 // rather than as a file first shown is.
 func (a *App) moveFiles(pane *proto.Pane, from string, files []proto.GitFile) {
-	a.keepSideFocus()
 	ch := &a.side.changes
 	scope := changesScope(pane, git.BaseHead)
 	to := baseStaged
@@ -135,14 +126,18 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 		}
 		b.Children(func() { ui.Icon(c, mergeIcon).Size(15, 15) })
 		b.Menu(func(m *ui.Menu) {
-			if padItem(m, locales.GitUseSide(ours)).Chosen() {
+			if m.Item(locales.GitOpenMergeEditor()).Chosen() {
+				a.openMerge(pane, f)
+			}
+			m.Separator()
+			if m.Item(locales.GitUseSide(ours)).Chosen() {
 				a.resolveSide(pane, f, git.SideOurs, ours)
 			}
-			if padItem(m, locales.GitUseSide(theirs)).Chosen() {
+			if m.Item(locales.GitUseSide(theirs)).Chosen() {
 				a.resolveSide(pane, f, git.SideTheirs, theirs)
 			}
 			m.Separator()
-			if padItem(m, locales.GitResolveWithAgent()).Disabled(a.agentPane(pane) == nil).Chosen() {
+			if m.Item(locales.GitResolveWithAgent()).Disabled(a.agentPane(pane) == nil).Chosen() {
 				a.resolveWithAgent(pane, ix, []string{f.Path})
 			}
 		})
@@ -159,7 +154,6 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			title, detail, action = locales.GitRestoreTitle(name), locales.GitRestoreDetail(), locales.GitRestoreFile()
 		}
 		iconButton(c, "discard", revertIcon, locales.GitDiscard(), pal, func() {
-			a.keepSideFocus()
 			a.discard(id, root, []proto.GitFile{f}, title, detail, action)
 		})
 		iconButton(c, "stage", plusIcon, locales.GitStage(), pal, func() {
@@ -189,7 +183,6 @@ func (a *App) discard(pane, root string, files []proto.GitFile, title, detail, a
 		return
 	}
 	a.confirm = &confirmation{open: true, title: title, detail: detail, action: action, destroy: true, run: func() {
-		a.keepSideFocus()
 		a.guarded(pane, root, locales.GitDiscard(), func() { a.runGit(pane, root, p, locales.GitDiscard(), nil) })
 	}}
 }
@@ -203,8 +196,8 @@ func (a *App) lineActions(c *ui.Context, pal *palette, section string, sf *sideF
 		return false
 	}
 	d := sf.d
-	sel, ok := d.SelectedLines()
-	if !ok {
+	sel := d.SelectedRanges()
+	if len(sel) == 0 {
 		return false
 	}
 	hunks := d.Hunks()
@@ -213,17 +206,13 @@ func (a *App) lineActions(c *ui.Context, pal *palette, section string, sf *sideF
 		return false
 	}
 	if hunkButton(c, "clear-lines", closeIcon, locales.GitClearLines(), locales.GitClearLines(), pal) {
-		d.SetSelectedLines(editor.DiffLineRange{}, false)
-	}
-	done := func() {
-		a.keepSideFocus()
-		d.SetSelectedLines(editor.DiffLineRange{}, false)
+		d.SetSelectedRanges(nil)
 	}
 	if section == baseStaged {
 		// The index's text, the new side, without the lines.
 		if hunkButton(c, "unstage-lines", minusIcon, locales.GitUnstageLines(n), locales.GitUnstageLinesTip(), pal) {
 			text := applyLines(d.Old, d.New, hunks, not(chosen), d.New.LineEnding())
-			done()
+			d.SetSelectedRanges(nil)
 			a.writeIndex(sf, text)
 		}
 		return true
@@ -234,7 +223,7 @@ func (a *App) lineActions(c *ui.Context, pal *palette, section string, sf *sideF
 	// The index's text, the old side, with the lines.
 	if hunkButton(c, "stage-lines", plusIcon, locales.GitStageLines(n), locales.GitStageLinesTip(), pal) {
 		text := applyLines(d.Old, d.New, hunks, withEnding(d.New, chosen), indexEnding(sf))
-		done()
+		d.SetSelectedRanges(nil)
 		a.writeIndex(sf, text)
 	}
 	return true
@@ -251,14 +240,13 @@ func (a *App) discardLines(sf *sideFile, hunks []editor.DiffHunk, chosen func(ed
 	}
 	d, hash := sf.d, sf.hash
 	anyway := len(a.agentsAt(sf.pane, g.Root)) > 0
-	a.keepSideFocus()
 	a.guardedNow(sf.pane, g.Root, locales.GitDiscard(), func() {
 		if sf.d != d || sf.hash != hash || !slices.Equal(d.Hunks(), hunks) {
 			a.toast(locales.GitChangeMoved())
 			return
 		}
 		text := applyLines(d.Old, d.New, hunks, not(chosen), d.New.LineEnding())
-		d.SetSelectedLines(editor.DiffLineRange{}, false)
+		d.SetSelectedRanges(nil)
 		a.writeBack(sf, text, anyway)
 	})
 }
@@ -290,46 +278,28 @@ func touches(chosen func(editor.DiffSide, int) bool, h editor.DiffHunk) bool {
 }
 
 // chosenLines tells which changed lines of a diff the lines selected
-// choose, and how many of them were selected. Lines selected of the old
-// side choose their removal alone. Lines of the new side choose their
-// addition, with the old lines they replace: those at the same place of
-// their change, and the rest of its old lines once its last new line is
-// chosen too, so a line edited stages as an edit.
-func chosenLines(hunks []editor.DiffHunk, sel editor.DiffLineRange) (func(editor.DiffSide, int) bool, int) {
-	in := func(l int) bool { return l >= sel.Start && l <= sel.End }
+// choose, and how many of them are: each line selected alone, as git add
+// -p stages them, a removed line's removal and an added line's addition.
+// A line edited stages as an edit with both its lines selected, as a
+// drag over them selects them in a unified view.
+func chosenLines(hunks []editor.DiffHunk, sel []editor.DiffLineRange) (func(editor.DiffSide, int) bool, int) {
+	in := func(side editor.DiffSide, l int) bool {
+		return slices.ContainsFunc(sel, func(r editor.DiffLineRange) bool { return r.Side == side && l >= r.Start && l <= r.End })
+	}
 	n := 0
-	removed := map[int]bool{}
 	for _, h := range hunks {
-		if sel.Side == editor.DiffOld {
-			for l := h.OldStart; l < h.OldEnd; l++ {
-				if in(l) {
-					removed[l] = true
-					n++
-				}
+		for l := h.OldStart; l < h.OldEnd; l++ {
+			if in(editor.DiffOld, l) {
+				n++
 			}
-			continue
 		}
 		for l := h.NewStart; l < h.NewEnd; l++ {
-			if !in(l) {
-				continue
-			}
-			n++
-			if at := h.OldStart + l - h.NewStart; at < h.OldEnd {
-				removed[at] = true
-			}
-			if l == h.NewEnd-1 {
-				for at := h.OldStart + h.NewEnd - h.NewStart; at < h.OldEnd; at++ {
-					removed[at] = true
-				}
+			if in(editor.DiffNew, l) {
+				n++
 			}
 		}
 	}
-	return func(side editor.DiffSide, l int) bool {
-		if side == editor.DiffOld {
-			return removed[l]
-		}
-		return sel.Side == editor.DiffNew && in(l)
-	}, n
+	return in, n
 }
 
 // applyLines is the old text with the changes take chooses made: of its

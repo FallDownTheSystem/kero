@@ -99,6 +99,7 @@ func b2f(b bool) float32 {
 func (a *App) view(c *ui.Context) {
 	pal := paletteFor(c)
 	c.SetTheme(borderless(c, pal))
+	a.runEarly()
 
 	if a.pendingToast != "" {
 		c.Toast(a.pendingToast)
@@ -171,6 +172,7 @@ func (a *App) view(c *ui.Context) {
 	}
 	a.paletteView(c, pal)
 	a.pickerView(c, pal)
+	a.rebaseView(c, pal)
 	a.confirmView(c, pal)
 	a.worktreeView(c, pal)
 	// A preview that showed no more fades in anew next time.
@@ -382,28 +384,28 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 	}
 	pointerTooltip(c, hdr, "tip-project-"+key, g.host.shortDir(g.project.Dir))
 	hdr.ContextMenu(func(m *ui.Menu) {
-		if padItem(m, locales.ActionNewSession()).Chosen() {
+		if m.Item(locales.ActionNewSession()).Chosen() {
 			a.newSessionOn(g.host, id)
 		}
 		label := locales.SidebarCollapse()
 		if collapsed {
 			label = locales.SidebarExpand()
 		}
-		if padItem(m, label).Chosen() {
+		if m.Item(label).Chosen() {
 			a.toggleProject(key)
 		}
-		if padItem(m, locales.SessionRename()).Disabled(id == "").Chosen() {
+		if m.Item(locales.SessionRename()).Disabled(id == "").Chosen() {
 			a.startProjectRename(id)
 		}
 		m.Separator()
 		// A remote group's menu has its host's, as the host has no header.
 		if g.host.remote() {
-			padSub(m, g.host.name, func(m *ui.Menu) { a.hostMenu(m, g.host) })
+			m.Submenu(g.host.name, func(m *ui.Menu) { a.hostMenu(m, g.host) })
 		}
 		// Close All Sessions ends the sessions the project holds, not the
 		// project itself, asking first as closing the project does: what
 		// runs in them ends with them.
-		if padItem(m, locales.SidebarCloseAllSessions()).Disabled(len(g.sessions) == 0).Chosen() {
+		if m.Item(locales.SidebarCloseAllSessions()).Disabled(len(g.sessions) == 0).Chosen() {
 			name, count := g.project.Name, len(g.sessions)
 			a.confirm = &confirmation{
 				open:    true,
@@ -414,7 +416,7 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 				run:     func() { a.closeAllSessions(g) },
 			}
 		}
-		if padItem(m, locales.SidebarCloseProjectMenu()).Disabled(id == "").Chosen() {
+		if m.Item(locales.SidebarCloseProjectMenu()).Disabled(id == "").Chosen() {
 			name, count := g.project.Name, len(g.sessions)
 			a.confirm = &confirmation{
 				open:    true,
@@ -574,41 +576,41 @@ func (a *App) renameStarted(c *ui.Context) bool {
 
 func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	id := s.ID
-	if a.menuShortcut(padItem(m, locales.SessionRename()), "session.rename").Chosen() {
+	if a.menuShortcut(m.Item(locales.SessionRename()), "session.rename").Chosen() {
 		a.startRename(id)
 	}
 	if s.Status == proto.Exited {
-		if padItem(m, locales.CommonRestart()).Chosen() {
+		if m.Item(locales.CommonRestart()).Chosen() {
 			a.restartSession(id)
 		}
 	}
 	if s.Unread {
-		if padItem(m, locales.SessionMarkRead()).Chosen() {
+		if m.Item(locales.SessionMarkRead()).Chosen() {
 			a.call(id, "view", proto.ViewParams{ID: id}, func(error) { a.hostOf(id).viewSent = nil; a.reportView() })
 		}
 	}
 	h := a.hostOf(id)
-	padSub(m, locales.SessionMoveToProject(), func(m *ui.Menu) {
+	m.Submenu(locales.SessionMoveToProject(), func(m *ui.Menu) {
 		// A session moves among its host's projects alone.
 		for _, p := range a.projectsOf(h) {
-			if padItem(m, p.Name).Checked(p.ID == s.Project).Disabled(p.ID == s.Project).Chosen() {
+			if m.Item(p.Name).Checked(p.ID == s.Project).Disabled(p.ID == s.Project).Chosen() {
 				pid := p.ID
 				a.defer_(func() { a.moveSession(id, pid) })
 			}
 		}
 	})
 	m.Separator()
-	if padItem(m, locales.SessionCopyId()).Chosen() {
+	if m.Item(locales.SessionCopyId()).Chosen() {
 		a.copyText = id
 	}
-	if padItem(m, locales.SessionCopyDirectory()).Disabled(s.WorkDir() == "").Chosen() {
+	if m.Item(locales.SessionCopyDirectory()).Disabled(s.WorkDir() == "").Chosen() {
 		a.copyText = s.WorkDir()
 	}
-	if padItem(m, locales.SessionRevealIn(fileManager())).Disabled(s.WorkDir() == "" || h.remote()).Chosen() {
+	if m.Item(locales.SessionRevealIn(fileManager())).Disabled(s.WorkDir() == "" || h.remote()).Chosen() {
 		a.openLink(id, s.WorkDir())
 	}
 	m.Separator()
-	if a.menuShortcut(padItem(m, locales.ActionCloseSession()), "session.close").Chosen() {
+	if a.menuShortcut(m.Item(locales.ActionCloseSession()), "session.close").Chosen() {
 		a.defer_(func() { a.closeSession(id, true) })
 	}
 }
