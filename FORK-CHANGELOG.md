@@ -5,6 +5,30 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.19-fork.4
+
+Git in the Explorer:
+
+- **Uncommitted** lists Staged Changes apart from Changes: stage,
+  unstage and discard files, changes, or lines selected by their numbers
+- Commit from the box under the list, with Commit and Push, Amend, Sign
+  Off and Skip Hooks; **Write Message** has the message written by a fork
+  of the pane's agent's conversation, or by `commit-message-command`
+- The branch bar switches, creates, renames and deletes branches, syncs
+  with the upstream, and fetches, pulls, pushes and stashes from its ⋯
+  menu; a failed fetch, pull or push can run again in a terminal
+- Merge a branch into yours, or rebase yours onto it, from its menu or a
+  commit's; pulls, merges and rebases stash changes not committed and put
+  them back
+- Conflicts resolve by **Use main's Version** or the other branch's, by
+  hand and **Mark Resolved**, or with **Resolve with Agent**; then
+  Continue, Commit Merge or Abort
+- The **History** tab (Ctrl+Shift+Y) draws the commits as a graph, local
+  and remote branches apart, with each commit's files, the stash, and
+  Check Out, Copy Branch Name, Cherry-Pick, Revert and Reset
+- What changes a worktree's files while an agent works there asks first,
+  to run when it's done or now
+
 ## 2.1.19-fork.3
 
 - A **Filter** in the Files view's toolbar finds files and folders by name
