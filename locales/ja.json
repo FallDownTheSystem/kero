@@ -124,6 +124,7 @@
   "footerWorking": "{count} 個のセッションが作業中",
   "footerDone": "{count} 個のセッションが完了、未確認",
   "footerGoToIt": "移動",
+  "footerMenus": "メニュー",
   "footerServiceTip": "セッションはバックグラウンドの kerod で実行されます: kero を終了しても実行を続けます。",
   "statusConnecting": "接続中…",
   "statusConnectingLabel": "接続中",

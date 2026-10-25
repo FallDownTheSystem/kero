@@ -1296,6 +1296,16 @@ func (msgs Messages) FooterGoToIt() string {
 	return Catalog.Format(msgs.locale, "footerGoToIt", nil)
 }
 
+// FooterMenus says "Menus"
+// in the language the app shows.
+func FooterMenus() string { return In(i18n.Locale()).FooterMenus() }
+
+// FooterMenus says "Menus"
+// in the language of msgs.
+func (msgs Messages) FooterMenus() string {
+	return Catalog.Format(msgs.locale, "footerMenus", nil)
+}
+
 // FooterServiceTip says "Sessions run in kerod, in the background: they keep running when you quit kero."
 // in the language the app shows.
 func FooterServiceTip() string { return In(i18n.Locale()).FooterServiceTip() }

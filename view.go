@@ -404,6 +404,9 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 		if m.Item(locales.ActionNewSession()).Chosen() {
 			a.newSessionOn(g.host, id)
 		}
+		if m.Item(locales.ActionNewSessionWorktree()).Chosen() {
+			a.newWorktreeSessionOn(g.host, id, g.project.Dir)
+		}
 		label := locales.SidebarCollapse()
 		if collapsed {
 			label = locales.SidebarExpand()
@@ -642,6 +645,7 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 		iconButton(c, "open-project", folderIcon, a.tip(locales.ActionOpenProject(), "project.open"), pal, a.openProject)
 		iconButton(c, "palette", searchIcon, a.tip(locales.ActionGoToSession(), "palette.open"), pal, a.openPalette)
 		iconButton(c, "settings", gearIcon, a.tip(locales.SettingsTitle(), "settings.open"), pal, func() { a.openSettings("") })
+		a.menusButton(c, pal)
 		ui.Spacer(c)
 		switch a.local().conn {
 		case connReady:
@@ -660,6 +664,20 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 			a.footerNote(c, pal, pal.danger, locales.StatusDisconnected())
 		}
 	})
+}
+
+// menusButton opens the menu bar's menus, which Windows and Linux show no
+// bar of, and macOS shows only while Kero is in front.
+func (a *App) menusButton(c *ui.Context, pal *palette) {
+	b := ui.ButtonBase(c.Key("menus")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FooterMenus()).Tooltip(locales.FooterMenus())
+	if b.Pressed() {
+		b.Background(pal.rowHover.Alpha(0.12))
+	} else if b.Hovered() {
+		b.Background(pal.rowHover)
+		b.TextColor(pal.text)
+	}
+	b.Children(func() { ui.Icon(c, moreIcon).Size(16, 16) })
+	b.Menu(func(m *ui.Menu) { menuInto(m, a.bar) })
 }
 
 // footerChip counts the sessions that are, by is, as their rows' status
