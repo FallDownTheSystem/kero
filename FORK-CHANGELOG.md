@@ -1,0 +1,21 @@
+# Fork changelog
+
+The release notes of the fork's own releases (FORK.md), which its update
+window shows. Each version is upstream's, X.Y.Z, with what that version
+brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
+top of it.
+
+## 2.1.18-fork.1
+
+The first release of the fork from its own feed, on Kero 2.1.18:
+
+- The Explorer: the Files view, beside the sessions, with new files and
+  folders, and a folder that opens with one click
+- Editor panes, and `kero new --file` to open a file in one
+- Pane headers that fit narrow panes, and the Changes view's lines wrapped
+- Settings for the Explorer's side, paths, files and what dims while a
+  window is unfocused; focus that follows the mouse
+- Terminal themes previewed as you point at them, your own themes, and the
+  files' theme
+- **Quit and End All Sessions** in the app icon's menu
+- Updates from the fork's releases, not egoist/kero's
