@@ -132,6 +132,7 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `diff-layout` | `auto`  | Diffs in the changes panel: `unified`, `split` (side by side), or `auto`, side by side once it's wide |
 | `worktree-base` | `default` | What a [session's own worktree](./changes.md#sessions-in-their-own-worktree) branches from: `default`, the repository's default branch, or `current`, the branch of the session you're in |
 | `worktree-dir` |        | Where sessions' own worktrees go, each under its repository's name; empty for `.kero/worktrees` in the repository |
+| `commit-message-command` |  | The command that [writes a commit message](./changes.md#committing) of what's staged, given the prompt on its stdin, as `llm -m gpt-5`; empty for a fork of the conversation of the agent in the pane, else a new run of Claude Code's or Codex's |
 
 ## Files
 

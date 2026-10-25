@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -22,19 +23,33 @@ import (
 // The side panel stands at the right of a session's panes, a card of its
 // own, with what the session's worktree is about. It has views, each a
 // list whose item opens in the panel as a file: Changes, the files the
-// session's agent or the user changed, each opening as its diff; and Files
-// (files.go), the worktree's tree, each file opening as its text.
+// session's agent or the user changed, each opening as its diff, which
+// Uncommitted stages and commits (staging.go, commitbox.go); Files
+// (files.go), the worktree's tree, each file opening as its text; and
+// History (history.go), its commits. The Changes and History views have
+// the worktree's branch atop them (gitbar.go).
 
 // sideChanges is the Changes view's id, as prefs.Side holds it.
 const sideChanges = "changes"
 
+// sideCompact is how much of their labels the header's tabs show.
+type sideCompact int
+
+const (
+	tabsLabels sideCompact = iota
+	tabsShownLabel
+	tabsIcons
+)
+
 const (
 	defaultSide = 420 // the panel's width, as it first opens
 	minSide     = 300
-	// compactSide is the width below which the header's tabs show their
-	// icons alone, beside the window's controls: the tabs' labels, the
-	// close button and the controls take some 320.
-	compactSide = 360
+	// compactSide is the width below which the header's tabs but the shown
+	// one show their icons alone, beside the window's controls: the three
+	// tabs' labels, the side's buttons and the controls take some 450.
+	// Below tinySide, the shown one's label gives its room too.
+	compactSide = 460
+	tinySide    = 370
 	minPanes    = 360 // the room the panel leaves the panes
 	splitWidth  = 760 // past which diff-layout auto shows diffs side by side
 )
@@ -49,6 +64,7 @@ type sideState struct {
 	wide    bool
 	changes changesState
 	files   filesState
+	git     gitUI
 	// theme is the colors of code, made again only as the theme they are
 	// of, themeOf, changes.
 	theme   *editor.Theme
@@ -74,6 +90,9 @@ type changesState struct {
 	lists    map[string]*proto.GitChanges
 	shown    string
 	switched time.Time
+	// indexes are Uncommitted's lists, staged and not, by scope, of
+	// which lists has the files of both.
+	indexes map[string]*proto.GitIndex
 	// files are the files' diffs, by scope and path, kept as the list is
 	// fetched anew; collapsed the files the user folded or unfolded, by
 	// the same key; focus the file whose diff has the keyboard, for Find.
@@ -84,18 +103,46 @@ type changesState struct {
 	places map[string]*ui.ListState
 }
 
-// sideFile is a changed file's diff since a base.
+// sideFile is a changed file's diff since a base, or between two sides:
+// staged, unstaged, or a commit's (base "rev", its sides those of f).
 type sideFile struct {
 	pane, base string
 	f          proto.GitFile     // the file as listed when its text was asked for
 	d          *editor.DiffState // nil until its text comes, or for a binary file
 	patch      bool              // d shows a patch: a file too large to show whole
-	hash       string            // the file's on disk, as d shows it
+	hash       string            // the new side's, the file's on disk for the working tree, as d shows it
+	index      string            // the index's, when a side is
 	text       proto.GitText     // what came of it last, but its text
 	stamp      string            // the worktree's stamp it was fetched at
 	busy       bool
 	writing    bool
 	err        string
+}
+
+// known is what of the file's text the client has, as git.file takes it:
+// the index's too, when it is the old side.
+func (sf *sideFile) known() string {
+	if sf.base == baseUnstaged {
+		return sf.index + sf.hash
+	}
+	return sf.hash
+}
+
+// The sides of the Uncommitted list's diffs, and of a commit's, as
+// git.file takes them for its base.
+const (
+	baseStaged   = "staged"
+	baseUnstaged = "unstaged"
+	baseRev      = "rev"
+)
+
+// fileKey is the key a list's file's diff and fold are kept by: of its
+// section too, as Uncommitted lists a file both staged and not.
+func fileKey(scope, section, path string) string {
+	if section == "" {
+		return scope + "|" + path
+	}
+	return scope + "|" + section + "|" + path
 }
 
 // toggleSide shows a view of the panel, or hides the panel when it shows
@@ -126,16 +173,19 @@ func (a *App) sideView() string {
 	switch {
 	case a.prefs.Side != "":
 		return a.prefs.Side
-	case a.prefs.SideView == sideFiles:
-		return sideFiles
+	case a.prefs.SideView == sideFiles || a.prefs.SideView == sideHistory:
+		return a.prefs.SideView
 	}
 	return sideChanges
 }
 
 // sideAction is the action that shows and hides a view of the panel.
 func sideAction(view string) string {
-	if view == sideFiles {
+	switch view {
+	case sideFiles:
 		return "files.toggle"
+	case sideHistory:
+		return "history.toggle"
 	}
 	return "changes.toggle"
 }
@@ -251,11 +301,17 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 	wpal := pal
 	pal = cardPalette(pal, a.fileTheme(pal.dark))
 	raised(card.Background(card.AnimateColor("bg", cardBackground(wpal, pal, dim), ui.Animation{Duration: 140 * time.Millisecond})), wpal)
-	files := a.prefs.Side == sideFiles
+	files, history := a.prefs.Side == sideFiles, a.prefs.Side == sideHistory
 	// The side's buttons and the window's controls take the header's room
 	// at the window's edge: in a narrow panel the tabs give theirs, down to
 	// their icons, so that the controls stay in it.
-	compact := (right || left) && width < compactSide
+	compact := tabsLabels
+	switch {
+	case (right || left) && width < tinySide:
+		compact = tabsIcons
+	case (right || left) && width < compactSide:
+		compact = tabsShownLabel
+	}
 	// The first tab's icon starts where a header's title does.
 	pad := float32(10)
 	if left {
@@ -268,11 +324,15 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			}
 			// The views, as tabs: the one shown says what the panel shows,
 			// as a pane's header says its program.
-			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle", compact)
 			a.sideTab(c, pal, sideFiles, folderIcon, locales.SideFiles(), "files.toggle", compact)
+			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle", compact)
+			a.sideTab(c, pal, sideHistory, historyIcon, locales.SideHistory(), "history.toggle", compact)
 			dir := a.changesDir(s)
-			if files {
+			switch {
+			case files:
 				_, dir = a.filesRoot(s)
+			case history:
+				dir = a.historyDir(s)
 			}
 			if name := a.sideFolder(c, s, dir); name != "" {
 				ui.Text(c, name).FontSize(13).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0).Margin(0, 0, 0, 6).Tooltip(dir).Bind(a.paneRef("side-dir"))
@@ -291,12 +351,16 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			}
 		})
 		ui.Column(c.Key("body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-			if files {
+			switch {
+			case files:
 				a.filesView(c, pal, s)
-			} else {
+			case history:
+				a.historyView(c, pal, s, width)
+			default:
 				a.changesView(c, pal, s, width)
 			}
 		})
+		a.nameView(c, pal)
 		if a.set.DimExplorer {
 			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
 			v.Opacity(v.Animate("on", b2f(dim), 160*time.Millisecond))
@@ -308,12 +372,13 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 }
 
 // sideTab is a view's tab in the panel's header, which shows it: its icon
-// alone while compact.
-func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, label, action string, compact bool) {
-	on := a.prefs.Side == view || view == sideChanges && a.prefs.Side != sideFiles
+// alone while compact, but the shown view's while only somewhat.
+func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, label, action string, compact sideCompact) {
+	on := a.prefs.Side == view || view == sideChanges && a.prefs.Side != sideFiles && a.prefs.Side != sideHistory
 	b := ui.ButtonBase(c.Key("tab-"+view)).Height(28).Padding(0, 8).Gap(6).Radius(8).AlignItems(ui.Center).Shrink(0).
 		TextColor(pal.textMuted).Label(label).Tooltip(a.tip(label, action))
-	if compact {
+	iconOnly := compact == tabsIcons || compact == tabsShownLabel && !on
+	if iconOnly {
 		b.Padding(0, 7)
 	}
 	switch {
@@ -324,7 +389,7 @@ func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, lab
 	}
 	b.Children(func() {
 		ui.Icon(c, svg).Size(14, 14).Opacity(0.8)
-		if !compact {
+		if !iconOnly {
 			ui.Text(c, label).FontSize(13.5).FontWeight(600).SingleLine()
 		}
 	})
@@ -386,7 +451,7 @@ func gitStamp(g *proto.GitInfo) string {
 	if g == nil {
 		return ""
 	}
-	return fmt.Sprint(g.Root, g.Head, g.Branch, g.Files, g.Added, g.Removed)
+	return fmt.Sprint(g.Root, g.Head, g.Branch, g.Files, g.Added, g.Removed, g.Staged, g.State)
 }
 
 func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width float32) {
@@ -424,7 +489,9 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 	// between in one show it as it was, scrolled where it was. A turn's is
 	// of its snapshot.
 	scope := changesScope(pane, ch.base)
-	stamp := gitStamp(pane.Git)
+	// Kero's own operations change what the list shows, as a hunk staged,
+	// which the status may not say.
+	stamp := gitStamp(pane.Git) + "|" + itoa(a.side.git.done)
 	if pane.Turn != nil && ch.base == git.BaseTurn {
 		stamp += "|" + pane.Turn.Tree
 	}
@@ -458,6 +525,13 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		list = nil
 	}
 
+	if here.Git != nil {
+		a.gitBar(c, pal, s, here)
+	}
+	ix := ch.indexes[scope]
+	if ch.base != git.BaseHead {
+		ix = nil
+	}
 	ui.Column(c.Key("bases")).Shrink(0).Padding(2, 12, 6, 12).Gap(6).AlignItems(ui.Stretch).Children(func() {
 		if len(bases) > 1 {
 			ui.Row(c).Children(func() { segmented(c, "base", &ch.base, bases, labels) })
@@ -468,6 +542,11 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 				added, removed := 0, 0
 				for _, f := range res.Files {
 					added, removed = added+f.Added, removed+f.Removed
+				}
+				if ch.base == git.BaseHead && pane.Git != nil {
+					// Since HEAD, as the status counts it: a file both
+					// staged and not is one change.
+					added, removed = pane.Git.Added, pane.Git.Removed
 				}
 				ui.Text(c, locales.ChangesFiles(len(res.Files))).FontSize(12.5).TextColor(pal.textMuted).SingleLine().Shrink(0)
 				a.lineCounts(c, pal, added, removed, 12.5)
@@ -519,8 +598,33 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		}
 		a.sideMessage(c, pal, locales.ChangesNone(), detail)
 	default:
-		if !held {
-			a.syncFiles(c, scope, pane, res.Files)
+		// Uncommitted lists what is staged, then what isn't, each file
+		// under its section's title; the other bases their files alone.
+		var rows []changeRow
+		files := func(section, base string, list []proto.GitFile) {
+			if !held {
+				a.syncFiles(c, scope, section, base, pane, list)
+			}
+			for _, f := range list {
+				key := fileKey(scope, section, f.Path)
+				rows = append(rows, changeRow{f: f, section: section})
+				if ch.files[key] != nil && !a.fileCollapsed(key, f) {
+					rows = append(rows, changeRow{f: f, section: section, diff: true})
+				}
+			}
+		}
+		if ix != nil {
+			for _, sec := range []struct {
+				name string
+				list []proto.GitFile
+			}{{baseStaged, ix.Staged}, {baseUnstaged, ix.Unstaged}} {
+				if len(sec.list) > 0 {
+					rows = append(rows, changeRow{section: sec.name, title: true})
+					files(sec.name, sec.name, sec.list)
+				}
+			}
+		} else {
+			files("", ch.base, res.Files)
 		}
 		if ch.places == nil {
 			ch.places = map[string]*ui.ListState{}
@@ -534,15 +638,8 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		// which scrolls under the header as the list pins it at the top,
 		// until the next file's header pushes it out, as the files of a
 		// pull request do.
-		var rows []changeRow
-		for _, f := range res.Files {
-			rows = append(rows, changeRow{f: f})
-			if ch.files[scope+"|"+f.Path] != nil && !a.fileCollapsed(scope, f) {
-				rows = append(rows, changeRow{f: f, diff: true})
-			}
-		}
-		ls.Header = func(i int) bool { return !rows[i].diff }
-		ls.Key = func(i int) any { return changeKey{rows[i].f.Path, rows[i].diff} }
+		ls.Header = func(i int) bool { return !rows[i].diff && !rows[i].title }
+		ls.Key = func(i int) any { r := rows[i]; return changeKey{r.f.Path, r.section, r.diff, r.title} }
 		box := ui.Column(c.Key("files-" + scope)).Grow(1).MinHeight(0).AlignItems(ui.Stretch)
 		box.Opacity(box.Animate("held", 1-0.45*b2f(held), 120*time.Millisecond))
 		box.Children(func() {
@@ -550,8 +647,23 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 			// under it.
 			ui.List(c.Key("rows"), ls, len(rows), func(i int) {
 				r := rows[i]
-				if r.diff {
-					a.fileDiff(c, pal, s, scope, r.f, width)
+				key := fileKey(scope, r.section, r.f.Path)
+				// A section's files and diffs have its color down their
+				// left edge, as its title has, so that the two sections are
+				// told apart as they scroll.
+				stripe := func(e ui.Element) ui.Element {
+					if r.section == "" {
+						return e
+					}
+					col := a.sectionColor(c, pal, r.section).Alpha(0.55)
+					return e.DrawOver(func(p *ui.Painter, rr ui.Rect) { p.Fill(ui.Rect{X: rr.X, Y: rr.Y, W: 3, H: rr.H}, col, 0) })
+				}
+				switch {
+				case r.title:
+					a.indexTitle(c, pal, here, ix, r.section)
+					return
+				case r.diff:
+					stripe(ui.Column(c).FillWidth().AlignItems(ui.Stretch)).Children(func() { a.fileDiff(c, pal, s, ch.files[key], width) })
 					return
 				}
 				// Opaque, over the diff scrolling under it; a folded file's
@@ -560,28 +672,39 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 				if i+1 < len(rows) && rows[i+1].diff {
 					gap = 0
 				}
-				ui.Column(c).FillWidth().AlignItems(ui.Stretch).Padding(0, 0, gap, 0).Background(pal.card).Children(func() {
-					a.fileHeader(c, pal, scope, res.Root, r.f, func() {
+				stripe(ui.Column(c).FillWidth().AlignItems(ui.Stretch).Padding(0, 0, gap, 0).Background(pal.card)).Children(func() {
+					var tools func()
+					if r.section != "" {
+						f := r.f
+						tools = func() { a.indexTools(c, pal, here, ix, r.section, f) }
+					}
+					a.fileHeader(c, pal, key, res.Root, r.f, func() {
 						// Folding it as the list pins it brings it back where
 						// it stays: at the top.
 						ls.ScrollIntoView(i)
-					})
+					}, tools)
 				})
 			}).Grow(1).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
 		})
 	}
+	if ch.base == git.BaseHead && here.Git != nil && ix != nil {
+		a.commitBox(c, pal, here, ix)
+	}
 }
 
 // changeRow is a row of the list of changes: a file's header, or its
-// diff; changeKey what it is, as the list keeps a row's state by.
+// diff, of a section of Uncommitted's, or the section's title; changeKey
+// what it is, as the list keeps a row's state by.
 type changeRow struct {
-	f    proto.GitFile
-	diff bool
+	f       proto.GitFile
+	section string
+	diff    bool
+	title   bool
 }
 
 type changeKey struct {
-	path string
-	diff bool
+	path, section string
+	diff, title   bool
 }
 
 // stickyH is the height of a file's header, which the list pins at its
@@ -595,7 +718,7 @@ const (
 // each file shown that has none yet, a few at a time, and again of one
 // whose change the list counts anew (Known, so that kerod sends only what
 // changed), or of every one as the worktree's HEAD moves.
-func (a *App) syncFiles(c *ui.Context, scope string, pane *proto.Pane, files []proto.GitFile) {
+func (a *App) syncFiles(c *ui.Context, scope, section, base string, pane *proto.Pane, files []proto.GitFile) {
 	ch := &a.side.changes
 	if ch.files == nil || len(ch.files) > 400 {
 		ch.files = map[string]*sideFile{}
@@ -608,16 +731,16 @@ func (a *App) syncFiles(c *ui.Context, scope string, pane *proto.Pane, files []p
 		}
 	}
 	for _, f := range files {
-		key := scope + "|" + f.Path
+		key := fileKey(scope, section, f.Path)
 		sf := ch.files[key]
 		if sf == nil {
-			sf = &sideFile{pane: pane.ID, base: ch.base, f: f}
+			sf = &sideFile{pane: pane.ID, base: base, f: f}
 			ch.files[key] = sf
 		}
-		if a.fileCollapsed(scope, f) || sf.busy || sf.writing || a.hostOf(pane.ID).cl == nil {
+		if a.fileCollapsed(key, f) || sf.busy || sf.writing || a.hostOf(pane.ID).cl == nil {
 			continue
 		}
-		known := sf.hash
+		known := sf.known()
 		switch {
 		case sf.d == nil && !sf.text.Binary && !sf.text.Large && sf.err == "":
 			known = "" // never shown
@@ -637,10 +760,11 @@ func (a *App) syncFiles(c *ui.Context, scope string, pane *proto.Pane, files []p
 	}
 }
 
-// fileCollapsed tells whether a file's diff is folded: as the user left
-// it, else folded for a binary file or one of very many lines changed.
-func (a *App) fileCollapsed(scope string, f proto.GitFile) bool {
-	if v, ok := a.side.changes.collapsed[scope+"|"+f.Path]; ok {
+// fileCollapsed tells whether a file's diff, by its key (fileKey), is
+// folded: as the user left it, else folded for a binary file or one of
+// very many lines changed.
+func (a *App) fileCollapsed(key string, f proto.GitFile) bool {
+	if v, ok := a.side.changes.collapsed[key]; ok {
 		return v
 	}
 	return f.Binary || f.Added+f.Removed > 600
@@ -648,9 +772,8 @@ func (a *App) fileCollapsed(scope string, f proto.GitFile) bool {
 
 // fileDiff is a changed file's diff, under its header, or why it shows
 // none.
-func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, scope string, f proto.GitFile, width float32) {
+func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, sf *sideFile, width float32) {
 	ch := &a.side.changes
-	sf := ch.files[scope+"|"+f.Path]
 	ui.Column(c).FillWidth().AlignItems(ui.Stretch).Padding(4, 0, sectionGap, 0).Children(func() {
 		switch {
 		case sf.err != "" && sf.d == nil:
@@ -671,13 +794,13 @@ func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, scope stri
 	})
 }
 
-// fileHeader is a changed file's header: its change, its name and folder
-// and the lines it adds and removes, which a click folds or unfolds,
-// running folding first when set.
-func (a *App) fileHeader(c *ui.Context, pal *palette, scope, root string, f proto.GitFile, folding func()) {
+// fileHeader is a changed file's header, by its key (fileKey): its
+// change, its name and folder and the lines it adds and removes, which a
+// click folds or unfolds, running folding first when set; tools, when
+// set, draws its buttons before Open.
+func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.GitFile, folding, tools func()) {
 	ch := &a.side.changes
-	key := scope + "|" + f.Path
-	collapsed := a.fileCollapsed(scope, f)
+	collapsed := a.fileCollapsed(key, f)
 	// Across the panel, edge to edge, its content in line with the bases'.
 	hdr := ui.Row(c.Key("hdr")).Height(stickyH).Padding(0, 10, 0, 12).Gap(8).AlignItems(ui.Center).Background(pal.chip)
 	if hdr.Hovered() {
@@ -713,6 +836,9 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, scope, root string, f prot
 		} else {
 			a.lineCounts(c, pal, f.Added, f.Removed, 12)
 		}
+		if tools != nil {
+			tools()
+		}
 		if f.Status != "deleted" {
 			full := filepath.Join(root, filepath.FromSlash(f.Path))
 			iconButton(c, "open", openFileIcon, locales.ChangesOpenFile(), pal, func() { openPath(full) })
@@ -739,26 +865,60 @@ func (a *App) fetchChanges(scope, stamp, pane, base string) {
 	}
 	go func() {
 		var res proto.GitChanges
-		err := cl.Call("git.changes", proto.GitParams{Pane: pane, Base: base}, &res)
+		var ix *proto.GitIndex
+		var err error
+		if base == git.BaseHead {
+			// Uncommitted: what is staged and what isn't, the files of both
+			// its list.
+			ix = &proto.GitIndex{}
+			if err = cl.Call("git.index", proto.GitParams{Pane: pane}, ix); err == nil {
+				res = proto.GitChanges{Root: ix.Root, BaseName: "HEAD", Files: unionFiles(ix.Staged, ix.Unstaged)}
+			}
+		} else {
+			err = cl.Call("git.changes", proto.GitParams{Pane: pane, Base: base}, &res)
+		}
 		a.update(func() {
 			ch.busy, ch.fetched = false, time.Now()
 			ch.scope, ch.stamp = scope, stamp
 			if err != nil {
 				ch.res, ch.err = nil, err.Error()
 				delete(ch.lists, scope)
+				delete(ch.indexes, scope)
 				return
 			}
 			ch.res, ch.err = &res, ""
 			if ch.lists == nil || len(ch.lists) > 12 {
-				ch.lists = map[string]*proto.GitChanges{}
+				ch.lists, ch.indexes = map[string]*proto.GitChanges{}, map[string]*proto.GitIndex{}
 			}
 			ch.lists[scope] = &res
+			if ix != nil {
+				if ch.indexes == nil {
+					ch.indexes = map[string]*proto.GitIndex{}
+				}
+				ch.indexes[scope] = ix
+			}
 		})
 	}()
 }
 
+// unionFiles are the files of two lists, each once, as the first has it.
+func unionFiles(a, b []proto.GitFile) []proto.GitFile {
+	out := slices.Clone(a)
+	seen := make(map[string]bool, len(a))
+	for _, f := range a {
+		seen[f.Path] = true
+	}
+	for _, f := range b {
+		if !seen[f.Path] {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
 // statusBadge is a file's change as a letter in its color: A added, M
-// modified, D deleted, R renamed, T a change of type.
+// modified, D deleted, R renamed, T a change of type, U untracked, and !
+// a conflict.
 func (a *App) statusBadge(c *ui.Context, pal *palette, status string) {
 	added, removed, modified := a.diffColors(c, pal)
 	letter, col := "M", modified
@@ -771,6 +931,10 @@ func (a *App) statusBadge(c *ui.Context, pal *palette, status string) {
 		letter, col = "R", modified
 	case "type":
 		letter = "T"
+	case "untracked":
+		letter, col = "U", added
+	case "conflict":
+		letter, col = "!", removed
 	}
 	ui.Box(c).Size(18, 18).Radius(5).Shrink(0).Center().Background(col.Alpha(0.14)).Children(func() {
 		ui.Text(c, letter).FontSize(11).FontWeight(650).TextColor(col).SingleLine()
@@ -835,7 +999,7 @@ func (a *App) fetchFile(sf *sideFile, known string) {
 	sf.busy = true
 	go func() {
 		var t proto.GitText
-		err := cl.Call("git.file", proto.GitParams{Pane: sf.pane, Base: sf.base, Path: sf.f.Path, OldPath: sf.f.OldPath, Known: known}, &t)
+		err := cl.Call("git.file", proto.GitParams{Pane: sf.pane, Base: sf.base, Path: sf.f.Path, OldPath: sf.f.OldPath, Known: known, From: sf.f.From, To: sf.f.To}, &t)
 		a.update(func() {
 			sf.busy = false
 			if err != nil {
@@ -853,8 +1017,8 @@ func (a *App) fetchFile(sf *sideFile, known string) {
 // showText puts a file's text in its diff: anew for its first, else as
 // edits, so that the diff keeps where it was scrolled.
 func (a *App) showText(sf *sideFile, t proto.GitText) {
-	sf.hash = t.Hash
-	sf.text = proto.GitText{Binary: t.Binary, Large: t.Large}
+	sf.hash, sf.index = t.Hash, t.Index
+	sf.text = proto.GitText{Binary: t.Binary, Large: t.Large, Mixed: t.Mixed}
 	switch {
 	case t.Binary || t.Large && t.Patch == "":
 		sf.d, sf.patch = nil, false
@@ -876,8 +1040,15 @@ func (a *App) showText(sf *sideFile, t proto.GitText) {
 }
 
 // replaceText makes a buffer's text text by one edit of what differs
-// between them, on whole characters.
+// between them, on whole characters. The buffer holds its lines ending in
+// \n, and the ending the text has besides.
 func replaceText(b *editor.Buffer, text string) {
+	if strings.Contains(text, "\r\n") {
+		b.SetLineEnding("\r\n")
+		text = strings.ReplaceAll(text, "\r\n", "\n")
+	} else {
+		b.SetLineEnding("\n")
+	}
 	cur := b.String()
 	if cur == text {
 		return
@@ -911,8 +1082,9 @@ func (a *App) diffSplit(width float32) bool {
 }
 
 // diffOptions sets a file's diff's looks and actions for this frame: in a
-// turn, Revert and Keep on each change while no agent of the session
-// works, as the user reviews what the agent did.
+// turn, Revert and Keep on each change, as the user reviews what the
+// agent did; in Uncommitted, Stage and Discard on a change not staged,
+// and Unstage on one staged.
 func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sideFile, width float32) {
 	d := sf.d
 	d.FitContent = true
@@ -923,24 +1095,127 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 		d.Layout = editor.DiffSplit
 	}
 	d.Wrap = a.prefs.Wrap
-	working := false
-	for _, p := range s.Panes {
-		working = working || p.Status == proto.Working
-	}
 	d.RenderSeparator = func(c *ui.Context, sep ui.Element, s *editor.DiffSeparator) { a.separator(c, pal, sep, s) }
-	d.HunkActions = sf.base == git.BaseTurn && !sf.patch && !working && !sf.writing
+	// A change is edited in its buffer, then written whole: never of a
+	// patch, nor of a text whose lines end two ways, which the buffer
+	// would write back as one; nor of a file the index has in conflict.
+	// Uncommitted's stage and unstage the lines selected by their numbers
+	// too, from the bar of a change they are of (lineActions).
+	editable := !sf.patch && !sf.writing && !sf.text.Mixed
+	switch sf.base {
+	case git.BaseTurn:
+	case baseStaged, baseUnstaged:
+		editable = editable && sf.f.Status != "conflict"
+		d.LineSelection = editable
+	default:
+		editable = false
+	}
+	if !d.LineSelection {
+		if _, ok := d.SelectedLines(); ok {
+			d.SetSelectedLines(editor.DiffLineRange{}, false)
+		}
+	}
+	d.HunkActions = editable
 	d.RenderHunkActions = func(c *ui.Context, bar ui.Element, h *editor.DiffHunkActions) {
 		floating(bar.Gap(2).Padding(3).Radius(8).Background(pal.popover).AlignItems(ui.Center), pal)
 		bar.Children(func() {
+			if (sf.base == baseStaged || sf.base == baseUnstaged) && a.lineActions(c, pal, sf.base, sf, h.Hunk) {
+				return
+			}
+			switch sf.base {
+			case baseStaged:
+				// Unstaged: the index's text, the new side, without it.
+				// The text is of the lines, not of the buffer after Revert or
+				// Keep, which keeps an empty text's empty line as one.
+				if hunkButton(c, "unstage", minusIcon, locales.GitUnstage(), locales.GitUnstageChangeTip(), pal) {
+					a.keepSideFocus()
+					text := applyLines(d.Old, d.New, d.Hunks(), not(inHunk(h.Hunk)), d.New.LineEnding())
+					h.Revert()
+					a.writeIndex(sf, text)
+				}
+				return
+			case baseUnstaged:
+				if hunkButton(c, "revert", revertIcon, locales.GitDiscard(), locales.GitDiscardChangeTip(), pal) {
+					a.keepSideFocus()
+					a.revertChange(sf, h)
+				}
+				// Staged: the index's text, the old side, with it.
+				if hunkButton(c, "stage", plusIcon, locales.GitStage(), locales.GitStageChangeTip(), pal) {
+					a.keepSideFocus()
+					text := applyLines(d.Old, d.New, d.Hunks(), inHunk(h.Hunk), indexEnding(sf))
+					h.Keep()
+					a.writeIndex(sf, text)
+				}
+				return
+			}
 			if hunkButton(c, "revert", revertIcon, locales.ChangesRevert(), locales.ChangesRevertTip(), pal) {
-				h.Revert()
-				a.writeBack(sf)
+				a.revertChange(sf, h)
 			}
 			if hunkButton(c, "keep", checkIcon, locales.ChangesKeep(), locales.ChangesKeepTip(), pal) {
 				h.Keep()
 			}
 		})
 	}
+}
+
+// revertChange puts a change's old lines back in its file: at once while
+// no agent works in the worktree, else as the user says, so long as the
+// change is still the one they clicked.
+func (a *App) revertChange(sf *sideFile, h *editor.DiffHunkActions) {
+	g := a.paneGit(sf.pane)
+	if g == nil {
+		return
+	}
+	d, i, hunk, hash := sf.d, h.Index, h.Hunk, sf.hash
+	anyway := len(a.agentsAt(sf.pane, g.Root)) > 0
+	a.guardedNow(sf.pane, g.Root, locales.ChangesRevert(), func() {
+		if sf.d != d || sf.hash != hash || i >= len(d.Hunks()) || d.Hunks()[i] != hunk {
+			a.toast(locales.GitChangeMoved())
+			return
+		}
+		text := applyLines(d.Old, d.New, d.Hunks(), not(inHunk(hunk)), d.New.LineEnding())
+		d.Revert(i)
+		a.writeBack(sf, text, anyway)
+	})
+}
+
+// bufferText is a buffer's text with the line endings it came with, as
+// the file has them.
+func bufferText(b *editor.Buffer) string {
+	var s strings.Builder
+	b.WriteTo(&s)
+	return s.String()
+}
+
+// writeIndex makes text the index's content of a file, as staging or
+// unstaging a change of it made it, through kerod, which writes it only
+// as the index was shown.
+func (a *App) writeIndex(sf *sideFile, text string) {
+	cl := a.hostOf(sf.pane).cl
+	if cl == nil {
+		return
+	}
+	sf.writing = true
+	var root string
+	if g := a.paneGit(sf.pane); g != nil {
+		root = g.Root
+	}
+	p := proto.GitOpParams{Pane: sf.pane, Op: "setIndex", Root: root, Path: sf.f.Path, Known: sf.index, Text: text}
+	go func() {
+		var res proto.GitOpResult
+		err := cl.Call("git.op", p, &res)
+		a.update(func() {
+			sf.writing = false
+			a.side.git.done++
+			if err == nil && res.Error != "" {
+				err = errors.New(res.Error)
+			}
+			if err != nil {
+				a.toast(locales.GitStageFailed(err.Error()))
+				a.fetchFile(sf, "")
+			}
+		})
+	}()
 }
 
 // separator is a diff's unchanged lines collapsed between its changes:
@@ -1016,21 +1291,25 @@ func hunkButton(c *ui.Context, key string, svg *ui.SVG, label, tip string, pal *
 	return b.Clicked()
 }
 
-// writeBack writes a file's diff's new text, which a change reverted
-// changed, to the file, through kerod, which writes it only as the file
-// was shown: one changed meanwhile is shown anew instead.
-func (a *App) writeBack(sf *sideFile) {
+// writeBack writes text, a file's diff's new text as a change reverted
+// made it, to the file, through kerod, which writes it only as the file
+// was shown: one changed meanwhile is shown anew instead. anyway writes it
+// while an agent works there, as the user said to.
+func (a *App) writeBack(sf *sideFile, text string, anyway bool) {
 	cl := a.hostOf(sf.pane).cl
 	if cl == nil {
 		return
 	}
-	text := sf.d.New.String()
 	sf.writing = true
+	// The file as shown now, which a refresh while the call goes would
+	// pair with a newer hash.
+	p := proto.GitWriteParams{Pane: sf.pane, Base: sf.base, Path: sf.f.Path, Hash: sf.hash, Text: text, Anyway: anyway}
 	go func() {
 		var hash string
-		err := cl.Call("git.revert", proto.GitWriteParams{Pane: sf.pane, Base: sf.base, Path: sf.f.Path, Hash: sf.hash, Text: text}, &hash)
+		err := cl.Call("git.revert", p, &hash)
 		a.update(func() {
 			sf.writing = false
+			a.side.git.done++
 			if err != nil {
 				a.toast(locales.ChangesRevertFailed(err.Error()))
 				a.fetchFile(sf, "")

@@ -34,6 +34,50 @@ In **Last Turn**, hover a change for two buttons:
 
 Revert works only while no agent in the session is working, so it never races an agent's edits, and only on a file that's still as the diff shows it. A file that changed meanwhile shows anew instead.
 
+## Staging and committing
+
+In **Uncommitted**, the files list in two sections: **Staged Changes**, what the next commit takes, and **Changes**, what it doesn't yet. Each file's buttons stage or unstage it, or discard its changes, which asks first: an untracked file is deleted, a deleted one comes back. The buttons on a section's title do the same for all of its files. **Stage All Changes** leaves conflicts out, as staging one marks it resolved.
+
+To stage part of a file, hover a change of its diff, and click **Stage**, or **Unstage** in Staged Changes; **Discard** in Changes puts its old lines back in the file. To take some lines of a change alone, click their numbers, Shift-click to select a range, and the change's buttons become **Stage N Lines**, **Unstage N Lines** and **Discard N Lines**. A file a git filter changes as it's stored, as Git LFS does, stages whole.
+
+<a id="committing"></a>
+
+Write the message in the box under the list, and click **Commit**, or press <kbd>⌘</kbd> <kbd>↩</kbd> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>). **Write Message**, the sparkles in the box, has the message written of what's staged: by a fork of the conversation of the agent in the pane, which knows why it made the changes, without changing that conversation; else by a new run of Claude Code or Codex. Set `commit-message-command` to write it with another command, which gets the prompt on its stdin. The arrow beside Commit has **Commit and Push**, **Amend Last Commit**, **Sign Off** and **Skip Hooks**.
+
+## Branches, syncing and stashes
+
+The bar above the list names the worktree's branch. Click it to switch branches: type to filter them, or to name a new branch, and press <kbd>Return</kbd> (<kbd>Enter</kbd>). A branch's menu there switches to it, makes a branch from it, opens it in a session of its own worktree, renames or deletes it, merges it into yours, or rebases yours onto it. Switching with changes not committed asks to stash them first, or to take them along.
+
+The sync button beside it pulls what the branch is behind, then pushes what it's ahead, or publishes a branch with no upstream. The **⋯** menu has the rest:
+
+- **Fetch**, **Fetch from All Remotes** and **Fetch and Prune**.
+- **Pull**, as your git configuration says, or merging, rebasing, or fast-forward only.
+- **Push**, **Push with Force**, which pushes over the remote's branch only as last fetched, and **Push with Tags**. A push is of the branch alone, to where it pushes to.
+- **Stash All Changes**, **Stash Staged Changes** and **Stash with Message…**.
+- **New Branch…**, **Undo Last Commit**, which keeps its changes staged, and **Refresh**.
+
+A pull, a merge and a rebase stash the changes not committed first, and put them back once they end; when those conflict, they stay in the stash. A fetch, pull or push that needs a password fails with **Run in Terminal**, which runs the same command in a terminal where git can ask for it.
+
+An operation that changes the files while an agent works in the worktree, as a pull or a discard, asks first: **When It's Done** runs it once the agent finishes, **Now** at once. Staging, committing and fetching don't ask.
+
+## History
+
+The Explorer's **History** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Y</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Y</kbd> on Windows and Linux), draws the worktree's commits as a graph: every branch's with **All**, or the branch's, its upstream's and the default branch's with **Branch**. Local branches and the remotes' show apart, so a branch and its remote's at one commit show both. Commits not pushed yet are marked. **Filter** finds commits by their message, author or hash; a file's menu in the Files view shows the history of that file.
+
+Click a commit to see its files, and a file to see its diff. The changes not committed show on top, and the stash under them, to apply, pop or drop. A commit's menu:
+
+- **Copy Hash** and **Copy Branch Name**.
+- **Check Out**: the branch at the commit, or the commit itself, detached, when no branch is there.
+- **New Branch Here…** and **New Session in Worktree Here…**.
+- **Merge … into …**, with a merge commit too, and **Rebase … onto …**.
+- **Cherry-Pick**, **Revert Commit**, and **Reset to Here**: soft, keeping the changes since staged, mixed, keeping them unstaged, or hard, discarding them.
+
+## Conflicts
+
+A merge, rebase, cherry-pick or revert that stops on conflicts says so in the bar and over the commit box, and lists each conflicted file in Changes. Resolve a file in your editor or a terminal and click **Mark Resolved**, or take one side's version of it from its menu: **Use main's Version** or **Use feature's Version**, named after the branches, which asks first, as edits made to the file are lost. **Resolve with Agent**, on a file or over the commit box for all of them, asks the agent working in the worktree to resolve them and stage them, leaving the commit to you.
+
+Once none is left, **Continue** goes on with the rebase, cherry-pick or revert, and **Commit Merge** commits a merge, with the message git prepared. **Abort** gives the operation up, back to where it started, after asking.
+
 <a id="sessions-in-their-own-worktree"></a>
 
 ## Sessions in their own worktree
