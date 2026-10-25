@@ -5,6 +5,15 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.19-fork.2
+
+- Drag a file from the Files view onto a pane: near an edge, it opens
+  beside the pane on that side; in the middle of an editor pane, it takes
+  the place of its file
+- **Open in New Pane** in a file's menu, when files open in place of the
+  last file pane's (`files-pane = replace`)
+- The whole of a row in the Files view opens its menu, its edges too
+
 ## 2.1.19-fork.1
 
 The fork on Kero 2.1.19, with its sessions in worktrees, the agents'
