@@ -41,9 +41,13 @@ type historyState struct {
 	// stamp the worktree's status it was fetched at.
 	key, stamp string
 	pane       string
-	// branchOnly shows the branch, its upstream and the default branch
-	// alone, rather than every branch; first the first parents alone.
-	branchOnly, first bool
+	// scope "branch" shows the branch, its upstream and the default
+	// branch alone, rather than every branch. It is a field, not a value
+	// made each frame, because segmented writes the choice after the
+	// frame is built.
+	scope string
+	// first shows the first parents alone.
+	first bool
 	// query is what the filter has, asked what was fetched for it, and
 	// typed when it last changed; path the file whose history it is.
 	query, asked string
@@ -64,6 +68,8 @@ type historyState struct {
 	stashAt string
 	list    ui.ListState
 }
+
+func (hs *historyState) branchOnly() bool { return hs.scope == "branch" }
 
 // commitView is an open commit's: what kerod told of it, and its files'
 // diffs, by path.
@@ -123,7 +129,7 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 	} else if q != hs.asked {
 		c.After(260 * time.Millisecond)
 	}
-	key := strings.Join([]string{g.Root, b2s(hs.branchOnly), b2s(hs.first), hs.asked, hs.path}, "|")
+	key := strings.Join([]string{g.Root, b2s(hs.branchOnly()), b2s(hs.first), hs.asked, hs.path}, "|")
 	stamp := gitStamp(g) + "|" + itoa(a.side.git.done)
 	if key != hs.key {
 		hs.key, hs.stamp, hs.commits, hs.graph, hs.layout, hs.more, hs.err = key, "", nil, nil, gitgraph.Layout{}, false, ""
@@ -263,15 +269,7 @@ func (a *App) historyFilter(c *ui.Context, pal *palette, root string) {
 				iconButton(c, "clear-path", closeIcon, locales.HistoryAllFiles(), pal, func() { hs.path = "" })
 			})
 		} else {
-			scope := "all"
-			if hs.branchOnly {
-				scope = "branch"
-			}
-			was := scope
-			segmented(c, "hist-scope", &scope, []string{"all", "branch"}, []string{locales.HistoryAll(), locales.HistoryBranch()})
-			if scope != was {
-				hs.branchOnly = scope == "branch"
-			}
+			segmented(c, "hist-scope", &hs.scope, []string{"all", "branch"}, []string{locales.HistoryAll(), locales.HistoryBranch()})
 		}
 		in := textField(c, "hist-q", &hs.query, locales.HistoryFilter(), 0, pal).Tooltip(locales.HistoryFilterTip())
 		in.OnChange(func() { hs.typed = time.Now() })
@@ -300,7 +298,7 @@ func (a *App) fetchHistory(pane, key, stamp string, skip int) {
 		return
 	}
 	hs.busy, hs.pane = true, pane
-	p := proto.GitLogParams{Pane: pane, All: !hs.branchOnly, FirstParent: hs.first, Skip: skip, Max: histPage, Query: hs.asked, Path: hs.path}
+	p := proto.GitLogParams{Pane: pane, All: !hs.branchOnly(), FirstParent: hs.first, Skip: skip, Max: histPage, Query: hs.asked, Path: hs.path}
 	go func() {
 		var res proto.GitLog
 		err := cl.Call("git.log", p, &res)

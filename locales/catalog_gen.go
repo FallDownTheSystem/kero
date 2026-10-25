@@ -4618,31 +4618,31 @@ func (msgs Messages) ChangesBranch() string {
 	return Catalog.Format(msgs.locale, "changesBranch", nil)
 }
 
-// ChangesTurnTip says "What the agent changed since it last started working"
+// ChangesTurnTip says "Changes the agent made since it last started working"
 // in the language the app shows.
 func ChangesTurnTip() string { return In(i18n.Locale()).ChangesTurnTip() }
 
-// ChangesTurnTip says "What the agent changed since it last started working"
+// ChangesTurnTip says "Changes the agent made since it last started working"
 // in the language of msgs.
 func (msgs Messages) ChangesTurnTip() string {
 	return Catalog.Format(msgs.locale, "changesTurnTip", nil)
 }
 
-// ChangesUncommittedTip says "What isn't committed, untracked files too"
+// ChangesUncommittedTip says "Changes not yet committed, including untracked files"
 // in the language the app shows.
 func ChangesUncommittedTip() string { return In(i18n.Locale()).ChangesUncommittedTip() }
 
-// ChangesUncommittedTip says "What isn't committed, untracked files too"
+// ChangesUncommittedTip says "Changes not yet committed, including untracked files"
 // in the language of msgs.
 func (msgs Messages) ChangesUncommittedTip() string {
 	return Catalog.Format(msgs.locale, "changesUncommittedTip", nil)
 }
 
-// ChangesBranchTip says "What this branch changed since it left {branch}"
+// ChangesBranchTip says "Changes on this branch since it branched from {branch}"
 // in the language the app shows.
 func ChangesBranchTip(branch string) string { return In(i18n.Locale()).ChangesBranchTip(branch) }
 
-// ChangesBranchTip says "What this branch changed since it left {branch}"
+// ChangesBranchTip says "Changes on this branch since it branched from {branch}"
 // in the language of msgs.
 func (msgs Messages) ChangesBranchTip(branch string) string {
 	return Catalog.Format(msgs.locale, "changesBranchTip", map[string]any{"branch": branch})
@@ -7026,13 +7026,13 @@ func (msgs Messages) GitAgentWorking(agent string) string {
 	return Catalog.Format(msgs.locale, "gitAgentWorking", map[string]any{"agent": agent})
 }
 
-// GitAgentWorkingDetail says "{action} changes the files it edits. Do it once the agent is done, or now?"
+// GitAgentWorkingDetail says "{action} changes files the agent may be editing. Run it when the agent is done, or now?"
 // in the language the app shows.
 func GitAgentWorkingDetail(action string) string {
 	return In(i18n.Locale()).GitAgentWorkingDetail(action)
 }
 
-// GitAgentWorkingDetail says "{action} changes the files it edits. Do it once the agent is done, or now?"
+// GitAgentWorkingDetail says "{action} changes files the agent may be editing. Run it when the agent is done, or now?"
 // in the language of msgs.
 func (msgs Messages) GitAgentWorkingDetail(action string) string {
 	return Catalog.Format(msgs.locale, "gitAgentWorkingDetail", map[string]any{"action": action})
@@ -7098,11 +7098,11 @@ func (msgs Messages) GitCancel() string {
 	return Catalog.Format(msgs.locale, "gitCancel", nil)
 }
 
-// GitWaiting says "{action} waits for the agents here to finish"
+// GitWaiting says "{action} is waiting for the agents here to finish"
 // in the language the app shows.
 func GitWaiting(action string) string { return In(i18n.Locale()).GitWaiting(action) }
 
-// GitWaiting says "{action} waits for the agents here to finish"
+// GitWaiting says "{action} is waiting for the agents here to finish"
 // in the language of msgs.
 func (msgs Messages) GitWaiting(action string) string {
 	return Catalog.Format(msgs.locale, "gitWaiting", map[string]any{"action": action})
@@ -7188,11 +7188,11 @@ func (msgs Messages) GitPublish() string {
 	return Catalog.Format(msgs.locale, "gitPublish", nil)
 }
 
-// GitPublishTip says "Publish Branch: push it to the remote, and follow the remote's branch from then on"
+// GitPublishTip says "Publish Branch: push it to the remote and track the remote branch"
 // in the language the app shows.
 func GitPublishTip() string { return In(i18n.Locale()).GitPublishTip() }
 
-// GitPublishTip says "Publish Branch: push it to the remote, and follow the remote's branch from then on"
+// GitPublishTip says "Publish Branch: push it to the remote and track the remote branch"
 // in the language of msgs.
 func (msgs Messages) GitPublishTip() string {
 	return Catalog.Format(msgs.locale, "gitPublishTip", nil)
@@ -7258,31 +7258,31 @@ func (msgs Messages) GitPull() string {
 	return Catalog.Format(msgs.locale, "gitPull", nil)
 }
 
-// GitPullMerge says "Pull, Merging"
+// GitPullMerge says "Pull (Merge)"
 // in the language the app shows.
 func GitPullMerge() string { return In(i18n.Locale()).GitPullMerge() }
 
-// GitPullMerge says "Pull, Merging"
+// GitPullMerge says "Pull (Merge)"
 // in the language of msgs.
 func (msgs Messages) GitPullMerge() string {
 	return Catalog.Format(msgs.locale, "gitPullMerge", nil)
 }
 
-// GitPullRebase says "Pull, Rebasing"
+// GitPullRebase says "Pull (Rebase)"
 // in the language the app shows.
 func GitPullRebase() string { return In(i18n.Locale()).GitPullRebase() }
 
-// GitPullRebase says "Pull, Rebasing"
+// GitPullRebase says "Pull (Rebase)"
 // in the language of msgs.
 func (msgs Messages) GitPullRebase() string {
 	return Catalog.Format(msgs.locale, "gitPullRebase", nil)
 }
 
-// GitPullFF says "Pull, Fast-Forward Only"
+// GitPullFF says "Pull (Fast-Forward Only)"
 // in the language the app shows.
 func GitPullFF() string { return In(i18n.Locale()).GitPullFF() }
 
-// GitPullFF says "Pull, Fast-Forward Only"
+// GitPullFF says "Pull (Fast-Forward Only)"
 // in the language of msgs.
 func (msgs Messages) GitPullFF() string {
 	return Catalog.Format(msgs.locale, "gitPullFF", nil)
@@ -7298,33 +7298,33 @@ func (msgs Messages) GitPush() string {
 	return Catalog.Format(msgs.locale, "gitPush", nil)
 }
 
-// GitPushForce says "Push with Force"
+// GitPushForce says "Force Push"
 // in the language the app shows.
 func GitPushForce() string { return In(i18n.Locale()).GitPushForce() }
 
-// GitPushForce says "Push with Force"
+// GitPushForce says "Force Push"
 // in the language of msgs.
 func (msgs Messages) GitPushForce() string {
 	return Catalog.Format(msgs.locale, "gitPushForce", nil)
 }
 
-// GitPushForceTitle says "Push over {branch}'s remote branch?"
+// GitPushForceTitle says "Force push {branch}?"
 // in the language the app shows.
 func GitPushForceTitle(branch string) string { return In(i18n.Locale()).GitPushForceTitle(branch) }
 
-// GitPushForceTitle says "Push over {branch}'s remote branch?"
+// GitPushForceTitle says "Force push {branch}?"
 // in the language of msgs.
 func (msgs Messages) GitPushForceTitle(branch string) string {
 	return Catalog.Format(msgs.locale, "gitPushForceTitle", map[string]any{"branch": branch})
 }
 
-// GitPushForceDetail says "The commits of {upstream} that this branch hasn't are lost, but only as long as it is as it was last fetched: a push …"
+// GitPushForceDetail says "Commits on {upstream} that this branch doesn't have are lost. If someone pushed to it since your last fetch, the push…"
 // in the language the app shows.
 func GitPushForceDetail(upstream string) string {
 	return In(i18n.Locale()).GitPushForceDetail(upstream)
 }
 
-// GitPushForceDetail says "The commits of {upstream} that this branch hasn't are lost, but only as long as it is as it was last fetched: a push …"
+// GitPushForceDetail says "Commits on {upstream} that this branch doesn't have are lost. If someone pushed to it since your last fetch, the push…"
 // in the language of msgs.
 func (msgs Messages) GitPushForceDetail(upstream string) string {
 	return Catalog.Format(msgs.locale, "gitPushForceDetail", map[string]any{"upstream": upstream})
@@ -7380,21 +7380,21 @@ func (msgs Messages) GitStashMessage() string {
 	return Catalog.Format(msgs.locale, "gitStashMessage", nil)
 }
 
-// GitStashMessageTitle says "Stash all changes"
+// GitStashMessageTitle says "Stash All Changes"
 // in the language the app shows.
 func GitStashMessageTitle() string { return In(i18n.Locale()).GitStashMessageTitle() }
 
-// GitStashMessageTitle says "Stash all changes"
+// GitStashMessageTitle says "Stash All Changes"
 // in the language of msgs.
 func (msgs Messages) GitStashMessageTitle() string {
 	return Catalog.Format(msgs.locale, "gitStashMessageTitle", nil)
 }
 
-// GitStashMessagePlaceholder says "What the stash holds"
+// GitStashMessagePlaceholder says "Stash message"
 // in the language the app shows.
 func GitStashMessagePlaceholder() string { return In(i18n.Locale()).GitStashMessagePlaceholder() }
 
-// GitStashMessagePlaceholder says "What the stash holds"
+// GitStashMessagePlaceholder says "Stash message"
 // in the language of msgs.
 func (msgs Messages) GitStashMessagePlaceholder() string {
 	return Catalog.Format(msgs.locale, "gitStashMessagePlaceholder", nil)
@@ -7420,21 +7420,21 @@ func (msgs Messages) GitNewBranchTitle() string {
 	return Catalog.Format(msgs.locale, "gitNewBranchTitle", nil)
 }
 
-// GitNewBranchDetail says "From the commit you're on, with your changes."
+// GitNewBranchDetail says "Starts from the current commit and keeps your changes."
 // in the language the app shows.
 func GitNewBranchDetail() string { return In(i18n.Locale()).GitNewBranchDetail() }
 
-// GitNewBranchDetail says "From the commit you're on, with your changes."
+// GitNewBranchDetail says "Starts from the current commit and keeps your changes."
 // in the language of msgs.
 func (msgs Messages) GitNewBranchDetail() string {
 	return Catalog.Format(msgs.locale, "gitNewBranchDetail", nil)
 }
 
-// GitNewBranchAt says "From {at}."
+// GitNewBranchAt says "Starts from {at}."
 // in the language the app shows.
 func GitNewBranchAt(at string) string { return In(i18n.Locale()).GitNewBranchAt(at) }
 
-// GitNewBranchAt says "From {at}."
+// GitNewBranchAt says "Starts from {at}."
 // in the language of msgs.
 func (msgs Messages) GitNewBranchAt(at string) string {
 	return Catalog.Format(msgs.locale, "gitNewBranchAt", map[string]any{"at": at})
@@ -7490,11 +7490,11 @@ func (msgs Messages) GitUndoCommitTitle() string {
 	return Catalog.Format(msgs.locale, "gitUndoCommitTitle", nil)
 }
 
-// GitUndoCommitDetail says "Its changes come back staged, as they were before it."
+// GitUndoCommitDetail says "Its changes return as staged changes."
 // in the language the app shows.
 func GitUndoCommitDetail() string { return In(i18n.Locale()).GitUndoCommitDetail() }
 
-// GitUndoCommitDetail says "Its changes come back staged, as they were before it."
+// GitUndoCommitDetail says "Its changes return as staged changes."
 // in the language of msgs.
 func (msgs Messages) GitUndoCommitDetail() string {
 	return Catalog.Format(msgs.locale, "gitUndoCommitDetail", nil)
@@ -7520,11 +7520,11 @@ func (msgs Messages) GitSwitchTo(name string) string {
 	return Catalog.Format(msgs.locale, "gitSwitchTo", map[string]any{"name": name})
 }
 
-// GitBranchFilter says "Switch to a branch, or name a new one"
+// GitBranchFilter says "Find a branch, or type a new name"
 // in the language the app shows.
 func GitBranchFilter() string { return In(i18n.Locale()).GitBranchFilter() }
 
-// GitBranchFilter says "Switch to a branch, or name a new one"
+// GitBranchFilter says "Find a branch, or type a new name"
 // in the language of msgs.
 func (msgs Messages) GitBranchFilter() string {
 	return Catalog.Format(msgs.locale, "gitBranchFilter", nil)
@@ -7610,11 +7610,11 @@ func (msgs Messages) GitOpenInWorktree() string {
 	return Catalog.Format(msgs.locale, "gitOpenInWorktree", nil)
 }
 
-// GitRenameBranch says "Rename…"
+// GitRenameBranch says "Rename Branch…"
 // in the language the app shows.
 func GitRenameBranch() string { return In(i18n.Locale()).GitRenameBranch() }
 
-// GitRenameBranch says "Rename…"
+// GitRenameBranch says "Rename Branch…"
 // in the language of msgs.
 func (msgs Messages) GitRenameBranch() string {
 	return Catalog.Format(msgs.locale, "gitRenameBranch", nil)
@@ -7660,43 +7660,43 @@ func (msgs Messages) GitDeleteBranch() string {
 	return Catalog.Format(msgs.locale, "gitDeleteBranch", nil)
 }
 
-// GitDeleteBranchTitle says "Delete the branch {name}?"
+// GitDeleteBranchTitle says "Delete branch {name}?"
 // in the language the app shows.
 func GitDeleteBranchTitle(name string) string { return In(i18n.Locale()).GitDeleteBranchTitle(name) }
 
-// GitDeleteBranchTitle says "Delete the branch {name}?"
+// GitDeleteBranchTitle says "Delete branch {name}?"
 // in the language of msgs.
 func (msgs Messages) GitDeleteBranchTitle(name string) string {
 	return Catalog.Format(msgs.locale, "gitDeleteBranchTitle", map[string]any{"name": name})
 }
 
-// GitDeleteBranchDetail says "Its commits stay, on the branches that have them."
+// GitDeleteBranchDetail says "Its commits stay on the other branches that contain them."
 // in the language the app shows.
 func GitDeleteBranchDetail() string { return In(i18n.Locale()).GitDeleteBranchDetail() }
 
-// GitDeleteBranchDetail says "Its commits stay, on the branches that have them."
+// GitDeleteBranchDetail says "Its commits stay on the other branches that contain them."
 // in the language of msgs.
 func (msgs Messages) GitDeleteBranchDetail() string {
 	return Catalog.Format(msgs.locale, "gitDeleteBranchDetail", nil)
 }
 
-// GitDeleteUnmergedTitle says "{name} has commits no other branch has"
+// GitDeleteUnmergedTitle says "Delete {name} with unmerged commits?"
 // in the language the app shows.
 func GitDeleteUnmergedTitle(name string) string {
 	return In(i18n.Locale()).GitDeleteUnmergedTitle(name)
 }
 
-// GitDeleteUnmergedTitle says "{name} has commits no other branch has"
+// GitDeleteUnmergedTitle says "Delete {name} with unmerged commits?"
 // in the language of msgs.
 func (msgs Messages) GitDeleteUnmergedTitle(name string) string {
 	return Catalog.Format(msgs.locale, "gitDeleteUnmergedTitle", map[string]any{"name": name})
 }
 
-// GitDeleteUnmergedDetail says "Deleting it loses them, but for a while, in git's reflog."
+// GitDeleteUnmergedDetail says "Deleting it loses those commits. Git's reflog keeps them for a while."
 // in the language the app shows.
 func GitDeleteUnmergedDetail() string { return In(i18n.Locale()).GitDeleteUnmergedDetail() }
 
-// GitDeleteUnmergedDetail says "Deleting it loses them, but for a while, in git's reflog."
+// GitDeleteUnmergedDetail says "Deleting it loses those commits. Git's reflog keeps them for a while."
 // in the language of msgs.
 func (msgs Messages) GitDeleteUnmergedDetail() string {
 	return Catalog.Format(msgs.locale, "gitDeleteUnmergedDetail", nil)
@@ -7722,23 +7722,23 @@ func (msgs Messages) GitDeleteNamed(name string) string {
 	return Catalog.Format(msgs.locale, "gitDeleteNamed", map[string]any{"name": name})
 }
 
-// GitSwitchDirtyTitle says "Switch with changes not committed?"
+// GitSwitchDirtyTitle says "Switch with uncommitted changes?"
 // in the language the app shows.
 func GitSwitchDirtyTitle() string { return In(i18n.Locale()).GitSwitchDirtyTitle() }
 
-// GitSwitchDirtyTitle says "Switch with changes not committed?"
+// GitSwitchDirtyTitle says "Switch with uncommitted changes?"
 // in the language of msgs.
 func (msgs Messages) GitSwitchDirtyTitle() string {
 	return Catalog.Format(msgs.locale, "gitSwitchDirtyTitle", nil)
 }
 
-// GitSwitchDirtyDetail says "Stash {count, plural, one {the changed file} other {the # changed files}} and switch, or take them to {name}, when th…"
+// GitSwitchDirtyDetail says "Stash {count, plural, one {the changed file} other {the # changed files}} and switch, or bring them to {name} if they…"
 // in the language the app shows.
 func GitSwitchDirtyDetail(count int, name string) string {
 	return In(i18n.Locale()).GitSwitchDirtyDetail(count, name)
 }
 
-// GitSwitchDirtyDetail says "Stash {count, plural, one {the changed file} other {the # changed files}} and switch, or take them to {name}, when th…"
+// GitSwitchDirtyDetail says "Stash {count, plural, one {the changed file} other {the # changed files}} and switch, or bring them to {name} if they…"
 // in the language of msgs.
 func (msgs Messages) GitSwitchDirtyDetail(count int, name string) string {
 	return Catalog.Format(msgs.locale, "gitSwitchDirtyDetail", map[string]any{"count": count, "name": name})
@@ -7764,11 +7764,11 @@ func (msgs Messages) GitStashSwitchMessage(name string) string {
 	return Catalog.Format(msgs.locale, "gitStashSwitchMessage", map[string]any{"name": name})
 }
 
-// GitTakeChanges says "Take Changes"
+// GitTakeChanges says "Bring Changes"
 // in the language the app shows.
 func GitTakeChanges() string { return In(i18n.Locale()).GitTakeChanges() }
 
-// GitTakeChanges says "Take Changes"
+// GitTakeChanges says "Bring Changes"
 // in the language of msgs.
 func (msgs Messages) GitTakeChanges() string {
 	return Catalog.Format(msgs.locale, "gitTakeChanges", nil)
@@ -7834,11 +7834,11 @@ func (msgs Messages) GitCommitMerge() string {
 	return Catalog.Format(msgs.locale, "gitCommitMerge", nil)
 }
 
-// GitCommitTip says "Commit what's staged"
+// GitCommitTip says "Commit the staged changes"
 // in the language the app shows.
 func GitCommitTip() string { return In(i18n.Locale()).GitCommitTip() }
 
-// GitCommitTip says "Commit what's staged"
+// GitCommitTip says "Commit the staged changes"
 // in the language of msgs.
 func (msgs Messages) GitCommitTip() string {
 	return Catalog.Format(msgs.locale, "gitCommitTip", nil)
@@ -7854,11 +7854,11 @@ func (msgs Messages) GitResolveFirst(count int) string {
 	return Catalog.Format(msgs.locale, "gitResolveFirst", map[string]any{"count": count})
 }
 
-// GitStageFirst says "Stage the changes to commit first"
+// GitStageFirst says "Stage changes to commit first"
 // in the language the app shows.
 func GitStageFirst() string { return In(i18n.Locale()).GitStageFirst() }
 
-// GitStageFirst says "Stage the changes to commit first"
+// GitStageFirst says "Stage changes to commit first"
 // in the language of msgs.
 func (msgs Messages) GitStageFirst() string {
 	return Catalog.Format(msgs.locale, "gitStageFirst", nil)
@@ -7966,11 +7966,11 @@ func (msgs Messages) GitStopWriting() string {
 	return Catalog.Format(msgs.locale, "gitStopWriting", nil)
 }
 
-// GitWriteFailed says "No message: {error}"
+// GitWriteFailed says "Couldn't write the message: {error}"
 // in the language the app shows.
 func GitWriteFailed(error string) string { return In(i18n.Locale()).GitWriteFailed(error) }
 
-// GitWriteFailed says "No message: {error}"
+// GitWriteFailed says "Couldn't write the message: {error}"
 // in the language of msgs.
 func (msgs Messages) GitWriteFailed(error string) string {
 	return Catalog.Format(msgs.locale, "gitWriteFailed", map[string]any{"error": error})
@@ -8016,23 +8016,23 @@ func (msgs Messages) GitOpRevert() string {
 	return Catalog.Format(msgs.locale, "gitOpRevert", nil)
 }
 
-// GitOperationReady says "The {op} is under way."
+// GitOperationReady says "The {op} is in progress."
 // in the language the app shows.
 func GitOperationReady(op string) string { return In(i18n.Locale()).GitOperationReady(op) }
 
-// GitOperationReady says "The {op} is under way."
+// GitOperationReady says "The {op} is in progress."
 // in the language of msgs.
 func (msgs Messages) GitOperationReady(op string) string {
 	return Catalog.Format(msgs.locale, "gitOperationReady", map[string]any{"op": op})
 }
 
-// GitOperationConflicts says "{count, plural, one {# conflict stops} other {# conflicts stop}} the {op}: resolve each, then mark it resolved."
+// GitOperationConflicts says "{count, plural, one {# conflict stops} other {# conflicts stop}} the {op}. Resolve each one, then mark it resolved."
 // in the language the app shows.
 func GitOperationConflicts(count int, op string) string {
 	return In(i18n.Locale()).GitOperationConflicts(count, op)
 }
 
-// GitOperationConflicts says "{count, plural, one {# conflict stops} other {# conflicts stop}} the {op}: resolve each, then mark it resolved."
+// GitOperationConflicts says "{count, plural, one {# conflict stops} other {# conflicts stop}} the {op}. Resolve each one, then mark it resolved."
 // in the language of msgs.
 func (msgs Messages) GitOperationConflicts(count int, op string) string {
 	return Catalog.Format(msgs.locale, "gitOperationConflicts", map[string]any{"count": count, "op": op})
@@ -8048,11 +8048,11 @@ func (msgs Messages) GitContinue() string {
 	return Catalog.Format(msgs.locale, "gitContinue", nil)
 }
 
-// GitContinueTip says "Go on with the {op}"
+// GitContinueTip says "Continue the {op}"
 // in the language the app shows.
 func GitContinueTip(op string) string { return In(i18n.Locale()).GitContinueTip(op) }
 
-// GitContinueTip says "Go on with the {op}"
+// GitContinueTip says "Continue the {op}"
 // in the language of msgs.
 func (msgs Messages) GitContinueTip(op string) string {
 	return Catalog.Format(msgs.locale, "gitContinueTip", map[string]any{"op": op})
@@ -8078,11 +8078,11 @@ func (msgs Messages) GitAbort() string {
 	return Catalog.Format(msgs.locale, "gitAbort", nil)
 }
 
-// GitAbortTip says "Give up the {op}, back to where it started"
+// GitAbortTip says "Cancel the {op} and go back to where it started"
 // in the language the app shows.
 func GitAbortTip(op string) string { return In(i18n.Locale()).GitAbortTip(op) }
 
-// GitAbortTip says "Give up the {op}, back to where it started"
+// GitAbortTip says "Cancel the {op} and go back to where it started"
 // in the language of msgs.
 func (msgs Messages) GitAbortTip(op string) string {
 	return Catalog.Format(msgs.locale, "gitAbortTip", map[string]any{"op": op})
@@ -8138,11 +8138,11 @@ func (msgs Messages) GitStageAll() string {
 	return Catalog.Format(msgs.locale, "gitStageAll", nil)
 }
 
-// GitStageChangeTip says "Stage this change, for the next commit"
+// GitStageChangeTip says "Stage this change for the next commit"
 // in the language the app shows.
 func GitStageChangeTip() string { return In(i18n.Locale()).GitStageChangeTip() }
 
-// GitStageChangeTip says "Stage this change, for the next commit"
+// GitStageChangeTip says "Stage this change for the next commit"
 // in the language of msgs.
 func (msgs Messages) GitStageChangeTip() string {
 	return Catalog.Format(msgs.locale, "gitStageChangeTip", nil)
@@ -8168,11 +8168,11 @@ func (msgs Messages) GitUnstageAll() string {
 	return Catalog.Format(msgs.locale, "gitUnstageAll", nil)
 }
 
-// GitUnstageChangeTip says "Take this change out of the next commit"
+// GitUnstageChangeTip says "Remove this change from the next commit"
 // in the language the app shows.
 func GitUnstageChangeTip() string { return In(i18n.Locale()).GitUnstageChangeTip() }
 
-// GitUnstageChangeTip says "Take this change out of the next commit"
+// GitUnstageChangeTip says "Remove this change from the next commit"
 // in the language of msgs.
 func (msgs Messages) GitUnstageChangeTip() string {
 	return Catalog.Format(msgs.locale, "gitUnstageChangeTip", nil)
@@ -8198,31 +8198,61 @@ func (msgs Messages) GitDiscardAll() string {
 	return Catalog.Format(msgs.locale, "gitDiscardAll", nil)
 }
 
-// GitDiscardChangeTip says "Put the lines back as they're staged"
+// GitDiscardChanges says "Discard Changes"
+// in the language the app shows.
+func GitDiscardChanges() string { return In(i18n.Locale()).GitDiscardChanges() }
+
+// GitDiscardChanges says "Discard Changes"
+// in the language of msgs.
+func (msgs Messages) GitDiscardChanges() string {
+	return Catalog.Format(msgs.locale, "gitDiscardChanges", nil)
+}
+
+// GitDeleteFile says "Delete File"
+// in the language the app shows.
+func GitDeleteFile() string { return In(i18n.Locale()).GitDeleteFile() }
+
+// GitDeleteFile says "Delete File"
+// in the language of msgs.
+func (msgs Messages) GitDeleteFile() string {
+	return Catalog.Format(msgs.locale, "gitDeleteFile", nil)
+}
+
+// GitRestoreFile says "Restore File"
+// in the language the app shows.
+func GitRestoreFile() string { return In(i18n.Locale()).GitRestoreFile() }
+
+// GitRestoreFile says "Restore File"
+// in the language of msgs.
+func (msgs Messages) GitRestoreFile() string {
+	return Catalog.Format(msgs.locale, "gitRestoreFile", nil)
+}
+
+// GitDiscardChangeTip says "Discard this change"
 // in the language the app shows.
 func GitDiscardChangeTip() string { return In(i18n.Locale()).GitDiscardChangeTip() }
 
-// GitDiscardChangeTip says "Put the lines back as they're staged"
+// GitDiscardChangeTip says "Discard this change"
 // in the language of msgs.
 func (msgs Messages) GitDiscardChangeTip() string {
 	return Catalog.Format(msgs.locale, "gitDiscardChangeTip", nil)
 }
 
-// GitDiscardTitle says "Discard the changes to {name}?"
+// GitDiscardTitle says "Discard changes to {name}?"
 // in the language the app shows.
 func GitDiscardTitle(name string) string { return In(i18n.Locale()).GitDiscardTitle(name) }
 
-// GitDiscardTitle says "Discard the changes to {name}?"
+// GitDiscardTitle says "Discard changes to {name}?"
 // in the language of msgs.
 func (msgs Messages) GitDiscardTitle(name string) string {
 	return Catalog.Format(msgs.locale, "gitDiscardTitle", map[string]any{"name": name})
 }
 
-// GitDiscardDetail says "Its changes since it was last staged are lost."
+// GitDiscardDetail says "Its unstaged changes are lost."
 // in the language the app shows.
 func GitDiscardDetail() string { return In(i18n.Locale()).GitDiscardDetail() }
 
-// GitDiscardDetail says "Its changes since it was last staged are lost."
+// GitDiscardDetail says "Its unstaged changes are lost."
 // in the language of msgs.
 func (msgs Messages) GitDiscardDetail() string {
 	return Catalog.Format(msgs.locale, "gitDiscardDetail", nil)
@@ -8238,51 +8268,51 @@ func (msgs Messages) GitDeleteTitle(name string) string {
 	return Catalog.Format(msgs.locale, "gitDeleteTitle", map[string]any{"name": name})
 }
 
-// GitDeleteDetail says "It's untracked: git has no copy of it."
+// GitDeleteDetail says "It's untracked, so git can't restore it."
 // in the language the app shows.
 func GitDeleteDetail() string { return In(i18n.Locale()).GitDeleteDetail() }
 
-// GitDeleteDetail says "It's untracked: git has no copy of it."
+// GitDeleteDetail says "It's untracked, so git can't restore it."
 // in the language of msgs.
 func (msgs Messages) GitDeleteDetail() string {
 	return Catalog.Format(msgs.locale, "gitDeleteDetail", nil)
 }
 
-// GitRestoreTitle says "Bring back {name}?"
+// GitRestoreTitle says "Restore {name}?"
 // in the language the app shows.
 func GitRestoreTitle(name string) string { return In(i18n.Locale()).GitRestoreTitle(name) }
 
-// GitRestoreTitle says "Bring back {name}?"
+// GitRestoreTitle says "Restore {name}?"
 // in the language of msgs.
 func (msgs Messages) GitRestoreTitle(name string) string {
 	return Catalog.Format(msgs.locale, "gitRestoreTitle", map[string]any{"name": name})
 }
 
-// GitRestoreDetail says "It comes back as it's staged."
+// GitRestoreDetail says "It returns to its staged version."
 // in the language the app shows.
 func GitRestoreDetail() string { return In(i18n.Locale()).GitRestoreDetail() }
 
-// GitRestoreDetail says "It comes back as it's staged."
+// GitRestoreDetail says "It returns to its staged version."
 // in the language of msgs.
 func (msgs Messages) GitRestoreDetail() string {
 	return Catalog.Format(msgs.locale, "gitRestoreDetail", nil)
 }
 
-// GitDiscardAllTitle says "Discard all changes not staged?"
+// GitDiscardAllTitle says "Discard all unstaged changes?"
 // in the language the app shows.
 func GitDiscardAllTitle() string { return In(i18n.Locale()).GitDiscardAllTitle() }
 
-// GitDiscardAllTitle says "Discard all changes not staged?"
+// GitDiscardAllTitle says "Discard all unstaged changes?"
 // in the language of msgs.
 func (msgs Messages) GitDiscardAllTitle() string {
 	return Catalog.Format(msgs.locale, "gitDiscardAllTitle", nil)
 }
 
-// GitDiscardAllDetail says "{count, plural, one {The file goes back to how it's staged, or deleted when untracked.} other {The # files go back to…"
+// GitDiscardAllDetail says "{count, plural, one {The file returns to its staged version, or is deleted if untracked.} other {The # files return t…"
 // in the language the app shows.
 func GitDiscardAllDetail(count int) string { return In(i18n.Locale()).GitDiscardAllDetail(count) }
 
-// GitDiscardAllDetail says "{count, plural, one {The file goes back to how it's staged, or deleted when untracked.} other {The # files go back to…"
+// GitDiscardAllDetail says "{count, plural, one {The file returns to its staged version, or is deleted if untracked.} other {The # files return t…"
 // in the language of msgs.
 func (msgs Messages) GitDiscardAllDetail(count int) string {
 	return Catalog.Format(msgs.locale, "gitDiscardAllDetail", map[string]any{"count": count})
@@ -8298,11 +8328,11 @@ func (msgs Messages) GitMarkResolved() string {
 	return Catalog.Format(msgs.locale, "gitMarkResolved", nil)
 }
 
-// GitResolve says "Resolve the Conflict"
+// GitResolve says "Resolve Conflict"
 // in the language the app shows.
 func GitResolve() string { return In(i18n.Locale()).GitResolve() }
 
-// GitResolve says "Resolve the Conflict"
+// GitResolve says "Resolve Conflict"
 // in the language of msgs.
 func (msgs Messages) GitResolve() string {
 	return Catalog.Format(msgs.locale, "gitResolve", nil)
@@ -8350,11 +8380,11 @@ func (msgs Messages) GitUseSideTitle(name string, file string) string {
 	return Catalog.Format(msgs.locale, "gitUseSideTitle", map[string]any{"name": name, "file": file})
 }
 
-// GitUseSideDetail says "The file becomes {name}'s version and is marked resolved. Its conflict markers, and any edits to it since the conflic…"
+// GitUseSideDetail says "The file becomes {name}'s version and is marked resolved. Its conflict markers and any edits since the conflict are l…"
 // in the language the app shows.
 func GitUseSideDetail(name string) string { return In(i18n.Locale()).GitUseSideDetail(name) }
 
-// GitUseSideDetail says "The file becomes {name}'s version and is marked resolved. Its conflict markers, and any edits to it since the conflic…"
+// GitUseSideDetail says "The file becomes {name}'s version and is marked resolved. Its conflict markers and any edits since the conflict are l…"
 // in the language of msgs.
 func (msgs Messages) GitUseSideDetail(name string) string {
 	return Catalog.Format(msgs.locale, "gitUseSideDetail", map[string]any{"name": name})
@@ -8390,21 +8420,21 @@ func (msgs Messages) GitResolveWithAgentTip() string {
 	return Catalog.Format(msgs.locale, "gitResolveWithAgentTip", nil)
 }
 
-// GitSentToAgent says "Sent the conflicts to {agent}"
+// GitSentToAgent says "Conflicts sent to {agent}"
 // in the language the app shows.
 func GitSentToAgent(agent string) string { return In(i18n.Locale()).GitSentToAgent(agent) }
 
-// GitSentToAgent says "Sent the conflicts to {agent}"
+// GitSentToAgent says "Conflicts sent to {agent}"
 // in the language of msgs.
 func (msgs Messages) GitSentToAgent(agent string) string {
 	return Catalog.Format(msgs.locale, "gitSentToAgent", map[string]any{"agent": agent})
 }
 
-// GitAgentSendFailed says "Can't send the conflicts to the agent: {error}"
+// GitAgentSendFailed says "Couldn't send the conflicts to the agent: {error}"
 // in the language the app shows.
 func GitAgentSendFailed(error string) string { return In(i18n.Locale()).GitAgentSendFailed(error) }
 
-// GitAgentSendFailed says "Can't send the conflicts to the agent: {error}"
+// GitAgentSendFailed says "Couldn't send the conflicts to the agent: {error}"
 // in the language of msgs.
 func (msgs Messages) GitAgentSendFailed(error string) string {
 	return Catalog.Format(msgs.locale, "gitAgentSendFailed", map[string]any{"error": error})
@@ -8488,23 +8518,23 @@ func (msgs Messages) GitRebaseTitle(branch string, name string) string {
 	return Catalog.Format(msgs.locale, "gitRebaseTitle", map[string]any{"branch": branch, "name": name})
 }
 
-// GitRebaseDetail says "The commits of {branch} that {name} doesn't have are made again on top of {name}. If {branch} is already pushed, it t…"
+// GitRebaseDetail says "Commits on {branch} that {name} doesn't have are replayed on top of {name}. If {branch} was already pushed, it then n…"
 // in the language the app shows.
 func GitRebaseDetail(branch string, name string) string {
 	return In(i18n.Locale()).GitRebaseDetail(branch, name)
 }
 
-// GitRebaseDetail says "The commits of {branch} that {name} doesn't have are made again on top of {name}. If {branch} is already pushed, it t…"
+// GitRebaseDetail says "Commits on {branch} that {name} doesn't have are replayed on top of {name}. If {branch} was already pushed, it then n…"
 // in the language of msgs.
 func (msgs Messages) GitRebaseDetail(branch string, name string) string {
 	return Catalog.Format(msgs.locale, "gitRebaseDetail", map[string]any{"branch": branch, "name": name})
 }
 
-// GitRebaseStashDetail says "{count, plural, one {The changed file is} other {The # changed files are}} stashed first and put back when the rebase…"
+// GitRebaseStashDetail says "{count, plural, one {The changed file is} other {The # changed files are}} stashed first and restored when the rebase…"
 // in the language the app shows.
 func GitRebaseStashDetail(count int) string { return In(i18n.Locale()).GitRebaseStashDetail(count) }
 
-// GitRebaseStashDetail says "{count, plural, one {The changed file is} other {The # changed files are}} stashed first and put back when the rebase…"
+// GitRebaseStashDetail says "{count, plural, one {The changed file is} other {The # changed files are}} stashed first and restored when the rebase…"
 // in the language of msgs.
 func (msgs Messages) GitRebaseStashDetail(count int) string {
 	return Catalog.Format(msgs.locale, "gitRebaseStashDetail", map[string]any{"count": count})
@@ -8520,21 +8550,21 @@ func (msgs Messages) GitStashAndRebase() string {
 	return Catalog.Format(msgs.locale, "gitStashAndRebase", nil)
 }
 
-// GitChangeMoved says "The change moved: look at it again"
+// GitChangeMoved says "The change was updated. Review it and try again."
 // in the language the app shows.
 func GitChangeMoved() string { return In(i18n.Locale()).GitChangeMoved() }
 
-// GitChangeMoved says "The change moved: look at it again"
+// GitChangeMoved says "The change was updated. Review it and try again."
 // in the language of msgs.
 func (msgs Messages) GitChangeMoved() string {
 	return Catalog.Format(msgs.locale, "gitChangeMoved", nil)
 }
 
-// GitStageFailed says "Can't stage it: {error}"
+// GitStageFailed says "Couldn't stage: {error}"
 // in the language the app shows.
 func GitStageFailed(error string) string { return In(i18n.Locale()).GitStageFailed(error) }
 
-// GitStageFailed says "Can't stage it: {error}"
+// GitStageFailed says "Couldn't stage: {error}"
 // in the language of msgs.
 func (msgs Messages) GitStageFailed(error string) string {
 	return Catalog.Format(msgs.locale, "gitStageFailed", map[string]any{"error": error})
@@ -8580,11 +8610,11 @@ func (msgs Messages) HistoryCantRead() string {
 	return Catalog.Format(msgs.locale, "historyCantRead", nil)
 }
 
-// HistoryNoMatch says "No commit matches"
+// HistoryNoMatch says "No matching commits"
 // in the language the app shows.
 func HistoryNoMatch() string { return In(i18n.Locale()).HistoryNoMatch() }
 
-// HistoryNoMatch says "No commit matches"
+// HistoryNoMatch says "No matching commits"
 // in the language of msgs.
 func (msgs Messages) HistoryNoMatch() string {
 	return Catalog.Format(msgs.locale, "historyNoMatch", nil)
@@ -8600,21 +8630,21 @@ func (msgs Messages) HistoryNone() string {
 	return Catalog.Format(msgs.locale, "historyNone", nil)
 }
 
-// HistoryNoneDetail says "The branch's commits show here, as a graph."
+// HistoryNoneDetail says "The branch's commits show here as a graph."
 // in the language the app shows.
 func HistoryNoneDetail() string { return In(i18n.Locale()).HistoryNoneDetail() }
 
-// HistoryNoneDetail says "The branch's commits show here, as a graph."
+// HistoryNoneDetail says "The branch's commits show here as a graph."
 // in the language of msgs.
 func (msgs Messages) HistoryNoneDetail() string {
 	return Catalog.Format(msgs.locale, "historyNoneDetail", nil)
 }
 
-// HistoryMoreFound says "More commits match than show: type more."
+// HistoryMoreFound says "More commits match than are shown. Refine the filter."
 // in the language the app shows.
 func HistoryMoreFound() string { return In(i18n.Locale()).HistoryMoreFound() }
 
-// HistoryMoreFound says "More commits match than show: type more."
+// HistoryMoreFound says "More commits match than are shown. Refine the filter."
 // in the language of msgs.
 func (msgs Messages) HistoryMoreFound() string {
 	return Catalog.Format(msgs.locale, "historyMoreFound", nil)
@@ -8630,11 +8660,11 @@ func (msgs Messages) HistoryOf(name string) string {
 	return Catalog.Format(msgs.locale, "historyOf", map[string]any{"name": name})
 }
 
-// HistoryOfFile says "Show History of the File"
+// HistoryOfFile says "Show File History"
 // in the language the app shows.
 func HistoryOfFile() string { return In(i18n.Locale()).HistoryOfFile() }
 
-// HistoryOfFile says "Show History of the File"
+// HistoryOfFile says "Show File History"
 // in the language of msgs.
 func (msgs Messages) HistoryOfFile() string {
 	return Catalog.Format(msgs.locale, "historyOfFile", nil)
@@ -8680,21 +8710,21 @@ func (msgs Messages) HistoryFilter() string {
 	return Catalog.Format(msgs.locale, "historyFilter", nil)
 }
 
-// HistoryFilterTip says "Finds commits by their message, author or hash"
+// HistoryFilterTip says "Filter commits by message, author or hash"
 // in the language the app shows.
 func HistoryFilterTip() string { return In(i18n.Locale()).HistoryFilterTip() }
 
-// HistoryFilterTip says "Finds commits by their message, author or hash"
+// HistoryFilterTip says "Filter commits by message, author or hash"
 // in the language of msgs.
 func (msgs Messages) HistoryFilterTip() string {
 	return Catalog.Format(msgs.locale, "historyFilterTip", nil)
 }
 
-// HistoryFirstParent says "First Parents Only: each merge as one commit"
+// HistoryFirstParent says "First Parent Only: show each merge as one commit"
 // in the language the app shows.
 func HistoryFirstParent() string { return In(i18n.Locale()).HistoryFirstParent() }
 
-// HistoryFirstParent says "First Parents Only: each merge as one commit"
+// HistoryFirstParent says "First Parent Only: show each merge as one commit"
 // in the language of msgs.
 func (msgs Messages) HistoryFirstParent() string {
 	return Catalog.Format(msgs.locale, "historyFirstParent", nil)
@@ -8760,11 +8790,11 @@ func (msgs Messages) HistoryStashDrop() string {
 	return Catalog.Format(msgs.locale, "historyStashDrop", nil)
 }
 
-// HistoryDropTitle says "Drop the stash's entry?"
+// HistoryDropTitle says "Drop this stash entry?"
 // in the language the app shows.
 func HistoryDropTitle() string { return In(i18n.Locale()).HistoryDropTitle() }
 
-// HistoryDropTitle says "Drop the stash's entry?"
+// HistoryDropTitle says "Drop this stash entry?"
 // in the language of msgs.
 func (msgs Messages) HistoryDropTitle() string {
 	return Catalog.Format(msgs.locale, "historyDropTitle", nil)
@@ -8790,11 +8820,11 @@ func (msgs Messages) HistoryUncommitted() string {
 	return Catalog.Format(msgs.locale, "historyUncommitted", nil)
 }
 
-// HistoryShowUncommitted says "Show the changes not committed"
+// HistoryShowUncommitted says "Show uncommitted changes"
 // in the language the app shows.
 func HistoryShowUncommitted() string { return In(i18n.Locale()).HistoryShowUncommitted() }
 
-// HistoryShowUncommitted says "Show the changes not committed"
+// HistoryShowUncommitted says "Show uncommitted changes"
 // in the language of msgs.
 func (msgs Messages) HistoryShowUncommitted() string {
 	return Catalog.Format(msgs.locale, "historyShowUncommitted", nil)
@@ -8860,11 +8890,11 @@ func (msgs Messages) HistoryRevertOf(hash string) string {
 	return Catalog.Format(msgs.locale, "historyRevertOf", map[string]any{"hash": hash})
 }
 
-// HistoryReset says "Reset to Here"
+// HistoryReset says "Reset to This Commit"
 // in the language the app shows.
 func HistoryReset() string { return In(i18n.Locale()).HistoryReset() }
 
-// HistoryReset says "Reset to Here"
+// HistoryReset says "Reset to This Commit"
 // in the language of msgs.
 func (msgs Messages) HistoryReset() string {
 	return Catalog.Format(msgs.locale, "historyReset", nil)
@@ -8902,11 +8932,11 @@ func (msgs Messages) HistoryResetSoft() string {
 	return Catalog.Format(msgs.locale, "historyResetSoft", nil)
 }
 
-// HistoryResetSoftDetail says "The commits after it come back as changes, staged."
+// HistoryResetSoftDetail says "The later commits become staged changes."
 // in the language the app shows.
 func HistoryResetSoftDetail() string { return In(i18n.Locale()).HistoryResetSoftDetail() }
 
-// HistoryResetSoftDetail says "The commits after it come back as changes, staged."
+// HistoryResetSoftDetail says "The later commits become staged changes."
 // in the language of msgs.
 func (msgs Messages) HistoryResetSoftDetail() string {
 	return Catalog.Format(msgs.locale, "historyResetSoftDetail", nil)
@@ -8922,11 +8952,11 @@ func (msgs Messages) HistoryResetMixed() string {
 	return Catalog.Format(msgs.locale, "historyResetMixed", nil)
 }
 
-// HistoryResetMixedDetail says "The commits after it come back as changes, not staged."
+// HistoryResetMixedDetail says "The later commits become unstaged changes."
 // in the language the app shows.
 func HistoryResetMixedDetail() string { return In(i18n.Locale()).HistoryResetMixedDetail() }
 
-// HistoryResetMixedDetail says "The commits after it come back as changes, not staged."
+// HistoryResetMixedDetail says "The later commits become unstaged changes."
 // in the language of msgs.
 func (msgs Messages) HistoryResetMixedDetail() string {
 	return Catalog.Format(msgs.locale, "historyResetMixedDetail", nil)
@@ -8942,21 +8972,21 @@ func (msgs Messages) HistoryResetHard() string {
 	return Catalog.Format(msgs.locale, "historyResetHard", nil)
 }
 
-// HistoryResetHardDetail says "The commits after it, and every change not committed, are lost."
+// HistoryResetHardDetail says "The later commits and all uncommitted changes are lost."
 // in the language the app shows.
 func HistoryResetHardDetail() string { return In(i18n.Locale()).HistoryResetHardDetail() }
 
-// HistoryResetHardDetail says "The commits after it, and every change not committed, are lost."
+// HistoryResetHardDetail says "The later commits and all uncommitted changes are lost."
 // in the language of msgs.
 func (msgs Messages) HistoryResetHardDetail() string {
 	return Catalog.Format(msgs.locale, "historyResetHardDetail", nil)
 }
 
-// GitClearLines says "Clear the Lines Selected"
+// GitClearLines says "Clear Selected Lines"
 // in the language the app shows.
 func GitClearLines() string { return In(i18n.Locale()).GitClearLines() }
 
-// GitClearLines says "Clear the Lines Selected"
+// GitClearLines says "Clear Selected Lines"
 // in the language of msgs.
 func (msgs Messages) GitClearLines() string {
 	return Catalog.Format(msgs.locale, "gitClearLines", nil)
@@ -8972,11 +9002,11 @@ func (msgs Messages) GitStageLines(count int) string {
 	return Catalog.Format(msgs.locale, "gitStageLines", map[string]any{"count": count})
 }
 
-// GitStageLinesTip says "Stage the lines selected for the next commit"
+// GitStageLinesTip says "Stage the selected lines for the next commit"
 // in the language the app shows.
 func GitStageLinesTip() string { return In(i18n.Locale()).GitStageLinesTip() }
 
-// GitStageLinesTip says "Stage the lines selected for the next commit"
+// GitStageLinesTip says "Stage the selected lines for the next commit"
 // in the language of msgs.
 func (msgs Messages) GitStageLinesTip() string {
 	return Catalog.Format(msgs.locale, "gitStageLinesTip", nil)
@@ -8992,11 +9022,11 @@ func (msgs Messages) GitUnstageLines(count int) string {
 	return Catalog.Format(msgs.locale, "gitUnstageLines", map[string]any{"count": count})
 }
 
-// GitUnstageLinesTip says "Take the lines selected out of the next commit"
+// GitUnstageLinesTip says "Remove the selected lines from the next commit"
 // in the language the app shows.
 func GitUnstageLinesTip() string { return In(i18n.Locale()).GitUnstageLinesTip() }
 
-// GitUnstageLinesTip says "Take the lines selected out of the next commit"
+// GitUnstageLinesTip says "Remove the selected lines from the next commit"
 // in the language of msgs.
 func (msgs Messages) GitUnstageLinesTip() string {
 	return Catalog.Format(msgs.locale, "gitUnstageLinesTip", nil)
@@ -9012,11 +9042,11 @@ func (msgs Messages) GitDiscardLines(count int) string {
 	return Catalog.Format(msgs.locale, "gitDiscardLines", map[string]any{"count": count})
 }
 
-// GitDiscardLinesTip says "Put the lines selected back as they are staged"
+// GitDiscardLinesTip says "Discard the changes to the selected lines"
 // in the language the app shows.
 func GitDiscardLinesTip() string { return In(i18n.Locale()).GitDiscardLinesTip() }
 
-// GitDiscardLinesTip says "Put the lines selected back as they are staged"
+// GitDiscardLinesTip says "Discard the changes to the selected lines"
 // in the language of msgs.
 func (msgs Messages) GitDiscardLinesTip() string {
 	return Catalog.Format(msgs.locale, "gitDiscardLinesTip", nil)
