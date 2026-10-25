@@ -7,7 +7,8 @@ ending all sessions from the app icon's menu, the Explorer and split-menu
 layout and its settings, theme previews, the theme editor and the files'
 own theme) as commits
 on top of upstream's `main`, and is built and
-installed on Windows only.
+installed on Windows only. It releases its Windows build itself, which
+its installs update to.
 
 ## Remotes and branches
 
@@ -58,7 +59,55 @@ installed on Windows only.
    git push origin backup/pre-rebase-X.Y.Z
    ```
 
-6. Build and install it (below).
+6. Release it (below).
+
+## Releasing the fork
+
+A fork release is a tag `vX.Y.Z-fork.N`: X.Y.Z is `mygo.json`'s version,
+upstream's, and N counts the fork's releases of it from 1. Pushing the tag
+runs the Fork release workflow (`.github/workflows/fork-release.yml`),
+which tests, builds the Windows app (`windows/amd64`) and publishes it as
+the fork's latest release. Installed fork builds find it there: in the
+runner, the workflow sets `mygo.json`'s version to the tag's, its
+`updates` to the fork's repository and key, and its release notes to
+`FORK-CHANGELOG.md`, so none of that is in the repository's `mygo.json`.
+
+1. Add the version's section to the top of `FORK-CHANGELOG.md`, as
+   `## 2.1.18-fork.2`: what the fork changed since its last release, and
+   the upstream version, when it's new. The build stops without it.
+2. Commit it, tag, and push:
+
+   ```sh
+   git commit -am "Release 2.1.18-fork.2"
+   git tag v2.1.18-fork.2
+   git push --force-with-lease origin main
+   git push origin v2.1.18-fork.2
+   ```
+
+3. Watch it:
+
+   ```sh
+   gh run list --repo FallDownTheSystem/kero --workflow fork-release.yml --limit 1
+   gh run watch <run id> --repo FallDownTheSystem/kero --exit-status
+   ```
+
+The `-fork.N` versions keep the fork's releases apart from upstream's,
+which installs of the fork never update to. They are newer than one
+another, and than the last upstream version's (2.1.19-fork.1 after
+2.1.18-fork.3), but older than that version itself: a build made from
+`mygo.json` alone, as `2.1.18`, takes no update to `2.1.18-fork.N`, so
+install the release by hand once. Hosts (Settings › Hosts) aren't updated
+from a fork build (`build.Fork`), as egoist/kero's server builds have no
+`-fork` version: update them with `kero hosts install`.
+
+The fork signs its updates with its own key, as `mygo keygen` made it: the
+public key is in the workflow, the secret is the repository's
+`MYGO_UPDATER_PRIVATE_KEY`, and a copy is kept outside the repository.
+Without that key, installed fork builds take no update again.
+
+Upstream's Release workflow is disabled in the fork
+(`gh workflow disable release.yml`), as the fork's `v*` tags would start
+it, and it builds for macOS with upstream's certificates.
 
 ## Where conflicts come from
 
@@ -92,7 +141,10 @@ endings only (`git diff` shows nothing): `git checkout -- locales/catalog_gen.go
   ignore; an app that calls one on an older kerod falls back, as
   `replaceFile` opens a new pane.
 
-## Building and installing
+## Building and installing by hand
+
+A release's installer is `Kero Setup X.Y.Z-fork.N amd64.exe` on its
+release page. To build one here instead:
 
 ```sh
 go tool mygo build -platform windows/amd64
@@ -101,8 +153,9 @@ go tool mygo build -platform windows/amd64
 leaves `build/windows-amd64/Kero Setup X.Y.Z amd64.exe`. Before running it:
 
 - Turn off **Download and install updates automatically** in Settings ›
-  General. The fork's build checks egoist's releases for updates, and with
-  this on, the next official release replaces the fork's build.
+  General. A build made here, from the repository's `mygo.json`, checks
+  egoist's releases for updates, and with this on, the next official
+  release replaces it. An install of a fork release checks the fork's.
 - Stop kerod, which keeps running after the app quits and holds `Kero.exe`:
   quit with **End All Sessions and Quit** (the tray icon's menu, or the Kero
   menu), or run `kero daemon stop`. Both end the sessions.
