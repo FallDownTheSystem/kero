@@ -56,8 +56,13 @@ func (a *App) paneEditor(c *ui.Context, pal *palette, s *proto.Session, p *proto
 		c.After(5 * time.Second)
 	}
 	ref := a.paneRef(p.ID)
-	a.fileBody(c, pal, p.ID, f, ref)
-	a.editorBar(c, pal, s, p, f)
+	if pm := a.mergeOf(s, p, f); pm != nil && pm.m != nil && !pm.text {
+		a.mergeBody(c, pal, p.ID, f, pm, ref)
+		a.mergeBar(c, pal, s, p, f, pm)
+	} else {
+		a.fileBody(c, pal, p.ID, f, ref)
+		a.editorBar(c, pal, s, p, f, pm)
+	}
 	if a.focusOf(s) == p.ID || ref.Focused(c) {
 		// The pane a file opened in a pane replaces the file of, as the
 		// user chooses (openInPane).
@@ -74,11 +79,15 @@ func (a *App) paneEditor(c *ui.Context, pal *palette, s *proto.Session, p *proto
 // editorBar is an editor pane's bar below its file, as the Files view's
 // tree has one: what the file is, then its actions; and while it is a new
 // file, not yet saved or typed in, of this machine, one that opens a file
-// of it there instead, which the system's dialog chooses.
-func (a *App) editorBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, f *openFile) {
+// of it there instead, which the system's dialog chooses. pm, when not nil,
+// is the merge editor of a file in conflict shown as text.
+func (a *App) editorBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, f *openFile, pm *paneMerge) {
 	bottomBar(c, "bar", pal).Padding(0, 6, 0, 12).Children(func() {
 		a.fileStatus(c, pal, f)
 		ui.Spacer(c)
+		if pm != nil && pm.m != nil {
+			a.mergeTextBar(c, pal, pm)
+		}
 		if f.absent && f.st != nil && !f.modified() && !a.hostOf(p.ID).remote() {
 			sid, pid := s.ID, p.ID
 			iconButton(c, "open-file", folderIcon, locales.FilesOpenFile(), pal, func() {

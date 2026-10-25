@@ -32,6 +32,7 @@ type (
 	//	cherryPick, revert, checkout   Rev
 	//	merge               Rev, Mode: "" or no-ff
 	//	rebase              Rev, what to rebase onto, Autostash
+	//	rebaseInteractive   Rev, Steps, Backup (a branch to make at HEAD first, or ""), Autostash
 	//	resolve             Path, Mode: ours or theirs
 	//	reset               Rev, Mode: soft, mixed or hard
 	//	switch              Name, Remote, Rev (the commit it is to be at, or "")
@@ -72,6 +73,9 @@ type (
 		Force    bool   `json:"force,omitempty"`
 
 		Autostash bool `json:"autostash,omitempty"`
+		// Steps and Backup are an interactive rebase's.
+		Steps  []GitRebaseStep `json:"steps,omitempty"`
+		Backup string          `json:"backup,omitempty"`
 
 		IncludeUntracked bool   `json:"includeUntracked,omitempty"`
 		Staged           bool   `json:"staged,omitempty"`
@@ -82,6 +86,22 @@ type (
 		Prune bool `json:"prune,omitempty"`
 		Tags  bool `json:"tags,omitempty"`
 	}
+	// GitRebaseStep is a commit of an interactive rebase: Action pick,
+	// reword (with Message), edit, squash, fixup or drop.
+	GitRebaseStep struct {
+		Action  string `json:"action"`
+		Hash    string `json:"hash"`
+		Message string `json:"message,omitempty"`
+	}
+	// GitRebasePlan is what an interactive rebase onto a commit replays:
+	// HEAD's branch's commits since it, the oldest first (git.rebasePlan,
+	// of GitShowParams' Rev).
+	GitRebasePlan struct {
+		Branch  string      `json:"branch,omitempty"` // "" when detached
+		Onto    GitCommit   `json:"onto"`
+		Commits []GitCommit `json:"commits"`
+	}
+
 	// GitOpResult is how an operation went: Error, the line of git's that
 	// says what went wrong, "" when it went through; Output all git and the
 	// hooks printed. Command is the command of one that reaches a remote,

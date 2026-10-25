@@ -158,7 +158,7 @@ const (
 func (d *Daemon) gitOp(p proto.GitOpParams) (proto.GitOpResult, error) {
 	timeout := gitOpTimeout
 	switch p.Op {
-	case "commit", "fetch", "pull", "push", "continue", "cherryPick", "revert", "merge", "rebase":
+	case "commit", "fetch", "pull", "push", "continue", "cherryPick", "revert", "merge", "rebase", "rebaseInteractive":
 		timeout = gitLongTimeout
 	}
 	ctx, progress, done := follow(p.ID, timeout)
@@ -237,6 +237,12 @@ func (d *Daemon) runOp(ctx context.Context, r git.Repo, p proto.GitOpParams, cmd
 		return r.Merge(ctx, p.Rev, p.Mode == "no-ff")
 	case "rebase":
 		return r.Rebase(ctx, p.Rev, p.Autostash)
+	case "rebaseInteractive":
+		steps := make([]git.RebaseStep, len(p.Steps))
+		for i, s := range p.Steps {
+			steps[i] = git.RebaseStep{Action: s.Action, Hash: s.Hash, Message: s.Message}
+		}
+		return r.RebaseInteractive(ctx, p.Rev, steps, p.Backup, p.Autostash)
 	case "resolve":
 		return "", r.ResolveSide(ctx, p.Path, p.Mode)
 	case "reset":
@@ -446,6 +452,37 @@ func (d *Daemon) gitShow(p proto.GitShowParams) (proto.GitCommitInfo, error) {
 	return res, nil
 }
 
+// gitRebasePlan returns what an interactive rebase of a pane's worktree's
+// HEAD onto a commit replays.
+func (d *Daemon) gitRebasePlan(p proto.GitShowParams) (proto.GitRebasePlan, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	if err != nil {
+		return proto.GitRebasePlan{}, err
+	}
+	list, err := r.RebasePlan(ctx, p.Rev)
+	if err != nil {
+		return proto.GitRebasePlan{}, err
+	}
+	onto, err := r.Log(ctx, git.LogOptions{Revs: []string{p.Rev}, Max: 1})
+	if err != nil || len(onto) == 0 {
+		return proto.GitRebasePlan{}, fmt.Errorf("no commit %s", p.Rev)
+	}
+	st, err := r.Status(ctx)
+	if err != nil {
+		return proto.GitRebasePlan{}, err
+	}
+	commit := func(c git.Commit) proto.GitCommit {
+		return proto.GitCommit{Hash: c.Hash, Parents: c.Parents, Author: c.Author, Email: c.Email, Time: c.Time, Refs: c.Refs, Subject: c.Subject}
+	}
+	res := proto.GitRebasePlan{Branch: st.Branch, Onto: commit(onto[0]), Commits: make([]proto.GitCommit, 0, len(list))}
+	for _, c := range list {
+		res.Commits = append(res.Commits, commit(c))
+	}
+	return res, nil
+}
+
 // gitMessage has a commit message written of what a pane's worktree has
 // staged.
 func (d *Daemon) gitMessage(p proto.GitMessageParams) (proto.GitMessage, error) {
@@ -466,7 +503,7 @@ func (d *Daemon) gitMessage(p proto.GitMessageParams) (proto.GitMessage, error) 
 	if as != nil {
 		agent = &commitmsg.Agent{Name: as.Agent, ID: as.ID}
 	}
-	argv, forked, err := commitmsg.Command(p.Command, agent)
+	argv, forked, err := commitmsg.Command(p.Command, agent, userShell())
 	if err != nil {
 		return proto.GitMessage{}, err
 	}

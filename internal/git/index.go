@@ -20,6 +20,10 @@ const (
 	SideIndex = ":index"
 	SideWork  = ":work"
 	SideNone  = ":none"
+	// SideOursStage and SideTheirsStage are the index's versions of a file
+	// in conflict, git's stages 2 and 3, read as revisions are (":2:path").
+	SideOursStage   = ":2"
+	SideTheirsStage = ":3"
 )
 
 // Index returns the files staged and those not: untracked ones among

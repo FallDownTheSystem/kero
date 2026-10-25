@@ -44,12 +44,31 @@ func Prompt(forked bool, recent, stat, patch string) string {
 	return b.String()
 }
 
+// SessionPlaceholder is what the user's command has for the id of the
+// pane's agent's conversation, to fork it as the agent's own command does,
+// as "cc -p --resume {session} --fork-session".
+const SessionPlaceholder = "{session}"
+
 // Command returns the command that writes the message: the user's when
-// set, else a fork of agent's conversation, else a new run of an agent
-// that is installed. forked tells it is a fork.
-func Command(user string, agent *Agent) (argv []string, forked bool, err error) {
+// set, run in sh as typed at its prompt; else a fork of agent's
+// conversation, else a new run of an agent that is installed. forked
+// tells it is a fork: the user's too, when it has the conversation's id,
+// which it then runs without when the pane has no agent's.
+func Command(user string, agent *Agent, sh string) (argv []string, forked bool, err error) {
+	if strings.Contains(user, SessionPlaceholder) {
+		if agent == nil || !validID.MatchString(agent.ID) {
+			user = ""
+		} else {
+			user, forked = strings.ReplaceAll(user, SessionPlaceholder, agent.ID), true
+		}
+	}
 	if words := Words(user); len(words) > 0 {
-		return words, false, nil
+		// Codex's is run as it is, for Write to give it the file its
+		// message goes to.
+		if isCodex(words[0]) {
+			return words, forked, nil
+		}
+		return inShell(sh, user), forked, nil
 	}
 	settings, err := noHooks()
 	if err != nil {
@@ -80,6 +99,31 @@ func Command(user string, agent *Agent) (argv []string, forked bool, err error) 
 	return nil, false, ErrNoWriter
 }
 
+func isCodex(program string) bool {
+	base := filepath.Base(program)
+	return base == "codex" || strings.HasPrefix(base, "codex.")
+}
+
+// inShell is the argv that runs line in the shell sh as the user types it
+// at its prompt, its profile read, so that what the profile defines runs
+// too, as a function of PowerShell's profile does. A shell it doesn't
+// know runs line's words as a program.
+func inShell(sh, line string) []string {
+	name := strings.ToLower(strings.TrimSuffix(filepath.Base(sh), filepath.Ext(sh)))
+	switch name {
+	case "pwsh", "powershell":
+		return []string{sh, "-NoLogo", "-NonInteractive", "-Command", line}
+	case "cmd":
+		return []string{sh, "/C", line}
+	case "fish":
+		return []string{sh, "-l", "-c", line}
+	case "sh", "bash", "zsh", "dash", "ksh", "mksh", "yash":
+		// Interactive, for the functions and aliases of its rc file.
+		return []string{sh, "-l", "-i", "-c", line}
+	}
+	return Words(line)
+}
+
 // noHooks returns a file of Claude Code's settings that turns its hooks
 // off, kero's own among them, which would take the fork for the pane's
 // agent. A file, not the JSON as an argument, whose quotes a launcher
@@ -106,7 +150,7 @@ func Write(ctx context.Context, dir string, argv []string, prompt string) (strin
 	// Codex prints its progress besides the message: the last message,
 	// written to a file, is the message alone.
 	var last string
-	if filepath.Base(argv[0]) == "codex" || strings.HasPrefix(filepath.Base(argv[0]), "codex.") {
+	if isCodex(argv[0]) {
 		f, err := os.CreateTemp("", "kero-message-*.txt")
 		if err != nil {
 			return "", err

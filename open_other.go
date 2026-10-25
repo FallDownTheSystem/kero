@@ -11,8 +11,6 @@ func hideConsole(*exec.Cmd) {}
 
 func allowForeground() {}
 
-func padMenus() {}
-
 // folderEditor is the program to open a folder in when no editor is set:
 // none, as the system has no app for text files to ask of here.
 func folderEditor() string { return "" }
