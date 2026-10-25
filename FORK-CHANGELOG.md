@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.20-fork.4
+
+- Pushing a branch made from another's remote branch, as from
+  `origin/main`, pushes it to a branch of its own name, which it then
+  tracks, never over that branch
+
 ## 2.1.20-fork.3
 
 - A **Menus** button (⋯) beside Settings in the sidebar has the menu
