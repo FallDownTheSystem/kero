@@ -453,7 +453,10 @@ func confirmDialog(c *ui.Context, pal *palette, pending **confirmation) bool {
 	if cf.open {
 		return false
 	}
-	*pending = nil
+	// An answer may ask another question, which stays.
+	if *pending == cf {
+		*pending = nil
+	}
 	return true
 }
 

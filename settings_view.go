@@ -66,6 +66,8 @@ type settingsState struct {
 	shellEditing bool
 	editorDraft  string
 	editorEdit   bool
+	messageDraft string
+	messageEdit  bool
 	loginOpen    bool // open at login, as the system says
 	updates      updatePrefs
 	cliPath      string
@@ -560,6 +562,18 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetDiffLayout(), locales.SetDiffLayoutDetail(), func() {
 			segmented(c, "diff-layout", &s.DiffLayout, []string{"auto", "unified", "split"},
 				[]string{locales.SetDiffAuto(), locales.ChangesUnified(), locales.ChangesSplit()})
+		})
+		settingRow(c, pal, locales.SetCommitMessage(), locales.SetCommitMessageDetail(), func() {
+			if !a.ss.messageEdit {
+				a.ss.messageDraft = s.CommitMessageCommand
+			}
+			in := textField(c, "commit-message", &a.ss.messageDraft, locales.SetCommitMessageAgent(), 220, pal).Font("monospace")
+			a.ss.messageEdit = in.Focused()
+			// Kept as it is submitted, or as the field loses the focus.
+			in.OnSubmit(func() { a.set.CommitMessageCommand = strings.TrimSpace(a.ss.messageDraft) })
+			if !a.ss.messageEdit && strings.TrimSpace(a.ss.messageDraft) != s.CommitMessageCommand {
+				a.set.CommitMessageCommand = strings.TrimSpace(a.ss.messageDraft)
+			}
 		})
 	})
 	settingsGroup(c, pal, locales.SetFiles(), "", func() {

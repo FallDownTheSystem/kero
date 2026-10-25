@@ -403,17 +403,27 @@ func TestEditorNewFile(t *testing.T) {
 }
 
 // In a narrow panel, the header's tabs show their icons alone, and leave
-// the window's controls their room.
+// the window's controls their room: the shown one keeps its label longest.
 func TestSideHeaderNarrow(t *testing.T) {
 	a := testApp(t)
 	a.prefs.Side = sideFiles
 	a.prefs.SideWidth = minSide
 	tt := ui.NewTester(a.view, 1280, 720)
 	tt.Frame()
-	if r, ok := tt.Find("Changes"); !ok || r.W > 36 {
-		t.Errorf("a narrow panel's Changes tab is %v wide", r.W)
+	for _, tab := range []string{"Changes", "Files"} {
+		if r, ok := tt.Find(tab); !ok || r.W > 36 {
+			t.Errorf("a narrow panel's %s tab is %v wide", tab, r.W)
+		}
 	}
 	a.prefs.SideWidth = defaultSide
+	tt.Frame()
+	if r, ok := tt.Find("Changes"); !ok || r.W > 36 {
+		t.Errorf("the default panel's Changes tab is %v wide", r.W)
+	}
+	if r, ok := tt.Find("Files"); !ok || r.W < 50 {
+		t.Errorf("the default panel's shown Files tab is %v wide", r.W)
+	}
+	a.prefs.SideWidth = compactSide
 	tt.Frame()
 	if r, ok := tt.Find("Changes"); !ok || r.W < 60 {
 		t.Errorf("a wide panel's Changes tab is %v wide", r.W)

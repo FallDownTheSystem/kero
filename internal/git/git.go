@@ -1,9 +1,10 @@
 // Package git reads what kero shows of git: a worktree's branch and
 // changes, trees of its working tree as it was (snapshots), and its files
-// changed since one. It runs the user's git, and writes nothing to a
-// repository's index or working tree: snapshots go through an index of
-// their own, and every command takes --no-optional-locks, so that an agent
-// committing never finds kero holding index.lock.
+// changed since one. It runs the user's git, and on its own writes nothing
+// to a repository's index or working tree: snapshots go through an index
+// of their own, and every command takes --no-optional-locks, so that an
+// agent committing never finds kero holding index.lock. What it writes at
+// the user's word, as a commit, is in ops.go.
 package git
 
 import (
@@ -114,6 +115,8 @@ type Status struct {
 	Files   int
 	Added   int
 	Removed int
+	// Staged counts the files of the index's changes since HEAD.
+	Staged int
 	// State is an operation in progress: "merge", "rebase",
 	// "cherry-pick" or "revert".
 	State string
@@ -151,10 +154,18 @@ func (r Repo) Status(ctx context.Context) (Status, error) {
 					st.Behind = v
 				}
 			}
-		case f[0] == '1' || f[0] == 'u':
+		case f[0] == 'u':
 			st.Files++
+		case f[0] == '1':
+			st.Files++
+			if len(f) > 2 && f[2] != '.' {
+				st.Staged++
+			}
 		case f[0] == '2':
 			st.Files++
+			if len(f) > 2 && f[2] != '.' {
+				st.Staged++
+			}
 			i++ // the path it was renamed from
 		case f[0] == '?':
 			st.Files++

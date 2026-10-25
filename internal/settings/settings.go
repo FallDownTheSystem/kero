@@ -94,6 +94,10 @@ type Settings struct {
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
 	DiffLayout string `json:"diffLayout"` // the changes panel's diffs: "auto", "unified" or "split"
+	// CommitMessageCommand writes a commit message of what is staged,
+	// given the prompt on its stdin; "" for a fork of the conversation of
+	// the agent in the pane, else a new run of Claude Code's or Codex's.
+	CommitMessageCommand string `json:"commitMessageCommand"`
 	// WorktreeBase is what a session's own worktree branches from:
 	// "default", the repository's default branch, or "current", the
 	// branch of the session the user is in. WorktreeDir is where its

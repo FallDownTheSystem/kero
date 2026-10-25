@@ -5,7 +5,8 @@ This repository is FallDownTheSystem/kero, a fork of
 its own (the Files view, editor panes, the Files toolbar and CLI additions,
 ending all sessions from the app icon's menu, the Explorer and split-menu
 layout and its settings, theme previews, the theme editor and the files'
-own theme) as commits
+own theme, and git in the Explorer: staging and committing, branches,
+syncing, stashes, merges and conflicts, and the History tab) as commits
 on top of upstream's `main`, and is built and
 installed on Windows only. It releases its Windows build itself, which
 its installs update to.

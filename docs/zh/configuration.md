@@ -133,6 +133,7 @@ kero config check             # 报告未知的配置项和无效的值
 | `diff-layout` | `auto`  | 改动面板中的 diff 布局：`unified`、`split`（左右对照）或 `auto`（面板够宽时左右对照）             |
 | `worktree-base` | `default` | [会话专属工作树](./changes.md#sessions-in-their-own-worktree)的起点：`default` 为仓库的默认分支，`current` 为你所在会话的分支 |
 | `worktree-dir` |        | 会话专属工作树的存放位置，各自放在仓库名之下；留空则放在仓库内的 `.kero/worktrees` |
+| `commit-message-command` |  | 为已暂存的改动[撰写提交信息](./changes.md#committing)的命令，提示通过标准输入传入，如 `llm -m gpt-5`；留空则分叉窗格中智能体的对话，没有对话时新运行 Claude Code 或 Codex |
 
 ## 文件
 
