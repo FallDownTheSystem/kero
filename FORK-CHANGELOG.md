@@ -5,6 +5,28 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.20-fork.1
+
+The fork on Kero 2.1.20, with its quick terminal, and on a fork of MyGo of
+its own:
+
+- Conflicted files open in a **merge editor**: theirs and yours beside the
+  result, each conflict's side to take, Previous and Next, and **Save and
+  Mark Resolved** once none is left
+- **Interactively rebase** your branch onto another from its menu: pick,
+  reword, edit, squash, fixup or drop each commit, drag or Alt+↑/↓ to
+  reorder them, see each one's changes, and keep a backup branch
+- Git actions and their confirmations keep the focus in the Explorer, not
+  the terminal
+- Select a diff's lines by dragging, across both sides; the lines deleted
+  show as selected too
+- `commit-message-command` runs in your shell, as your own commands and
+  functions do, and `{session}` in it is the pane's agent's conversation
+- Copied files, as from ShareX, paste into a terminal as their paths
+- Context menus as wide as their items, and the History tab's scope toggle
+  fixed
+- The window opens on the screen it was on last
+
 ## 2.1.19-fork.4
 
 Git in the Explorer:
