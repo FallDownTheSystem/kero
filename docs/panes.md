@@ -45,7 +45,7 @@ Run inside Kero, `kero split` splits the pane it runs in. Elsewhere, name a targ
 
 An editor pane shows a file beside your terminals, highlighted as its language is, to read and edit: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, only as it was when it was read, as in the [Files view](./changes.md#files). It splits, zooms, moves and closes like any pane, and comes back on the same file when Kero restarts. Closing it with edits not saved asks first.
 
-Open one from the Files view: right-click a file and choose **Open in Pane**, or click the split button above a file. From a shell, or an agent:
+Open one from the Files view: right-click a file and choose **Open in Pane**, or click the split button above a file. Or drag a file onto a pane: dropped near an edge, it opens beside the pane on that side; dropped in the middle of an editor pane, it takes the place of its file, unless that one has unsaved edits. From a shell, or an agent:
 
 ```sh
 kero split --file src/main.go
@@ -54,7 +54,7 @@ kero new --file src/main.go     # in a session of its own
 
 A file that isn't there yet opens empty, marked new, in a folder that is: saving it makes it.
 
-Right-click a pane's split button, right or down, and choose **New File** for an empty `untitled.txt` in the pane's folder. Until you type in it, its bar's **Open File…** opens a file of your choice in its place. With `files-pane = replace`, a file opened in a pane takes the place of the one in the editor pane you were in last, unless that one has unsaved edits.
+Right-click a pane's split button, right or down, and choose **New File** for an empty `untitled.txt` in the pane's folder. Until you type in it, its bar's **Open File…** opens a file of your choice in its place. With `files-pane = replace`, a file opened in a pane takes the place of the one in the editor pane you were in last, unless that one has unsaved edits; a file's **Open in New Pane** still opens it in a pane of its own.
 
 The bar below the file says whether it's new or unsaved, and has its buttons: save, wrap long lines, and open it in your editor.
 

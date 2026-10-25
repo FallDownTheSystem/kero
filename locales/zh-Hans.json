@@ -516,6 +516,8 @@
   "filesCollapse": "全部折叠",
   "filesRefresh": "刷新",
   "filesOpenInPane": "在窗格中打开",
+  "filesOpenInNewPane": "在新窗格中打开",
+  "filesOpenHere": "在此打开",
   "filesWrap": "自动换行",
   "filesConfirmCloseTitle": "不保存就关闭？",
   "filesConfirmCloseDetail": "你对 {file} 的编辑尚未保存，会随窗格一起丢失。",
