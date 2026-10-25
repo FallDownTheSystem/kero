@@ -435,7 +435,7 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		a.sideMessage(c, pal, locales.FilesEmpty(), "")
 		return
 	}
-	clicked := ""
+	clicked, submitted := "", ""
 	tree := ui.Outline(c.Key("outline"), &t.outline, d.paths, t.children, func(path string) {
 		dir := t.isDir[path]
 		svg := docIcon
@@ -443,12 +443,30 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 			svg = folderIcon
 		}
 		row := ui.Row(c).Grow(1).MinWidth(0).Gap(7).AlignItems(ui.Center)
+		// The row takes the room of the list row's padding (an Outline's,
+		// Space(1) and Space(2)), but at the arrow's side, so that the
+		// whole row that shows hovered takes the right-click and the drag.
+		th := c.Theme()
+		py, pr := th.Space(1), th.Space(2)
+		row.Margin(-py, -pr, -py, 0).Padding(py, pr, py, 0)
 		row.ContextMenu(func(m *ui.Menu) { a.fileMenu(c, m, t, path, dir) })
-		// The list tells no click on a row, only a new choice, which a
-		// click on the folder chosen does not make: a folder's row takes the
-		// click itself, to open on it.
-		if dir && row.Clicked() && row.ClickModifiers() == 0 {
+		// A file drags onto a pane, to open there (paneCard).
+		if !dir {
+			row.Drag(fileDrag{t.pane, path})
+			if row.Dragging() {
+				// Where the file was, as it moves with the pointer.
+				row.Opacity(0.4)
+			}
+		}
+		// The row takes its clicks itself, rather than the list: a file's,
+		// as the press goes to what drags; a folder's, as the list tells no
+		// click on a row, only a new choice, which a click on the folder
+		// chosen does not make, and the folder opens on it.
+		if row.Clicked() && row.ClickModifiers() == 0 {
 			clicked = path
+		}
+		if !dir && row.DoubleClicked() {
+			submitted = path
 		}
 		row.Children(func() {
 			ui.Icon(c, svg).Size(14, 14).Shrink(0).Opacity(0.7)
@@ -468,12 +486,21 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 				t.chosen = i
 			}
 		}
-		if t.outline.Open.Has(clicked) {
+		switch {
+		case !t.isDir[clicked]:
+			// As a new choice in the list does (below).
+			if a.set.FilePreview {
+				a.openFile(t, clicked)
+			}
+		case t.outline.Open.Has(clicked):
 			t.outline.Open.Remove(clicked)
-		} else {
+		default:
 			t.outline.Open.Add(clicked)
 		}
 		tree.Focus()
+	}
+	if submitted != "" {
+		a.openChosen(t, submitted)
 	}
 	// The file chosen opens below, unless the user previews files from
 	// their menu only (settings' FilePreview).
@@ -530,6 +557,11 @@ func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir 
 		}
 		if padItem(m, locales.FilesOpenInPane()).Chosen() {
 			a.openInPane(t.pane, path)
+		}
+		// Open in Pane takes the place of a file pane's file then
+		// (openInPane), so a pane of its own is asked for.
+		if a.set.FilePane == "replace" && padItem(m, locales.FilesOpenInNewPane()).Chosen() {
+			a.openInNewPane(t.pane, path)
 		}
 	}
 	if !a.hostOf(t.pane).remote() {
@@ -591,7 +623,16 @@ func (a *App) openInPane(pane, path string) {
 		a.replaceFile(s.ID, ep.ID, path)
 		return
 	}
-	a.split(s, proto.CreateParams{Split: a.focusOf(s), Direction: "right", File: path})
+	a.openInNewPane(pane, path)
+}
+
+// openInNewPane opens a file of a pane's host in an editor pane of its
+// own, beside the pane the user is in, whatever the user chose for
+// openInPane.
+func (a *App) openInNewPane(pane, path string) {
+	if s := a.sessionOfPane(pane); s != nil {
+		a.split(s, proto.CreateParams{Split: a.focusOf(s), Direction: "right", File: path})
+	}
 }
 
 // lastEditor returns the editor pane of a session the user was in last,

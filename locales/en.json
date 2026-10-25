@@ -678,6 +678,8 @@
   "filesCollapse": "Collapse All",
   "filesRefresh": "Refresh",
   "filesOpenInPane": "Open in Pane",
+  "filesOpenInNewPane": "Open in New Pane",
+  "filesOpenHere": "Open Here",
   "filesWrap": "Wrap Lines",
   "filesConfirmCloseTitle": "Close without saving?",
   "filesConfirmCloseDetail": "Your edits to {file} aren't saved, and go with the pane.",
