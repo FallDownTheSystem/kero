@@ -9,10 +9,65 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"kero/internal/client"
 	"kero/internal/proto"
 )
+
+// Split Right creates a session when there is no pane to split, and
+// splits the selected session otherwise.
+func TestSplitRightWithoutSessionStartsOne(t *testing.T) {
+	a := testApp(t)
+	a.st.Sessions, a.selected = nil, ""
+	a.local().conn = connReady
+	calls := make(chan string, 2)
+	cl, stop := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "create":
+			var p proto.CreateParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			calls <- method
+			return proto.Session{ID: "s2", Project: p.Project}, nil
+		case "split":
+			var p proto.CreateParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			calls <- method
+			return proto.Session{ID: "s1"}, nil
+		default:
+			return nil, errors.New("unexpected method " + method)
+		}
+	})
+	a.local().cl = cl
+	defer stop()
+
+	a.run("pane.split.right", nil)
+	select {
+	case got := <-calls:
+		if got != "create" {
+			t.Fatalf("Split Right called %q with no session, want create", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Split Right did not create a session")
+	}
+
+	a.st.Sessions = []proto.Session{{ID: "s1"}}
+	a.selected = "s1"
+	a.focus["s1"] = "a"
+	a.run("pane.split.right", nil)
+	select {
+	case got := <-calls:
+		if got != "split" {
+			t.Fatalf("Split Right called %q with a session, want split", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Split Right did not split the session")
+	}
+}
 
 // projectClient speaks the real control protocol without starting the user's daemon.
 func projectClient(t *testing.T, handle func(string, json.RawMessage) (any, error)) (*client.Client, func()) {
