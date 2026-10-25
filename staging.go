@@ -59,7 +59,7 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 		}
 		iconButton(c, "discard-all", revertIcon, locales.GitDiscardAll(), pal, func() {
 			a.keepSideFocus()
-			a.discard(id, root, list, locales.GitDiscardAllTitle(), locales.GitDiscardAllDetail(len(list)))
+			a.discard(id, root, list, locales.GitDiscardAllTitle(), locales.GitDiscardAllDetail(len(list)), locales.GitDiscardAll())
 		})
 		iconButton(c, "stage-all", plusIcon, locales.GitStageAll(), pal, func() {
 			// Staging a conflict marks it resolved, its markers and all: with
@@ -151,16 +151,16 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			a.runGit(id, root, proto.GitOpParams{Op: "stage", Paths: paths}, locales.GitStage(), nil)
 		})
 	default:
-		title, detail := locales.GitDiscardTitle(name), locales.GitDiscardDetail()
+		title, detail, action := locales.GitDiscardTitle(name), locales.GitDiscardDetail(), locales.GitDiscardChanges()
 		switch f.Status {
 		case "untracked":
-			title, detail = locales.GitDeleteTitle(name), locales.GitDeleteDetail()
+			title, detail, action = locales.GitDeleteTitle(name), locales.GitDeleteDetail(), locales.GitDeleteFile()
 		case "deleted":
-			title, detail = locales.GitRestoreTitle(name), locales.GitRestoreDetail()
+			title, detail, action = locales.GitRestoreTitle(name), locales.GitRestoreDetail(), locales.GitRestoreFile()
 		}
 		iconButton(c, "discard", revertIcon, locales.GitDiscard(), pal, func() {
 			a.keepSideFocus()
-			a.discard(id, root, []proto.GitFile{f}, title, detail)
+			a.discard(id, root, []proto.GitFile{f}, title, detail, action)
 		})
 		iconButton(c, "stage", plusIcon, locales.GitStage(), pal, func() {
 			a.moveFiles(pane, section, []proto.GitFile{f})
@@ -171,8 +171,9 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 
 // discard drops the changes of files not staged once the user says so,
 // and as the agents in the worktree allow: tracked files go back to the
-// index's, untracked ones go.
-func (a *App) discard(pane, root string, files []proto.GitFile, title, detail string) {
+// index's, untracked ones go. action is the confirming button's label,
+// which says what happens to the files.
+func (a *App) discard(pane, root string, files []proto.GitFile, title, detail, action string) {
 	var p proto.GitOpParams
 	p.Op = "discard"
 	for _, f := range files {
@@ -187,7 +188,7 @@ func (a *App) discard(pane, root string, files []proto.GitFile, title, detail st
 	if len(p.Paths) == 0 && len(p.Untracked) == 0 {
 		return
 	}
-	a.confirm = &confirmation{open: true, title: title, detail: detail, action: locales.GitDiscard(), destroy: true, run: func() {
+	a.confirm = &confirmation{open: true, title: title, detail: detail, action: action, destroy: true, run: func() {
 		a.keepSideFocus()
 		a.guarded(pane, root, locales.GitDiscard(), func() { a.runGit(pane, root, p, locales.GitDiscard(), nil) })
 	}}
