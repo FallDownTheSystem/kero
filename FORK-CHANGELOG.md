@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.19-fork.1
+
+The fork on Kero 2.1.19, with its sessions in worktrees, the agents'
+conversations to resume, folders dropped onto the sidebar to open them,
+and the sidebar's empty space to move the window, also at the window's
+right.
+
 ## 2.1.18-fork.1
 
 The first release of the fork from its own feed, on Kero 2.1.18:
