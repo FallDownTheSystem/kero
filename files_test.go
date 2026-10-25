@@ -283,6 +283,74 @@ func TestFilesNew(t *testing.T) {
 	}
 }
 
+// The toolbar's filter shows what kerod finds in all of the folder, in the
+// folders it is in; Down goes to the first file found, and Esc shows it
+// in the whole tree.
+func TestFilesFilter(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	a.prefs.Side = sideFiles
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tr := a.side.files.shown
+	tr.listed("/tmp/demo", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: "src", Dir: true}, {Name: "main.go"}}}, nil)
+	tt.Frame()
+
+	if err := tt.Click("Filter"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("util")
+	tt.Frame()
+	if tr.find.query != "util" || !tr.filtering() {
+		t.Fatalf("typed %q in the filter", tr.find.query)
+	}
+	tr.found("util", tr.stamp, proto.FSFind{Entries: []proto.FSFound{{Path: "src/util", Dir: true}, {Path: "src/util/util.go"}, {Path: "lib/util.c"}}}, nil)
+	tt.Frame()
+	for _, want := range []string{"src", "util", "util.go", "lib", "util.c"} {
+		if !tt.HasText(want) {
+			t.Errorf("the filter shows no %q; texts %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText("main.go") {
+		t.Error("the filter shows main.go")
+	}
+	shot(t, tt, "files-filter")
+
+	tt.Key(0, ui.KeyDown)
+	tt.Frame()
+	f := &tr.find
+	if f.chosen < 0 || f.outline.Item(f.chosen) != "/tmp/demo/lib/util.c" || tr.shown != "/tmp/demo/lib/util.c" {
+		t.Fatalf("Down chose row %d, shows %q", f.chosen, tr.shown)
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if tr.filtering() || f.paths != nil {
+		t.Fatalf("Esc left the filter at %q", f.query)
+	}
+	if tr.reveal != "" && tr.reveal != "/tmp/demo/lib/util.c" || !tr.outline.Open.Has("/tmp/demo/lib") {
+		t.Errorf("the file found isn't revealed in the tree: %q", tr.reveal)
+	}
+
+	if err := tt.Click("Filter"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("zzz")
+	tt.Frame()
+	tr.found("zzz", tr.stamp, proto.FSFind{}, nil)
+	tt.Frame()
+	if !tt.HasText("Nothing matches “zzz”") {
+		t.Errorf("no match shows %q", tt.Texts())
+	}
+	if err := tt.Click("Clear Filter"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tr.filtering() || !tt.HasText("main.go") {
+		t.Errorf("Clear Filter left %q", f.query)
+	}
+}
+
 // A path the CLI names is the tree's, as the tree writes its paths.
 func TestFilesWithin(t *testing.T) {
 	unix := &fileTree{root: "/tmp/demo"}

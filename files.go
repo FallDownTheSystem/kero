@@ -76,6 +76,125 @@ type fileTree struct {
 	// reveal a path to choose in the tree once its folder lists it.
 	adding *newEntry
 	reveal string
+	find   fileFind
+}
+
+// fileFind is the tree's filter: what the user types in the toolbar, and
+// the files and folders in all of the tree's folder whose names hold it,
+// as kerod finds them (fs.find), in a tree of their own, with the folders
+// they are in, open.
+type fileFind struct {
+	query string
+	// last is the query as it was the frame before, and typed when it
+	// changed: a search waits a moment after, as the user types on.
+	last  string
+	typed time.Time
+	// asked is the query the paths are of, and stamp the worktree's
+	// status they are of: they are found anew as it changes.
+	asked, stamp string
+	busy         bool
+	err          string
+	// paths are those the filter's tree shows in each folder, by folder,
+	// the tree's own too; nil before the first search. matched are those
+	// found, not only the folders they are in; more: kerod found more.
+	paths   map[string][]string
+	matched map[string]bool
+	more    bool
+	outline ui.OutlineState[string]
+	chosen  int
+	// focus moves the keyboard from the field to the filter's tree.
+	focus bool
+}
+
+// filtering tells that the tree shows the filter's paths.
+func (t *fileTree) filtering() bool { return strings.TrimSpace(t.find.query) != "" }
+
+// active returns the outline the tree shows, and its choice: the filter's
+// while the user filters it.
+func (t *fileTree) active() (*ui.OutlineState[string], *int) {
+	if t.filtering() {
+		return &t.find.outline, &t.find.chosen
+	}
+	return &t.outline, &t.chosen
+}
+
+// findChildren returns the paths the filter's tree shows in a folder: the
+// folders and files found in it, or all of a folder found, as it lists.
+func (t *fileTree) findChildren(path string) []string {
+	if kids, ok := t.find.paths[path]; ok {
+		return kids
+	}
+	return t.children(path)
+}
+
+// end leaves the filter, and forgets what it found.
+func (f *fileFind) end() {
+	f.query, f.last, f.asked = "", "", ""
+	f.paths, f.matched, f.err, f.more = nil, nil, "", false
+	f.outline.Open.Clear()
+	f.chosen = -1
+}
+
+// found puts what kerod found for a query in the filter's tree: each path,
+// in the folders it is in.
+func (t *fileTree) found(q, stamp string, r proto.FSFind, err error) {
+	f := &t.find
+	f.busy = false
+	if q != strings.TrimSpace(f.query) {
+		// The user typed on: syncFind asks again.
+		return
+	}
+	again := q == f.asked
+	f.asked, f.stamp = q, stamp
+	if err != nil {
+		f.paths, f.matched, f.err = nil, nil, err.Error()
+		return
+	}
+	f.err, f.more = "", r.More
+	old := f.paths
+	f.paths, f.matched = map[string][]string{t.root: {}}, map[string]bool{}
+	for _, e := range r.Entries {
+		p := t.join(t.root, e.Path)
+		t.isDir[p] = e.Dir
+		f.matched[p] = true
+		for child := p; ; {
+			parent := hostParent(child)
+			if parent == child || len(parent) < len(t.root) {
+				break
+			}
+			_, listed := f.paths[parent]
+			if !slices.Contains(f.paths[parent], child) {
+				f.paths[parent] = append(f.paths[parent], child)
+			}
+			if listed || parent == t.root {
+				break
+			}
+			t.isDir[parent] = true
+			child = parent
+		}
+	}
+	for _, kids := range f.paths {
+		slices.SortFunc(kids, func(a, b string) int {
+			if t.isDir[a] != t.isDir[b] {
+				if t.isDir[a] {
+					return -1
+				}
+				return 1
+			}
+			return strings.Compare(strings.ToLower(proto.DirName(a)), strings.ToLower(proto.DirName(b)))
+		})
+	}
+	// A new query opens all the folders the paths are in; the same one,
+	// found anew, keeps closed those the user closed.
+	if !again {
+		f.outline.Open.Clear()
+		f.chosen = -1
+	}
+	for p := range f.paths {
+		if _, had := old[p]; p != t.root && (!again || !had) {
+			f.outline.Open.Add(p)
+		}
+	}
 }
 
 // newEntry is a file or folder the user names, to make in a folder of the
@@ -159,6 +278,9 @@ func (a *App) tree(pane *proto.Pane, root string) *fileTree {
 		t = &fileTree{root: root, chosen: -1, dirs: map[string]*fileDir{}, isDir: map[string]bool{root: true}, files: map[string]*openFile{}}
 		t.outline.List.Selected = &t.chosen
 		t.outline.Indent = 12
+		t.find.chosen = -1
+		t.find.outline.List.Selected = &t.find.chosen
+		t.find.outline.Indent = 12
 		fs.trees[key] = t
 	}
 	// Another pane of the same folder lists it as well, while its host is
@@ -272,6 +394,7 @@ func (t *fileTree) refresh() {
 	if f := t.files[t.shown]; f != nil {
 		f.stamp = "\x00"
 	}
+	t.find.stamp = "\x00"
 }
 
 // filesView is the Files view: the tree, and the file chosen in it below.
@@ -295,6 +418,7 @@ func (a *App) filesView(c *ui.Context, pal *palette, s *proto.Session) {
 		t.stamp += "|nodot"
 	}
 	a.syncTree(c, t, working)
+	a.syncFind(c, t)
 	if working {
 		c.After(5 * time.Second)
 	}
@@ -348,6 +472,12 @@ func (a *App) syncTree(c *ui.Context, t *fileTree, working bool) {
 			want = append(want, p)
 		}
 	}
+	// A folder the filter found shows all in it, as it opens.
+	for p := range t.find.outline.Open.All() {
+		if _, ok := t.find.paths[p]; t.filtering() && t.isDir[p] && !ok && !t.outline.Open.Has(p) {
+			want = append(want, p)
+		}
+	}
 	for _, p := range want {
 		d := t.dirs[p]
 		if d != nil && (d.busy || !stale(d.stamp, d.fetched)) {
@@ -363,6 +493,47 @@ func (a *App) syncTree(c *ui.Context, t *fileTree, working bool) {
 	if f := t.files[t.shown]; f != nil && f.stale(t.stamp, working) {
 		a.readFile(t.pane, t.stamp, f)
 	}
+}
+
+// syncFind asks kerod for what the filter finds, a moment after the user
+// last typed, and again as the worktree's status changes; one search at a
+// time, the next asked once it answers. Clearing the filter shows the
+// path chosen in it in the whole tree.
+func (a *App) syncFind(c *ui.Context, t *fileTree) {
+	f := &t.find
+	if f.query != f.last {
+		if strings.TrimSpace(f.query) == "" {
+			a.endFind(t)
+			return
+		}
+		f.last, f.typed = f.query, time.Now()
+	}
+	q := strings.TrimSpace(f.query)
+	h := a.hostOf(t.pane)
+	if q == "" || f.busy || h.cl == nil || q == f.asked && f.stamp == t.stamp {
+		return
+	}
+	if wait := 150*time.Millisecond - time.Since(f.typed); wait > 0 {
+		c.After(wait)
+		return
+	}
+	f.busy = true
+	cl, stamp, hidden, root := h.cl, t.stamp, a.set.HiddenFiles, t.root
+	go func() {
+		var r proto.FSFind
+		err := cl.Call("fs.find", proto.FSFindParams{Dir: root, Query: q, Hidden: hidden}, &r)
+		a.update(func() { t.found(q, stamp, r, err) })
+	}()
+}
+
+// endFind leaves the tree's filter, and shows the path chosen in it in the
+// whole tree, where the user found it.
+func (a *App) endFind(t *fileTree) {
+	f := &t.find
+	if f.chosen >= 0 && f.chosen < f.outline.Rows() {
+		t.revealPath(f.outline.Item(f.chosen))
+	}
+	f.end()
 }
 
 // stale tells that a file shown is to be read anew: the worktree's
@@ -423,8 +594,19 @@ func (t *fileTree) listed(path, stamp string, l proto.FSList, err error) {
 // double click, or Enter, opens it in the user's editor or a file pane, as
 // the user chose (openChosen).
 func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
-	d := t.dirs[t.root]
+	d, f := t.dirs[t.root], &t.find
+	filtering := t.filtering()
 	switch {
+	case filtering && f.err != "":
+		a.sideMessage(c, pal, locales.FilesCantFind(), f.err)
+		return
+	case filtering && f.paths == nil:
+		ui.Column(c).Grow(1).Center().Children(func() { ui.Spinner(c) })
+		return
+	case filtering && len(f.paths[t.root]) == 0:
+		a.sideMessage(c, pal, locales.FilesNoMatch(f.asked), "")
+		return
+	case filtering:
 	case d == nil || d.paths == nil && d.err == "":
 		ui.Column(c).Grow(1).Center().Children(func() { ui.Spinner(c) })
 		return
@@ -435,8 +617,15 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		a.sideMessage(c, pal, locales.FilesEmpty(), "")
 		return
 	}
+	ol, chosen := t.active()
+	key, roots, children := "outline", []string(nil), t.children
+	if filtering {
+		key, roots, children = "found", f.paths[t.root], t.findChildren
+	} else {
+		roots = d.paths
+	}
 	clicked, submitted := "", ""
-	tree := ui.Outline(c.Key("outline"), &t.outline, d.paths, t.children, func(path string) {
+	tree := ui.Outline(c.Key(key), ol, roots, children, func(path string) {
 		dir := t.isDir[path]
 		svg := docIcon
 		if dir {
@@ -470,7 +659,11 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		}
 		row.Children(func() {
 			ui.Icon(c, svg).Size(14, 14).Shrink(0).Opacity(0.7)
-			ui.Text(c, proto.DirName(path)).FontSize(13).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+			name := ui.Text(c, proto.DirName(path)).FontSize(13).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+			if filtering && !f.matched[path] {
+				// A folder the filter shows only for what was found in it.
+				name.Opacity(0.6)
+			}
 			if f := t.files[path]; f != nil && f.modified() {
 				ui.Text(c, "●").FontSize(9).TextColor(pal.attention).Shrink(0).Tooltip(locales.FilesUnsaved())
 			}
@@ -479,11 +672,36 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 			}
 		})
 	}).Grow(1).MinHeight(0).Padding(0, 6, 8, 6).FontSize(13)
-	t.revealed()
+	if filtering {
+		tree.OnShortcut(0, ui.KeyEscape, func() { a.endFind(t) })
+		if f.more {
+			ui.Text(c, locales.FilesMoreMatches()).FontSize(11.5).TextColor(pal.textFaint).LineHeight(1.3).Shrink(0).Padding(4, 12, 6, 12)
+		}
+		if f.focus {
+			// From the field: to the first file found, else the first row.
+			f.focus = false
+			if *chosen < 0 || *chosen >= ol.Rows() {
+				*chosen = 0
+				for i := range ol.Rows() {
+					if !t.isDir[ol.Item(i)] {
+						*chosen = i
+						break
+					}
+				}
+				ol.List.ScrollIntoView(*chosen)
+				if p := ol.Item(*chosen); a.set.FilePreview && !t.isDir[p] {
+					a.openFile(t, p)
+				}
+			}
+			tree.Focus()
+		}
+	} else {
+		t.revealed()
+	}
 	if clicked != "" {
-		for i := range t.outline.Rows() {
-			if t.outline.Item(i) == clicked {
-				t.chosen = i
+		for i := range ol.Rows() {
+			if ol.Item(i) == clicked {
+				*chosen = i
 			}
 		}
 		switch {
@@ -492,10 +710,10 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 			if a.set.FilePreview {
 				a.openFile(t, clicked)
 			}
-		case t.outline.Open.Has(clicked):
-			t.outline.Open.Remove(clicked)
+		case ol.Open.Has(clicked):
+			ol.Open.Remove(clicked)
 		default:
-			t.outline.Open.Add(clicked)
+			ol.Open.Add(clicked)
 		}
 		tree.Focus()
 	}
@@ -504,18 +722,18 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 	}
 	// The file chosen opens below, unless the user previews files from
 	// their menu only (settings' FilePreview).
-	if tree.Changed() && a.set.FilePreview && t.chosen >= 0 && t.chosen < t.outline.Rows() {
-		if p := t.outline.Item(t.chosen); !t.isDir[p] {
+	if tree.Changed() && a.set.FilePreview && *chosen >= 0 && *chosen < ol.Rows() {
+		if p := ol.Item(*chosen); !t.isDir[p] {
 			a.openFile(t, p)
 		}
 	}
-	if tree.Submitted() && t.chosen >= 0 && t.chosen < t.outline.Rows() {
-		p := t.outline.Item(t.chosen)
+	if tree.Submitted() && *chosen >= 0 && *chosen < ol.Rows() {
+		p := ol.Item(*chosen)
 		switch {
-		case t.isDir[p] && t.outline.Open.Has(p):
-			t.outline.Open.Remove(p)
+		case t.isDir[p] && ol.Open.Has(p):
+			ol.Open.Remove(p)
 		case t.isDir[p]:
-			t.outline.Open.Add(p)
+			ol.Open.Add(p)
 		default:
 			a.openChosen(t, p)
 		}
@@ -696,10 +914,11 @@ func (t *fileTree) startAdding(in string, dir bool) {
 // addingIn is the folder New File and New Folder make in: the folder
 // chosen in the tree, or the file's, else the tree's own.
 func (t *fileTree) addingIn() string {
-	if t.chosen < 0 || t.chosen >= t.outline.Rows() {
+	ol, chosen := t.active()
+	if *chosen < 0 || *chosen >= ol.Rows() {
 		return t.root
 	}
-	p := t.outline.Item(t.chosen)
+	p := ol.Item(*chosen)
 	if t.isDir[p] {
 		return p
 	}
@@ -797,15 +1016,32 @@ func bottomBar(c *ui.Context, key string, pal *palette) ui.Element {
 		Material(glass.ScrollEdge{Hard: true, Bottom: true, Background: pal.card})
 }
 
-// filesToolbar is the tree's buttons, under it: they stay clear of the
-// panel's header, which keeps the window's controls in a narrow panel.
+// filesToolbar is the tree's buttons, under it, and its filter between
+// them: they stay clear of the panel's header, which keeps the window's
+// controls in a narrow panel.
 func (a *App) filesToolbar(c *ui.Context, pal *palette, t *fileTree) {
+	f := &t.find
 	bottomBar(c, "tools", pal).Padding(0, 6).Children(func() {
 		iconButton(c, "new-file", newFileIcon, locales.FilesNewFile(), pal, func() { a.defer_(func() { t.startAdding(t.addingIn(), false) }) })
 		iconButton(c, "new-folder", newFolderIcon, locales.FilesNewFolder(), pal, func() { a.defer_(func() { t.startAdding(t.addingIn(), true) }) })
-		ui.Spacer(c)
+		ui.Row(c.Key("filter")).Grow(1).MinWidth(0).Margin(0, 4).AlignItems(ui.Center).Gap(2).Children(func() {
+			in := textField(c, "query", &f.query, locales.FilesFilter(), 0, pal)
+			in.Tooltip(locales.FilesFilterTip())
+			in.OnShortcut(0, ui.KeyEscape, func() { a.endFind(t) })
+			in.OnShortcut(0, ui.KeyDown, func() { f.focus = t.filtering() })
+			in.OnSubmit(func() { f.focus = t.filtering() })
+			if f.busy {
+				ui.Spinner(c).Size(12, 12)
+			}
+			if f.query != "" {
+				iconButton(c, "clear", closeIcon, locales.FilesClearFilter(), pal, func() { a.endFind(t) })
+			}
+		})
 		iconButton(c, "refresh", reloadIcon, locales.FilesRefresh(), pal, t.refresh)
-		iconButton(c, "collapse", collapseIcon, locales.FilesCollapse(), pal, func() { t.outline.Open.Clear() })
+		iconButton(c, "collapse", collapseIcon, locales.FilesCollapse(), pal, func() {
+			ol, _ := t.active()
+			ol.Open.Clear()
+		})
 	})
 }
 
@@ -850,6 +1086,8 @@ func (a *App) shown(t *fileTree, path string, st proto.FSStat, err error) {
 		a.toast(locales.FilesCantOpen(locales.FilesGone()))
 		return
 	}
+	// The path shows in the whole tree, which the filter would hide.
+	t.find.end()
 	t.refresh()
 	if path == t.root {
 		return

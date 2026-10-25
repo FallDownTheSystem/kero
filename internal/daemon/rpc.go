@@ -590,6 +590,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return fsList(p)
 
+	case "fs.find":
+		var p proto.FSFindParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsFind(p)
+
 	case "fs.stat":
 		var p proto.FSStatParams
 		if err := decode(&p); err != nil {

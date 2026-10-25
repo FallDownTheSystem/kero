@@ -5408,6 +5408,66 @@ func (msgs Messages) FilesOpenHere() string {
 	return Catalog.Format(msgs.locale, "filesOpenHere", nil)
 }
 
+// FilesFilter says "Filter"
+// in the language the app shows.
+func FilesFilter() string { return In(i18n.Locale()).FilesFilter() }
+
+// FilesFilter says "Filter"
+// in the language of msgs.
+func (msgs Messages) FilesFilter() string {
+	return Catalog.Format(msgs.locale, "filesFilter", nil)
+}
+
+// FilesFilterTip says "Finds files and folders by name in all of the folder, or by path with a slash, as src/main. Enter or Down goes to the…"
+// in the language the app shows.
+func FilesFilterTip() string { return In(i18n.Locale()).FilesFilterTip() }
+
+// FilesFilterTip says "Finds files and folders by name in all of the folder, or by path with a slash, as src/main. Enter or Down goes to the…"
+// in the language of msgs.
+func (msgs Messages) FilesFilterTip() string {
+	return Catalog.Format(msgs.locale, "filesFilterTip", nil)
+}
+
+// FilesClearFilter says "Clear Filter"
+// in the language the app shows.
+func FilesClearFilter() string { return In(i18n.Locale()).FilesClearFilter() }
+
+// FilesClearFilter says "Clear Filter"
+// in the language of msgs.
+func (msgs Messages) FilesClearFilter() string {
+	return Catalog.Format(msgs.locale, "filesClearFilter", nil)
+}
+
+// FilesNoMatch says "Nothing matches “{query}”"
+// in the language the app shows.
+func FilesNoMatch(query string) string { return In(i18n.Locale()).FilesNoMatch(query) }
+
+// FilesNoMatch says "Nothing matches “{query}”"
+// in the language of msgs.
+func (msgs Messages) FilesNoMatch(query string) string {
+	return Catalog.Format(msgs.locale, "filesNoMatch", map[string]any{"query": query})
+}
+
+// FilesCantFind says "Can't search the folder"
+// in the language the app shows.
+func FilesCantFind() string { return In(i18n.Locale()).FilesCantFind() }
+
+// FilesCantFind says "Can't search the folder"
+// in the language of msgs.
+func (msgs Messages) FilesCantFind() string {
+	return Catalog.Format(msgs.locale, "filesCantFind", nil)
+}
+
+// FilesMoreMatches says "More match than show. Type more of the name."
+// in the language the app shows.
+func FilesMoreMatches() string { return In(i18n.Locale()).FilesMoreMatches() }
+
+// FilesMoreMatches says "More match than show. Type more of the name."
+// in the language of msgs.
+func (msgs Messages) FilesMoreMatches() string {
+	return Catalog.Format(msgs.locale, "filesMoreMatches", nil)
+}
+
 // FilesWrap says "Wrap Lines"
 // in the language the app shows.
 func FilesWrap() string { return In(i18n.Locale()).FilesWrap() }
