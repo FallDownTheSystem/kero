@@ -158,13 +158,13 @@ func (a *App) gitMenu(m *ui.Menu, s *proto.Session, pane *proto.Pane) {
 		p.Op = "fetch"
 		a.runGit(id, root, p, locales.GitFetch(), nil)
 	}
-	if padItem(m, locales.GitFetch()).Chosen() {
+	if m.Item(locales.GitFetch()).Chosen() {
 		fetch(proto.GitOpParams{})
 	}
-	if padItem(m, locales.GitFetchAll()).Chosen() {
+	if m.Item(locales.GitFetchAll()).Chosen() {
 		fetch(proto.GitOpParams{All: true})
 	}
-	if padItem(m, locales.GitFetchPrune()).Chosen() {
+	if m.Item(locales.GitFetchPrune()).Chosen() {
 		fetch(proto.GitOpParams{All: true, Prune: true})
 	}
 	m.Separator()
@@ -173,19 +173,19 @@ func (a *App) gitMenu(m *ui.Menu, s *proto.Session, pane *proto.Pane) {
 		mode  string
 		label string
 	}{{git.PullDefault, locales.GitPull()}, {git.PullMerge, locales.GitPullMerge()}, {git.PullRebase, locales.GitPullRebase()}, {git.PullFF, locales.GitPullFF()}} {
-		if padItem(m, pm.label).Disabled(noUpstream).Chosen() {
+		if m.Item(pm.label).Disabled(noUpstream).Chosen() {
 			a.pull(id, root, pm.mode, nil)
 		}
 	}
 	m.Separator()
-	if padItem(m, locales.GitPush()).Disabled(g.Branch == "").Chosen() {
+	if m.Item(locales.GitPush()).Disabled(g.Branch == "").Chosen() {
 		a.push(id, root, proto.GitOpParams{})
 	}
-	if padItem(m, locales.GitPushForce()).Disabled(g.Branch == "" || noUpstream).Chosen() {
+	if m.Item(locales.GitPushForce()).Disabled(g.Branch == "" || noUpstream).Chosen() {
 		a.confirm = &confirmation{open: true, title: locales.GitPushForceTitle(g.Branch), detail: locales.GitPushForceDetail(g.Upstream),
 			action: locales.GitPushForce(), destroy: true, run: func() { a.push(id, root, proto.GitOpParams{Force: true}) }}
 	}
-	if padItem(m, locales.GitPushTags()).Disabled(g.Branch == "").Chosen() {
+	if m.Item(locales.GitPushTags()).Disabled(g.Branch == "").Chosen() {
 		a.push(id, root, proto.GitOpParams{Tags: true})
 	}
 	m.Separator()
@@ -194,26 +194,26 @@ func (a *App) gitMenu(m *ui.Menu, s *proto.Session, pane *proto.Pane) {
 		a.guarded(id, root, locales.GitStash(), func() { a.runGit(id, root, p, locales.GitStash(), nil) })
 	}
 	none := g.Files == 0
-	if padItem(m, locales.GitStashAll()).Disabled(none).Chosen() {
+	if m.Item(locales.GitStashAll()).Disabled(none).Chosen() {
 		stash(proto.GitOpParams{IncludeUntracked: true})
 	}
-	if padItem(m, locales.GitStashStaged()).Disabled(g.Staged == 0).Chosen() {
+	if m.Item(locales.GitStashStaged()).Disabled(g.Staged == 0).Chosen() {
 		stash(proto.GitOpParams{Staged: true})
 	}
-	if padItem(m, locales.GitStashMessage()).Disabled(none).Chosen() {
+	if m.Item(locales.GitStashMessage()).Disabled(none).Chosen() {
 		a.askName(locales.GitStashMessageTitle(), "", locales.GitStashMessagePlaceholder(), "", locales.GitStash(), func(msg string) {
 			stash(proto.GitOpParams{IncludeUntracked: true, Message: msg})
 		})
 	}
 	m.Separator()
-	if padItem(m, locales.GitNewBranch()).Chosen() {
+	if m.Item(locales.GitNewBranch()).Chosen() {
 		a.askNewBranch(id, root, "", "")
 	}
-	if padItem(m, locales.GitUndoCommit()).Disabled(g.Head == "").Chosen() {
+	if m.Item(locales.GitUndoCommit()).Disabled(g.Head == "").Chosen() {
 		a.confirm = &confirmation{open: true, title: locales.GitUndoCommitTitle(), detail: locales.GitUndoCommitDetail(),
 			action: locales.GitUndoCommit(), run: func() { a.runGit(id, root, proto.GitOpParams{Op: "undo"}, locales.GitUndoCommit(), nil) }}
 	}
-	if padItem(m, locales.GitRefresh()).Chosen() {
+	if m.Item(locales.GitRefresh()).Chosen() {
 		a.side.git.done++
 	}
 }
@@ -465,28 +465,28 @@ func (a *App) branchPopover(c *ui.Context, pal *palette, s *proto.Session, pane 
 // branchMenuItems are a branch's menu, in the switcher.
 func (a *App) branchMenuItems(m *ui.Menu, s *proto.Session, pane *proto.Pane, b proto.GitBranch) {
 	id, root := pane.ID, pane.Git.Root
-	if padItem(m, locales.GitSwitch()).Disabled(b.Current).Chosen() {
+	if m.Item(locales.GitSwitch()).Disabled(b.Current).Chosen() {
 		a.side.git.menu.open = false
 		a.switchBranch(s, pane, b, "")
 	}
-	if padItem(m, locales.GitNewBranchFrom()).Chosen() {
+	if m.Item(locales.GitNewBranchFrom()).Chosen() {
 		a.side.git.menu.open = false
 		a.askNewBranch(id, root, b.Name, b.Name)
 	}
-	if padItem(m, locales.GitOpenInWorktree()).Disabled(b.Current || b.Worktree != "").Chosen() {
+	if m.Item(locales.GitOpenInWorktree()).Disabled(b.Current || b.Worktree != "").Chosen() {
 		a.side.git.menu.open = false
 		a.branchSession(s, pane, b)
 	}
 	m.Separator()
 	a.mergeItems(m, pane, b.Name, b.Name, b.Current)
 	m.Separator()
-	if padItem(m, locales.GitRenameBranch()).Disabled(b.Remote).Chosen() {
+	if m.Item(locales.GitRenameBranch()).Disabled(b.Remote).Chosen() {
 		a.side.git.menu.open = false
 		a.askName(locales.GitRenameBranchTitle(b.Name), "", locales.GitBranchName(), b.Name, locales.GitRename(), func(to string) {
 			a.runGit(id, root, proto.GitOpParams{Op: "renameBranch", Name: b.Name, To: to}, locales.GitRenameNamed(b.Name), nil)
 		})
 	}
-	if padItem(m, locales.GitDeleteBranch()).Disabled(b.Remote || b.Current || b.Worktree != "").Chosen() {
+	if m.Item(locales.GitDeleteBranch()).Disabled(b.Remote || b.Current || b.Worktree != "").Chosen() {
 		a.side.git.menu.open = false
 		a.deleteBranch(id, root, b.Name, false)
 	}
@@ -499,17 +499,21 @@ func (a *App) mergeItems(m *ui.Menu, pane *proto.Pane, rev, name string, head bo
 	g := pane.Git
 	branch := branchName(g)
 	off := head || !canMergeInto(g)
-	if padItem(m, locales.GitMergeInto(name, branch)).Disabled(off).Chosen() {
+	if m.Item(locales.GitMergeInto(name, branch)).Disabled(off).Chosen() {
 		a.side.git.menu.open = false
 		a.mergeInto(pane, rev, name, false)
 	}
-	if padItem(m, locales.GitMergeIntoNoFF(name, branch)).Disabled(off).Chosen() {
+	if m.Item(locales.GitMergeIntoNoFF(name, branch)).Disabled(off).Chosen() {
 		a.side.git.menu.open = false
 		a.mergeInto(pane, rev, name, true)
 	}
-	if padItem(m, locales.GitRebaseOnto(branch, name)).Disabled(off || g.Branch == "").Chosen() {
+	if m.Item(locales.GitRebaseOnto(branch, name)).Disabled(off || g.Branch == "").Chosen() {
 		a.side.git.menu.open = false
 		a.rebaseOnto(pane, rev, name)
+	}
+	if m.Item(locales.GitRebaseInteractive(branch, name)).Disabled(off || g.Branch == "").Chosen() {
+		a.side.git.menu.open = false
+		a.openRebase(pane, rev)
 	}
 }
 

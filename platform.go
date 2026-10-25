@@ -24,18 +24,6 @@ func fileManager() string {
 	return locales.FileManagerFiles()
 }
 
-// labelPad follows each context or tray menu item's label, as padMenus sets it
-// for the app: the tests read the labels as they are.
-var labelPad string
-
-// padItem adds an item to a context menu, its label padded (labelPad).
-func padItem(m *ui.Menu, label string) *ui.MenuItem { return m.Item(label + labelPad) }
-
-// padSub adds a submenu to a context menu, its label padded (labelPad).
-func padSub(m *ui.Menu, label string, build func(*ui.Menu)) {
-	m.Submenu(label+labelPad, build)
-}
-
 // openPath opens a file or folder in the app that opens it.
 func openPath(path string) { mygo.Shell.OpenPath(path) }
 

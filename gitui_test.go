@@ -15,19 +15,25 @@ import (
 	"kero/internal/proto"
 )
 
-// gitCalls makes the local host a kerod that answers no call but tells
-// the git.op and git.show calls it takes.
-func gitCalls(t *testing.T, a *App) (<-chan proto.GitOpParams, <-chan string) {
+// gitCalls makes the local host a kerod that tells the git.op and git.show
+// calls it takes, and answers git.index with ix, when set, and git.op as
+// done; no other call.
+func gitCalls(t *testing.T, a *App, ix *proto.GitIndex) (<-chan proto.GitOpParams, <-chan string) {
 	t.Helper()
 	ops, shows := make(chan proto.GitOpParams, 8), make(chan string, 8)
 	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
 		switch method {
+		case "git.index":
+			if ix != nil {
+				return ix, nil
+			}
 		case "git.op":
 			var p proto.GitOpParams
 			if err := json.Unmarshal(raw, &p); err != nil {
 				return nil, err
 			}
 			ops <- p
+			return proto.GitOpResult{}, nil
 		case "git.show":
 			var p proto.GitShowParams
 			if err := json.Unmarshal(raw, &p); err != nil {
@@ -71,8 +77,8 @@ func gitDemo(a *App) (*proto.GitInfo, *proto.GitIndex) {
 // its buttons, and commits what's staged with the box's message.
 func TestUncommittedStaging(t *testing.T) {
 	a := testApp(t)
-	ops, _ := gitCalls(t, a)
 	g, ix := gitDemo(a)
+	ops, _ := gitCalls(t, a, ix)
 	s := &a.st.Sessions[0]
 	a.prefs.Side = sideChanges
 	ch := &a.side.changes
@@ -162,9 +168,10 @@ func TestUncommittedStaging(t *testing.T) {
 		t.Errorf("Commit sent %+v", p)
 	}
 	// The commit under way shows in the bar, once it takes a moment, and
-	// moves nothing below it.
+	// moves nothing below it: one that runs still, as this kerod's ended.
+	tt.Frame()
 	before, _ := tt.Find("Staged Changes")
-	a.side.git.op.started = time.Now().Add(-time.Second)
+	a.side.git.op = &gitRun{pane: s.Panes[0].ID, root: g.Root, op: "commit", label: "Commit", started: time.Now().Add(-time.Second)}
 	tt.Frame()
 	if r, ok := tt.Find("Commit"); !ok || r.Y > before.Y {
 		t.Errorf("the bar shows no commit under way at %+v; texts %q", r, tt.Texts())
@@ -181,12 +188,16 @@ func TestUncommittedStaging(t *testing.T) {
 func TestConflicts(t *testing.T) {
 	a := testApp(t)
 	ops, sent := make(chan proto.GitOpParams, 8), make(chan string, 8)
+	var ix *proto.GitIndex
 	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
 		switch method {
+		case "git.index":
+			return ix, nil
 		case "git.op":
 			var p proto.GitOpParams
 			json.Unmarshal(raw, &p)
 			ops <- p
+			return proto.GitOpResult{}, nil
 		case "send":
 			var p proto.SendParams
 			json.Unmarshal(raw, &p)
@@ -200,7 +211,12 @@ func TestConflicts(t *testing.T) {
 	g.State = "merge"
 	s := &a.st.Sessions[0]
 	s.Panes[1].Agent, s.Panes[1].Status = "claude", proto.Idle
-	ix := &proto.GitIndex{Root: g.Root, Ours: "main", Theirs: "feature",
+	// A file's pane, whose editor takes the keyboard where the tester has
+	// no terminal to.
+	s.Panes[0].File = "/tmp/a.txt"
+	f := a.editorOf(&s.Panes[0])
+	f.read(f.stamp, false, false, nil, []byte("a\n"), nil)
+	ix = &proto.GitIndex{Root: g.Root, Ours: "main", Theirs: "feature",
 		Unstaged: []proto.GitFile{{Path: "a.go", Status: "conflict"}}}
 	a.prefs.Side = sideChanges
 	ch := &a.side.changes
@@ -228,10 +244,18 @@ func TestConflicts(t *testing.T) {
 	if a.confirm == nil {
 		t.Fatal("a side's version took the file without asking")
 	}
-	a.confirm.run()
-	a.confirm = nil
+	tt.Frame()
+	if err := tt.Click("Use feature's Version"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
 	if p := nextOp(t, ops); p.Op != "resolve" || p.Path != "a.go" || p.Mode != git.SideTheirs {
 		t.Errorf("Use feature's Version sent %+v", p)
+	}
+	// Answered, the dialog leaves the keyboard in the Explorer it was
+	// asked from, not in the terminal.
+	if a.confirm != nil || !a.side.focused {
+		t.Errorf("after the answer: dialog %v, Explorer focused %v", a.confirm != nil, a.side.focused)
 	}
 	a.side.git.op = nil
 
@@ -269,6 +293,256 @@ func TestConflicts(t *testing.T) {
 	a.confirm.run()
 	if p := nextOp(t, ops); p.Op != "rebase" || p.Rev != "feature" || !p.Autostash {
 		t.Errorf("rebase sent %+v", p)
+	}
+}
+
+// An editor pane of a file in conflict shows it in the merge editor: its
+// versions are the index's stages, a checkbox takes one's lines, and Save
+// and Mark Resolved writes the file, then stages it. Marked resolved, it
+// is the editor pane it was.
+func TestMergePane(t *testing.T) {
+	a := testApp(t)
+	const text = "a\n<<<<<<< HEAD\nmain\n=======\nfeature\n>>>>>>> 1a2b3c4 (Use feature)\nz\n"
+	ops, writes := make(chan proto.GitOpParams, 8), make(chan string, 8)
+	conflict := true
+	var files []proto.GitParams
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "fs.stat":
+			return proto.FSStat{Path: "/tmp/demo/a.go", Exists: true, Size: int64(len(text))}, nil
+		case "fs.read":
+			return proto.FSRead{Data: []byte(text)}, nil
+		case "fs.write":
+			var p proto.FSWriteParams
+			json.Unmarshal(raw, &p)
+			writes <- string(p.Data)
+			return proto.FSWrite{Hash: git.Hash(p.Data)}, nil
+		case "git.index":
+			ix := proto.GitIndex{Root: "/tmp/demo", Ours: "main", Theirs: "feature"}
+			if conflict {
+				ix.Unstaged = []proto.GitFile{{Path: "a.go", Status: "conflict"}}
+			}
+			return ix, nil
+		case "git.file":
+			var p proto.GitParams
+			json.Unmarshal(raw, &p)
+			files = append(files, p)
+			return proto.GitText{Old: "a\nmain\nz\n", New: "a\nfeature\nz\n"}, nil
+		case "git.op":
+			var p proto.GitOpParams
+			json.Unmarshal(raw, &p)
+			ops <- p
+			return proto.GitOpResult{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().cl = cl
+	g, _ := gitDemo(a)
+	g.State = "rebase"
+	s := &a.st.Sessions[0]
+	s.Panes[0].File = "/tmp/demo/a.go"
+	s.Panes[0].Git = nil
+
+	tt := ui.NewTester(a.view, 1280, 720)
+	shows := func(text string) bool {
+		t.Helper()
+		for range 300 {
+			tt.Frame()
+			if tt.HasText(text) {
+				return true
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		return false
+	}
+	if !shows("Use feature's lines") {
+		t.Fatalf("no merge editor; texts %q", tt.Texts())
+	}
+	if len(files) == 0 || files[0].Pane != s.Panes[1].ID || files[0].Path != "a.go" || files[0].From != git.SideOursStage || files[0].To != git.SideTheirsStage {
+		t.Errorf("the versions were read by %+v", files)
+	}
+	shot(t, tt, "git-merge")
+	for _, want := range []string{"main", "feature", "1 conflict left"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q; texts %q", want, tt.Texts())
+		}
+	}
+	if err := tt.Click("Use feature's lines"); err != nil {
+		t.Fatal(err)
+	}
+	if !shows("All conflicts resolved") {
+		t.Fatalf("not resolved; texts %q", tt.Texts())
+	}
+	if err := tt.Click("Save and Mark Resolved"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	select {
+	case got := <-writes:
+		if got != "a\nfeature\nz\n" {
+			t.Errorf("saved %q", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("nothing saved")
+	}
+	// The save's answer stages the file, in a frame.
+	var staged *proto.GitOpParams
+	for i := 0; staged == nil && i < 300; i++ {
+		tt.Frame()
+		select {
+		case p := <-ops:
+			staged = &p
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	if staged == nil || staged.Op != "stage" || !slices.Equal(staged.Paths, []string{"a.go"}) {
+		t.Fatalf("Mark Resolved sent %+v", staged)
+	}
+
+	// Staged, the file is in conflict no more.
+	conflict = false
+	g.Staged++
+	for i := 0; i < 300 && tt.HasText("Use feature's lines"); i++ {
+		tt.Frame()
+		time.Sleep(10 * time.Millisecond)
+	}
+	if tt.HasText("Use feature's lines") || !tt.HasText("Wrap Lines") {
+		t.Errorf("the merge editor stays once resolved; texts %q", tt.Texts())
+	}
+}
+
+// The interactive rebase lists the branch's commits, the newest on top:
+// a key or a row's menu sets a commit's action, Reword opens a panel for
+// its new message, a drag moves a commit, and Rebase sends the commits,
+// the oldest first, as they are.
+func TestInteractiveRebase(t *testing.T) {
+	a := testApp(t)
+	ops := make(chan proto.GitOpParams, 8)
+	commits := []proto.GitCommit{
+		{Hash: "aaaaaaa1", Author: "Ann", Subject: "one", Time: 1700000000},
+		{Hash: "bbbbbbb2", Author: "Ann", Subject: "two", Time: 1700000100},
+		{Hash: "ccccccc3", Author: "Bob", Subject: "three", Time: 1700000200},
+	}
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.rebasePlan":
+			return proto.GitRebasePlan{Branch: "feature", Onto: proto.GitCommit{Hash: "0000000f", Subject: "base"}, Commits: commits}, nil
+		case "git.show":
+			var p proto.GitShowParams
+			json.Unmarshal(raw, &p)
+			for _, c := range commits {
+				if c.Hash == p.Rev {
+					return proto.GitCommitInfo{GitCommit: c, Message: c.Subject + "\n\nThe body.\n",
+						Files: []proto.GitFile{{Path: c.Subject + ".txt", Status: "added", Added: 1}}}, nil
+				}
+			}
+		case "git.op":
+			var p proto.GitOpParams
+			json.Unmarshal(raw, &p)
+			ops <- p
+			return proto.GitOpResult{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().cl = cl
+	gitDemo(a)
+	s := &a.st.Sessions[0]
+	a.openRebase(&s.Panes[0], "main")
+
+	tt := ui.NewTester(a.view, 1280, 800)
+	shows := func(text string) bool {
+		t.Helper()
+		for range 300 {
+			tt.Frame()
+			if tt.HasText(text) {
+				return true
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		return false
+	}
+	if !shows("three") || !tt.HasText("Rebase feature onto 0000000f base") {
+		t.Fatalf("no commits; texts %q", tt.Texts())
+	}
+	one, _ := tt.Find("one")
+	three, _ := tt.Find("three")
+	if three.Y > one.Y {
+		t.Error("the oldest commit is on top")
+	}
+	shows("three.txt") // the newest's, chosen first
+	shot(t, tt, "git-rebase")
+
+	// A key sets the chosen commit's action: Reword opens its panel, with
+	// its message.
+	if err := tt.Click("two"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Key(0, ui.KeyR)
+	if !shows("Description") {
+		t.Fatalf("no Reword panel; texts %q", tt.Texts())
+	}
+	rv := a.rebase
+	if rv.subject != "two" || rv.body != "The body." {
+		t.Errorf("the panel has %q, %q", rv.subject, rv.body)
+	}
+	rv.subject = "two, reworded"
+	if err := tt.Click("OK"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tt.HasText("Description") || !tt.HasText("two, reworded") {
+		t.Errorf("the panel stays, or the row has its old subject; texts %q", tt.Texts())
+	}
+
+	// The newest dragged below two, then fixed up into one, below it.
+	if err := tt.Click("three"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	r3, _ := tt.Find("three")
+	x, y := r3.X+r3.W/2, r3.Y+r3.H/2
+	tt.Press(x, y)
+	for dy := float32(4); dy <= rebaseRowH+4; dy += 4 {
+		tt.Move(x, y+dy)
+		tt.Frame()
+	}
+	tt.Release(x, y+rebaseRowH+4)
+	tt.Frame()
+	if after, _ := tt.Find("three"); after.Y <= r3.Y {
+		t.Fatalf("the drag left three at %v, from %v", after.Y, r3.Y)
+	}
+	tt.Key(0, ui.KeyF)
+	tt.Frame()
+
+	// One dropped, three has nothing kept below it to fix up into: no
+	// Rebase, and why.
+	if err := tt.Click("one"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Key(0, ui.KeyD)
+	tt.Frame()
+	if !tt.HasText("Fixup needs a kept commit below it") || slices.Contains(tt.Texts(), "Rebase") {
+		t.Errorf("a fixup onto a dropped commit can rebase; texts %q", tt.Texts())
+	}
+	tt.Key(0, ui.KeyP)
+	tt.Frame()
+
+	if err := tt.Click("Rebase"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	p := nextOp(t, ops)
+	want := []proto.GitRebaseStep{
+		{Action: git.RebasePick, Hash: "aaaaaaa1"},
+		{Action: git.RebaseFixup, Hash: "ccccccc3"},
+		{Action: git.RebaseReword, Hash: "bbbbbbb2", Message: "two, reworded\n\nThe body.\n"},
+	}
+	if p.Op != "rebaseInteractive" || p.Rev != "main" || !p.Autostash || !slices.Equal(p.Steps, want) {
+		t.Errorf("Rebase sent %+v, want steps %+v", p, want)
+	}
+	tt.Frame()
+	if a.rebase != nil {
+		t.Error("the rebase's window stays")
 	}
 }
 
@@ -316,7 +590,7 @@ func TestGitGuard(t *testing.T) {
 // committed, and opens a commit below its row.
 func TestHistoryGraph(t *testing.T) {
 	a := testApp(t)
-	ops, shows := gitCalls(t, a)
+	ops, shows := gitCalls(t, a, nil)
 	g, _ := gitDemo(a)
 	a.prefs.Side = sideHistory
 	hs := &a.side.git.hist

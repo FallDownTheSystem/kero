@@ -759,50 +759,50 @@ func (a *App) openChosen(t *fileTree, path string) {
 // copies its path.
 func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir bool) {
 	if dir {
-		if padItem(m, locales.FilesNewFile()).Chosen() {
+		if m.Item(locales.FilesNewFile()).Chosen() {
 			a.defer_(func() { t.startAdding(path, false) })
 		}
-		if padItem(m, locales.FilesNewFolder()).Chosen() {
+		if m.Item(locales.FilesNewFolder()).Chosen() {
 			a.defer_(func() { t.startAdding(path, true) })
 		}
-		if padItem(m, locales.FilesNewTerminal()).Chosen() {
+		if m.Item(locales.FilesNewTerminal()).Chosen() {
 			a.terminalIn(t.pane, path)
 		}
 		m.Separator()
 	} else {
-		if t.shown != path && padItem(m, locales.FilesPreview()).Chosen() {
+		if t.shown != path && m.Item(locales.FilesPreview()).Chosen() {
 			a.openFile(t, path)
 		}
-		if padItem(m, locales.FilesOpenInPane()).Chosen() {
+		if m.Item(locales.FilesOpenInPane()).Chosen() {
 			a.openInPane(t.pane, path)
 		}
 		// Open in Pane takes the place of a file pane's file then
 		// (openInPane), so a pane of its own is asked for.
-		if a.set.FilePane == "replace" && padItem(m, locales.FilesOpenInNewPane()).Chosen() {
+		if a.set.FilePane == "replace" && m.Item(locales.FilesOpenInNewPane()).Chosen() {
 			a.openInNewPane(t.pane, path)
 		}
-		if g := a.paneGit(t.pane); g != nil && g.Root == t.root && padItem(m, locales.FilesShowHistory()).Chosen() {
+		if g := a.paneGit(t.pane); g != nil && g.Root == t.root && m.Item(locales.FilesShowHistory()).Chosen() {
 			a.showHistory(strings.ReplaceAll(t.rel(path), `\`, "/"))
 		}
 	}
 	if !a.hostOf(t.pane).remote() {
-		if padItem(m, locales.FilesOpenInEditor()).Chosen() {
+		if m.Item(locales.FilesOpenInEditor()).Chosen() {
 			a.openInEditor(path)
 		}
-		if canOpenWith && !dir && padItem(m, locales.FilesOpenWith()).Chosen() {
+		if canOpenWith && !dir && m.Item(locales.FilesOpenWith()).Chosen() {
 			if err := openWith(path); err != nil {
 				a.toast(locales.FilesCantOpen(err.Error()))
 			}
 		}
-		if padItem(m, locales.CommonShowIn(fileManager())).Chosen() {
+		if m.Item(locales.CommonShowIn(fileManager())).Chosen() {
 			revealPath(path)
 		}
 		m.Separator()
 	}
-	if padItem(m, locales.FilesCopyPath()).Chosen() {
+	if m.Item(locales.FilesCopyPath()).Chosen() {
 		c.WriteClipboard(path)
 	}
-	if padItem(m, locales.FilesCopyRelativePath()).Chosen() {
+	if m.Item(locales.FilesCopyRelativePath()).Chosen() {
 		c.WriteClipboard(t.rel(path))
 	}
 }
@@ -1356,6 +1356,12 @@ func (a *App) fileChanged(c *ui.Context, pal *palette, pane string, f *openFile)
 // only as it was read; over is the user overwriting what changed on disk
 // since, which it reads first for its hash.
 func (a *App) saveFile(pane string, f *openFile, over bool) {
+	a.saveFileThen(pane, f, over, nil)
+}
+
+// saveFileThen saves a file as saveFile does, then runs then, when set,
+// once it saved.
+func (a *App) saveFileThen(pane string, f *openFile, over bool, then func()) {
 	h := a.hostOf(pane)
 	cl := h.cl
 	if f.st == nil {
@@ -1386,6 +1392,9 @@ func (a *App) saveFile(pane string, f *openFile, over bool) {
 				a.toast(locales.FilesCantSave(err.Error()))
 			}
 			f.saved(version, w, err)
+			if then != nil && err == nil && !w.Changed {
+				then()
+			}
 		})
 	}()
 }

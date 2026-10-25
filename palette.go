@@ -411,8 +411,20 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 	}
 }
 
+// confirmView asks a.confirm's question. Asked from the Explorer, as its
+// git actions ask, the focus goes back there as it closes, to what asked
+// or near it; asked elsewhere, it goes to the terminal, as what asked, a
+// pane closing, may be gone.
 func (a *App) confirmView(c *ui.Context, pal *palette) {
-	if a.confirm != nil && confirmDialog(c, pal, &a.confirm) {
+	cf := a.confirm
+	if cf == nil {
+		return
+	}
+	if !cf.shown {
+		// Built after the panel, which read where the focus was.
+		cf.shown, cf.inSide = true, a.side.focused
+	}
+	if confirmDialog(c, pal, &a.confirm) && !cf.inSide {
 		a.focusTerminal()
 	}
 }
@@ -462,7 +474,7 @@ func confirmDialog(c *ui.Context, pal *palette, pending **confirmation) bool {
 
 // shortcuts are the window's keys that no menu item has.
 func (a *App) shortcuts(c *ui.Context) {
-	if a.pal.open || a.picker.open || a.confirm != nil || a.wtAsk != nil {
+	if a.pal.open || a.picker.open || a.confirm != nil || a.wtAsk != nil || a.rebase != nil {
 		return
 	}
 	keys := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8, ui.Key9}
