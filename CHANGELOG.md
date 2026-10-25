@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.18
+
+- On a Mac, programs run in Kero can use the microphone and the camera,
+  and control other apps: macOS asks first, as it does for other
+  terminals. Thanks @jamdaniels for the report
+- Kero reaches SSH hosts with the SSH agent your shell sets up, such as
+  1Password's, as `ssh` in a terminal does. Thanks @frankittee for the
+  report
+- **Close All Sessions** in a project's menu ends every session in the
+  project and keeps the project. Thanks @netube99
+- Pressing Command while a trackpad scroll is still coasting no longer
+  changes the font size. Thanks @iamvicliu
+
 ## 2.1.17
 
 - Codex 0.164's panes resume their own conversations after kerod
