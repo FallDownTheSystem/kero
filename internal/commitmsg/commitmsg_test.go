@@ -13,12 +13,16 @@ import (
 
 func TestClean(t *testing.T) {
 	for in, want := range map[string]string{
-		"Fix login\n":                                   "Fix login",
-		"```\nFix login\n\nBecause.  \n```":             "Fix login\n\nBecause.",
-		"```text\nFix login\n```\n":                      "Fix login",
-		`"Fix login"`:                                   "Fix login",
-		"\"Fix\"\n\nbody \"quoted\"":                     "\"Fix\"\n\nbody \"quoted\"",
+		"Fix login\n":                                     "Fix login",
+		"```\nFix login\n\nBecause.  \n```":               "Fix login\n\nBecause.",
+		"```text\nFix login\n```\n":                       "Fix login",
+		`"Fix login"`:                                     "Fix login",
+		"\"Fix\"\n\nbody \"quoted\"":                      "\"Fix\"\n\nbody \"quoted\"",
 		"  Subject\r\n\r\nBody line one   \r\nline two  ": "Subject\n\nBody line one\nline two",
+		// A launcher's banner before the message, which goes.
+		"T  clodex\n|\n•  Proxy started\n<commit-message>\nFix login\n\nBecause.\n</commit-message>\n": "Fix login\n\nBecause.",
+		"```\n<commit-message>\nFix login\n</commit-message>\n```":                                     "Fix login",
+		"banner\n<commit-message>\nFix login\n":                                                        "Fix login",
 	} {
 		if got := Clean(in); got != want {
 			t.Errorf("Clean(%q) = %q; want %q", in, got, want)
