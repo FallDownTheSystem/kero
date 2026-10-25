@@ -18,6 +18,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
@@ -375,6 +376,56 @@ func TestSidebarFooter(t *testing.T) {
 		if a.selected != want {
 			t.Errorf("%q went to %s, want %s", label, a.selected, want)
 		}
+	}
+}
+
+// The foot's Menus button has the menu bar's menus, without the system's
+// items, and runs their actions; a project's menu starts a session of it in
+// a worktree.
+func TestMenusButton(t *testing.T) {
+	// The menus' Check for Updates is the updater's, which runApp uses; in
+	// a language of its own, as no app runs to ask its language of.
+	mygo.Use(updater.New(updater.Options{Language: "en"}))
+	a := testApp(t)
+	a.menu()
+	cl, _ := projectClient(t, func(string, json.RawMessage) (any, error) { return nil, errors.New("no kerod in a test") })
+	a.local().conn, a.local().cl = connReady, cl
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	if err := tt.Click("Menus"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	menu := tt.Menu()
+	for _, want := range []string{"Session", "Edit", "Pane", "View"} {
+		if !slices.Contains(menu, want) {
+			t.Errorf("the menus have no %q: %q", want, menu)
+		}
+	}
+	if err := tt.ChooseMenuItem("Session", "New Session in Worktree…"); err != nil {
+		t.Fatalf("%v; menu %q", err, menu)
+	}
+	tt.Frame()
+	// Of the repository of the session the user is in.
+	if a.wtAsk == nil || a.wtAsk.p.After != a.selected {
+		t.Fatalf("New Session in Worktree… asked %+v", a.wtAsk)
+	}
+	a.wtAsk = nil
+	tt.Frame()
+
+	pr := a.st.Projects[0]
+	a.selected = ""
+	tt.Frame()
+	if err := tt.RightClick(pr.Name); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if err := tt.ChooseMenuItem("New Session in Worktree…"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	tt.Frame()
+	if a.wtAsk == nil || a.wtAsk.p.Project != pr.ID || a.wtAsk.p.Dir != pr.Dir {
+		t.Errorf("the project's New Session in Worktree… asked %+v", a.wtAsk)
 	}
 }
 

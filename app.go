@@ -156,6 +156,8 @@ type App struct {
 	// tests, which the next frame runs.
 	earlyMu sync.Mutex
 	early   []func()
+	// bar is the menu bar's menus as menu last made them.
+	bar []*mygo.MenuItem
 
 	// Focus follows the mouse: the pane the pointer went into, and where
 	// the pointer was last over a pane, in the window.
