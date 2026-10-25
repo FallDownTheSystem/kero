@@ -157,6 +157,18 @@ kero browser eval 'document.title'
 
 `kero do` と同じく、`kero browser` には **設定 › エージェント** のリモート操作と、アプリが開いていることが必要です。
 
+## 過去の会話
+
+```sh
+kero history                     # ペインで動いたエージェントの会話を、最後に動いたものから順に
+kero history -p kero -n 50       # ひとつのプロジェクトの会話を、最大 50 件
+kero history login --json        # 「login」に一致するものを JSON で
+kero resume 13b9                 # 再開する: ID、その先頭部分、または名前で
+kero resume fix-login -f         # 再開して、アプリに表示する
+```
+
+`kero resume` は、その会話を再開するセッションを会話のディレクトリとプロジェクトで開始し、セッションの ID を表示します。まだペインで動いている会話なら、そのセッションを返します。[過去の会話](./sessions.md#past-conversations)を参照してください。
+
 ## 状態
 
 ```sh

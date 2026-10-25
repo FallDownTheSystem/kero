@@ -107,6 +107,13 @@ Usage:
                                   selector
       --domain <domain>           cookies of a site and its subdomains
       -t, --timeout <dur>         how long to wait (default 10s)
+  kero history [query] [-p project] [-n count] [--json]
+                                the agents' conversations panes ran, the
+                                last to run first, to resume
+  kero resume <conversation> [-f]
+                                start a session resuming a conversation
+                                (its id, a prefix of it, or its name), or
+                                show the one running it, printing its id
   kero rename <session> <name>
   kero focus <target>           show a session (and pane) in the app
   kero close <target>           end a session (or, given a pane, the pane)
@@ -160,7 +167,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -651,6 +658,59 @@ func run(args []string, host string) error {
 		}
 		return nil
 
+	case "history":
+		f, err := parse(args, map[string]string{"p": "project", "project": "project", "n": "count", "count": "count"}, map[string]string{"json": "json", "j": "json"})
+		if err != nil {
+			return err
+		}
+		list, err := conversations(c, st, f.vals["project"], strings.Join(f.pos, " "))
+		if err != nil {
+			return err
+		}
+		n := 20
+		if v := f.vals["count"]; v != "" {
+			if n, err = strconv.Atoi(v); err != nil || n < 0 {
+				return usageErr("kero history -n takes a count")
+			}
+		}
+		if n > 0 && len(list) > n && !f.set["json"] {
+			list = list[:n]
+		}
+		if f.set["json"] {
+			return printJSON(list)
+		}
+		listConversations(st, list)
+		return nil
+
+	case "resume":
+		f, err := parse(args, nil, map[string]string{"f": "focus", "focus": "focus", "json": "json"})
+		if err != nil {
+			return err
+		}
+		if len(f.pos) == 0 {
+			return usageErr("kero resume <conversation> (see kero history)")
+		}
+		list, err := conversations(c, st, "", "")
+		if err != nil {
+			return err
+		}
+		conv, err := findConversation(list, strings.Join(f.pos, " "))
+		if err != nil {
+			return err
+		}
+		var s proto.Session
+		if err := c.Call("conversation.resume", proto.ConversationParams{Agent: conv.Agent, ID: conv.ID, After: os.Getenv("KERO_SESSION")}, &s); err != nil {
+			return err
+		}
+		if f.set["focus"] {
+			c.Call("select", proto.FocusParams{Session: s.ID}, nil)
+		}
+		if f.set["json"] {
+			return printJSON(s)
+		}
+		fmt.Println(s.ID)
+		return nil
+
 	case "rename":
 		if len(args) < 2 {
 			return usageErr("kero rename <session> <name>")
@@ -1078,6 +1138,84 @@ func StopDaemon() error {
 		time.Sleep(30 * time.Millisecond)
 	}
 	return errors.New("kerod did not stop")
+}
+
+// conversations lists the conversations kerod remembers, of a project
+// (by id or name) when one is named, matching query when there is one.
+func conversations(c *client.Client, st proto.State, project, query string) ([]proto.Conversation, error) {
+	var list []proto.Conversation
+	if err := c.Call("conversations", nil, &list); err != nil {
+		if strings.Contains(err.Error(), "unknown method") {
+			return nil, errors.New("this kerod remembers no conversations: update it, or run `kero daemon restart`")
+		}
+		return nil, err
+	}
+	if project != "" {
+		id := ""
+		for _, p := range st.Projects {
+			if p.ID == project || strings.EqualFold(p.Name, project) {
+				id = p.ID
+			}
+		}
+		if id == "" {
+			return nil, fmt.Errorf("no project %q", project)
+		}
+		list = slices.DeleteFunc(list, func(cv proto.Conversation) bool { return cv.Project != id })
+	}
+	if q := strings.ToLower(strings.TrimSpace(query)); q != "" {
+		list = slices.DeleteFunc(list, func(cv proto.Conversation) bool {
+			for _, w := range strings.Fields(q) {
+				if !strings.Contains(strings.ToLower(cv.Name+" "+cv.Title+" "+cv.Dir+" "+cv.Agent+" "+cv.ID), w) {
+					return true
+				}
+			}
+			return false
+		})
+	}
+	return list, nil
+}
+
+// findConversation finds a conversation by its id, a unique prefix of
+// it, or its name.
+func findConversation(list []proto.Conversation, ref string) (proto.Conversation, error) {
+	var found []proto.Conversation
+	for _, cv := range list {
+		if cv.ID == ref {
+			return cv, nil
+		}
+		if strings.HasPrefix(cv.ID, ref) || strings.EqualFold(cv.Label(), ref) {
+			found = append(found, cv)
+		}
+	}
+	switch len(found) {
+	case 0:
+		return proto.Conversation{}, fmt.Errorf("%w: no conversation %q (see kero history)", errNotFound, ref)
+	case 1:
+		return found[0], nil
+	}
+	return proto.Conversation{}, fmt.Errorf("%q could be %d conversations: give more of its id (see kero history)", ref, len(found))
+}
+
+func listConversations(st proto.State, list []proto.Conversation) {
+	if len(list) == 0 {
+		fmt.Println("no conversations yet (agents' conversations show here once Kero's skill is set up: kero skill setup)")
+		return
+	}
+	names := map[string]string{}
+	for _, p := range st.Projects {
+		names[p.ID] = p.Name
+	}
+	now := time.Now()
+	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(w, "ID\tAGENT\tPROJECT\tNAME\tLAST RAN\tDIR")
+	for _, cv := range list {
+		when := proto.Ago(cv.Updated, now)
+		if cv.Session != "" {
+			when = "running in " + cv.Session
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", cv.ID, cv.Agent, orDash(names[cv.Project]), cv.Label(), when, proto.ShortDir(cv.Dir))
+	}
+	w.Flush()
 }
 
 func listSessions(st proto.State) {

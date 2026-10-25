@@ -335,6 +335,7 @@ func (s *pane) tick(now time.Time) bool {
 		s.dropLive()
 		s.progress = ""
 		if s.info.AgentSession != nil {
+			s.d.noteEnded(s)
 			s.info.AgentSession = nil
 			s.d.save()
 		}
@@ -739,6 +740,7 @@ func (s *pane) close() {
 		return
 	}
 	s.closed = true
+	s.d.noteEnded(s)
 	close(s.changed) // wakes those waiting on it
 	s.changed = make(chan struct{})
 	proc := s.proc

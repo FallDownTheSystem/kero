@@ -1,9 +1,11 @@
 package main
 
 import (
+	"cmp"
 	"math"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/egoist/mygo/ui"
@@ -23,11 +25,28 @@ type paletteState struct {
 	index  int
 	scroll ui.ScrollState
 	reveal bool // the chosen item scrolls into view, once
+	// convs are the conversations the hosts' kerods remember, the last to
+	// run first, as they come; only shows them alone (Resume
+	// Conversation…), and gen tells the palette they came for.
+	convs []hostConversation
+	only  bool
+	gen   int
 }
+
+// hostConversation is a conversation a host's kerod remembers.
+type hostConversation struct {
+	host *host
+	proto.Conversation
+}
+
+// recentConversations is how many conversations the palette shows before
+// the user types.
+const recentConversations = 5
 
 // paletteItem is a session or a command the palette offers.
 type paletteItem struct {
 	session *proto.Session
+	conv    *hostConversation
 	title   string
 	detail  string
 	keys    string
@@ -38,10 +57,113 @@ type paletteItem struct {
 }
 
 func (a *App) openPalette() {
-	a.pal = paletteState{open: true, reveal: true}
+	a.pal = paletteState{open: true, reveal: true, gen: a.pal.gen + 1}
+	a.loadConversations()
+}
+
+// openConversations opens the palette on the conversations alone.
+func (a *App) openConversations() {
+	a.openPalette()
+	a.pal.only = true
+}
+
+// loadConversations asks every host's kerod for the conversations it
+// remembers. An older one knows of none.
+func (a *App) loadConversations() {
+	gen := a.pal.gen
+	for _, h := range a.hosts {
+		cl := h.cl
+		if cl == nil {
+			continue
+		}
+		go func() {
+			var list []proto.Conversation
+			if cl.Call("conversations", nil, &list) != nil {
+				return
+			}
+			a.update(func() {
+				if a.pal.gen != gen || !a.pal.open {
+					return
+				}
+				for _, cv := range list {
+					a.pal.convs = append(a.pal.convs, hostConversation{h, cv})
+				}
+				slices.SortStableFunc(a.pal.convs, func(x, y hostConversation) int { return cmp.Compare(y.Updated, x.Updated) })
+			})
+		}()
+	}
+}
+
+// conversationItems are the palette's conversations: those no pane runs,
+// as a session the palette has already shows them; all of them with only.
+func (a *App) conversationItems() []paletteItem {
+	var items []paletteItem
+	names := map[string]string{}
+	for _, p := range a.st.Projects {
+		names[p.ID] = p.Name
+	}
+	now := time.Now()
+	for i := range a.pal.convs {
+		cv := &a.pal.convs[i]
+		if cv.Session != "" && !a.pal.only {
+			continue
+		}
+		detail := cmp.Or(proto.AgentNames[cv.Agent], cv.Agent)
+		if cv.Name != "" && cv.Title != "" {
+			detail = cv.Title + " · " + detail
+		}
+		if n := names[cv.Project]; n != "" {
+			detail += " · " + n
+		}
+		if cv.host.remote() {
+			detail = cv.host.name + " · " + detail
+		}
+		if cv.Session != "" {
+			detail += " · " + locales.PaletteConversationRunning()
+		} else {
+			detail += " · " + ago(cv.Updated, now)
+		}
+		items = append(items, paletteItem{conv: cv, title: cv.Label(), detail: detail,
+			words: cv.Title + " " + cv.Name + " " + cv.Dir + " " + cv.Agent + " " + cv.ID,
+			run:   func() { a.resumeConversation(cv.host, cv.Conversation) }})
+	}
+	return items
+}
+
+// resumeConversation shows the session running a conversation of a
+// host's, or starts one resuming it, beside the session shown.
+func (a *App) resumeConversation(h *host, cv proto.Conversation) {
+	cl := h.cl
+	if cl == nil {
+		a.toast(locales.HostNotConnected(h.name))
+		return
+	}
+	p := proto.ConversationParams{Agent: cv.Agent, ID: cv.ID}
+	if cur := a.session(a.selected); cur != nil && a.hostOf(cur.ID) == h {
+		p.Cols, p.Rows = cur.Cols, cur.Rows
+		if cur.Project == cv.Project {
+			p.After = cur.ID
+		}
+	}
+	go func() {
+		var s proto.Session
+		err := cl.Call("conversation.resume", p, &s)
+		a.update(func() {
+			if err != nil {
+				a.toast(err.Error())
+				return
+			}
+			delete(a.prefs.Collapsed, s.Project)
+			a.addPending(h, s)
+			a.selectSession(s.ID)
+		})
+	}()
 }
 
 func (a *App) paletteItems() []paletteItem {
+	if a.pal.only {
+		return a.conversationItems()
+	}
 	var items []paletteItem
 	names := map[string]string{}
 	for _, p := range a.st.Projects {
@@ -96,7 +218,29 @@ func (a *App) paletteItems() []paletteItem {
 			paletteItem{title: locales.PickerTitle(h.name), detail: h.addr.String(), words: en.PickerTitle(h.name), run: func() { a.openProjectOn(h) }},
 			paletteItem{title: locales.HostReconnectTo(h.name), detail: h.addr.String(), words: en.HostReconnectTo(h.name), run: func() { a.reconnectHost(h) }})
 	}
+	convs := a.conversationItems()
+	if a.pal.query == "" && len(convs) > recentConversations {
+		convs = convs[:recentConversations]
+	}
+	items = append(items, convs...)
 	return append(items, cmds...)
+}
+
+// What a palette's item is, which its group in the list goes by.
+const (
+	paletteSession = iota
+	paletteConversation
+	paletteCommand
+)
+
+func (it *paletteItem) kind() int {
+	switch {
+	case it.session != nil:
+		return paletteSession
+	case it.conv != nil:
+		return paletteConversation
+	}
+	return paletteCommand
 }
 
 // fuzzy scores how well query matches s, as its letters in order: higher
@@ -181,13 +325,20 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 	a.pal.index = min(max(a.pal.index, 0), max(len(items)-1, 0))
 
 	var chosen func()
+	label, placeholder, none := locales.PaletteLabel(), locales.PalettePlaceholder(), locales.PaletteNoMatches()
+	if a.pal.only {
+		label, placeholder = locales.PaletteConversationsLabel(), locales.PaletteConversationsPlaceholder()
+		if a.pal.query == "" {
+			none = locales.PaletteNoConversations()
+		}
+	}
 	ui.DialogBase(c.Key("palette"), &a.pal.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay).Justify(ui.Start).Padding(84, 0, 0, 0)
 		floating(panel.Width(600).MaxHeight(460).Radius(14).Background(pal.popover), pal).Clip().
-			Label(locales.PaletteLabel())
+			Label(label)
 		ui.Row(c).Height(50).Shrink(0).Padding(0, 16).Gap(10).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, searchIcon).Size(16, 16).TextColor(pal.textMuted)
-			in := ui.TextInputBase(c.Key("q"), &a.pal.query).Grow(1).FontSize(15).Placeholder(locales.PalettePlaceholder()).AutoFocus()
+			in := ui.TextInputBase(c.Key("q"), &a.pal.query).Grow(1).FontSize(15).Placeholder(placeholder).AutoFocus()
 			if in.Changed() {
 				a.pal.index, a.pal.reveal = 0, true
 			}
@@ -206,15 +357,21 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 		a.pal.reveal = false
 		list.Children(func() {
 			if len(items) == 0 {
-				ui.Text(c, locales.PaletteNoMatches()).FontSize(13).TextColor(pal.textFaint).Padding(12, 12)
+				ui.Text(c, none).FontSize(13).TextColor(pal.textFaint).Padding(12, 12).LineHeight(1.4)
 			}
-			lastKind := true
+			lastKind := paletteSession
 			for i, it := range items {
-				isSession := it.session != nil
-				if i > 0 && isSession != lastKind && a.pal.query == "" {
-					ui.Text(c, locales.PaletteCommands()).FontSize(11.5).FontWeight(600).TextColor(pal.textFaint).Padding(10, 10, 4, 10)
+				kind := it.kind()
+				// Conversations head their group even first, as with no
+				// sessions, or they would read as sessions.
+				if (i > 0 || kind == paletteConversation) && kind != lastKind && a.pal.query == "" && !a.pal.only {
+					title := locales.PaletteCommands()
+					if kind == paletteConversation {
+						title = locales.PaletteConversations()
+					}
+					ui.Text(c, title).FontSize(11.5).FontWeight(600).TextColor(pal.textFaint).Padding(10, 10, 4, 10)
 				}
-				lastKind = isSession
+				lastKind = kind
 				row := ui.Row(c.Key(i)).Height(38).Padding(0, 10).Gap(10).AlignItems(ui.Center).Radius(8)
 				if i == a.pal.index {
 					row.Background(pal.accent.Alpha(0.12))
@@ -228,9 +385,12 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 					chosen = it.run
 				}
 				row.Children(func() {
-					if isSession {
+					switch kind {
+					case paletteSession:
 						statusIcon(c, pal, it.session.Status, it.session.Unread, 14)
-					} else {
+					case paletteConversation:
+						ui.Icon(c, programIcon(&proto.Pane{Agent: it.conv.Agent})).Size(14, 14).TextColor(pal.textFaint)
+					default:
 						ui.Icon(c, returnIcon).Size(14, 14).TextColor(pal.textFaint)
 					}
 					ui.Text(c, it.title).FontSize(13.5).TextColor(pal.text).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(300)

@@ -39,6 +39,8 @@ func (d *Daemon) stateLocked() proto.State {
 		Sessions: make([]proto.Session, 0, len(d.sessions)),
 		Viewed:   d.viewedID(),
 		Started:  d.started.UnixMilli(),
+		// The conversations' lock comes after d.mu.
+		Conversations: d.convs.generation(),
 	}
 	for _, s := range d.sessions {
 		st.Sessions = append(st.Sessions, d.sessionInfo(s))

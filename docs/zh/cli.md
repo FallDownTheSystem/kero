@@ -156,6 +156,18 @@ kero browser eval 'document.title'
 
 和 `kero do` 一样，`kero browser` 需要开启 **设置 › 智能体** 中的 **远程控制**，并且 app 处于打开状态。
 
+## 过去的对话
+
+```sh
+kero history                     # 窗格中运行过的智能体对话，最近运行的在前
+kero history -p kero -n 50       # 某个项目的对话，最多 50 个
+kero history login --json        # 与 “login” 匹配的对话，输出 JSON
+kero resume 13b9                 # 恢复一个对话：用 ID、ID 的前缀或名字
+kero resume fix-login -f         # 恢复并在 app 中显示
+```
+
+`kero resume` 会在对话的目录和项目中启动一个恢复该对话的会话，并打印会话的 ID。如果某个窗格仍在运行这个对话，则返回那个会话。参见 [过去的对话](./sessions.md#past-conversations)。
+
 ## 状态
 
 ```sh

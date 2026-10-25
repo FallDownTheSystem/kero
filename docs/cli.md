@@ -162,6 +162,18 @@ Browser panes share their cookies, and keep them when Kero restarts. `cookies` s
 
 Like `kero do`, `kero browser` needs Remote Control, in **Settings › Agents**, and the app to be open.
 
+## Past conversations
+
+```sh
+kero history                     # agents' conversations panes ran, the last to run first
+kero history -p kero -n 50       # one project's, up to 50
+kero history login --json        # those matching "login", as JSON
+kero resume 13b9                 # resume one: its id, a prefix of it, or its name
+kero resume fix-login -f         # and show it in the app
+```
+
+`kero resume` starts a session that resumes the conversation, in its directory and project, and prints the session's id. A conversation a pane still runs gives that session instead. See [Past conversations](./sessions.md#past-conversations).
+
 ## Status
 
 ```sh

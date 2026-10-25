@@ -64,8 +64,12 @@ func (d *Daemon) saveLoop() {
 		case <-d.saveCh:
 			time.Sleep(300 * time.Millisecond)
 			d.saveState()
+			d.noteConversations()
+			d.saveConversations()
 		case <-snaps.C:
 			d.saveHistories(false)
+			d.noteConversations()
+			d.saveConversations()
 		case <-d.quit:
 			return
 		}

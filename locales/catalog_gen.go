@@ -116,6 +116,16 @@ func (msgs Messages) ActionGoToSession() string {
 	return Catalog.Format(msgs.locale, "actionGoToSession", nil)
 }
 
+// ActionResumeConversation says "Resume Conversation…"
+// in the language the app shows.
+func ActionResumeConversation() string { return In(i18n.Locale()).ActionResumeConversation() }
+
+// ActionResumeConversation says "Resume Conversation…"
+// in the language of msgs.
+func (msgs Messages) ActionResumeConversation() string {
+	return Catalog.Format(msgs.locale, "actionResumeConversation", nil)
+}
+
 // ActionJumpToAttention says "Jump to Session Needing You"
 // in the language the app shows.
 func ActionJumpToAttention() string { return In(i18n.Locale()).ActionJumpToAttention() }
@@ -1524,6 +1534,58 @@ func PaletteCommands() string { return In(i18n.Locale()).PaletteCommands() }
 // in the language of msgs.
 func (msgs Messages) PaletteCommands() string {
 	return Catalog.Format(msgs.locale, "paletteCommands", nil)
+}
+
+// PaletteConversations says "Recent Conversations"
+// in the language the app shows.
+func PaletteConversations() string { return In(i18n.Locale()).PaletteConversations() }
+
+// PaletteConversations says "Recent Conversations"
+// in the language of msgs.
+func (msgs Messages) PaletteConversations() string {
+	return Catalog.Format(msgs.locale, "paletteConversations", nil)
+}
+
+// PaletteConversationsLabel says "Resume Conversation"
+// in the language the app shows.
+func PaletteConversationsLabel() string { return In(i18n.Locale()).PaletteConversationsLabel() }
+
+// PaletteConversationsLabel says "Resume Conversation"
+// in the language of msgs.
+func (msgs Messages) PaletteConversationsLabel() string {
+	return Catalog.Format(msgs.locale, "paletteConversationsLabel", nil)
+}
+
+// PaletteConversationsPlaceholder says "Find a conversation to resume…"
+// in the language the app shows.
+func PaletteConversationsPlaceholder() string {
+	return In(i18n.Locale()).PaletteConversationsPlaceholder()
+}
+
+// PaletteConversationsPlaceholder says "Find a conversation to resume…"
+// in the language of msgs.
+func (msgs Messages) PaletteConversationsPlaceholder() string {
+	return Catalog.Format(msgs.locale, "paletteConversationsPlaceholder", nil)
+}
+
+// PaletteNoConversations says "No conversations yet. Coding agents’ conversations show here once Kero’s skill is set up for them."
+// in the language the app shows.
+func PaletteNoConversations() string { return In(i18n.Locale()).PaletteNoConversations() }
+
+// PaletteNoConversations says "No conversations yet. Coding agents’ conversations show here once Kero’s skill is set up for them."
+// in the language of msgs.
+func (msgs Messages) PaletteNoConversations() string {
+	return Catalog.Format(msgs.locale, "paletteNoConversations", nil)
+}
+
+// PaletteConversationRunning says "running"
+// in the language the app shows.
+func PaletteConversationRunning() string { return In(i18n.Locale()).PaletteConversationRunning() }
+
+// PaletteConversationRunning says "running"
+// in the language of msgs.
+func (msgs Messages) PaletteConversationRunning() string {
+	return Catalog.Format(msgs.locale, "paletteConversationRunning", nil)
 }
 
 // AgoNow says "now"
@@ -5258,4 +5320,144 @@ func WorktreeRemoveAnyway() string { return In(i18n.Locale()).WorktreeRemoveAnyw
 // in the language of msgs.
 func (msgs Messages) WorktreeRemoveAnyway() string {
 	return Catalog.Format(msgs.locale, "worktreeRemoveAnyway", nil)
+}
+
+// SetSessionHistory says "Session history"
+// in the language the app shows.
+func SetSessionHistory() string { return In(i18n.Locale()).SetSessionHistory() }
+
+// SetSessionHistory says "Session history"
+// in the language of msgs.
+func (msgs Messages) SetSessionHistory() string {
+	return Catalog.Format(msgs.locale, "setSessionHistory", nil)
+}
+
+// SetSessionHistoryDetail says "List the coding agents' ended conversations in the sidebar, to resume them later or archive them."
+// in the language the app shows.
+func SetSessionHistoryDetail() string { return In(i18n.Locale()).SetSessionHistoryDetail() }
+
+// SetSessionHistoryDetail says "List the coding agents' ended conversations in the sidebar, to resume them later or archive them."
+// in the language of msgs.
+func (msgs Messages) SetSessionHistoryDetail() string {
+	return Catalog.Format(msgs.locale, "setSessionHistoryDetail", nil)
+}
+
+// EndedTitle says "Ended"
+// in the language the app shows.
+func EndedTitle() string { return In(i18n.Locale()).EndedTitle() }
+
+// EndedTitle says "Ended"
+// in the language of msgs.
+func (msgs Messages) EndedTitle() string {
+	return Catalog.Format(msgs.locale, "endedTitle", nil)
+}
+
+// EndedArchived says "Archived"
+// in the language the app shows.
+func EndedArchived() string { return In(i18n.Locale()).EndedArchived() }
+
+// EndedArchived says "Archived"
+// in the language of msgs.
+func (msgs Messages) EndedArchived() string {
+	return Catalog.Format(msgs.locale, "endedArchived", nil)
+}
+
+// EndedArchive says "Archive"
+// in the language the app shows.
+func EndedArchive() string { return In(i18n.Locale()).EndedArchive() }
+
+// EndedArchive says "Archive"
+// in the language of msgs.
+func (msgs Messages) EndedArchive() string {
+	return Catalog.Format(msgs.locale, "endedArchive", nil)
+}
+
+// EndedShowAll says "Show all {n}"
+// in the language the app shows.
+func EndedShowAll(n int) string { return In(i18n.Locale()).EndedShowAll(n) }
+
+// EndedShowAll says "Show all {n}"
+// in the language of msgs.
+func (msgs Messages) EndedShowAll(n int) string {
+	return Catalog.Format(msgs.locale, "endedShowAll", map[string]any{"n": n})
+}
+
+// EndedResume says "Resume"
+// in the language the app shows.
+func EndedResume() string { return In(i18n.Locale()).EndedResume() }
+
+// EndedResume says "Resume"
+// in the language of msgs.
+func (msgs Messages) EndedResume() string {
+	return Catalog.Format(msgs.locale, "endedResume", nil)
+}
+
+// EndedRestore says "Restore"
+// in the language the app shows.
+func EndedRestore() string { return In(i18n.Locale()).EndedRestore() }
+
+// EndedRestore says "Restore"
+// in the language of msgs.
+func (msgs Messages) EndedRestore() string {
+	return Catalog.Format(msgs.locale, "endedRestore", nil)
+}
+
+// EndedDelete says "Delete"
+// in the language the app shows.
+func EndedDelete() string { return In(i18n.Locale()).EndedDelete() }
+
+// EndedDelete says "Delete"
+// in the language of msgs.
+func (msgs Messages) EndedDelete() string {
+	return Catalog.Format(msgs.locale, "endedDelete", nil)
+}
+
+// EndedArchiveAll says "Archive All"
+// in the language the app shows.
+func EndedArchiveAll() string { return In(i18n.Locale()).EndedArchiveAll() }
+
+// EndedArchiveAll says "Archive All"
+// in the language of msgs.
+func (msgs Messages) EndedArchiveAll() string {
+	return Catalog.Format(msgs.locale, "endedArchiveAll", nil)
+}
+
+// EndedDeleteAll says "Delete All…"
+// in the language the app shows.
+func EndedDeleteAll() string { return In(i18n.Locale()).EndedDeleteAll() }
+
+// EndedDeleteAll says "Delete All…"
+// in the language of msgs.
+func (msgs Messages) EndedDeleteAll() string {
+	return Catalog.Format(msgs.locale, "endedDeleteAll", nil)
+}
+
+// EndedDeleteAllTitle says "Delete {n} archived conversations?"
+// in the language the app shows.
+func EndedDeleteAllTitle(n int) string { return In(i18n.Locale()).EndedDeleteAllTitle(n) }
+
+// EndedDeleteAllTitle says "Delete {n} archived conversations?"
+// in the language of msgs.
+func (msgs Messages) EndedDeleteAllTitle(n int) string {
+	return Catalog.Format(msgs.locale, "endedDeleteAllTitle", map[string]any{"n": n})
+}
+
+// EndedDeleteAllDetail says "Kero forgets them; each agent keeps its own history of the conversation."
+// in the language the app shows.
+func EndedDeleteAllDetail() string { return In(i18n.Locale()).EndedDeleteAllDetail() }
+
+// EndedDeleteAllDetail says "Kero forgets them; each agent keeps its own history of the conversation."
+// in the language of msgs.
+func (msgs Messages) EndedDeleteAllDetail() string {
+	return Catalog.Format(msgs.locale, "endedDeleteAllDetail", nil)
+}
+
+// EndedSetUpSkill says "Set up Kero's skill for your agents to list their ended conversations here"
+// in the language the app shows.
+func EndedSetUpSkill() string { return In(i18n.Locale()).EndedSetUpSkill() }
+
+// EndedSetUpSkill says "Set up Kero's skill for your agents to list their ended conversations here"
+// in the language of msgs.
+func (msgs Messages) EndedSetUpSkill() string {
+	return Catalog.Format(msgs.locale, "endedSetUpSkill", nil)
 }

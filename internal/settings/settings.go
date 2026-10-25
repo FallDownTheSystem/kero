@@ -28,6 +28,7 @@ type Settings struct {
 	ConfirmClose      bool   `json:"confirmClose"`      // before closing a pane a program runs in
 	RestoreSessions   bool   `json:"restoreSessions"`   // after kerod restarts, as after a reboot
 	ResumeAgents      bool   `json:"resumeAgents"`      // as it restores sessions: the agents' own
+	SessionHistory    bool   `json:"sessionHistory"`    // the sidebar lists the agents' ended conversations
 	QuitConfirm       bool   `json:"quitConfirm"`       // tell, the first time, that quitting keeps sessions
 	AppIcon           string `json:"appIcon"`           // macOS: AppIcons; elsewhere the icon is always in the notification area
 
