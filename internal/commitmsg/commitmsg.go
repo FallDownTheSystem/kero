@@ -36,7 +36,7 @@ func Prompt(forked bool, recent, stat, patch string) string {
 	if forked {
 		b.WriteString("You made these changes, or some of them, in this conversation: say why they were made, as you know it. The diff is what the commit takes; describe it, not the rest of the conversation's work.\n\n")
 	}
-	b.WriteString("Keep to the style of the repository's recent commit messages. Reply with the message alone: a subject line of at most 72 characters, then, when the change needs one, a blank line and a body wrapped at 72 that says why. No code fences, no quotes, no commentary, and no tools.\n\n")
+	b.WriteString("Keep to the style of the repository's recent commit messages. Reply with the message alone, between a line " + msgOpen + " and a line " + msgClose + ": a subject line of at most 72 characters, then, when the change needs one, a blank line and a body wrapped at 72 that says why. No code fences, no quotes, no commentary, and no tools.\n\n")
 	if recent = strings.TrimSpace(recent); recent != "" {
 		b.WriteString("Recent commit subjects:\n" + recent + "\n\n")
 	}
@@ -99,9 +99,22 @@ func Command(user string, agent *Agent, sh string) (argv []string, forked bool, 
 	return nil, false, ErrNoWriter
 }
 
+// msgOpen and msgClose are the lines the message is asked between, which
+// tell it from what else the command prints, as a launcher's banner.
+const (
+	msgOpen  = "<commit-message>"
+	msgClose = "</commit-message>"
+)
+
 func isCodex(program string) bool {
-	base := filepath.Base(program)
+	base := baseName(program)
 	return base == "codex" || strings.HasPrefix(base, "codex.")
+}
+
+// baseName is the last element of path, at either separator, as
+// filepath.Base splits a Windows path only on Windows.
+func baseName(path string) string {
+	return path[strings.LastIndexAny(path, `/\`)+1:]
 }
 
 // inShell is the argv that runs line in the shell sh as the user types it
@@ -109,9 +122,7 @@ func isCodex(program string) bool {
 // too, as a function of PowerShell's profile does. A shell it doesn't
 // know runs line's words as a program.
 func inShell(sh, line string) []string {
-	// Either separator, as filepath.Base splits a Windows path only on
-	// Windows.
-	name := sh[strings.LastIndexAny(sh, `/\`)+1:]
+	name := baseName(sh)
 	if i := strings.LastIndexByte(name, '.'); i > 0 {
 		name = name[:i]
 	}
@@ -199,10 +210,19 @@ func Write(ctx context.Context, dir string, argv []string, prompt string) (strin
 	return msg, nil
 }
 
-// Clean takes a message out of what a model printed: its code fence, the
-// quotes around it, and the trailing spaces of its lines.
+// Clean takes a message out of what a model printed: what is between its
+// last msgOpen and the msgClose after it, when it printed them, without
+// its code fence, the quotes around it, and the trailing spaces of its
+// lines.
 func Clean(s string) string {
 	s = strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
+	if i := strings.LastIndex(s, msgOpen); i >= 0 {
+		s = s[i+len(msgOpen):]
+		if j := strings.Index(s, msgClose); j >= 0 {
+			s = s[:j]
+		}
+		s = strings.TrimSpace(s)
+	}
 	if strings.HasPrefix(s, "```") {
 		if i := strings.IndexByte(s, '\n'); i >= 0 {
 			s = s[i+1:]
