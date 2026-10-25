@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.19-fork.3
+
+- A **Filter** in the Files view's toolbar finds files and folders by name
+  in all of the folder, or by path with a slash, and shows them in the
+  folders they're in; Esc shows the file chosen in the whole tree
+
 ## 2.1.19-fork.2
 
 - Drag a file from the Files view onto a pane: near an edge, it opens
