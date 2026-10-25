@@ -804,20 +804,20 @@ func (a *App) uncommittedRow(c *ui.Context, pal *palette, g *proto.GitInfo, gw f
 func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *proto.Pane, cm proto.GitCommit) {
 	id, root := pane.ID, pane.Git.Root
 	short := shortHash(cm.Hash)
-	if padItem(m, locales.HistoryCopyHash()).Chosen() {
+	if m.Item(locales.HistoryCopyHash()).Chosen() {
 		c.WriteClipboard(cm.Hash)
 	}
 	// Its branches' names, the one it has, or each of those it has.
 	switch names := branchRefs(parseRefs(cm.Refs, a.side.git.hist.remotes)); len(names) {
 	case 0:
 	case 1:
-		if padItem(m, locales.HistoryCopyBranch()).Chosen() {
+		if m.Item(locales.HistoryCopyBranch()).Chosen() {
 			c.WriteClipboard(names[0])
 		}
 	default:
-		padSub(m, locales.HistoryCopyBranch(), func(sm *ui.Menu) {
+		m.Submenu(locales.HistoryCopyBranch(), func(sm *ui.Menu) {
 			for _, name := range names {
-				if padItem(sm, name).Chosen() {
+				if sm.Item(name).Chosen() {
 					c.WriteClipboard(name)
 				}
 			}
@@ -842,28 +842,28 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 	}
 	switch len(targets) {
 	case 0:
-		if padItem(m, locales.HistoryCheckout()).Chosen() {
+		if m.Item(locales.HistoryCheckout()).Chosen() {
 			a.guarded(id, root, locales.HistoryCheckout(), func() {
 				a.runGit(id, root, proto.GitOpParams{Op: "checkout", Rev: cm.Hash}, locales.GitSwitchTo(short), nil)
 			})
 		}
 	case 1:
-		if b := targets[0]; padItem(m, locales.HistoryCheckoutBranch(b.Name)).Disabled(b.Current).Chosen() {
+		if b := targets[0]; m.Item(locales.HistoryCheckoutBranch(b.Name)).Disabled(b.Current).Chosen() {
 			a.switchBranch(s, pane, b, cm.Hash)
 		}
 	default:
-		padSub(m, locales.HistoryCheckout(), func(sm *ui.Menu) {
+		m.Submenu(locales.HistoryCheckout(), func(sm *ui.Menu) {
 			for _, b := range targets {
-				if padItem(sm, b.Name).Disabled(b.Current).Chosen() {
+				if sm.Item(b.Name).Disabled(b.Current).Chosen() {
 					a.switchBranch(s, pane, b, cm.Hash)
 				}
 			}
 		})
 	}
-	if padItem(m, locales.GitNewBranchHere()).Chosen() {
+	if m.Item(locales.GitNewBranchHere()).Chosen() {
 		a.askNewBranch(id, root, cm.Hash, short)
 	}
-	if padItem(m, locales.GitSessionHere()).Chosen() {
+	if m.Item(locales.GitSessionHere()).Chosen() {
 		h := a.hostOf(id)
 		a.askName(locales.GitSessionHereTitle(), locales.GitNewBranchAt(short), locales.GitBranchName(), "", locales.WorktreeCreate(), func(name string) {
 			a.create(h, proto.CreateParams{Project: s.Project, After: s.ID, Dir: root, Cols: s.Cols, Rows: s.Rows, Worktree: name, Base: cm.Hash}, s.Project)
@@ -878,23 +878,23 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 	}
 	a.mergeItems(m, pane, rev, name, cm.Hash == pane.Git.Head)
 	m.Separator()
-	if padItem(m, locales.HistoryCherryPick()).Chosen() {
+	if m.Item(locales.HistoryCherryPick()).Chosen() {
 		a.guarded(id, root, locales.HistoryCherryPick(), func() {
 			a.runGit(id, root, proto.GitOpParams{Op: "cherryPick", Rev: cm.Hash}, locales.HistoryCherryPickOf(short), nil)
 		})
 	}
-	if padItem(m, locales.HistoryRevert()).Chosen() {
+	if m.Item(locales.HistoryRevert()).Chosen() {
 		a.guarded(id, root, locales.HistoryRevert(), func() {
 			a.runGit(id, root, proto.GitOpParams{Op: "revert", Rev: cm.Hash}, locales.HistoryRevertOf(short), nil)
 		})
 	}
-	padSub(m, locales.HistoryReset(), func(sm *ui.Menu) {
+	m.Submenu(locales.HistoryReset(), func(sm *ui.Menu) {
 		for _, r := range []struct{ mode, label, detail string }{
 			{"soft", locales.HistoryResetSoft(), locales.HistoryResetSoftDetail()},
 			{"mixed", locales.HistoryResetMixed(), locales.HistoryResetMixedDetail()},
 			{"hard", locales.HistoryResetHard(), locales.HistoryResetHardDetail()},
 		} {
-			if padItem(sm, r.label).Chosen() {
+			if sm.Item(r.label).Chosen() {
 				mode := r.mode
 				a.confirm = &confirmation{open: true, title: locales.HistoryResetTitle(branchName(pane.Git), short), detail: r.detail,
 					action: r.label, destroy: mode == "hard", run: func() {

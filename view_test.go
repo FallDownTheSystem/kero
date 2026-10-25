@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -340,7 +341,9 @@ func TestCopyOnSelectToast(t *testing.T) {
 // next session of it, and says nothing while nothing does ($KERO_SHOTS).
 func TestSidebarFooter(t *testing.T) {
 	a := testApp(t)
-	a.local().conn = connReady
+	// Connected, as ready is: else the app connects, which finds no kerod.
+	cl, _ := projectClient(t, func(string, json.RawMessage) (any, error) { return nil, errors.New("no kerod in a test") })
+	a.local().conn, a.local().cl = connReady, cl
 	tt := ui.NewTester(a.view, 1100, 700)
 	tt.Frame()
 	for _, txt := range tt.Texts() {

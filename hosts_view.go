@@ -222,38 +222,38 @@ func smallButton(c *ui.Context, key, label string, primary bool, pal *palette) b
 // hostMenu is a host header's context menu.
 func (a *App) hostMenu(m *ui.Menu, h *host) {
 	ready := h.conn == connReady
-	if padItem(m, locales.ActionNewSession()).Disabled(!ready).Chosen() {
+	if m.Item(locales.ActionNewSession()).Disabled(!ready).Chosen() {
 		a.newSessionOn(h, "")
 	}
-	if padItem(m, locales.ActionOpenProject()).Disabled(!ready).Chosen() {
+	if m.Item(locales.ActionOpenProject()).Disabled(!ready).Chosen() {
 		a.openProjectOn(h)
 	}
 	m.Separator()
-	if padItem(m, locales.HostReconnect()).Chosen() {
+	if m.Item(locales.HostReconnect()).Chosen() {
 		a.reconnectHost(h)
 	}
-	if padItem(m, locales.HostRestartAction(h.name)).Disabled(h.rc == nil || h.busy != "").Chosen() {
+	if m.Item(locales.HostRestartAction(h.name)).Disabled(h.rc == nil || h.busy != "").Chosen() {
 		a.offerHostRestart(h)
 	}
 	if h.info.Server || h.conn == connVersion {
-		if padItem(m, locales.HostUpdateAction(h.name)).Disabled(h.rc == nil || h.busy != "" || !released(mygo.App.Version())).Chosen() {
+		if m.Item(locales.HostUpdateAction(h.name)).Disabled(h.rc == nil || h.busy != "" || !released(mygo.App.Version())).Chosen() {
 			a.offerHostUpdate(h)
 		}
 	}
 	if errors.Is(h.errKind, remote.ErrNotInstalled) {
-		if padItem(m, locales.HostInstall()).Disabled(h.busy != "").Chosen() {
+		if m.Item(locales.HostInstall()).Disabled(h.busy != "").Chosen() {
 			a.installOnHost(h)
 		}
 	}
 	a.colorMenu(m, h)
 	m.Separator()
-	if padItem(m, locales.HostCopyAddress()).Chosen() {
+	if m.Item(locales.HostCopyAddress()).Chosen() {
 		a.copyText = h.addr.String()
 	}
-	if padItem(m, locales.HostSettings()).Chosen() {
+	if m.Item(locales.HostSettings()).Chosen() {
 		a.openSettings("hosts")
 	}
-	if padItem(m, locales.HostRemove()).Chosen() {
+	if m.Item(locales.HostRemove()).Chosen() {
 		a.confirm = a.removeHostConfirmation(h)
 	}
 }

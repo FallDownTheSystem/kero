@@ -6,8 +6,9 @@ import (
 	"github.com/egoist/mygo/ui/editor"
 )
 
-// The lines selected of a diff stage alone: the old side's as removals,
-// the new side's as additions with the old lines they replace.
+// The lines selected of a diff stage each alone, as git add -p stages
+// them: a removed line's removal, an added line's addition, and a line
+// edited as an edit with both its lines.
 func TestApplyLines(t *testing.T) {
 	old := "a\nb\nc\nd\n"
 	new := "a\nB\nC\nd\ne\n"
@@ -16,41 +17,44 @@ func TestApplyLines(t *testing.T) {
 	if len(hunks) != 2 {
 		t.Fatalf("hunks %+v", hunks)
 	}
-	stage := func(sel editor.DiffLineRange) (string, int) {
+	oldLines := func(a, b int) editor.DiffLineRange { return editor.DiffLineRange{Side: editor.DiffOld, Start: a, End: b} }
+	newLines := func(a, b int) editor.DiffLineRange { return editor.DiffLineRange{Side: editor.DiffNew, Start: a, End: b} }
+	stage := func(sel ...editor.DiffLineRange) (string, int) {
 		chosen, n := chosenLines(hunks, sel)
 		return applyLines(d.Old, d.New, hunks, withEnding(d.New, chosen), "\n"), n
 	}
-	unstage := func(sel editor.DiffLineRange) string {
+	unstage := func(sel ...editor.DiffLineRange) string {
 		chosen, _ := chosenLines(hunks, sel)
 		return applyLines(d.Old, d.New, hunks, func(s editor.DiffSide, l int) bool { return !chosen(s, l) }, "\n")
 	}
 	for _, tc := range []struct {
 		name string
-		sel  editor.DiffLineRange
+		sel  []editor.DiffLineRange
 		want string
 		n    int
 	}{
-		{"the first line edited", editor.DiffLineRange{Side: editor.DiffNew, Start: 1, End: 1}, "a\nB\nc\nd\n", 1},
-		{"both lines edited", editor.DiffLineRange{Side: editor.DiffNew, Start: 1, End: 2}, "a\nB\nC\nd\n", 2},
-		{"the line added", editor.DiffLineRange{Side: editor.DiffNew, Start: 4, End: 4}, "a\nb\nc\nd\ne\n", 1},
-		{"a line removed alone", editor.DiffLineRange{Side: editor.DiffOld, Start: 2, End: 2}, "a\nb\nd\n", 1},
-		{"every line", editor.DiffLineRange{Side: editor.DiffNew, Start: 0, End: 5}, new, 3},
-		{"no changed line", editor.DiffLineRange{Side: editor.DiffNew, Start: 0, End: 0}, old, 0},
+		{"the first line edited", []editor.DiffLineRange{oldLines(1, 1), newLines(1, 1)}, "a\nB\nc\nd\n", 2},
+		{"both lines edited", []editor.DiffLineRange{oldLines(1, 2), newLines(1, 2)}, "a\nB\nC\nd\n", 4},
+		{"a line added alone, its old one kept", []editor.DiffLineRange{newLines(1, 1)}, "a\nb\nB\nc\nd\n", 1},
+		{"the line added", []editor.DiffLineRange{newLines(4, 4)}, "a\nb\nc\nd\ne\n", 1},
+		{"a line removed alone", []editor.DiffLineRange{oldLines(2, 2)}, "a\nb\nd\n", 1},
+		{"every line", []editor.DiffLineRange{oldLines(0, 4), newLines(0, 5)}, new, 5},
+		{"no changed line", []editor.DiffLineRange{newLines(0, 0)}, old, 0},
 	} {
-		got, n := stage(tc.sel)
+		got, n := stage(tc.sel...)
 		if got != tc.want || n != tc.n {
 			t.Errorf("%s: staged %q of %d lines, want %q of %d", tc.name, got, n, tc.want, tc.n)
 		}
 	}
 	// Unstaging the line added takes it alone out.
-	if got := unstage(editor.DiffLineRange{Side: editor.DiffNew, Start: 4, End: 4}); got != "a\nB\nC\nd\n" {
+	if got := unstage(newLines(4, 4)); got != "a\nB\nC\nd\n" {
 		t.Errorf("unstaged %q", got)
 	}
 
 	// A new file's lines, staged one by one.
 	d = &editor.DiffState{Old: editor.NewBuffer(""), New: editor.NewBuffer("x\ny\n")}
 	hunks = d.Hunks()
-	chosen, n := chosenLines(hunks, editor.DiffLineRange{Side: editor.DiffNew, Start: 1, End: 1})
+	chosen, n := chosenLines(hunks, []editor.DiffLineRange{newLines(1, 1)})
 	if got := applyLines(d.Old, d.New, hunks, withEnding(d.New, chosen), "\r\n"); got != "y\r\n" || n != 1 {
 		t.Errorf("a new file's second line staged as %q, %d lines; hunks %+v", got, n, hunks)
 	}
@@ -84,7 +88,7 @@ func TestApplyLineEndings(t *testing.T) {
 		}
 		take := inHunk(hunks[0])
 		if tc.sel != nil {
-			take, _ = chosenLines(hunks, *tc.sel)
+			take, _ = chosenLines(hunks, []editor.DiffLineRange{*tc.sel})
 			if !tc.unstage {
 				take = withEnding(d.New, take)
 			}

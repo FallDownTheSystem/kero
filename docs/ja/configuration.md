@@ -133,7 +133,7 @@ kero config check             # 不明なキーと不正な値を報告
 | `diff-layout` | `auto`     | 変更パネルの差分: `unified`、`split`（左右に並べる）、または広くなると左右に並べる `auto`          |
 | `worktree-base` | `default` | [セッション専用のワークツリー](./changes.md#sessions-in-their-own-worktree)の起点: リポジトリのデフォルトブランチ `default`、または今いるセッションのブランチ `current` |
 | `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
-| `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
+| `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。シェルで実行され、プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。中の `{session}` はフォークするペインのエージェントの会話の ID になります（`cc -p --resume {session} --fork-session` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
 
 ## ファイル
 

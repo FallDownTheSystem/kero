@@ -47,13 +47,6 @@ func folderEditor() string {
 	return exe
 }
 
-// padMenus widens the context menus' items by a space: MyGo takes the
-// width of a check, SM_CXMENUCHECK, off each item it draws, for what
-// Windows adds, but Windows adds a fixed 24 pixels; past 150% scale the
-// check is wider, and the widest item's last letter is cut off (29 at
-// 175%: 4 pixels short). A space is wider than what's missing.
-func padMenus() { labelPad = " " }
-
 // canOpenWith tells that the system can ask which app opens a file.
 const canOpenWith = true
 

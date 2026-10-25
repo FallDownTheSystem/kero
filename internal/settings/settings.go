@@ -95,8 +95,9 @@ type Settings struct {
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
 	DiffLayout string `json:"diffLayout"` // the changes panel's diffs: "auto", "unified" or "split"
 	// CommitMessageCommand writes a commit message of what is staged,
-	// given the prompt on its stdin; "" for a fork of the conversation of
-	// the agent in the pane, else a new run of Claude Code's or Codex's.
+	// given the prompt on its stdin, run in the user's shell; {session} in
+	// it is the id of the pane's agent's conversation, to fork. "" for a
+	// fork of that conversation, else a new run of Claude Code's or Codex's.
 	CommitMessageCommand string `json:"commitMessageCommand"`
 	// WorktreeBase is what a session's own worktree branches from:
 	// "default", the repository's default branch, or "current", the

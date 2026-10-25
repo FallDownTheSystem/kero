@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"time"
-	"unicode/utf8"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
@@ -543,7 +542,7 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 				title, size = s.DisplayName(a.set.SessionName), 14
 			}
 			name := ui.Text(c, title).FontSize(size).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…")
-			shortTitle(name, title)
+			shortTitle(c, name, title, size)
 			if multi && !focused && !dragging {
 				name.TextColor(pal.textMuted)
 			}
@@ -703,16 +702,20 @@ func (a *App) panelButton(c *ui.Context, pal *palette, key string) {
 	iconButton(c, "panel"+key, svg, a.tip(tip, sideAction(view)), pal, func() { a.defer_(func() { a.toggleSide(view) }) })
 }
 
-// shortTitle lets a title shrink only as far as its ellipsis still saves
-// room: a short one, as "pwsh", stays whole, as cut it shows as "pws…", as
-// wide; a longer one keeps a few letters, which tell it.
-func shortTitle(name ui.Element, title string) {
-	const short = 8 // letters an ellipsis can't shorten by much
-	if utf8.RuneCountInString(title) <= short {
+// shortTitle lets a title, of size and weight 600, shrink only as far as
+// its ellipsis still saves room: one at most an ellipsis wider than what
+// it keeps, as "pwsh", stays whole, as cut it shows as "pws…", as wide; a
+// wider one keeps a few letters, which tell it. By the title's width, as
+// "WWWWWW" and "iiiiiiii" differ.
+func shortTitle(c *ui.Context, name ui.Element, title string, size float32) {
+	const keep = 56
+	w, _ := c.MeasureText(0, ui.Span{Text: title, Size: size, Weight: 600})
+	ellipsis, _ := c.MeasureText(0, ui.Span{Text: "…", Size: size, Weight: 600})
+	if w <= keep+ellipsis {
 		name.Shrink(0)
 		return
 	}
-	name.Shrink(1).MinWidth(56)
+	name.Shrink(1).MinWidth(keep)
 }
 
 // paneRoom is how a pane's header fits its width: whether its controls
@@ -837,13 +840,13 @@ func (a *App) splitMenu(m *ui.Menu, sid, pid, dir, action string) {
 			a.split(s, p)
 		}
 	}
-	if a.menuShortcut(padItem(m, locales.SplitTerminal()), action).Chosen() {
+	if a.menuShortcut(m.Item(locales.SplitTerminal()), action).Chosen() {
 		split(proto.CreateParams{})
 	}
-	if padItem(m, locales.SplitBrowser()).Chosen() {
+	if m.Item(locales.SplitBrowser()).Chosen() {
 		split(proto.CreateParams{URL: proto.BlankURL})
 	}
-	if padItem(m, locales.SplitFile()).Chosen() {
+	if m.Item(locales.SplitFile()).Chosen() {
 		a.menuPane = ""
 		a.untitled(sid, pid, func(path string) { split(proto.CreateParams{File: path}) })
 	}
@@ -925,8 +928,8 @@ func (a *App) moreControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 	b.Children(func() { ui.Icon(c, moreIcon).Size(16, 16) })
 	b.Menu(func(m *ui.Menu) {
 		a.menuPane = pid
-		padSub(m, locales.ActionSplitRight(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "right", "pane.split.right") })
-		padSub(m, locales.ActionSplitDown(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "down", "pane.split.down") })
+		m.Submenu(locales.ActionSplitRight(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "right", "pane.split.right") })
+		m.Submenu(locales.ActionSplitDown(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "down", "pane.split.down") })
 	})
 }
 

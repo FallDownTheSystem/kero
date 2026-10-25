@@ -42,7 +42,7 @@ To stage part of a file, hover a change of its diff, and click **Stage**, or **U
 
 <a id="committing"></a>
 
-Write the message in the box under the list, and click **Commit**, or press <kbd>⌘</kbd> <kbd>↩</kbd> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>). **Write Message**, the sparkles in the box, has the message written of what's staged: by a fork of the conversation of the agent in the pane, which knows why it made the changes, without changing that conversation; else by a new run of Claude Code or Codex. Set `commit-message-command` to write it with another command, which gets the prompt on its stdin. The arrow beside Commit has **Commit and Push**, **Amend Last Commit**, **Sign Off** and **Skip Hooks**.
+Write the message in the box under the list, and click **Commit**, or press <kbd>⌘</kbd> <kbd>↩</kbd> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>). **Write Message**, the sparkles in the box, has the message written of what's staged: by a fork of the conversation of the agent in the pane, which knows why it made the changes, without changing that conversation; else by a new run of Claude Code or Codex. Set `commit-message-command` to write it with another command, which runs in your shell and gets the prompt on its stdin. `{session}` in it is the ID of the pane's agent's conversation, so your own launcher can fork it: `cc -p --resume {session} --fork-session`. The arrow beside Commit has **Commit and Push**, **Amend Last Commit**, **Sign Off** and **Skip Hooks**.
 
 ## Branches, syncing and stashes
 
@@ -69,12 +69,20 @@ Click a commit to see its files, and a file to see its diff. The changes not com
 - **Copy Hash** and **Copy Branch Name**.
 - **Check Out**: the branch at the commit, or the commit itself, detached, when no branch is there.
 - **New Branch Here…** and **New Session in Worktree Here…**.
-- **Merge … into …**, with a merge commit too, and **Rebase … onto …**.
+- **Merge … into …**, with a merge commit too, **Rebase … onto …**, and **Interactively Rebase … onto …**.
 - **Cherry-Pick**, **Revert Commit**, and **Reset to This Commit**: soft, keeping the changes since staged, mixed, keeping them unstaged, or hard, discarding them.
+
+### Interactive rebase
+
+**Interactively Rebase … onto …**, from a commit's menu or a branch's, lists the commits your branch has since that commit, the newest on top. Set what happens to each from its menu, or with a key: <kbd>P</kbd> **Pick** keeps it, <kbd>R</kbd> **Reword** gives it a new message, <kbd>E</kbd> **Edit** stops there so you can change it, <kbd>S</kbd> **Squash** and <kbd>F</kbd> **Fixup** combine it with the commit below it, keeping both messages or only that one's, and <kbd>D</kbd> **Drop** removes it. Drag a commit, or press <kbd>Alt</kbd> <kbd>↑</kbd> and <kbd>Alt</kbd> <kbd>↓</kbd>, to move it. A reworded commit opens a panel under it for its new subject and description. Below the list, **Commit** and **Changes** show the chosen commit's message and files.
+
+**Back up the current state to a temporary branch** first makes a branch where yours is now, to go back to. **Rebase** stashes the changes not committed, as a rebase does, and replays the commits as listed. It stops at a commit to edit, or a conflict, like any rebase: **Continue** goes on. A range with merge commits can't be rebased this way, as it would be flattened.
 
 ## Conflicts
 
-A merge, rebase, cherry-pick or revert that stops on conflicts says so in the bar and over the commit box, and lists each conflicted file in Changes. Resolve a file in your editor or a terminal and click **Mark Resolved**, or take one side's version of it from its menu: **Use main's Version** or **Use feature's Version**, named after the branches, which asks first, as edits made to the file are lost. **Resolve with Agent**, on a file or over the commit box for all of them, asks the agent working in the worktree to resolve them and stage them, leaving the commit to you.
+A merge, rebase, cherry-pick or revert that stops on conflicts says so in the bar and over the commit box, and lists each conflicted file in Changes. Resolve a file in your editor or a terminal and click **Mark Resolved**, or take one side's version of it from its menu: **Use main's Version** or **Use feature's Version**, named after the branches, which asks first, as edits made to the file are lost.
+
+**Open in Merge Editor**, in the same menu, opens the file in an editor pane as the merge editor: the two versions side by side on top, lined up conflict by conflict, and the file below them, where you can edit it. Check **Use main's lines** or **Use feature's lines** above a conflict to put that version's lines in the file; check both for both, in the order you check them. The bar under it counts the conflicts left and steps between them, and its menu uses one version's lines in all of them, or shows the file as plain text. **Save and Mark Resolved**, once none is left, saves the file and stages it. Any editor pane of a file in conflict shows it this way, until it is marked resolved. **Resolve with Agent**, on a file or over the commit box for all of them, asks the agent working in the worktree to resolve them and stage them, leaving the commit to you.
 
 Once none is left, **Continue** goes on with the rebase, cherry-pick or revert, and **Commit Merge** commits a merge, with the message git prepared. **Abort** gives the operation up, back to where it started, after asking.
 

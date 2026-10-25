@@ -1110,10 +1110,8 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 	default:
 		editable = false
 	}
-	if !d.LineSelection {
-		if _, ok := d.SelectedLines(); ok {
-			d.SetSelectedLines(editor.DiffLineRange{}, false)
-		}
+	if !d.LineSelection && len(d.SelectedRanges()) > 0 {
+		d.SetSelectedRanges(nil)
 	}
 	d.HunkActions = editable
 	d.RenderHunkActions = func(c *ui.Context, bar ui.Element, h *editor.DiffHunkActions) {
@@ -1128,7 +1126,6 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 				// The text is of the lines, not of the buffer after Revert or
 				// Keep, which keeps an empty text's empty line as one.
 				if hunkButton(c, "unstage", minusIcon, locales.GitUnstage(), locales.GitUnstageChangeTip(), pal) {
-					a.keepSideFocus()
 					text := applyLines(d.Old, d.New, d.Hunks(), not(inHunk(h.Hunk)), d.New.LineEnding())
 					h.Revert()
 					a.writeIndex(sf, text)
@@ -1136,12 +1133,10 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 				return
 			case baseUnstaged:
 				if hunkButton(c, "revert", revertIcon, locales.GitDiscard(), locales.GitDiscardChangeTip(), pal) {
-					a.keepSideFocus()
 					a.revertChange(sf, h)
 				}
 				// Staged: the index's text, the old side, with it.
 				if hunkButton(c, "stage", plusIcon, locales.GitStage(), locales.GitStageChangeTip(), pal) {
-					a.keepSideFocus()
 					text := applyLines(d.Old, d.New, d.Hunks(), inHunk(h.Hunk), indexEnding(sf))
 					h.Keep()
 					a.writeIndex(sf, text)

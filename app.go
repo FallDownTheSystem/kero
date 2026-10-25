@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -107,11 +108,13 @@ type App struct {
 	preview    themePreview // the terminal themes Settings previews
 	selected   string
 	terms      map[string]*termEntry
-	webs       map[string]*webEntry // browser panes' pages, by pane
-	edits      map[string]*openFile // editor panes' files, by pane
-	lastEdit   map[string]string    // the editor pane the user was in last, by session
-	ads        adBlock              // what their pages block
-	icons      favicons             // and the icons they show
+	webs       map[string]*webEntry  // browser panes' pages, by pane
+	edits      map[string]*openFile  // editor panes' files, by pane
+	merges     map[string]*paneMerge // editor panes' merge editors, by pane
+	rebase     *rebaseView           // the interactive rebase asked for
+	lastEdit   map[string]string     // the editor pane the user was in last, by session
+	ads        adBlock               // what their pages block
+	icons      favicons              // and the icons they show
 	lru        []string
 	refs       map[string]*ui.Handle // panes' terminals, and splits, by id
 	focus      map[string]string     // the pane the user is in, by session
@@ -149,6 +152,10 @@ type App struct {
 	// later are actions that change what the view is building, run once
 	// it is built.
 	later []func()
+	// early are updates that came with no window yet to run them, as in
+	// tests, which the next frame runs.
+	earlyMu sync.Mutex
+	early   []func()
 
 	// Focus follows the mouse: the pane the pointer went into, and where
 	// the pointer was last over a pane, in the window.
@@ -191,6 +198,9 @@ type confirmation struct {
 	alt        string
 	altRun     func()
 	altDestroy bool
+	// shown and inSide are that the dialog showed, and whether the user
+	// was in the Explorer then, which keeps the keyboard once it closes.
+	shown, inSide bool
 }
 
 func newApp() *App {
@@ -236,10 +246,27 @@ func (a *App) savePrefs() {
 	}
 }
 
-// update runs fn on the main thread, and draws.
+// update runs fn on the main thread, and draws. Before there is a window,
+// the first frame runs it (runEarly): what a call brings back is never
+// dropped.
 func (a *App) update(fn func()) {
 	if a.win != nil {
 		a.win.Update(fn)
+		return
+	}
+	a.earlyMu.Lock()
+	a.early = append(a.early, fn)
+	a.earlyMu.Unlock()
+}
+
+// runEarly runs the updates that came before there was a window.
+func (a *App) runEarly() {
+	a.earlyMu.Lock()
+	fns := a.early
+	a.early = nil
+	a.earlyMu.Unlock()
+	for _, fn := range fns {
+		fn()
 	}
 }
 
