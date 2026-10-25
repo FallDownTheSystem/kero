@@ -697,3 +697,34 @@ func TestHistoryGraph(t *testing.T) {
 		t.Errorf("Branch left the scope %q, the key %q", hs.scope, hs.key)
 	}
 }
+
+// An open commit's subject that its row cuts wraps, all of it shown.
+func TestHistoryOpenSubjectWraps(t *testing.T) {
+	a := testApp(t)
+	gitCalls(t, a, nil)
+	g, _ := gitDemo(a)
+	a.prefs.Side = sideHistory
+	hs := &a.side.git.hist
+	hs.key = g.Root + "|0|0||"
+	hs.stamp = gitStamp(g) + "|0"
+	hs.stashAt = hs.stamp
+	subject := "Keep the focus in the Explorer as git actions and their confirmations close, not in the terminal"
+	hs.commits = []proto.GitCommit{{Hash: "c1", Author: "Ann", Time: time.Now().Unix(), Subject: subject}}
+	hs.graph = append(hs.graph, hs.layout.Add(gitgraph.Commit{Hash: "c1"}))
+
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	closed, ok := tt.Find(subject)
+	if !ok {
+		t.Fatalf("no subject; texts %q", tt.Texts())
+	}
+	if err := tt.Click(subject); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	open, _ := tt.Find(subject)
+	if hs.opened["c1"] == nil || open.H < 2*closed.H {
+		t.Errorf("the open subject is %v high, %v closed", open.H, closed.H)
+	}
+}
