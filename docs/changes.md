@@ -90,7 +90,7 @@ Once none is left, **Continue** goes on with the rebase, cherry-pick or revert, 
 
 ## Sessions in their own worktree
 
-Agents working side by side in one checkout trip over each other's changes. **Session › New Session in Worktree…** (<kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>T</kbd>) asks for a branch name, then starts a session in a git worktree of its own: a folder checking out that new branch, from the repository's default branch.
+Agents working side by side in one checkout trip over each other's changes. **Session › New Session in Worktree…** (<kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>T</kbd>) asks for a branch name, then starts a session in a git worktree of its own: a folder checking out that new branch, from the repository's default branch. A project's menu in the sidebar has it too, for a session of that project's repository. On Windows and Linux, which show no menu bar, the menu bar's menus are in the sidebar's **Menus** button (⋯), beside Settings.
 
 - The worktree goes in `.kero/worktrees/<branch>` inside the repository, which Kero ignores through `.git/info/exclude`, not your `.gitignore`. Set `worktree-dir` to put worktrees elsewhere.
 - Set `worktree-base = current` to branch from the session you're in instead of the default branch.
