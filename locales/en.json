@@ -200,6 +200,7 @@
     }
   },
   "footerGoToIt": "Go to it",
+  "footerMenus": "Menus",
   "footerServiceTip": "Sessions run in kerod, in the background: they keep running when you quit kero.",
   "statusConnecting": "Connecting…",
   "statusConnectingLabel": "Connecting",
