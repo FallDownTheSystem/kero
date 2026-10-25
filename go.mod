@@ -21,4 +21,4 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 )
 
-replace github.com/egoist/mygo => github.com/FallDownTheSystem/mygo v0.0.0-20261025190457-094952feca80
+replace github.com/egoist/mygo => github.com/FallDownTheSystem/mygo v0.0.0-20261025191227-ae70f3ad7f2d
