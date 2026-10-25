@@ -67,6 +67,8 @@ Click a folder, or press <kbd>→</kbd> and <kbd>←</kbd>, to open and close it
 
 The buttons under the tree make a new file or folder in the folder you chose, or in the chosen file's folder: type its name, or a path such as `src/util/new.go`, and press <kbd>Return</kbd> (<kbd>Enter</kbd>), or <kbd>Esc</kbd> to leave it. A new file opens below the tree. The other buttons there refresh the tree and collapse its folders. A folder's menu makes a new file or folder in it, and opens a terminal there.
 
+The **Filter** field between them finds files and folders by name in all of the folder, its closed folders too, and shows them in the folders they're in. Type a slash to match paths instead, as `src/main`. Folders git ignores, such as `node_modules`, are found by their name, but not searched. <kbd>↓</kbd> or <kbd>Return</kbd> (<kbd>Enter</kbd>) goes to the first file found, and <kbd>Esc</kbd> clears the filter, showing the file you chose in the whole tree.
+
 A save writes the file only as it was when you opened it. When an agent or another program changed it since, Kero says so instead, and you **Reload** it, dropping your edits, or **Overwrite** it. While the file has no edits of yours, it follows the changes on disk.
 
 Double-click a file, or right-click it, to open it in your editor: the `editor` setting, as `code` or `zed`, or the app the system opens the file with. With `files-double-click = pane`, a double click opens it in an editor pane instead. Dotfiles show unless `files-hidden` is off. A folder's menu opens the folder in your editor too, or in the app the system opens text files with. The menu also opens it in a pane, or with another app, shows it in File Explorer or Finder, and copies its path, or its path from the worktree.

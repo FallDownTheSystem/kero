@@ -123,6 +123,24 @@ type (
 		// Repo tells a directory that holds a git repository.
 		Repo bool `json:"repo,omitempty"`
 	}
+	// FSFindParams find the files and folders in a directory of the host,
+	// and in all its folders, whose names hold Query, of any case; whose
+	// paths from Dir do, when Query has a slash, as "src/main". Dotfiles
+	// only with Hidden; never .git, nor what is in the folders git ignores.
+	FSFindParams struct {
+		Dir    string `json:"dir"`
+		Query  string `json:"query"`
+		Hidden bool   `json:"hidden,omitempty"`
+	}
+	// FSFind is what was found; More: there is more than it.
+	FSFind struct {
+		Entries []FSFound `json:"entries"`
+		More    bool      `json:"more,omitempty"`
+	}
+	FSFound struct {
+		Path string `json:"path"` // from Dir, with slashes
+		Dir  bool   `json:"dir,omitempty"`
+	}
 	// FSStatParams ask about a path printed in a pane: relative to Base,
 	// the pane's directory, unless absolute; ~ and ~/… are the home's.
 	FSStatParams struct {
