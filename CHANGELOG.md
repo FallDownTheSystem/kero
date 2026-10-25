@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.1.19
+
+- **Session › New Session in Worktree…** (⌘⌥T) starts a session on a
+  new branch in a git worktree of its own, so agents working side by
+  side don't trip over each other's changes. Closing the session offers
+  to remove the worktree. `kero new --worktree <branch>` does the same
+  from the command line.
+- Kero remembers the conversations of Claude Code, Codex, Pi and
+  OpenCode that ran in its panes, so you can resume one after its
+  session is closed: ⌘P lists recent ones, and **Session › Resume
+  Conversation…** (⌘⇧O) lists them all. Turn on Settings › General ›
+  **Session history** to list them at the bottom of the sidebar too,
+  under **Ended** and **Archived**. `kero history` and `kero resume` do
+  the same from the command line. Thanks @ak4duy
+- Drop folders onto the sidebar to open them as projects. Thanks
+  @p1xelll
+- Dragging the sidebar's empty space moves the window, as the top bar
+  does. Thanks @jamdaniels for the request
+
 ## 2.1.18
 
 - On a Mac, programs run in Kero can use the microphone and the camera,
