@@ -94,11 +94,13 @@ func (r Repo) Push(ctx context.Context, args []string, progress func(string)) (s
 }
 
 // PushArgs are git's arguments of a push of HEAD's branch alone: to where
-// it pushes to, as branch.<name>.pushRemote and push.default say, else to
-// its upstream; a branch with none to a remote, origin when it has one,
-// which becomes its upstream. Named, the push is of the branch alone,
-// where push.default=matching would push every branch of the remote's
-// names.
+// git push pushes it, as branch.<name>.pushRemote and push.default say;
+// else to its name on its push remote, origin when it has none, which
+// becomes its upstream, as it does of a branch with none. Never to an
+// upstream of another name that push.default doesn't push to: a branch
+// made from origin/main tracks it, and pushing it there would push it
+// over main. Named, the push is of the branch alone, where
+// push.default=matching would push every branch of the remote's names.
 func (r Repo) PushArgs(ctx context.Context, branch string, o PushOptions) ([]string, error) {
 	if branch == "" || strings.HasPrefix(branch, "-") {
 		return nil, errors.New("HEAD is on no branch to push")
@@ -114,24 +116,32 @@ func (r Repo) PushArgs(ctx context.Context, branch string, o PushOptions) ([]str
 	if err != nil {
 		return nil, err
 	}
-	f := strings.Split(strings.TrimSpace(string(out)), "\x00")
-	if len(f) == 4 {
-		for _, to := range [][2]string{{f[0], f[1]}, {f[2], f[3]}} {
-			if to[0] != "" && to[1] != "" && !strings.HasPrefix(to[0], "-") {
-				return append(args, to[0], "refs/heads/"+branch+":"+to[1]), nil
-			}
+	var pushRemote, pushRef, upstream string
+	if f := strings.Split(strings.TrimSpace(string(out)), "\x00"); len(f) == 4 {
+		pushRemote, pushRef, upstream = f[0], f[1], f[2]
+	}
+	if strings.HasPrefix(pushRemote, "-") {
+		pushRemote = ""
+	}
+	if pushRemote != "" && pushRef != "" {
+		if upstream == "" {
+			args = append(args, "--set-upstream")
+		}
+		return append(args, pushRemote, "refs/heads/"+branch+":"+pushRef), nil
+	}
+	remote := pushRemote
+	if remote == "" {
+		remotes, err := r.Remotes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if len(remotes) == 0 {
+			return nil, errors.New("the repository has no remote to push to")
+		}
+		remote = remotes[0]
+		if slices.Contains(remotes, "origin") {
+			remote = "origin"
 		}
 	}
-	remotes, err := r.Remotes(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if len(remotes) == 0 {
-		return nil, errors.New("the repository has no remote to push to")
-	}
-	remote := remotes[0]
-	if slices.Contains(remotes, "origin") {
-		remote = "origin"
-	}
-	return append(args, "--set-upstream", remote, branch), nil
+	return append(args, "--set-upstream", remote, "refs/heads/"+branch+":refs/heads/"+branch), nil
 }
