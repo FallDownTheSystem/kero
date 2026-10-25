@@ -125,7 +125,7 @@ func TestUncommittedStaging(t *testing.T) {
 	if len(tools) != 2 {
 		t.Errorf("%d Discard buttons, want one for each file not staged", len(tools))
 	}
-	a.discard(s.Panes[0].ID, g.Root, ix.Unstaged[1:], "Delete new.txt?", "")
+	a.discard(s.Panes[0].ID, g.Root, ix.Unstaged[1:], "Delete new.txt?", "", "Delete File")
 	tt.Frame()
 	if !tt.HasText("Delete new.txt?") {
 		t.Fatalf("no confirmation; texts %q", tt.Texts())
@@ -212,7 +212,7 @@ func TestConflicts(t *testing.T) {
 
 	tt := ui.NewTester(a.view, 1280, 720)
 	tt.Frame()
-	if err := tt.Click("Resolve the Conflict"); err != nil {
+	if err := tt.Click("Resolve Conflict"); err != nil {
 		t.Fatalf("%v; texts %q", err, tt.Texts())
 	}
 	tt.Frame()
@@ -410,5 +410,16 @@ func TestHistoryGraph(t *testing.T) {
 	}
 	if hs.opened["c2"] == nil {
 		t.Error("the commit isn't open")
+	}
+
+	// The scope's choice lands after the frame that drew it: it must
+	// still change what the list is of.
+	if err := tt.Click("Branch"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if !hs.branchOnly() || !strings.HasPrefix(hs.key, g.Root+"|1|") {
+		t.Errorf("Branch left the scope %q, the key %q", hs.scope, hs.key)
 	}
 }
