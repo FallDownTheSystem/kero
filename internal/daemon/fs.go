@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -86,6 +87,85 @@ func fsList(p proto.FSListParams) (proto.FSList, error) {
 		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 	})
 	return out, nil
+}
+
+const (
+	// maxFound bounds what fs.find finds, and maxWalked the paths it looks
+	// at for it, in a folder too large to look through.
+	maxFound  = 1000
+	maxWalked = 200000
+)
+
+// fsFind looks through a folder for the Files view's filter. A link is
+// found, but never followed, which could go round. A folder git ignores,
+// as node_modules, is found by its name, but not looked into: what is in
+// it would crowd out the rest.
+func fsFind(p proto.FSFindParams) (proto.FSFind, error) {
+	root := hostPath(p.Dir, "")
+	// The folder itself may be a link, which the walk would not go in.
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		root = r
+	}
+	out := proto.FSFind{Entries: []proto.FSFound{}}
+	q := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(p.Query), `\`, "/"))
+	if q == "" {
+		return out, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dirs, _ := git.IgnoredDirs(ctx, root)
+	cancel()
+	ignored := make(map[string]bool, len(dirs))
+	for _, d := range dirs {
+		ignored[d] = true
+	}
+	byPath, walked := strings.Contains(q, "/"), 0
+	err := filepath.WalkDir(root, func(path string, e os.DirEntry, err error) error {
+		switch {
+		case path == root:
+			return err
+		case err != nil:
+			// A folder in it that can't be read is left out.
+			return nil
+		}
+		name := e.Name()
+		if name == ".git" || !p.Hidden && strings.HasPrefix(name, ".") {
+			if e.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if walked++; walked > maxWalked {
+			out.More = true
+			return filepath.SkipAll
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return nil
+		}
+		rel = filepath.ToSlash(rel)
+		hay := name
+		if byPath {
+			hay = rel
+		}
+		if strings.Contains(strings.ToLower(hay), q) {
+			if len(out.Entries) >= maxFound {
+				out.More = true
+				return filepath.SkipAll
+			}
+			dir := e.IsDir()
+			if e.Type()&os.ModeSymlink != 0 {
+				if st, err := os.Stat(path); err == nil {
+					dir = st.IsDir()
+				}
+			}
+			out.Entries = append(out.Entries, proto.FSFound{Path: rel, Dir: dir})
+		}
+		if e.IsDir() && ignored[rel] {
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return out, err
 }
 
 func fsStat(p proto.FSStatParams) proto.FSStat {
