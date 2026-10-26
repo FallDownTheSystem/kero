@@ -232,6 +232,22 @@ func TestMarkdownPreview(t *testing.T) {
 		t.Errorf("no preview; texts %q", tt.Texts())
 	}
 	shot(t, tt, "markdown-preview")
+
+	// The preview has no editor to take the keyboard; the pane takes it
+	// still, as the pointer moves into it.
+	a.set.FocusFollowsMouse = true
+	ar, _ := tt.Find("fish")
+	br, _ := tt.Find("Title")
+	for _, at := range [][2]float32{{ar.X + 40, 340}, {br.X + 40, br.Y + 40}, {br.X + 60, br.Y + 40}} {
+		tt.Move(at[0], at[1])
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+	}
+	if got := a.focusOf(s); got != "b" || !tt.Focused("Title") {
+		t.Errorf("into the preview, focus %q, want b, with the keyboard", got)
+	}
+	a.set.FocusFollowsMouse = false
+
 	if err := tt.Click("Preview Markdown"); err != nil {
 		t.Fatal(err)
 	}
