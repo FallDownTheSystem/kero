@@ -1315,10 +1315,13 @@ func (a *App) wrapButton(c *ui.Context, pal *palette) {
 	}
 }
 
-// fileBody is a file's text in its editor, which ref binds, or its image,
-// or why it shows neither; and what a save found changed on disk.
+// fileBody is a file's text in its editor, or its image, its preview, or
+// why it shows none; and what a save found changed on disk. ref binds the
+// editor, else the body itself, so that the pane takes the keyboard, as a
+// click or the pointer moving in focuses it, whatever it shows.
 func (a *App) fileBody(c *ui.Context, pal *palette, pane string, f *openFile, ref *ui.Handle) {
 	col := ui.Column(c.Key("body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch)
+	editing := false
 	col.Children(func() {
 		if f.changed {
 			a.fileChanged(c, pal, pane, f)
@@ -1360,8 +1363,12 @@ func (a *App) fileBody(c *ui.Context, pal *palette, pane string, f *openFile, re
 			if ref != nil {
 				ed.Bind(ref)
 			}
+			editing = true
 		}
 	})
+	if ref != nil && !editing {
+		col.Focusable().FocusRing(false).Bind(ref)
+	}
 	if col.Shortcut(ui.Cmd, ui.KeyS) && (f.modified() || f.absent) && !f.saving {
 		a.saveFile(pane, f, false)
 	}
