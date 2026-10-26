@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.4
+
+- **Search conversations** finds a Claude Code conversation by the slash
+  command you started it with, as `/client-checkin KLS000`, and finds the
+  ones that had nothing else from you, which it left out
+- `claude -p`'s conversations are left out of the search again
+
 ## 2.1.21-fork.3
 
 - **Search conversations** finds Claude Code conversations that a wrapped
