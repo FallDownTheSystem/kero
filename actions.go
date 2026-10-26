@@ -50,6 +50,8 @@ func (a *App) run(id string, args map[string]string) {
 		a.openProject()
 	case "palette.open":
 		a.openPalette()
+	case "files.goto":
+		a.openGoToFile()
 	case "conversation.resume":
 		a.openConversations()
 	case "conversation.search":
@@ -71,6 +73,11 @@ func (a *App) run(id string, args map[string]string) {
 	case "session.close":
 		a.closeSession(a.selected, true)
 	case "find.open":
+		// In the Search view, its field.
+		if a.side.focused && a.prefs.Side == sideSearch {
+			a.side.search.focus = true
+			break
+		}
 		// In the Changes view, its diff's find bar.
 		if f := a.side.changes.focus; a.side.focused && a.prefs.Side != sideFiles && f != nil && f.d != nil {
 			f.d.Find("")
@@ -114,6 +121,10 @@ func (a *App) run(id string, args map[string]string) {
 		a.toggleSide(sideFiles)
 	case "history.toggle":
 		a.toggleSide(sideHistory)
+	case "search.toggle":
+		a.toggleSearch()
+	case "search.show":
+		a.showSearch(args["query"])
 	case "changes.show":
 		a.showSide(sideChanges)
 	case "files.show":
@@ -166,6 +177,7 @@ var actionTitles = map[string]func() string{
 	"session.newWorktree": locales.ActionNewSessionWorktree,
 	"project.open":        locales.ActionOpenProject,
 	"palette.open":        locales.ActionGoToSession,
+	"files.goto":          locales.ActionGoToFile,
 	"conversation.resume": locales.ActionResumeConversation,
 	"conversation.search": locales.ActionSearchConversations,
 	"session.attention":   locales.ActionJumpToAttention,
@@ -193,9 +205,11 @@ var actionTitles = map[string]func() string{
 	"changes.toggle":      locales.ActionToggleChanges,
 	"files.toggle":        locales.ActionToggleFiles,
 	"history.toggle":      locales.ActionToggleHistory,
+	"search.toggle":       locales.ActionToggleSearch,
 	"changes.show":        locales.ActionShowChanges,
 	"files.show":          locales.ActionShowFiles,
 	"history.show":        locales.ActionShowHistory,
+	"search.show":         locales.ActionShowSearch,
 	"text.bigger":         locales.ActionBigger,
 	"text.smaller":        locales.ActionSmaller,
 	"text.reset":          locales.ActionActualSize,
@@ -259,13 +273,13 @@ func (a *App) menuBar() []*mygo.MenuItem {
 			{Label: locales.MenuQuit(), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 			a.item("app.quitAll")}}
 	}
-	view := append(a.items("View", []string{"sidebar.toggle", "changes.toggle", "files.toggle", "history.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{quickAction}),
+	view := append(a.items("View", []string{"sidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{quickAction}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})
 	return []*mygo.MenuItem{
 		kero,
 		{Label: locales.MenuSession(), Submenu: a.items("Session",
 			[]string{"session.new", "session.newHome", "session.newWorktree", "project.open"},
-			[]string{"palette.open", "conversation.resume", "conversation.search", "session.attention", "session.next", "session.previous"},
+			[]string{"palette.open", "files.goto", "conversation.resume", "conversation.search", "session.attention", "session.next", "session.previous"},
 			[]string{"session.rename", "pane.restart"},
 			[]string{"pane.close", "session.close"})},
 		// The Edit menu's own items, then finding.

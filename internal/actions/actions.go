@@ -33,6 +33,7 @@ var All = []Action{
 	{ID: "session.newWorktree", Title: "New Session in Worktree…", Menu: "Session", Keys: "CmdOrCtrl+Alt+T"},
 	{ID: "project.open", Title: "Open Project…", Menu: "Session", Keys: "CmdOrCtrl+O"},
 	{ID: "palette.open", Title: "Go to Session…", Menu: "Session", Keys: "CmdOrCtrl+P", Remote: true},
+	{ID: "files.goto", Title: "Go to File…", Menu: "Session", Keys: "CmdOrCtrl+Shift+N", Remote: true},
 	{ID: "conversation.resume", Title: "Resume Conversation…", Menu: "Session", Keys: "CmdOrCtrl+Shift+O", Remote: true},
 	{ID: "conversation.search", Title: "Search Conversations…", Menu: "Session", Keys: "CmdOrCtrl+Shift+F"},
 	{ID: "session.attention", Title: "Jump to Session Needing You", Menu: "Session", Keys: "CmdOrCtrl+J", Remote: true},
@@ -63,12 +64,14 @@ var All = []Action{
 	{ID: "changes.toggle", Title: "Toggle Changes", Menu: "View", Keys: "CmdOrCtrl+Alt+G", Remote: true},
 	{ID: "files.toggle", Title: "Toggle Files", Menu: "View", Keys: "CmdOrCtrl+Alt+E", Remote: true},
 	{ID: "history.toggle", Title: "Toggle History", Menu: "View", Keys: "CmdOrCtrl+Alt+Y", Remote: true},
+	{ID: "search.toggle", Title: "Toggle Search", Menu: "View", Keys: "CmdOrCtrl+Alt+F", Remote: true},
 	// Show, as kero do runs them, never hide: files.show takes path=, a
 	// file or folder of the view's tree to show in it; history.show a
-	// file, whose history to show.
+	// file, whose history to show; search.show query=, what to search for.
 	{ID: "changes.show", Title: "Show Changes", Menu: "View", Remote: true},
 	{ID: "files.show", Title: "Show Files", Menu: "View", Remote: true},
 	{ID: "history.show", Title: "Show History", Menu: "View", Remote: true},
+	{ID: "search.show", Title: "Show Search", Menu: "View", Remote: true},
 	{ID: "text.bigger", Title: "Bigger", Menu: "View", Keys: "CmdOrCtrl+=", Remote: true},
 	{ID: "text.smaller", Title: "Smaller", Menu: "View", Keys: "CmdOrCtrl+-", Remote: true},
 	{ID: "text.reset", Title: "Actual Size", Menu: "View", Keys: "CmdOrCtrl+0", Remote: true},
@@ -88,6 +91,7 @@ var pcKeys = map[string]string{
 	"session.newWorktree": "",
 	"project.open":        "Ctrl+Shift+O",
 	"palette.open":        "Ctrl+Shift+P",
+	"files.goto":          "Ctrl+Shift+N",
 	"conversation.resume": "",
 	"conversation.search": "",
 	"session.attention":   "Ctrl+Shift+J",
@@ -115,6 +119,7 @@ var pcKeys = map[string]string{
 	"changes.toggle":      "Ctrl+Shift+G",
 	"files.toggle":        "Ctrl+Shift+E",
 	"history.toggle":      "Ctrl+Shift+Y",
+	"search.toggle":       "Ctrl+Shift+S",
 	"text.bigger":         "Ctrl+=",
 	"text.smaller":        "Ctrl+-",
 	"text.reset":          "Ctrl+0",

@@ -34,6 +34,19 @@ In **Last Turn**, hover a change for two buttons:
 
 Revert works only while no agent in the session is working, so it never races an agent's edits, and only on a file that's still as the diff shows it. A file that changed meanwhile shows anew instead.
 
+<a id="review-comments"></a>
+
+### Review comments
+
+Comment on an agent's changes as you would on a pull request, then send all of your comments to the agent at once. In **Last Turn**, **Uncommitted** and **Branch**:
+
+- Hover a line's number and click the **+** that shows, to comment on that line. Select lines first by clicking their numbers, and Shift-clicking for a range, to comment on all of them.
+- Or hover a change and click **Comment**, for the lines selected of it, or the whole change. This is how to comment on lines that were removed in a unified diff.
+
+Write the comment in the box under the lines, and click **Comment**, or press <kbd>⌘</kbd> <kbd>↩</kbd> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>). <kbd>Esc</kbd> drops it. The comment stays under its lines, to edit or delete.
+
+A band above the files counts the worktree's comments and lists them: click one to open its file at its line. **Send to Agent** pastes the comments in the pane of the agent in the worktree as one prompt, and sends it. Each comment goes with its file, its line numbers and the text of its lines, so the agent finds them even after they moved. Then the comments sent go. **Copy as Prompt** copies the same prompt instead, to give to another agent, and the **×** discards the comments. Comments last until Kero quits.
+
 ## Staging and committing
 
 In **Uncommitted**, the files list in two sections: **Staged Changes**, what the next commit takes, and **Changes**, what it doesn't yet. Each file's buttons stage or unstage it, or discard its changes, which asks first: an untracked file is deleted, a deleted one comes back. The buttons on a section's title do the same for all of its files. **Stage All Changes** leaves conflicts out, as staging one marks it resolved.
@@ -127,6 +140,16 @@ A save writes the file only as it was when you opened it. When an agent or anoth
 
 Double-click a file, or right-click it, to open it in your editor: the `editor` setting, as `code` or `zed`, or the app the system opens the file with. With `files-double-click = pane`, a double click opens it in an editor pane instead. Dotfiles show unless `files-hidden` is off. A folder's menu opens the folder in your editor too, or in the app the system opens text files with. The menu also opens it in a pane, or with another app, shows it in File Explorer or Finder, and copies its path, or its path from the worktree.
 
+### Go to File
+
+**Session › Go to File…** (<kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>N</kbd>, <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>N</kbd> on Windows and Linux) finds a file of the worktree of the pane you're in by its name, as you type its letters in order: `usvc` finds `user_service.go`. Names match before paths; type a slash to match paths alone, as `src/main`. <kbd>Return</kbd> (<kbd>Enter</kbd>) opens the file in an editor pane, as a file of the Files view opens in one, and <kbd>⌘</kbd> <kbd>↩</kbd> (<kbd>Ctrl</kbd> <kbd>Enter</kbd>) in a pane of its own. In a repository, it lists the files git tracks and those it would, so what `.gitignore` lists, such as `node_modules`, stays out.
+
+## Search
+
+The Explorer's **Search** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>F</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>S</kbd> on Windows and Linux), searches the text of the files the Files view shows, on the host they're on. It searches as you stop typing, of any case, and <kbd>Return</kbd> (<kbd>Enter</kbd>) searches again, as the files change. The buttons beside the field match case, match whole words, and take the text as a regular expression, as Go writes them.
+
+The lines found list under their files, the text found highlighted: click a file to fold it, and a line to open its file at that line in an editor pane, or in the editor pane that shows it already. Files that git ignores, binary files, and files over 2 MB aren't searched, and a search shows its first 2,000 lines.
+
 ## From the command line
 
 `kero diff` prints a pane's changes as `git diff` does, untracked files included:
@@ -146,6 +169,7 @@ kero diff src/auth              # just these paths
 kero do changes.show                 # the Changes view
 kero do files.show                   # the Files view
 kero do files.show path=src/main.go  # it, with this file open, or this folder
+kero do search.show query=TODO       # the Search view, searching for TODO
 ```
 
 ## Turning it off

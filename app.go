@@ -21,6 +21,7 @@ import (
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/editor"
 
 	"kero/internal/actions"
 	"kero/internal/client"
@@ -112,6 +113,7 @@ type App struct {
 	terms      map[string]*termEntry
 	webs       map[string]*webEntry  // browser panes' pages, by pane
 	edits      map[string]*openFile  // editor panes' files, by pane
+	gotos      map[string]editor.Pos // where files about to open in editor panes put the caret (openAt)
 	merges     map[string]*paneMerge // editor panes' merge editors, by pane
 	rebase     *rebaseView           // the interactive rebase asked for
 	lastEdit   map[string]string     // the editor pane the user was in last, by session
@@ -141,6 +143,8 @@ type App struct {
 	chrome       chrome // where the sidebar's animation puts things
 
 	pal     paletteState
+	gotoF   goToFile
+	review  map[string]*review // the review comments, by worktree (reviewOf)
 	find    findState
 	srch    convSearch
 	confirm *confirmation

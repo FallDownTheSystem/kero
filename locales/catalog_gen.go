@@ -9667,3 +9667,417 @@ func SetResumeCommandsDetail() string { return In(i18n.Locale()).SetResumeComman
 func (msgs Messages) SetResumeCommandsDetail() string {
 	return Catalog.Format(msgs.locale, "setResumeCommandsDetail", nil)
 }
+
+// ActionGoToFile says "Go to File…"
+// in the language the app shows.
+func ActionGoToFile() string { return In(i18n.Locale()).ActionGoToFile() }
+
+// ActionGoToFile says "Go to File…"
+// in the language of msgs.
+func (msgs Messages) ActionGoToFile() string {
+	return Catalog.Format(msgs.locale, "actionGoToFile", nil)
+}
+
+// ActionToggleSearch says "Toggle Search"
+// in the language the app shows.
+func ActionToggleSearch() string { return In(i18n.Locale()).ActionToggleSearch() }
+
+// ActionToggleSearch says "Toggle Search"
+// in the language of msgs.
+func (msgs Messages) ActionToggleSearch() string {
+	return Catalog.Format(msgs.locale, "actionToggleSearch", nil)
+}
+
+// ActionShowSearch says "Show Search"
+// in the language the app shows.
+func ActionShowSearch() string { return In(i18n.Locale()).ActionShowSearch() }
+
+// ActionShowSearch says "Show Search"
+// in the language of msgs.
+func (msgs Messages) ActionShowSearch() string {
+	return Catalog.Format(msgs.locale, "actionShowSearch", nil)
+}
+
+// GoToFileNoFolder says "No folder to find files in: open a session in one"
+// in the language the app shows.
+func GoToFileNoFolder() string { return In(i18n.Locale()).GoToFileNoFolder() }
+
+// GoToFileNoFolder says "No folder to find files in: open a session in one"
+// in the language of msgs.
+func (msgs Messages) GoToFileNoFolder() string {
+	return Catalog.Format(msgs.locale, "goToFileNoFolder", nil)
+}
+
+// GoToFilePlaceholder says "Go to a file in {folder}"
+// in the language the app shows.
+func GoToFilePlaceholder(folder string) string { return In(i18n.Locale()).GoToFilePlaceholder(folder) }
+
+// GoToFilePlaceholder says "Go to a file in {folder}"
+// in the language of msgs.
+func (msgs Messages) GoToFilePlaceholder(folder string) string {
+	return Catalog.Format(msgs.locale, "goToFilePlaceholder", map[string]any{"folder": folder})
+}
+
+// GoToFileHint says "Enter opens it, {keys} in a pane of its own"
+// in the language the app shows.
+func GoToFileHint(keys string) string { return In(i18n.Locale()).GoToFileHint(keys) }
+
+// GoToFileHint says "Enter opens it, {keys} in a pane of its own"
+// in the language of msgs.
+func (msgs Messages) GoToFileHint(keys string) string {
+	return Catalog.Format(msgs.locale, "goToFileHint", map[string]any{"keys": keys})
+}
+
+// GoToFileMore says "{count, plural, one {Only # file is listed} other {Only the first # files are listed}}: type to find among them"
+// in the language the app shows.
+func GoToFileMore(count int) string { return In(i18n.Locale()).GoToFileMore(count) }
+
+// GoToFileMore says "{count, plural, one {Only # file is listed} other {Only the first # files are listed}}: type to find among them"
+// in the language of msgs.
+func (msgs Messages) GoToFileMore(count int) string {
+	return Catalog.Format(msgs.locale, "goToFileMore", map[string]any{"count": count})
+}
+
+// SideSearch says "Search"
+// in the language the app shows.
+func SideSearch() string { return In(i18n.Locale()).SideSearch() }
+
+// SideSearch says "Search"
+// in the language of msgs.
+func (msgs Messages) SideSearch() string {
+	return Catalog.Format(msgs.locale, "sideSearch", nil)
+}
+
+// SearchNoFolder says "No folder to search"
+// in the language the app shows.
+func SearchNoFolder() string { return In(i18n.Locale()).SearchNoFolder() }
+
+// SearchNoFolder says "No folder to search"
+// in the language of msgs.
+func (msgs Messages) SearchNoFolder() string {
+	return Catalog.Format(msgs.locale, "searchNoFolder", nil)
+}
+
+// SearchNoFolderDetail says "Search finds text in the files of the folder of the pane you're in, as Files shows them."
+// in the language the app shows.
+func SearchNoFolderDetail() string { return In(i18n.Locale()).SearchNoFolderDetail() }
+
+// SearchNoFolderDetail says "Search finds text in the files of the folder of the pane you're in, as Files shows them."
+// in the language of msgs.
+func (msgs Messages) SearchNoFolderDetail() string {
+	return Catalog.Format(msgs.locale, "searchNoFolderDetail", nil)
+}
+
+// SearchTextPlaceholder says "Search"
+// in the language the app shows.
+func SearchTextPlaceholder() string { return In(i18n.Locale()).SearchTextPlaceholder() }
+
+// SearchTextPlaceholder says "Search"
+// in the language of msgs.
+func (msgs Messages) SearchTextPlaceholder() string {
+	return Catalog.Format(msgs.locale, "searchTextPlaceholder", nil)
+}
+
+// SearchMatchCase says "Match Case"
+// in the language the app shows.
+func SearchMatchCase() string { return In(i18n.Locale()).SearchMatchCase() }
+
+// SearchMatchCase says "Match Case"
+// in the language of msgs.
+func (msgs Messages) SearchMatchCase() string {
+	return Catalog.Format(msgs.locale, "searchMatchCase", nil)
+}
+
+// SearchWholeWord says "Match Whole Word"
+// in the language the app shows.
+func SearchWholeWord() string { return In(i18n.Locale()).SearchWholeWord() }
+
+// SearchWholeWord says "Match Whole Word"
+// in the language of msgs.
+func (msgs Messages) SearchWholeWord() string {
+	return Catalog.Format(msgs.locale, "searchWholeWord", nil)
+}
+
+// SearchRegex says "Use Regular Expression"
+// in the language the app shows.
+func SearchRegex() string { return In(i18n.Locale()).SearchRegex() }
+
+// SearchRegex says "Use Regular Expression"
+// in the language of msgs.
+func (msgs Messages) SearchRegex() string {
+	return Catalog.Format(msgs.locale, "searchRegex", nil)
+}
+
+// SearchIn says "Searches the files in {folder}"
+// in the language the app shows.
+func SearchIn(folder string) string { return In(i18n.Locale()).SearchIn(folder) }
+
+// SearchIn says "Searches the files in {folder}"
+// in the language of msgs.
+func (msgs Messages) SearchIn(folder string) string {
+	return Catalog.Format(msgs.locale, "searchIn", map[string]any{"folder": folder})
+}
+
+// SearchResults says "{count, plural, one {# result} other {# results}} in {files, plural, one {# file} other {# files}}"
+// in the language the app shows.
+func SearchResults(count int, files int) string { return In(i18n.Locale()).SearchResults(count, files) }
+
+// SearchResults says "{count, plural, one {# result} other {# results}} in {files, plural, one {# file} other {# files}}"
+// in the language of msgs.
+func (msgs Messages) SearchResults(count int, files int) string {
+	return Catalog.Format(msgs.locale, "searchResults", map[string]any{"count": count, "files": files})
+}
+
+// SearchResultsMore says "The first {count, plural, one {# result} other {# results}}, in {files, plural, one {# file} other {# files}}"
+// in the language the app shows.
+func SearchResultsMore(count int, files int) string {
+	return In(i18n.Locale()).SearchResultsMore(count, files)
+}
+
+// SearchResultsMore says "The first {count, plural, one {# result} other {# results}}, in {files, plural, one {# file} other {# files}}"
+// in the language of msgs.
+func (msgs Messages) SearchResultsMore(count int, files int) string {
+	return Catalog.Format(msgs.locale, "searchResultsMore", map[string]any{"count": count, "files": files})
+}
+
+// SearchUnfoldAll says "Expand All Files"
+// in the language the app shows.
+func SearchUnfoldAll() string { return In(i18n.Locale()).SearchUnfoldAll() }
+
+// SearchUnfoldAll says "Expand All Files"
+// in the language of msgs.
+func (msgs Messages) SearchUnfoldAll() string {
+	return Catalog.Format(msgs.locale, "searchUnfoldAll", nil)
+}
+
+// SearchFoldAll says "Collapse All Files"
+// in the language the app shows.
+func SearchFoldAll() string { return In(i18n.Locale()).SearchFoldAll() }
+
+// SearchFoldAll says "Collapse All Files"
+// in the language of msgs.
+func (msgs Messages) SearchFoldAll() string {
+	return Catalog.Format(msgs.locale, "searchFoldAll", nil)
+}
+
+// SearchNone says "No results"
+// in the language the app shows.
+func SearchNone() string { return In(i18n.Locale()).SearchNone() }
+
+// SearchNone says "No results"
+// in the language of msgs.
+func (msgs Messages) SearchNone() string {
+	return Catalog.Format(msgs.locale, "searchNone", nil)
+}
+
+// SearchNoneDetail says "No line of the folder's files has {query}."
+// in the language the app shows.
+func SearchNoneDetail(query string) string { return In(i18n.Locale()).SearchNoneDetail(query) }
+
+// SearchNoneDetail says "No line of the folder's files has {query}."
+// in the language of msgs.
+func (msgs Messages) SearchNoneDetail(query string) string {
+	return Catalog.Format(msgs.locale, "searchNoneDetail", map[string]any{"query": query})
+}
+
+// ReviewComment says "Comment"
+// in the language the app shows.
+func ReviewComment() string { return In(i18n.Locale()).ReviewComment() }
+
+// ReviewComment says "Comment"
+// in the language of msgs.
+func (msgs Messages) ReviewComment() string {
+	return Catalog.Format(msgs.locale, "reviewComment", nil)
+}
+
+// ReviewCommentTip says "Comment on the lines selected of this change, or on all of it, for the agent to address"
+// in the language the app shows.
+func ReviewCommentTip() string { return In(i18n.Locale()).ReviewCommentTip() }
+
+// ReviewCommentTip says "Comment on the lines selected of this change, or on all of it, for the agent to address"
+// in the language of msgs.
+func (msgs Messages) ReviewCommentTip() string {
+	return Catalog.Format(msgs.locale, "reviewCommentTip", nil)
+}
+
+// ReviewEdit says "Edit Comment"
+// in the language the app shows.
+func ReviewEdit() string { return In(i18n.Locale()).ReviewEdit() }
+
+// ReviewEdit says "Edit Comment"
+// in the language of msgs.
+func (msgs Messages) ReviewEdit() string {
+	return Catalog.Format(msgs.locale, "reviewEdit", nil)
+}
+
+// ReviewDelete says "Delete Comment"
+// in the language the app shows.
+func ReviewDelete() string { return In(i18n.Locale()).ReviewDelete() }
+
+// ReviewDelete says "Delete Comment"
+// in the language of msgs.
+func (msgs Messages) ReviewDelete() string {
+	return Catalog.Format(msgs.locale, "reviewDelete", nil)
+}
+
+// ReviewPlaceholder says "Comment on {place}"
+// in the language the app shows.
+func ReviewPlaceholder(place string) string { return In(i18n.Locale()).ReviewPlaceholder(place) }
+
+// ReviewPlaceholder says "Comment on {place}"
+// in the language of msgs.
+func (msgs Messages) ReviewPlaceholder(place string) string {
+	return Catalog.Format(msgs.locale, "reviewPlaceholder", map[string]any{"place": place})
+}
+
+// ReviewDraftHint says "{keys} to add"
+// in the language the app shows.
+func ReviewDraftHint(keys string) string { return In(i18n.Locale()).ReviewDraftHint(keys) }
+
+// ReviewDraftHint says "{keys} to add"
+// in the language of msgs.
+func (msgs Messages) ReviewDraftHint(keys string) string {
+	return Catalog.Format(msgs.locale, "reviewDraftHint", map[string]any{"keys": keys})
+}
+
+// ReviewAdd says "Comment"
+// in the language the app shows.
+func ReviewAdd() string { return In(i18n.Locale()).ReviewAdd() }
+
+// ReviewAdd says "Comment"
+// in the language of msgs.
+func (msgs Messages) ReviewAdd() string {
+	return Catalog.Format(msgs.locale, "reviewAdd", nil)
+}
+
+// ReviewSave says "Save"
+// in the language the app shows.
+func ReviewSave() string { return In(i18n.Locale()).ReviewSave() }
+
+// ReviewSave says "Save"
+// in the language of msgs.
+func (msgs Messages) ReviewSave() string {
+	return Catalog.Format(msgs.locale, "reviewSave", nil)
+}
+
+// ReviewRemovedLines says "{path}, removed lines {lines}"
+// in the language the app shows.
+func ReviewRemovedLines(path string, lines string) string {
+	return In(i18n.Locale()).ReviewRemovedLines(path, lines)
+}
+
+// ReviewRemovedLines says "{path}, removed lines {lines}"
+// in the language of msgs.
+func (msgs Messages) ReviewRemovedLines(path string, lines string) string {
+	return Catalog.Format(msgs.locale, "reviewRemovedLines", map[string]any{"path": path, "lines": lines})
+}
+
+// ReviewTitle says "{count, plural, one {# review comment} other {# review comments}}"
+// in the language the app shows.
+func ReviewTitle(count int) string { return In(i18n.Locale()).ReviewTitle(count) }
+
+// ReviewTitle says "{count, plural, one {# review comment} other {# review comments}}"
+// in the language of msgs.
+func (msgs Messages) ReviewTitle(count int) string {
+	return Catalog.Format(msgs.locale, "reviewTitle", map[string]any{"count": count})
+}
+
+// ReviewDiscard says "Discard Comments"
+// in the language the app shows.
+func ReviewDiscard() string { return In(i18n.Locale()).ReviewDiscard() }
+
+// ReviewDiscard says "Discard Comments"
+// in the language of msgs.
+func (msgs Messages) ReviewDiscard() string {
+	return Catalog.Format(msgs.locale, "reviewDiscard", nil)
+}
+
+// ReviewDiscardTitle says "{count, plural, one {Discard the review comment?} other {Discard # review comments?}}"
+// in the language the app shows.
+func ReviewDiscardTitle(count int) string { return In(i18n.Locale()).ReviewDiscardTitle(count) }
+
+// ReviewDiscardTitle says "{count, plural, one {Discard the review comment?} other {Discard # review comments?}}"
+// in the language of msgs.
+func (msgs Messages) ReviewDiscardTitle(count int) string {
+	return Catalog.Format(msgs.locale, "reviewDiscardTitle", map[string]any{"count": count})
+}
+
+// ReviewDiscardDetail says "The agent won't get them."
+// in the language the app shows.
+func ReviewDiscardDetail() string { return In(i18n.Locale()).ReviewDiscardDetail() }
+
+// ReviewDiscardDetail says "The agent won't get them."
+// in the language of msgs.
+func (msgs Messages) ReviewDiscardDetail() string {
+	return Catalog.Format(msgs.locale, "reviewDiscardDetail", nil)
+}
+
+// ReviewCopy says "Copy as Prompt"
+// in the language the app shows.
+func ReviewCopy() string { return In(i18n.Locale()).ReviewCopy() }
+
+// ReviewCopy says "Copy as Prompt"
+// in the language of msgs.
+func (msgs Messages) ReviewCopy() string {
+	return Catalog.Format(msgs.locale, "reviewCopy", nil)
+}
+
+// ReviewCopied says "Review copied as a prompt"
+// in the language the app shows.
+func ReviewCopied() string { return In(i18n.Locale()).ReviewCopied() }
+
+// ReviewCopied says "Review copied as a prompt"
+// in the language of msgs.
+func (msgs Messages) ReviewCopied() string {
+	return Catalog.Format(msgs.locale, "reviewCopied", nil)
+}
+
+// ReviewSend says "Send to Agent"
+// in the language the app shows.
+func ReviewSend() string { return In(i18n.Locale()).ReviewSend() }
+
+// ReviewSend says "Send to Agent"
+// in the language of msgs.
+func (msgs Messages) ReviewSend() string {
+	return Catalog.Format(msgs.locale, "reviewSend", nil)
+}
+
+// ReviewSendTip says "Paste the comments as one prompt in the pane of the agent in this worktree, and send it"
+// in the language the app shows.
+func ReviewSendTip() string { return In(i18n.Locale()).ReviewSendTip() }
+
+// ReviewSendTip says "Paste the comments as one prompt in the pane of the agent in this worktree, and send it"
+// in the language of msgs.
+func (msgs Messages) ReviewSendTip() string {
+	return Catalog.Format(msgs.locale, "reviewSendTip", nil)
+}
+
+// ReviewNoAgent says "No agent works in this worktree"
+// in the language the app shows.
+func ReviewNoAgent() string { return In(i18n.Locale()).ReviewNoAgent() }
+
+// ReviewNoAgent says "No agent works in this worktree"
+// in the language of msgs.
+func (msgs Messages) ReviewNoAgent() string {
+	return Catalog.Format(msgs.locale, "reviewNoAgent", nil)
+}
+
+// ReviewSendFailed says "Couldn't send the review to the agent: {error}"
+// in the language the app shows.
+func ReviewSendFailed(error string) string { return In(i18n.Locale()).ReviewSendFailed(error) }
+
+// ReviewSendFailed says "Couldn't send the review to the agent: {error}"
+// in the language of msgs.
+func (msgs Messages) ReviewSendFailed(error string) string {
+	return Catalog.Format(msgs.locale, "reviewSendFailed", map[string]any{"error": error})
+}
+
+// ReviewSent says "{count, plural, one {# comment} other {# comments}} sent to {agent}"
+// in the language the app shows.
+func ReviewSent(count int, agent string) string { return In(i18n.Locale()).ReviewSent(count, agent) }
+
+// ReviewSent says "{count, plural, one {# comment} other {# comments}} sent to {agent}"
+// in the language of msgs.
+func (msgs Messages) ReviewSent(count int, agent string) string {
+	return Catalog.Format(msgs.locale, "reviewSent", map[string]any{"count": count, "agent": agent})
+}

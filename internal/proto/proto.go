@@ -777,9 +777,13 @@ type (
 		Project string `json:"project,omitempty"`
 		Index   int    `json:"index"` // within the project; -1 last
 	}
+	// SendParams type Data into a pane; Paste pastes it, bracketed when the
+	// program asks, so that its newlines do not run it line by line, as
+	// they would an agent's prompt.
 	SendParams struct {
-		ID   string `json:"id"`
-		Data string `json:"data"`
+		ID    string `json:"id"`
+		Data  string `json:"data"`
+		Paste bool   `json:"paste,omitempty"`
 	}
 	ReadParams struct {
 		ID         string `json:"id"`

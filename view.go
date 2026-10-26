@@ -178,6 +178,7 @@ func (a *App) view(c *ui.Context) {
 		}
 	}
 	a.paletteView(c, pal)
+	a.goToFileView(c, pal)
 	a.pickerView(c, pal)
 	a.rebaseView(c, pal)
 	a.confirmView(c, pal)
