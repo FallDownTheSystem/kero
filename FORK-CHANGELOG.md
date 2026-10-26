@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.6
+
+- An editor pane takes the keyboard as you click it, or as the pointer
+  moves into it with focus-follows-mouse, also while it previews Markdown
+  or shows an image, where the keyboard stayed in the pane before
+
 ## 2.1.21-fork.5
 
 - The Changes view's files start folded, a list of what changed: each
