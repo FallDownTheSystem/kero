@@ -9528,6 +9528,26 @@ func (msgs Messages) SearchShowSession() string {
 	return Catalog.Format(msgs.locale, "searchShowSession", nil)
 }
 
+// SearchRestart says "Kero's service runs an older version, which can't search. Restart it to search this machine's conversations."
+// in the language the app shows.
+func SearchRestart() string { return In(i18n.Locale()).SearchRestart() }
+
+// SearchRestart says "Kero's service runs an older version, which can't search. Restart it to search this machine's conversations."
+// in the language of msgs.
+func (msgs Messages) SearchRestart() string {
+	return Catalog.Format(msgs.locale, "searchRestart", nil)
+}
+
+// SearchRestartHost says "{host} runs an older Kero, which can't search. Update it to search its conversations."
+// in the language the app shows.
+func SearchRestartHost(host string) string { return In(i18n.Locale()).SearchRestartHost(host) }
+
+// SearchRestartHost says "{host} runs an older Kero, which can't search. Update it to search its conversations."
+// in the language of msgs.
+func (msgs Messages) SearchRestartHost(host string) string {
+	return Catalog.Format(msgs.locale, "searchRestartHost", map[string]any{"host": host})
+}
+
 // SetResumeCommands says "Resume commands"
 // in the language the app shows.
 func SetResumeCommands() string { return In(i18n.Locale()).SetResumeCommands() }

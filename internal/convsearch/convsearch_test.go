@@ -64,10 +64,11 @@ func TestParseClaude(t *testing.T) {
 		t.Errorf("times = %d, %d", d.Started, d.Updated)
 	}
 
-	// Run by a program, as claude -p: none.
-	p = write(t, dir, "prog.jsonl", `{"type":"user","entrypoint":"sdk-cli","cwd":"/w","message":{"role":"user","content":"Write a commit message"}}`)
-	if docs, err := parseClaude(p); err != nil || len(docs) != 0 {
-		t.Errorf("a program's = %v, %v", docs, err)
+	// An SDK's entrypoint, which wrapped builds of Claude Code write for
+	// interactive sessions too: kept.
+	p = write(t, dir, "sdk.jsonl", `{"type":"user","entrypoint":"sdk-cli","cwd":"/w","message":{"role":"user","content":"Write a commit message"}}`)
+	if docs, err := parseClaude(p); err != nil || len(docs) != 1 || docs[0].Title != "Write a commit message" {
+		t.Errorf("an SDK's = %+v, %v", docs, err)
 	}
 	// Titled by its first message, without a title of Claude's.
 	p = write(t, dir, "untitled.jsonl", `{"type":"user","entrypoint":"cli","message":{"role":"user","content":"Line one\nline two"}}`)

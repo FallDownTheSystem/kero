@@ -38,6 +38,9 @@ type convSearch struct {
 	res    map[*host]proto.SearchResult
 	resGen int
 	hits   []searchHit
+	// older are the hosts whose kerod runs a Kero with no search, until
+	// it restarts into this one.
+	older map[*host]bool
 	// chosen is the key of the hit the arrows chose, "" for the first;
 	// open the one that shows its messages; reveal scrolls chosen into
 	// view, once.
@@ -121,9 +124,13 @@ func (a *App) askSearch(c *ui.Context) {
 					return
 				}
 				if s.resGen != gen {
-					s.res, s.resGen = map[*host]proto.SearchResult{}, gen
+					s.res, s.resGen, s.older = map[*host]proto.SearchResult{}, gen, map[*host]bool{}
 				}
-				// An older kerod has no search: it finds nothing.
+				// An older kerod has no search: the sidebar says to restart
+				// it, rather than that nothing matched.
+				if err != nil && strings.Contains(err.Error(), "unknown method") {
+					s.older[h] = true
+				}
 				if err == nil {
 					s.res[h] = r
 					if r.Indexing && s.again.IsZero() {
@@ -244,18 +251,39 @@ func (a *App) searchResults(c *ui.Context, pal *palette) {
 	case indexing && todo > 0:
 		note = locales.SearchIndexing(done, todo)
 	case s.res == nil:
-	case matched == 0:
+	case matched == 0 && len(s.older) == 0:
 		note = locales.SearchNoMatches()
 	default:
 		note = locales.SearchCount(matched)
 	}
 	ui.Text(c, note).FontSize(12).TextColor(pal.textFaint).FontFeatures("tnum").Padding(4, 6, 6, rowInset).SingleLine().Ellipsis("…")
+	for _, h := range a.hosts {
+		if s.older[h] {
+			a.olderSearchNote(c, pal, h)
+		}
+	}
 	chosen := a.chosenHit()
 	now := c.Now()
 	for i := range s.hits {
 		a.hitRow(c, pal, &s.hits[i], i == chosen, now)
 	}
 	s.reveal = false
+}
+
+// olderSearchNote tells that a host's kerod searches nothing until it
+// restarts into this version of Kero: this machine's, with the button
+// that restarts it, as the footer's chip does.
+func (a *App) olderSearchNote(c *ui.Context, pal *palette, h *host) {
+	ui.Column(c.Key("older-"+h.name)).Gap(6).Padding(2, 6, 10, rowInset).Children(func() {
+		say := locales.SearchRestart()
+		if h.remote() {
+			say = locales.SearchRestartHost(h.name)
+		}
+		ui.Text(c, say).FontSize(12).TextColor(pal.attention)
+		if !h.remote() && smallButton(c, "restart", locales.CommonRestartService(), false, pal) {
+			a.offerRestart()
+		}
+	})
 }
 
 // hitRow is a conversation found: its agent, folder, the times the user
