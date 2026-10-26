@@ -5,6 +5,18 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.7
+
+- **Review comments**: comment on lines of the Changes view's diffs, as on
+  a pull request, from the **+** by a line's number or a change's
+  **Comment**, and **Send to Agent** sends them all to the agent in the
+  worktree as one prompt, each with its file, lines and code
+- **Search**, a tab of the Explorer (Ctrl+Shift+S), finds text in the
+  folder's files, by case, word or regular expression, and opens a file
+  at the line found
+- **Go to File…** (Ctrl+Shift+N) finds a file of the project by its name
+  as you type, and opens it in an editor pane
+
 ## 2.1.21-fork.6
 
 - An editor pane takes the keyboard as you click it, or as the pointer
