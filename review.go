@@ -168,8 +168,15 @@ func hunkLines(sel []editor.DiffLineRange, h editor.DiffHunk) (side editor.DiffS
 // for before it builds them.
 const (
 	draftH        = 128
-	commentChrome = 40 // a comment's room besides its text
 	commentMargin = 12 // either side of a comment's card, within the diff
+	// A comment's card: the room above and below it, its padding, and its
+	// title row over its text.
+	commentAbove, commentBelow      = 4, 6
+	commentPadTop, commentPadBottom = 6, 8
+	commentPadLeft, commentPadRight = 12, 6
+	commentTitleH, commentGap       = 22, 2
+	// commentChrome is a comment's room besides its text.
+	commentChrome = commentAbove + commentBelow + commentPadTop + commentPadBottom + commentTitleH + commentGap
 )
 
 // reviewOptions sets what of a review a file's diff shows: its comments,
@@ -195,9 +202,9 @@ func (a *App) reviewOptions(c *ui.Context, pal *palette, sf *sideFile, width flo
 	}
 	id := diffID(sf)
 	// The text wraps in the card, which a split view's side halves.
-	textW := width - 2*commentMargin - 2*12 - 60
+	textW := width - 2*commentMargin - commentPadLeft - commentPadRight - 60
 	if d.Layout == editor.DiffSplit {
-		textW = width/2 - 2*commentMargin - 2*12 - 40
+		textW = width/2 - 2*commentMargin - commentPadLeft - commentPadRight - 40
 	}
 	textW = max(textW, 120)
 	for _, cm := range rv.comments {
@@ -225,9 +232,10 @@ func (a *App) reviewOptions(c *ui.Context, pal *palette, sf *sideFile, width flo
 
 // commentCard is a comment under its lines: its text, and Edit and Delete.
 func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewComment) {
-	ui.Column(c.Key("comment")).Grow(1).Margin(4, commentMargin, 6, commentMargin).Padding(6, 6, 8, 12).Gap(2).Radius(8).
+	ui.Column(c.Key("comment")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
+		Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(commentGap).Radius(8).
 		Background(pal.accent.Alpha(0.08)).InsetShadow(0, 0, 0, 1, pal.accent.Alpha(0.25)).AlignItems(ui.Stretch).Children(func() {
-		ui.Row(c).Height(22).Gap(6).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Height(commentTitleH).Gap(6).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, commentIcon).Size(12, 12).TextColor(pal.accent).Shrink(0)
 			ui.Text(c, commentPlace(cm)).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0)
 			ui.Spacer(c)
@@ -240,7 +248,9 @@ func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewCom
 				rv.comments = slices.DeleteFunc(rv.comments, func(x *reviewComment) bool { return x == cm })
 			})
 		})
-		ui.Text(c, cm.text).FontSize(13).TextColor(pal.text).LineHeight(1.35).Selectable()
+		// Of the line height MeasureText measures it at, for the room
+		// reviewOptions leaves.
+		ui.Text(c, cm.text).FontSize(13).TextColor(pal.text).Selectable()
 	})
 }
 
@@ -325,7 +335,7 @@ func commentPlace(cm *reviewComment) string {
 	return cm.path + ":" + lines
 }
 
-// reviewBar is the band atop the Changes view's files while the worktree
+// reviewBar is the band below the Changes view's files while the worktree
 // has comments: how many, each with its place, which opens the file there,
 // and Send to Agent, Copy as Prompt and Discard.
 func (a *App) reviewBar(c *ui.Context, pal *palette, pane *proto.Pane, root string) {
@@ -335,7 +345,7 @@ func (a *App) reviewBar(c *ui.Context, pal *palette, pane *proto.Pane, root stri
 		return
 	}
 	col := pal.accent
-	band := ui.Column(c.Key("review")).Shrink(0).Margin(0, 0, 6, 0).AlignItems(ui.Stretch).Background(col.Alpha(0.08))
+	band := ui.Column(c.Key("review")).Shrink(0).AlignItems(ui.Stretch).Background(col.Alpha(0.08))
 	band.Draw(func(p *ui.Painter, r ui.Rect) { p.Fill(ui.Rect{X: r.X, Y: r.Y, W: 3, H: r.H}, col, 0) })
 	band.Children(func() {
 		ui.Row(c).Height(34).Padding(0, 8, 0, 12).Gap(7).AlignItems(ui.Center).Children(func() {
@@ -417,7 +427,7 @@ func firstLine(s string) string {
 // its lines, from 1, and their text, quoted.
 func reviewPrompt(comments []*reviewComment) string {
 	var b strings.Builder
-	b.WriteString("Please address these review comments on the changes in this worktree. The line numbers are as the lines were when each comment was written; find each by its quoted code if they have moved.\n")
+	b.WriteString("Please address these review comments. Each names a file by its path from the repository's root, and its lines as they were when the comment was written; if they have moved, find them by the quoted code.\n")
 	for i, cm := range comments {
 		lines := "line " + itoa(cm.start+1)
 		if cm.end > cm.start {

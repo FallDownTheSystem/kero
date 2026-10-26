@@ -21,7 +21,7 @@ Click a pane's branch, or the Explorer button at the window's top right, or pres
 - **Uncommitted**: the last commit, untracked files included.
 - **Branch**: where the branch left the repository's default branch, as a pull request would show it.
 
-Each file shows with its diff right below it, one after another, and the diffs follow the files while the agent keeps editing them. Scrolled into a long diff, its file's name stays at the top. Files start folded, as a list of what changed: click a file's name to unfold its diff, or to fold it away. The button beside the list's summary unfolds all the files, or folds them all while one is unfolded; in **Uncommitted**, each section's title has its own. Drag the panel's edge to resize it.
+Each file shows with its diff right below it, one after another, and the diffs follow the files while the agent keeps editing them. Scrolled into a long diff, its file's name stays at the top. Files start folded, as a list of what changed: click a file's name to unfold its diff, or to fold it away. The button beside the list's summary unfolds all the files, or folds them all while one is unfolded; in **Uncommitted**, each section's title has its own. Right-click a file to open it in your editor or in an editor pane, or drag it onto a pane to open it there. Drag the panel's edge to resize it.
 
 Diffs show unified while the panel is narrow and side by side once it's wide. The button at the right of the list's summary switches between the two, which the `diff-layout` setting keeps. The wrap button beside it wraps long lines at the panel's width, as it does in the Files view and editor panes. **Tree View** beside that shows the files in their folders: click a folder to fold it. A folder that holds only another folder shares its row, as `src/app`.
 
@@ -79,7 +79,7 @@ An operation that changes the files while an agent works in the worktree, as a p
 
 The Explorer's **History** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Y</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Y</kbd> on Windows and Linux), draws the worktree's commits as a graph: every branch's with **All**, or the branch's, its upstream's and the default branch's with **Branch**. Local branches and the remotes' show apart, so a branch and its remote's at one commit show both. Commits not pushed yet are marked. **Filter** finds commits by their message, author or hash; a file's menu in the Files view shows the history of that file.
 
-Click a commit to see its files, and a file to see its diff. The changes not committed show on top, and the stash under them, to apply, pop or drop. A commit's menu:
+Click a commit to see its files, and a file to see its diff. A file's menu opens it, as the changes panel's does, or shows its history with **Show File History**. The changes not committed show on top, and the stash under them, to apply, pop or drop. A commit's menu:
 
 - **Copy Hash** and **Copy Branch Name**.
 - **Check Out**: the branch at the commit, or the commit itself, detached, when no branch is there.
@@ -148,7 +148,7 @@ Double-click a file, or right-click it, to open it in your editor: the `editor` 
 
 The Explorer's **Search** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>F</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>S</kbd> on Windows and Linux), searches the text of the files the Files view shows, on the host they're on. It searches as you stop typing, of any case, and <kbd>Return</kbd> (<kbd>Enter</kbd>) searches again, as the files change. The buttons beside the field match case, match whole words, and take the text as a regular expression, as Go writes them.
 
-The lines found list under their files, the text found highlighted: click a file to fold it, and a line to open its file at that line in an editor pane, or in the editor pane that shows it already. Files that git ignores, binary files, and files over 2 MB aren't searched, and a search shows its first 2,000 lines.
+The lines found list under their files, the text found highlighted: click a file to fold it, and a line to open its file at that line in an editor pane, or in the editor pane that shows it already. Right-click a file or a line to open it in your editor or in an editor pane, or drag it onto a pane to open it there, at the line. Files that git ignores, binary files, and files over 2 MB aren't searched, and a search shows its first 2,000 lines.
 
 ## From the command line
 

@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -103,14 +104,22 @@ func TestWorktreeSession(t *testing.T) {
 }
 
 func TestWorktreePath(t *testing.T) {
-	main := filepath.FromSlash("/src/kero")
-	if got := worktreePath(main, "fix/login", ""); got != filepath.FromSlash("/src/kero/.kero/worktrees/fix-login") {
+	// An absolute path: on Windows, one with a drive, as \wt is relative to
+	// the drive of the directory it is used in.
+	abs := func(p string) string {
+		if runtime.GOOS == "windows" {
+			p = "C:" + p
+		}
+		return filepath.FromSlash(p)
+	}
+	main := abs("/src/kero")
+	if got := worktreePath(main, "fix/login", ""); got != abs("/src/kero/.kero/worktrees/fix-login") {
 		t.Error(got)
 	}
-	if got := worktreePath(main, "x", filepath.FromSlash("/wt")); got != filepath.FromSlash("/wt/kero/x") {
+	if got := worktreePath(main, "x", abs("/wt")); got != abs("/wt/kero/x") {
 		t.Error(got)
 	}
-	if got := worktreePath(main, "x", "../trees"); got != filepath.FromSlash("/src/trees/kero/x") {
+	if got := worktreePath(main, "x", "../trees"); got != abs("/src/trees/kero/x") {
 		t.Error(got)
 	}
 }
