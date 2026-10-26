@@ -68,7 +68,11 @@ type settingsState struct {
 	editorEdit   bool
 	messageDraft string
 	messageEdit  bool
-	loginOpen    bool // open at login, as the system says
+	// resumeDraft is each agent's resume command as typed, and
+	// resumeEdit the agent whose field has the focus.
+	resumeDraft map[string]*string
+	resumeEdit  string
+	loginOpen   bool // open at login, as the system says
 	updates      updatePrefs
 	cliPath      string
 	service      string // kerod, as last asked
@@ -1169,8 +1173,51 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			})
 		}
 	})
+	settingsGroup(c, pal, locales.SetResumeCommands(), locales.SetResumeCommandsDetail(), func() {
+		for _, agent := range settings.ResumeAgents {
+			a.resumeCommandRow(c, pal, agent)
+		}
+	})
 	settingsGroup(c, pal, locales.SetProgramStatus(), locales.SetProgramStatusDetail(), nil)
 	codeBlock(c, pal, "kero report working \"Deploying\" --progress 40\nkero report blocked \"Approve the migration?\" --kind permission\nkero report done \"Deployed\"")
+}
+
+// resumeAgentCommands are the agents' own resume commands, which an empty
+// field of theirs keeps, as kerod's resumeCommand writes them.
+var resumeAgentCommands = map[string]string{
+	"claude":   "claude --resume {session}",
+	"codex":    "codex resume {session}",
+	"pi":       "pi --session {session}",
+	"opencode": "opencode --session {session}",
+}
+
+// resumeCommandRow is the field of the command that resumes an agent's
+// conversations, which it keeps as it is submitted or loses the focus.
+func (a *App) resumeCommandRow(c *ui.Context, pal *palette, agent string) {
+	cmd := a.set.Resume(agent)
+	if a.ss.resumeDraft == nil {
+		a.ss.resumeDraft = map[string]*string{}
+	}
+	draft := a.ss.resumeDraft[agent]
+	if draft == nil {
+		draft = new(string)
+		a.ss.resumeDraft[agent] = draft
+	}
+	if a.ss.resumeEdit != agent {
+		*draft = *cmd
+	}
+	settingRow(c, pal, proto.AgentNames[agent], "", func() {
+		in := textField(c, "resume-"+agent, draft, resumeAgentCommands[agent], 300, pal).Font("monospace")
+		keep := func() { *cmd = strings.TrimSpace(*draft) }
+		in.OnSubmit(keep)
+		switch {
+		case in.Focused():
+			a.ss.resumeEdit = agent
+		case a.ss.resumeEdit == agent:
+			a.ss.resumeEdit = ""
+			keep()
+		}
+	})
 }
 
 // docLink opens a page of Kero's documentation in the browser: the

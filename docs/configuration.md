@@ -113,6 +113,10 @@ Your own themes are files in Ghostty's format in Ghostty's themes folder: `$XDG_
 | Key              | Default | Description                                         |
 | ---------------- | ------- | --------------------------------------------------- |
 | `remote-control` | `true`  | Let `kero do` and `kero focus` drive the app        |
+| `resume-command-claude` |  | The command that resumes a Claude Code conversation, as Resume, the [search](./sessions.md#search) and restoring sessions start it, run in your shell as your own commands and functions are, as `cc --yolo --resume {session}`; `{session}` in it is the conversation's ID, else the ID goes at its end; empty for `claude --resume {session}` |
+| `resume-command-codex` |  | The same for Codex; empty for `codex resume {session}` |
+| `resume-command-pi` |  | The same for Pi; empty for `pi --session {session}` |
+| `resume-command-opencode` |  | The same for OpenCode; empty for `opencode --session {session}` |
 
 ## Hosts
 

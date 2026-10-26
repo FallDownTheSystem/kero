@@ -387,7 +387,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		as := &proto.AgentSession{Agent: p.Agent, ID: p.Session}
-		if resumeCommand(as) == nil {
+		if !resumable(as) {
 			return nil, fmt.Errorf("no agent session %q of %q", p.Session, p.Agent)
 		}
 		pn, away := d.agentPane(p.PID, p.Agent, p.Dir)
@@ -407,6 +407,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 
 	case "conversations":
 		return d.conversations(), nil
+
+	case "conversation.search":
+		var p proto.SearchParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.searchConversations(p), nil
 
 	case "conversation.resume":
 		var p proto.ConversationParams

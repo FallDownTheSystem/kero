@@ -140,6 +140,7 @@ type App struct {
 
 	pal     paletteState
 	find    findState
+	srch    convSearch
 	confirm *confirmation
 	wtAsk   *worktreeAsk
 	// endedAll shows all of the sidebar's Ended; skillMissing tells, as

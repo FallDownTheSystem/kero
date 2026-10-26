@@ -113,6 +113,10 @@ kero config check             # 报告未知的配置项和无效的值
 | 配置项           | 默认值  | 说明                                                |
 | ---------------- | ------- | --------------------------------------------------- |
 | `remote-control` | `true`  | 允许 `kero do` 和 `kero focus` 操控应用             |
+| `resume-command-claude` |  | 恢复 Claude Code 对话的命令，用于恢复、[搜索](./sessions.md#搜索)和恢复会话，像你自己的命令和函数一样在你的 shell 中运行，如 `cc --yolo --resume {session}`；其中的 `{session}` 会换成对话的 ID，没有时 ID 加在末尾；留空则为 `claude --resume {session}` |
+| `resume-command-codex` |  | Codex 的同类命令；留空则为 `codex resume {session}` |
+| `resume-command-pi` |  | Pi 的同类命令；留空则为 `pi --session {session}` |
+| `resume-command-opencode` |  | OpenCode 的同类命令；留空则为 `opencode --session {session}` |
 
 ## 主机
 

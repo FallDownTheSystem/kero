@@ -1566,5 +1566,41 @@
       }
     }
   },
-  "gitDiscardLinesTip": "Discard the changes to the selected lines"
+  "gitDiscardLinesTip": "Discard the changes to the selected lines",
+  "actionSearchConversations": "Search Conversations…",
+  "searchPlaceholder": "Search conversations",
+  "searchTip": "Finds the agents' conversations by what was said in them, their titles and folders. Narrow it with agent:codex, dir:kero or date:<2d, and leave out what has a word with -word. ↑↓ choose, Enter resumes, Esc clears.",
+  "searchClear": "Clear Search",
+  "searchIndexing": "Reading the agents' histories… {done} of {todo}",
+  "@searchIndexing": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "todo": {
+        "type": "int"
+      }
+    }
+  },
+  "searchNoMatches": "No conversation has that",
+  "searchCount": "{count, plural, one {# conversation} other {# conversations}}",
+  "@searchCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchTurns": "{count, plural, one {You wrote # message} other {You wrote # messages}}",
+  "@searchTurns": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchYou": "You",
+  "searchShowSession": "Show Session",
+  "setResumeCommands": "Resume commands",
+  "setResumeCommandsDetail": "The command that resumes each agent's conversations, as Resume, the search and restoring sessions start them. It runs in your shell, as your own commands and functions do, as cc --yolo --resume '{session}'; '{session}' in it becomes the conversation's ID. Empty uses the agent's own command."
 }

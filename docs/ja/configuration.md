@@ -113,6 +113,10 @@ kero config check             # 不明なキーと不正な値を報告
 | キー             | デフォルト | 説明                                                |
 | ---------------- | ---------- | --------------------------------------------------- |
 | `remote-control` | `true`     | `kero do` と `kero focus` によるアプリの操作を許可する |
+| `resume-command-claude` |  | Claude Code の会話を再開するコマンド。再開、[検索](./sessions.md#検索)、セッションの復元で使われ、自分のコマンドや関数と同じようにシェルで実行されます（`cc --yolo --resume {session}` など）。中の `{session}` は会話の ID になり、なければ ID は末尾に付きます。空なら `claude --resume {session}` |
+| `resume-command-codex` |  | Codex について同じ。空なら `codex resume {session}` |
+| `resume-command-pi` |  | Pi について同じ。空なら `pi --session {session}` |
+| `resume-command-opencode` |  | OpenCode について同じ。空なら `opencode --session {session}` |
 
 ## ホスト
 

@@ -29,6 +29,7 @@ import (
 
 	"kero/internal/build"
 	"kero/internal/clilink"
+	"kero/internal/convsearch"
 	"kero/internal/detach"
 	"kero/internal/proto"
 	"kero/internal/settings"
@@ -68,14 +69,18 @@ type Daemon struct {
 	viewed atomic.Pointer[string]
 	// theme is the colors of the client that last told them, which the
 	// panes answer programs' questions about the colors with.
-	theme    atomic.Pointer[terminal.Theme]
-	git      *gitFollow
-	convs    convStore
-	net      *listeners
-	changeCh chan struct{}
-	saveCh   chan struct{}
-	quit     chan struct{}
-	quitOnce sync.Once
+	theme atomic.Pointer[terminal.Theme]
+	git   *gitFollow
+	convs convStore
+	// search indexes the agents' histories, as a search first asks for
+	// it (searchIndex).
+	search     *convsearch.Index
+	searchOnce sync.Once
+	net        *listeners
+	changeCh   chan struct{}
+	saveCh     chan struct{}
+	quit       chan struct{}
+	quitOnce   sync.Once
 }
 
 // Options are how kerod runs.

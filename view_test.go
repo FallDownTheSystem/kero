@@ -430,6 +430,109 @@ func TestMenusButton(t *testing.T) {
 	}
 }
 
+// The search at the sidebar's foot asks the hosts once typing pauses,
+// shows what they found in place of the sessions, opens one to show its
+// messages, resumes the one the arrows chose, and goes as Escape clears
+// it.
+func TestConversationSearch(t *testing.T) {
+	a := testApp(t)
+	asked := make(chan proto.SearchParams, 4)
+	resumed := make(chan proto.ConversationParams, 1)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "conversation.search":
+			var p proto.SearchParams
+			json.Unmarshal(raw, &p)
+			asked <- p
+			return proto.SearchResult{Matched: 2, Indexed: 9, Terms: []string{"login"}, Hits: []proto.SearchHit{
+				{Conversation: proto.Conversation{Agent: "claude", ID: "c1", Dir: "/src/app", Title: "Fix the login redirect", Updated: time.Now().Add(-time.Hour).UnixMilli()},
+					Turns: 7, Score: 3, Snippets: []proto.Snippet{{User: true, Text: "the login page loops", Marks: []int{4, 9}}}},
+				{Conversation: proto.Conversation{Agent: "codex", ID: "x2", Dir: "/src/api", Title: "Login API"}, Turns: 2, Score: 1},
+			}}, nil
+		case "conversation.resume":
+			var p proto.ConversationParams
+			json.Unmarshal(raw, &p)
+			resumed <- p
+		}
+		return nil, errors.New("no kerod in a test")
+	})
+	a.local().conn, a.local().cl = connReady, cl
+	session := a.st.Sessions[0].DisplayName(a.set.SessionName)
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	shot(t, tt, "search-field")
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("login")
+	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
+	tt.Frame()
+	select {
+	case p := <-asked:
+		if p.Query != "login" || !p.Preview {
+			t.Errorf("asked %+v", p)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no search asked")
+	}
+	for deadline := time.Now().Add(5 * time.Second); len(a.srch.hits) == 0 && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		a.runEarly()
+	}
+	tt.Frame()
+	shot(t, tt, "search-found")
+	for _, want := range []string{"Fix the login redirect", "Login API", "2 conversations", "Claude", "Codex", "7"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText(session) {
+		t.Errorf("the session %q shows with the search's", session)
+	}
+	if err := tt.Click("Fix the login redirect"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	shot(t, tt, "search-open")
+	if !tt.HasText("the login page loops") || !tt.HasText("Resume") {
+		t.Errorf("open, no messages: %q", tt.Texts())
+	}
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyDown)
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	select {
+	case p := <-resumed:
+		if p.Agent != "codex" || p.ID != "x2" {
+			t.Errorf("resumed %+v", p)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("nothing resumed")
+	}
+	tt.Frame()
+	if a.searching() || !tt.HasText(session) {
+		t.Errorf("after resuming: %q", tt.Texts())
+	}
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("x")
+	tt.Frame()
+	if !a.searching() {
+		t.Fatal("not searching")
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if a.searching() || !tt.HasText(session) {
+		t.Errorf("after Escape: %q", tt.Texts())
+	}
+}
+
 // A session's tooltip shows below the pointer where it rested, as macOS
 // shows tooltips, not centered over the row ($KERO_SHOTS).
 func TestSessionTooltipAtPointer(t *testing.T) {

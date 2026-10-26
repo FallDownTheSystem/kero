@@ -918,6 +918,44 @@ type (
 		Rows     int    `json:"rows,omitempty"`
 		Archived bool   `json:"archived,omitempty"`
 	}
+	// SearchParams asks for the conversations a query finds in the agents'
+	// histories (conversation.search), the Limit best; Preview asks for
+	// more of each one's messages that it finds, to show it open.
+	SearchParams struct {
+		Query   string `json:"query"`
+		Limit   int    `json:"limit,omitempty"`
+		Preview bool   `json:"preview,omitempty"`
+	}
+	// SearchResult is what a search found: its best Hits, of Matched in
+	// all, among the Indexed conversations, while Indexing reads Done of
+	// Todo histories that changed. Terms are the query's words as found,
+	// in lower case, for the app to mark in the titles.
+	SearchResult struct {
+		Hits     []SearchHit `json:"hits"`
+		Matched  int         `json:"matched"`
+		Indexed  int         `json:"indexed"`
+		Indexing bool        `json:"indexing,omitempty"`
+		Done     int         `json:"done,omitempty"`
+		Todo     int         `json:"todo,omitempty"`
+		Terms    []string    `json:"terms,omitempty"`
+	}
+	// SearchHit is a conversation a search found, as kerod remembers it
+	// when it ran in Kero, with how many times the user wrote in it, and
+	// the messages that have the query's words. Score ranks it among the
+	// hits of every host's search.
+	SearchHit struct {
+		Conversation
+		Turns    int       `json:"turns"`
+		Score    float64   `json:"score"`
+		Snippets []Snippet `json:"snippets,omitempty"`
+	}
+	// Snippet is a part of a message, the user's or the agent's: Marks are
+	// the byte ranges of Text, start and end in turn, that the query found.
+	Snippet struct {
+		User  bool   `json:"user,omitempty"`
+		Text  string `json:"text"`
+		Marks []int  `json:"marks,omitempty"`
+	}
 	// AgentSessionResult is the pane told of, and its session; Away: the
 	// agent runs under none of kero's shells, and so do its commands.
 	AgentSessionResult struct {

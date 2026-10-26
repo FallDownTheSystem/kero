@@ -335,6 +335,21 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 			a.leftButtons(c, pal, "")
 		})
 	}
+	// What the search found shows in place of the sessions, until it is
+	// cleared.
+	if a.searching() {
+		ui.Scroll(c.Key("found")).Grow(1).Padding(0, 10, 16, 10).DragWindow().Children(func() { a.searchResults(c, pal) })
+	} else {
+		a.sessionList(c, pal)
+	}
+	a.searchField(c, pal)
+	a.sidebarFooter(c, pal)
+	c.After(20 * time.Second) // times ago move on
+}
+
+// sessionList is the sidebar's sessions, by host and project, and the
+// conversations that ended.
+func (a *App) sessionList(c *ui.Context, pal *palette) {
 	// The space between and below the rows moves the window, as the top
 	// bar does.
 	ui.Scroll(c.Key("sessions")).Grow(1).Padding(0, 10, 16, 10).DragWindow().Children(func() {
@@ -373,8 +388,6 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 			a.endedSections(c, pal)
 		}
 	})
-	a.sidebarFooter(c, pal)
-	c.After(20 * time.Second) // times ago move on
 }
 
 func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {

@@ -55,13 +55,45 @@ func TestCommitMessagePlaceholder(t *testing.T) {
 	}
 }
 
+// Each agent's resume command is typed on the Agents page, and kept as
+// its field loses the focus; its text names its placeholder.
+func TestResumeCommandSetting(t *testing.T) {
+	for _, loc := range []string{"en", "ja", "zh-Hans"} {
+		if s := locales.In(loc).SetResumeCommandsDetail(); !strings.Contains(s, settings.SessionPlaceholder) {
+			t.Errorf("%s: %q", loc, s)
+		}
+	}
+	a := testApp(t)
+	a.ss.page = "agents"
+	tt := ui.NewTester(a.settingsView, 820, 1400)
+	tt.Frame()
+	if err := tt.Click("claude --resume {session}"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("cc --yolo --resume {session}")
+	tt.Frame()
+	if a.set.ResumeClaude != "" {
+		t.Errorf("kept as typed: %q", a.set.ResumeClaude)
+	}
+	if err := tt.Click("codex resume {session}"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if a.set.ResumeClaude != "cc --yolo --resume {session}" || a.set.ResumeCodex != "" {
+		t.Errorf("Claude Code's %q, Codex's %q", a.set.ResumeClaude, a.set.ResumeCodex)
+	}
+	shot(t, tt, "settings-resume")
+}
+
 // A shortcut is typed into its chip, saved, and takes the keys from the
 // action that had them.
 func TestRecordShortcut(t *testing.T) {
 	a := testApp(t)
 	a.ss.draft = map[string]string{}
 	a.ss.page = "keyboard"
-	tt := ui.NewTester(a.settingsView, 820, 1100)
+	// Tall enough for the shortcuts down to the Pane menu's.
+	tt := ui.NewTester(a.settingsView, 820, 1300)
 	tt.Frame()
 	if err := tt.Click("Shortcut for Split Right"); err != nil {
 		t.Fatal(err)

@@ -74,6 +74,7 @@ var (
 	warningIcon     = glyph("f7-exclamationmark-triangle")
 	clockIcon       = glyph("f7-clock")
 	sparklesIcon    = glyph("f7-sparkles")
+	turnsIcon       = icon(`<path d="M3 3h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7.5L4.5 13.5V11H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>`)
 )
 
 // programIcons are the logos of programs a pane may run, by the name kerod
