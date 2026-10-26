@@ -58,12 +58,16 @@ const (
 type sideState struct {
 	drag    float32 // the width as a drag of the edge began, 0 while none
 	focused bool    // the panel has the keyboard: its Escape, its diff's find
+	// drafting is the review whose draft comment has the keyboard, as the
+	// panel last built it, which the panel's Escape drops.
+	drafting *review
 	// wide widens the panel to all the room the panes leave, until the user
 	// turns it off, hides the panel or drags its edge: prefs' SideWidth
 	// stays, which it comes back to.
 	wide    bool
 	changes changesState
 	files   filesState
+	search  searchState
 	git     gitUI
 	// theme is the colors of code, made again only as the theme they are
 	// of, themeOf, changes.
@@ -173,11 +177,17 @@ func (a *App) showSide(view string) {
 // sideView is the view the panel shows, else the one it showed last, which
 // showing it again shows.
 func (a *App) sideView() string {
-	switch {
-	case a.prefs.Side != "":
+	if a.prefs.Side != "" {
 		return a.prefs.Side
-	case a.prefs.SideView == sideFiles || a.prefs.SideView == sideHistory:
-		return a.prefs.SideView
+	}
+	return knownView(a.prefs.SideView)
+}
+
+// knownView is a view of the panel: Changes for one it doesn't know.
+func knownView(view string) string {
+	switch view {
+	case sideFiles, sideHistory, sideSearch:
+		return view
 	}
 	return sideChanges
 }
@@ -189,6 +199,8 @@ func sideAction(view string) string {
 		return "files.toggle"
 	case sideHistory:
 		return "history.toggle"
+	case sideSearch:
+		return "search.toggle"
 	}
 	return "changes.toggle"
 }
@@ -304,7 +316,8 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 	wpal := pal
 	pal = cardPalette(pal, a.fileTheme(pal.dark))
 	raised(card.Background(card.AnimateColor("bg", cardBackground(wpal, pal, dim), ui.Animation{Duration: 140 * time.Millisecond})), wpal)
-	files, history := a.prefs.Side == sideFiles, a.prefs.Side == sideHistory
+	view := knownView(a.prefs.Side)
+	a.side.drafting = nil
 	// The side's buttons and the window's controls take the header's room
 	// at the window's edge: in a narrow panel the tabs give theirs, down to
 	// their icons, so that the controls stay in it.
@@ -330,11 +343,12 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			a.sideTab(c, pal, sideFiles, folderIcon, locales.SideFiles(), "files.toggle", compact)
 			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle", compact)
 			a.sideTab(c, pal, sideHistory, historyIcon, locales.SideHistory(), "history.toggle", compact)
+			a.sideTab(c, pal, sideSearch, searchIcon, locales.SideSearch(), "search.toggle", compact)
 			dir := a.changesDir(s)
-			switch {
-			case files:
+			switch view {
+			case sideFiles, sideSearch:
 				_, dir = a.filesRoot(s)
-			case history:
+			case sideHistory:
 				dir = a.historyDir(s)
 			}
 			if name := a.sideFolder(c, s, dir); name != "" {
@@ -354,11 +368,13 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			}
 		})
 		ui.Column(c.Key("body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-			switch {
-			case files:
+			switch view {
+			case sideFiles:
 				a.filesView(c, pal, s)
-			case history:
+			case sideHistory:
 				a.historyView(c, pal, s, width)
+			case sideSearch:
+				a.searchView(c, pal, s)
 			default:
 				a.changesView(c, pal, s, width)
 			}
@@ -369,7 +385,7 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			v.Opacity(v.Animate("on", b2f(dim), 160*time.Millisecond))
 		}
 	})
-	if card.Shortcut(0, ui.KeyEscape) {
+	if card.Shortcut(0, ui.KeyEscape) && !a.cancelDraft() {
 		a.focusTerminal()
 	}
 }
@@ -377,7 +393,7 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 // sideTab is a view's tab in the panel's header, which shows it: its icon
 // alone while compact, but the shown view's while only somewhat.
 func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, label, action string, compact sideCompact) {
-	on := a.prefs.Side == view || view == sideChanges && a.prefs.Side != sideFiles && a.prefs.Side != sideHistory
+	on := knownView(a.prefs.Side) == view
 	b := ui.ButtonBase(c.Key("tab-"+view)).Height(28).Padding(0, 8).Gap(6).Radius(8).AlignItems(ui.Center).Shrink(0).
 		TextColor(pal.textMuted).Label(label).Tooltip(a.tip(label, action))
 	iconOnly := compact == tabsIcons || compact == tabsShownLabel && !on
@@ -587,6 +603,17 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 			})
 		})
 	})
+
+	root := ""
+	switch {
+	case ch.base == git.BaseTurn && pane.Turn != nil:
+		root = pane.Turn.Root
+	case pane.Git != nil:
+		root = pane.Git.Root
+	}
+	if root != "" {
+		a.reviewBar(c, pal, pane, root)
+	}
 
 	res := list
 	if held {
@@ -1259,17 +1286,30 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 	case git.BaseTurn:
 	case baseStaged, baseUnstaged:
 		editable = editable && sf.f.Status != "conflict"
-		d.LineSelection = editable
 	default:
 		editable = false
 	}
+	// Lines are selected to stage them, and to comment on them, in any
+	// diff that takes comments (reviewable).
+	review := reviewable(sf)
+	d.LineSelection = review && !sf.writing
 	if !d.LineSelection && len(d.SelectedRanges()) > 0 {
 		d.SetSelectedRanges(nil)
 	}
-	d.HunkActions = editable
+	a.reviewOptions(c, pal, sf, width)
+	d.HunkActions = editable || review
 	d.RenderHunkActions = func(c *ui.Context, bar ui.Element, h *editor.DiffHunkActions) {
 		floating(bar.Gap(2).Padding(3).Radius(8).Background(pal.popover).AlignItems(ui.Center), pal)
 		bar.Children(func() {
+			if review && hunkButton(c, "comment", commentIcon, locales.ReviewComment(), locales.ReviewCommentTip(), pal) {
+				if side, start, end, ok := hunkLines(d.SelectedRanges(), h.Hunk); ok {
+					d.SetSelectedRanges(nil)
+					a.startComment(sf, side, start, end)
+				}
+			}
+			if !editable {
+				return
+			}
 			if (sf.base == baseStaged || sf.base == baseUnstaged) && a.lineActions(c, pal, sf.base, sf, h.Hunk) {
 				return
 			}

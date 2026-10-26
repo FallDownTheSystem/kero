@@ -246,6 +246,8 @@ type openFile struct {
 	// which md shows it by.
 	preview bool
 	md      *markdown.Options
+	// goTo is where the caret goes once the text shows (openAt).
+	goTo *editor.Pos
 }
 
 // markdownFile tells a file of Markdown, which previews, by its name.
@@ -343,7 +345,11 @@ func hostParent(path string) string {
 
 // join returns a path in a folder of the tree, written as the tree writes
 // its paths: rel's elements, either slash between them, each joined on.
-func (t *fileTree) join(dir, rel string) string {
+func (t *fileTree) join(dir, rel string) string { return joinRel(dir, rel) }
+
+// joinRel joins a path, from a folder of a host, with either slashes, to
+// the folder, with the host's separator (hostJoin).
+func joinRel(dir, rel string) string {
 	for _, part := range strings.FieldsFunc(rel, func(r rune) bool { return r == '/' || r == '\\' }) {
 		dir = hostJoin(dir, part)
 	}
@@ -1359,6 +1365,10 @@ func (a *App) fileBody(c *ui.Context, pal *palette, pane string, f *openFile, re
 			st.SoftWrap = a.prefs.Wrap
 			// What shows as it saves is what it writes.
 			st.ReadOnly = f.saving
+			if f.goTo != nil {
+				st.GoTo(*f.goTo)
+				f.goTo = nil
+			}
 			ed := editor.View(c.Key("text"), st).Grow(1).MinHeight(0)
 			if ref != nil {
 				ed.Bind(ref)

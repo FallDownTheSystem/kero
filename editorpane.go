@@ -27,6 +27,11 @@ func (a *App) editorOf(p *proto.Pane) *openFile {
 		// to make, as kero split --file names it.
 		f = &openFile{path: p.File, stamp: "\x00", fresh: true}
 		a.edits[p.ID] = f
+		key := gotoKey(a.hostOf(p.ID), p.File)
+		if pos, ok := a.gotos[key]; ok {
+			f.goTo = &pos
+			delete(a.gotos, key)
+		}
 	}
 	return f
 }
