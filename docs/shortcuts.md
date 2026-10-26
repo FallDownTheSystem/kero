@@ -26,6 +26,7 @@ On Windows and Linux, <kbd>Ctrl</kbd> with a letter belongs to the shell (<kbd>C
 | New Session in Worktree…     | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>T</kbd> | –                                             | `session.newWorktree` |
 | Open Project…               | <kbd>⌘</kbd> <kbd>O</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd> | `project.open`      |
 | Go to Session…              | <kbd>⌘</kbd> <kbd>P</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd> | `palette.open`      |
+| Go to File…                 | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>N</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>N</kbd> | `files.goto`        |
 | Resume Conversation…        | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>O</kbd> | –                                             | `conversation.resume` |
 | Search Conversations…       | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>F</kbd> | –                                             | `conversation.search` |
 | Jump to Session Needing You | <kbd>⌘</kbd> <kbd>J</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>J</kbd> | `session.attention` |
@@ -62,6 +63,7 @@ On Windows and Linux, <kbd>Ctrl</kbd> with a letter belongs to the shell (<kbd>C
 | Toggle Changes | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>G</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>G</kbd> | `changes.toggle` |
 | Toggle Files   | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> | `files.toggle`   |
 | Toggle History | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Y</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Y</kbd> | `history.toggle` |
+| Toggle Search  | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>F</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>S</kbd> | `search.toggle`  |
 | Bigger         | <kbd>⌘</kbd> <kbd>=</kbd> | <kbd>Ctrl</kbd> <kbd>=</kbd>                  | `text.bigger`    |
 | Smaller        | <kbd>⌘</kbd> <kbd>-</kbd> | <kbd>Ctrl</kbd> <kbd>-</kbd>                  | `text.smaller`   |
 | Actual Size    | <kbd>⌘</kbd> <kbd>0</kbd> | <kbd>Ctrl</kbd> <kbd>0</kbd>                  | `text.reset`     |

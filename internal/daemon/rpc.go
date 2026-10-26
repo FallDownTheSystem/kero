@@ -199,7 +199,11 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if pn.term == nil {
 			return nil, fmt.Errorf("pane %s is no terminal, and takes no input", pn.info.ID)
 		}
-		pn.input([]byte(p.Data))
+		if p.Paste {
+			pn.paste(p.Data)
+		} else {
+			pn.input([]byte(p.Data))
+		}
 		return true, nil
 
 	case "pane.page":
@@ -643,6 +647,20 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		return fsFind(p)
+
+	case "fs.files":
+		var p proto.FSFilesParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsFiles(p)
+
+	case "fs.search":
+		var p proto.FSSearchParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsSearch(p)
 
 	case "fs.stat":
 		var p proto.FSStatParams

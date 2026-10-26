@@ -449,6 +449,22 @@ func (s *pane) screen() string {
 
 // input writes what the user typed to the program.
 func (s *pane) input(p []byte) {
+	if proc := s.acted(); proc != nil {
+		proc.Write(p)
+	}
+}
+
+// paste pastes text into the program, as the user's paste keys would:
+// through the terminal, which brackets it as the program asks.
+func (s *pane) paste(text string) {
+	if s.acted() != nil {
+		s.term.Paste(text)
+	}
+}
+
+// acted is the user acting in the pane, which ends what waited for them,
+// and returns its process, nil for none.
+func (s *pane) acted() *ptyProc {
 	s.mu.Lock()
 	proc := s.proc
 	changed := false
@@ -467,12 +483,10 @@ func (s *pane) input(p []byte) {
 		changed = true
 	}
 	s.mu.Unlock()
-	if proc != nil {
-		proc.Write(p)
-	}
 	if changed {
 		s.d.changed()
 	}
+	return proc
 }
 
 // setPage keeps the page a browser pane shows, as the app told it.
