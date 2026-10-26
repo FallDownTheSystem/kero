@@ -157,18 +157,47 @@ endings only (`git diff` shows nothing): `git checkout -- locales/catalog_gen.go
 ## Building and installing by hand
 
 A release's installer is `Kero Setup X.Y.Z-fork.N amd64.exe` on its
-release page. To build one here instead:
+release page. To build one here instead, Go is needed (`winget install
+GoLang.Go`; an older Go than `go.mod`'s downloads the newer one itself),
+and `jq`, and nothing else: the build downloads NSIS and `ghostty-vt.dll`.
 
-```sh
+Build from the release's tag, with `mygo.json` set as the Fork release
+workflow sets it, so that the install reports the fork's version and
+updates to the fork's releases, verified with the fork's key. In
+PowerShell:
+
+```powershell
+git switch --detach v2.1.21-fork.1
+$v = (git describe --tags --exact-match HEAD).TrimStart('v')
+$key = '5mYJ1/05W+MiC0LUkGGc9lyuCDo600ZL4idnU14+kWI='
+jq --arg v $v --arg repo FallDownTheSystem/kero --arg key $key `
+        '.version = $v | .updates.github = $repo | .updates.publicKey = $key | .updates.changelog = "FORK-CHANGELOG.md"' `
+        mygo.json > "$env:TEMP\mygo.json"
+Copy-Item "$env:TEMP\mygo.json" mygo.json -Force
 go tool mygo build -platform windows/amd64
+git checkout -- mygo.json locales/catalog_gen.go
+git switch main
 ```
 
-leaves `build/windows-amd64/Kero Setup X.Y.Z amd64.exe`. Before running it:
+leaves `build/windows-amd64/Kero Setup X.Y.Z-fork.N amd64.exe`.
 
-- Turn off **Download and install updates automatically** in Settings ›
-  General. A build made here, from the repository's `mygo.json`, checks
-  egoist's releases for updates, and with this on, the next official
-  release replaces it. An install of a fork release checks the fork's.
+- `git switch --detach` builds the tag's code, so that the version agrees
+  with what is built: on a commit after the tag, `git describe --tags
+  --exact-match` fails. From one release to the next, only that line
+  changes, as `$v` comes from the tag.
+- The key is the workflow's `UPDATES_PUBLIC_KEY`.
+- `git checkout` puts `mygo.json` back to upstream's, which is what the
+  repository keeps.
+- The build warns that it doesn't sign an update: only a release, with the
+  secret key, uploads one.
+
+Built from `mygo.json` as it is in the repository, the install reports
+upstream's version and checks egoist's releases for updates, and with
+**Download and install updates automatically** on (Settings › General),
+the next official release replaces it.
+
+Before running the installer:
+
 - Stop kerod, which keeps running after the app quits and holds `Kero.exe`:
   quit with **End All Sessions and Quit** (the tray icon's menu, or the Kero
   menu), or run `kero daemon stop`. Both end the sessions.
