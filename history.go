@@ -246,7 +246,7 @@ func (a *App) openRows(rows []histRow, hash string, commit int) []histRow {
 	}
 	for _, f := range cv.info.Files {
 		rows = append(rows, histRow{kind: rowFile, commit: commit, hash: hash, f: f})
-		if !a.fileCollapsed(histKey(hash, f.Path), f) {
+		if !a.fileCollapsed(histKey(hash, f.Path)) {
 			rows = append(rows, histRow{kind: rowDiff, commit: commit, hash: hash, f: f})
 		}
 	}
@@ -613,17 +613,6 @@ func (a *App) toggleCommit(pane, hash string) {
 				return
 			}
 			cv.info = &info
-			ch := &a.side.changes
-			if ch.collapsed == nil {
-				ch.collapsed = map[string]bool{}
-			}
-			// A commit's files open folded, a list of what it changed, each
-			// of which a click unfolds.
-			for _, f := range info.Files {
-				if _, ok := ch.collapsed[histKey(hash, f.Path)]; !ok {
-					ch.collapsed[histKey(hash, f.Path)] = true
-				}
-			}
 		})
 	}()
 }
@@ -645,7 +634,7 @@ func (a *App) syncHistoryFiles(pane *proto.Pane) {
 			continue
 		}
 		for _, f := range cv.info.Files {
-			if a.fileCollapsed(histKey(hash, f.Path), f) {
+			if a.fileCollapsed(histKey(hash, f.Path)) {
 				continue
 			}
 			sf := cv.files[f.Path]
@@ -719,7 +708,7 @@ func (a *App) histFile(c *ui.Context, pal *palette, pane *proto.Pane, r histRow,
 					hs.path, hs.query, hs.asked = f.Path, "", ""
 				})
 			}
-			a.fileHeader(c, pal, histKey(r.hash, f.Path), pane.Git.Root, f, nil, tools)
+			a.fileHeader(c, pal, histKey(r.hash, f.Path), pane.Git.Root, f, flatList, nil, tools, nil)
 		})
 	})
 }
@@ -753,7 +742,7 @@ func (a *App) stashesRow(c *ui.Context, pal *palette) {
 	}
 	row.Children(func() {
 		chev := ui.Icon(c, chevronIcon).Size(10, 10).TextColor(pal.textFaint).Shrink(0)
-		chev.Rotate(chev.AnimateTo("turn", 90*b2f(hs.stashOn), ui.Snappy))
+		chev.Rotate(chev.AnimateTo("turn", 90*b2f(hs.stashOn), chevronTurn))
 		ui.Icon(c, archiveIcon).Size(13, 13).TextColor(pal.textMuted).Shrink(0)
 		ui.Text(c, locales.HistoryStashes(len(hs.stashes))).FontSize(12.5).FontWeight(600).TextColor(pal.textMuted).SingleLine()
 	})

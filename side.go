@@ -99,6 +99,9 @@ type changesState struct {
 	files     map[string]*sideFile
 	collapsed map[string]bool
 	focus     *sideFile
+	// folded are the tree's folders the user folded, by scope, section and
+	// path (fileKey).
+	folded map[string]bool
 	// places are the lists' places, by scope.
 	places map[string]*ui.ListState
 }
@@ -548,6 +551,14 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 					// staged and not is one change.
 					added, removed = pane.Git.Added, pane.Git.Removed
 				}
+				// Uncommitted's sections each have theirs, in their titles.
+				if ix == nil {
+					keys := make([]string, len(res.Files))
+					for i, f := range res.Files {
+						keys[i] = fileKey(scope, "", f.Path)
+					}
+					a.foldAllButton(c, pal, keys)
+				}
 				ui.Text(c, locales.ChangesFiles(len(res.Files))).FontSize(12.5).TextColor(pal.textMuted).SingleLine().Shrink(0)
 				a.lineCounts(c, pal, added, removed, 12.5)
 				if ch.base == git.BaseBranch && res.BaseName != "" {
@@ -558,6 +569,7 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 			}
 			ui.Spacer(c)
 			ui.Row(c.Key("tools")).Gap(0).AlignItems(ui.Center).Shrink(0).Children(func() {
+				a.treeButton(c, pal)
 				a.wrapButton(c, pal)
 				split := a.diffSplit(width)
 				layoutIcon, layoutTip := splitRightIcon, locales.ChangesSplit()
@@ -605,11 +617,25 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 			if !held {
 				a.syncFiles(c, scope, section, base, pane, list)
 			}
-			for _, f := range list {
-				key := fileKey(scope, section, f.Path)
-				rows = append(rows, changeRow{f: f, section: section})
-				if ch.files[key] != nil && !a.fileCollapsed(key, f) {
-					rows = append(rows, changeRow{f: f, section: section, diff: true})
+			if !a.prefs.ChangesTree {
+				for _, f := range list {
+					key := fileKey(scope, section, f.Path)
+					rows = append(rows, changeRow{f: f, section: section})
+					if ch.files[key] != nil && !a.fileCollapsed(key) {
+						rows = append(rows, changeRow{f: f, section: section, diff: true})
+					}
+				}
+				return
+			}
+			for _, e := range changeTree(list, func(dir string) bool { return !ch.folded[fileKey(scope, section, dir)] }) {
+				if e.folder {
+					rows = append(rows, changeRow{section: section, tree: &e})
+					continue
+				}
+				key := fileKey(scope, section, e.f.Path)
+				rows = append(rows, changeRow{f: e.f, section: section, tree: &e})
+				if ch.files[key] != nil && !a.fileCollapsed(key) {
+					rows = append(rows, changeRow{f: e.f, section: section, diff: true})
 				}
 			}
 		}
@@ -638,8 +664,15 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		// which scrolls under the header as the list pins it at the top,
 		// until the next file's header pushes it out, as the files of a
 		// pull request do.
-		ls.Header = func(i int) bool { return !rows[i].diff && !rows[i].title }
-		ls.Key = func(i int) any { r := rows[i]; return changeKey{r.f.Path, r.section, r.diff, r.title} }
+		ls.Header = func(i int) bool { r := rows[i]; return !r.diff && !r.title && (r.tree == nil || !r.tree.folder) }
+		ls.Key = func(i int) any {
+			r := rows[i]
+			k := changeKey{path: r.f.Path, section: r.section, diff: r.diff, title: r.title}
+			if r.tree != nil && r.tree.folder {
+				k.dir = r.tree.dir
+			}
+			return k
+		}
 		box := ui.Column(c.Key("files-" + scope)).Grow(1).MinHeight(0).AlignItems(ui.Stretch)
 		box.Opacity(box.Animate("held", 1-0.45*b2f(held), 120*time.Millisecond))
 		box.Children(func() {
@@ -665,24 +698,48 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 				case r.diff:
 					stripe(ui.Column(c).FillWidth().AlignItems(ui.Stretch)).Children(func() { a.fileDiff(c, pal, s, ch.files[key], width) })
 					return
+				case r.tree != nil && r.tree.folder:
+					var menu func(*ui.Menu)
+					if r.section != "" {
+						dir := r.tree.dir
+						menu = func(m *ui.Menu) {
+							if m.Item(locales.GitIgnoreFolder()).Chosen() {
+								a.ignore(here, dir+"/")
+							}
+						}
+					}
+					stripe(ui.Column(c).FillWidth().AlignItems(ui.Stretch).Background(pal.card)).Children(func() {
+						a.folderRow(c, pal, fileKey(scope, r.section, r.tree.dir), *r.tree, menu)
+					})
+					return
 				}
 				// Opaque, over the diff scrolling under it; a folded file's
 				// with the room below its section.
-				gap := float32(sectionGap)
+				gap, depth := float32(sectionGap), flatList
+				if r.tree != nil {
+					// A tree's rows close together, its folders' among them.
+					gap, depth = treeGap, r.tree.depth
+				}
 				if i+1 < len(rows) && rows[i+1].diff {
 					gap = 0
 				}
 				stripe(ui.Column(c).FillWidth().AlignItems(ui.Stretch).Padding(0, 0, gap, 0).Background(pal.card)).Children(func() {
 					var tools func()
+					var menu func(*ui.Menu)
 					if r.section != "" {
 						f := r.f
 						tools = func() { a.indexTools(c, pal, here, ix, r.section, f) }
+						menu = func(m *ui.Menu) {
+							if m.Item(locales.GitIgnore()).Chosen() {
+								a.ignore(here, f.Path)
+							}
+						}
 					}
-					a.fileHeader(c, pal, key, res.Root, r.f, func() {
+					a.fileHeader(c, pal, key, res.Root, r.f, depth, func() {
 						// Folding it as the list pins it brings it back where
 						// it stays: at the top.
 						ls.ScrollIntoView(i)
-					}, tools)
+					}, tools, menu)
 				})
 			}).Grow(1).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
 		})
@@ -693,18 +750,21 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 }
 
 // changeRow is a row of the list of changes: a file's header, or its
-// diff, of a section of Uncommitted's, or the section's title; changeKey
-// what it is, as the list keeps a row's state by.
+// diff, of a section of Uncommitted's, or the section's title, or in the
+// tree, a folder (tree); changeKey what it is, as the list keeps a row's
+// state by.
 type changeRow struct {
 	f       proto.GitFile
 	section string
 	diff    bool
 	title   bool
+	tree    *treeEntry
 }
 
 type changeKey struct {
 	path, section string
 	diff, title   bool
+	dir           string
 }
 
 // stickyH is the height of a file's header, which the list pins at its
@@ -712,6 +772,15 @@ type changeKey struct {
 const (
 	stickyH    = 32
 	sectionGap = 6
+	treeGap    = 2
+)
+
+// flatList is the depth of a file's header in a list, not a tree, which
+// shows its folder beside its name; treeIndent the room each of a tree's
+// levels takes.
+const (
+	flatList   = -1
+	treeIndent = 14
 )
 
 // syncFiles keeps the diffs of a list's files: it asks for the text of
@@ -737,7 +806,7 @@ func (a *App) syncFiles(c *ui.Context, scope, section, base string, pane *proto.
 			sf = &sideFile{pane: pane.ID, base: base, f: f}
 			ch.files[key] = sf
 		}
-		if a.fileCollapsed(key, f) || sf.busy || sf.writing || a.hostOf(pane.ID).cl == nil {
+		if a.fileCollapsed(key) || sf.busy || sf.writing || a.hostOf(pane.ID).cl == nil {
 			continue
 		}
 		known := sf.known()
@@ -761,13 +830,45 @@ func (a *App) syncFiles(c *ui.Context, scope, section, base string, pane *proto.
 }
 
 // fileCollapsed tells whether a file's diff, by its key (fileKey), is
-// folded: as the user left it, else folded for a binary file or one of
-// very many lines changed.
-func (a *App) fileCollapsed(key string, f proto.GitFile) bool {
+// folded: as the user left it, else folded, so that a list of changes
+// reads as the files it changed, each of which a click unfolds.
+func (a *App) fileCollapsed(key string) bool {
 	if v, ok := a.side.changes.collapsed[key]; ok {
 		return v
 	}
-	return f.Binary || f.Added+f.Removed > 600
+	return true
+}
+
+// foldAllButton folds every file of keys (fileKey) while one is unfolded,
+// else unfolds them all. It starts a row 12 DIPs in, as a file's header
+// does, its icon over the files' chevrons.
+func (a *App) foldAllButton(c *ui.Context, pal *palette, keys []string) {
+	if len(keys) == 0 {
+		return
+	}
+	fold := slices.ContainsFunc(keys, func(k string) bool { return !a.fileCollapsed(k) })
+	icon, tip := unfoldAllIcon, locales.ChangesUnfoldFiles()
+	if fold {
+		icon, tip = foldAllIcon, locales.ChangesFoldFiles()
+	}
+	// 20 wide from 5 before the row's start: centered on the chevrons,
+	// which are 10 wide.
+	b := ui.ButtonBase(c.Key("fold-all")).Size(20, 22).Margin(0, 0, 0, -5).Radius(5).Center().Shrink(0).TextColor(pal.textMuted).Label(tip).Tooltip(tip)
+	if b.Pressed() {
+		b.Background(pal.rowHover.Alpha(0.12))
+	} else if b.Hovered() {
+		b.Background(pal.rowHover).TextColor(pal.text)
+	}
+	b.Children(func() { ui.Icon(c, icon).Size(14, 14) })
+	if b.Clicked() {
+		ch := &a.side.changes
+		if ch.collapsed == nil {
+			ch.collapsed = map[string]bool{}
+		}
+		for _, k := range keys {
+			ch.collapsed[k] = fold
+		}
+	}
 }
 
 // fileDiff is a changed file's diff, under its header, or why it shows
@@ -795,16 +896,21 @@ func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, sf *sideFi
 }
 
 // fileHeader is a changed file's header, by its key (fileKey): its
-// change, its name and folder and the lines it adds and removes, which a
-// click folds or unfolds, running folding first when set; tools, when
-// set, draws its buttons before Open.
-func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.GitFile, folding, tools func()) {
+// change, its name and, in a list (depth flatList), its folder, and the
+// lines it adds and removes, which a click folds or unfolds, running
+// folding first when set; in a tree, indented by its depth. tools, when
+// set, draws its buttons before Open; menu, when set, is its context
+// menu.
+func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.GitFile, depth int, folding, tools func(), menu func(*ui.Menu)) {
 	ch := &a.side.changes
-	collapsed := a.fileCollapsed(key, f)
+	collapsed := a.fileCollapsed(key)
 	// Across the panel, edge to edge, its content in line with the bases'.
-	hdr := ui.Row(c.Key("hdr")).Height(stickyH).Padding(0, 10, 0, 12).Gap(8).AlignItems(ui.Center).Background(pal.chip)
+	hdr := ui.Row(c.Key("hdr")).Height(stickyH).Padding(0, 10, 0, 12+treeIndent*float32(max(depth, 0))).Gap(8).AlignItems(ui.Center).Background(pal.chip)
 	if hdr.Hovered() {
 		hdr.Background(pal.rowHover.Mix(pal.chip, 0.5))
+	}
+	if menu != nil {
+		hdr.ContextMenu(menu)
 	}
 	tip := f.Path
 	if f.OldPath != "" {
@@ -822,9 +928,12 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.
 	}
 	hdr.Children(func() {
 		chev := ui.Icon(c, chevronIcon).Size(10, 10).TextColor(pal.textFaint).Shrink(0)
-		chev.Rotate(chev.AnimateTo("turn", 90*(1-b2f(collapsed)), ui.Snappy))
+		chev.Rotate(chev.AnimateTo("turn", 90*(1-b2f(collapsed)), chevronTurn))
 		a.statusBadge(c, pal, f.Status)
 		dir, name := path.Split(f.Path)
+		if depth != flatList {
+			dir = "" // the tree's folders show it
+		}
 		fg := pal.text
 		if f.Status == "deleted" {
 			fg = pal.textMuted
@@ -844,6 +953,50 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.
 			iconButton(c, "open", openFileIcon, locales.ChangesOpenFile(), pal, func() { openPath(full) })
 		}
 	})
+}
+
+// folderRow is a folder of the tree of changes, by its key (fileKey),
+// which a click folds or unfolds; menu, when set, is its context menu.
+func (a *App) folderRow(c *ui.Context, pal *palette, key string, e treeEntry, menu func(*ui.Menu)) {
+	ch := &a.side.changes
+	folded := ch.folded[key]
+	row := ui.Row(c.Key("folder")).Height(28).Margin(0, 0, treeGap, 0).Padding(0, 10, 0, 12+treeIndent*float32(e.depth)).Gap(8).AlignItems(ui.Center)
+	if row.Hovered() {
+		row.Background(pal.rowHover.Alpha(0.5))
+	}
+	row.Tooltip(e.dir)
+	if menu != nil {
+		row.ContextMenu(menu)
+	}
+	if row.Clicked() {
+		if ch.folded == nil {
+			ch.folded = map[string]bool{}
+		}
+		ch.folded[key] = !folded
+	}
+	row.Children(func() {
+		chev := ui.Icon(c, chevronIcon).Size(10, 10).TextColor(pal.textFaint).Shrink(0)
+		chev.Rotate(chev.AnimateTo("turn", 90*(1-b2f(folded)), chevronTurn))
+		ui.Icon(c, folderIcon).Size(14, 14).TextColor(pal.textMuted).Shrink(0)
+		ui.Text(c, e.label).FontSize(12.5).FontWeight(550).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
+		ui.Text(c, itoa(e.count)).FontSize(11).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
+	})
+}
+
+// treeButton turns the Changes view's tree of folders on and off.
+func (a *App) treeButton(c *ui.Context, pal *palette) {
+	b := ui.ButtonBase(c.Key("tree")).Size(28, 26).Margin(0, 2).Radius(6).Center().TextColor(pal.textMuted).Label(locales.ChangesTree()).Tooltip(locales.ChangesTree())
+	switch {
+	case a.prefs.ChangesTree:
+		b.Background(pal.rowHover).TextColor(pal.text)
+	case b.Hovered() || b.Pressed():
+		b.Background(pal.rowHover.Alpha(0.5)).TextColor(pal.text)
+	}
+	b.Children(func() { ui.Icon(c, treeIcon).Size(15, 15) })
+	if b.Clicked() {
+		a.prefs.ChangesTree = !a.prefs.ChangesTree
+		a.savePrefs()
+	}
 }
 
 // sectionNote says why a file shows no diff.

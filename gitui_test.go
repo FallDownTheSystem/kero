@@ -73,6 +73,115 @@ func gitDemo(a *App) (*proto.GitInfo, *proto.GitIndex) {
 	return g, ix
 }
 
+// The tree shows a section's files in their folders, and a file's or a
+// folder's menu adds it to .gitignore: at once while git tracks nothing
+// of it, else as the user says, who may stop tracking it too.
+func TestChangesTreeIgnore(t *testing.T) {
+	a := testApp(t)
+	g, ix := gitDemo(a)
+	ix.Unstaged = []proto.GitFile{{Path: "src/b.go", Status: "modified", Added: 3}, {Path: "src/gen/new.txt", Status: "untracked", Added: 1}}
+	ops := make(chan proto.GitOpParams, 8)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.index":
+			return ix, nil
+		case "git.op":
+			var p proto.GitOpParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			ops <- p
+			if p.Op == "tracked" && slices.Equal(p.Paths, []string{"src/gen"}) {
+				return proto.GitOpResult{Output: "src/gen/old.txt"}, nil
+			}
+			return proto.GitOpResult{}, nil
+		}
+		return nil, errors.New("no git in a test")
+	})
+	a.local().cl = cl
+	s := &a.st.Sessions[0]
+	a.prefs.Side, a.prefs.ChangesTree = sideChanges, true
+	ch := &a.side.changes
+	scope := changesScope(&s.Panes[0], git.BaseHead)
+	ch.base, ch.scope, ch.stamp, ch.fetched = git.BaseHead, scope, gitStamp(g)+"|0", time.Now()
+	ch.res = &proto.GitChanges{Root: g.Root, Files: unionFiles(ix.Staged, ix.Unstaged)}
+	ch.indexes = map[string]*proto.GitIndex{scope: ix}
+
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	gen, ok := tt.Find("gen")
+	src, _ := tt.Find("src")
+	file, _ := tt.Find("new.txt")
+	if !ok || !tt.HasText("src") || !(src.Y < gen.Y && gen.Y < file.Y && src.X < gen.X && gen.X < file.X) {
+		t.Fatalf("no tree of src, gen and new.txt: src %v, gen %v, new.txt %v; texts %q", src, gen, file, tt.Texts())
+	}
+	shot(t, tt, "git-tree")
+	// The next operation, as the one before it comes back.
+	next := func() proto.GitOpParams {
+		t.Helper()
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			tt.Frame()
+			select {
+			case p := <-ops:
+				return p
+			case <-time.After(10 * time.Millisecond):
+			}
+		}
+		t.Fatal("no git.op came")
+		return proto.GitOpParams{}
+	}
+
+	if err := tt.RightClick("new.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Add to .gitignore"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	if p := next(); p.Op != "tracked" || !slices.Equal(p.Paths, []string{"src/gen/new.txt"}) {
+		t.Errorf("first %+v", p)
+	}
+	if p := next(); p.Op != "ignore" || !slices.Equal(p.Paths, []string{"src/gen/new.txt"}) || p.Untrack {
+		t.Errorf("then %+v", p)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+
+	if err := tt.RightClick("gen"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Add Folder to .gitignore"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	if p := next(); p.Op != "tracked" || !slices.Equal(p.Paths, []string{"src/gen"}) {
+		t.Errorf("folder first %+v", p)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+	if a.confirm == nil || a.confirm.title != "Stop tracking gen?" || !tt.HasText("Ignore and Stop Tracking") {
+		t.Fatalf("no question about tracked files: %+v", a.confirm)
+	}
+	a.confirm.run()
+	if p := next(); p.Op != "ignore" || !slices.Equal(p.Paths, []string{"src/gen/"}) || !p.Untrack {
+		t.Errorf("folder then %+v", p)
+	}
+
+	// A folder's click folds what it holds.
+	a.confirm = nil
+	for range 3 {
+		tt.Frame()
+	}
+	if err := tt.Click("gen"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tt.HasText("new.txt") {
+		t.Error("folded, gen shows new.txt")
+	}
+}
+
 // Uncommitted lists what's staged apart from what isn't, each file with
 // its buttons, and commits what's staged with the box's message.
 func TestUncommittedStaging(t *testing.T) {
@@ -107,6 +216,31 @@ func TestUncommittedStaging(t *testing.T) {
 		t.Error("b.go, not staged, lists above the staged section")
 	}
 
+	// Each section unfolds and folds its own files, all at once: the
+	// staged one's first.
+	unfolded := func(sec string) (n int) {
+		for _, f := range ch.res.Files {
+			if !a.fileCollapsed(fileKey(scope, sec, f.Path)) {
+				n++
+			}
+		}
+		return n
+	}
+	if err := tt.Click("Expand All Files"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if unfolded(baseStaged) != len(ix.Staged) || unfolded(baseUnstaged) != 0 || !tt.HasText("Collapse All Files") {
+		t.Errorf("Expand All Files unfolded %d staged, %d not", unfolded(baseStaged), unfolded(baseUnstaged))
+	}
+	if err := tt.Click("Collapse All Files"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if unfolded(baseStaged) != 0 || tt.HasText("Collapse All Files") {
+		t.Errorf("Collapse All Files left %d staged unfolded", unfolded(baseStaged))
+	}
+
 	// A file's own button stages it alone.
 	if err := tt.Click("Stage"); err != nil {
 		t.Fatal(err)
@@ -115,7 +249,7 @@ func TestUncommittedStaging(t *testing.T) {
 	if p := nextOp(t, ops); p.Op != "stage" || !slices.Equal(p.Paths, []string{"b.go"}) {
 		t.Errorf("Stage sent %+v", p)
 	}
-	if !a.fileCollapsed(fileKey(scope, baseStaged, "b.go"), ix.Unstaged[0]) {
+	if !a.fileCollapsed(fileKey(scope, baseStaged, "b.go")) {
 		t.Error("b.go, folded, unfolds as it's staged")
 	}
 	a.side.git.op = nil

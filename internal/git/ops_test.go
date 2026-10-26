@@ -32,6 +32,49 @@ func paths(files []File) string {
 	return strings.Join(s, ",")
 }
 
+func TestIgnore(t *testing.T) {
+	ctx := context.Background()
+	r := opsRepo(t, map[string]string{"a.txt": "a\n", "build/out.bin": "o\n", ".gitignore": "*.log\r\n"})
+	write(t, filepath.Join(r.Root, "build", "new.bin"), "n\n")
+	write(t, filepath.Join(r.Root, "notes [old].md"), "n\n")
+	if got, err := r.Tracked(ctx, []string{"build", "notes [old].md"}); err != nil || !slices.Equal(got, []string{"build/out.bin"}) {
+		t.Errorf("tracked = %q, %v", got, err)
+	}
+
+	// Each matches itself alone, as the file's lines end; one listed
+	// already isn't again.
+	if err := r.Ignore(ctx, []string{"notes [old].md", "build/"}, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Ignore(ctx, []string{"build/"}, false); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join(r.Root, ".gitignore"))
+	if want := "*.log\r\n/notes \\[old].md\r\n/build/\r\n"; string(b) != want {
+		t.Errorf(".gitignore = %q, want %q", b, want)
+	}
+	if out := gitIn(t, r.Root, "status", "--porcelain", "--untracked-files=all"); out != " M .gitignore\n" {
+		t.Errorf("status = %q, want .gitignore alone", out)
+	}
+	// Tracked, the folder's file stays, until it is taken out of the index:
+	// on disk still.
+	if got, _ := r.Tracked(ctx, []string{"build"}); len(got) != 1 {
+		t.Errorf("ignored, build tracks %q", got)
+	}
+	if err := r.Ignore(ctx, []string{"build/"}, true); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := r.Tracked(ctx, []string{"build"}); len(got) != 0 {
+		t.Errorf("untracked, build tracks %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(r.Root, "build", "out.bin")); err != nil {
+		t.Errorf("untracking removed the file: %v", err)
+	}
+	if err := r.Ignore(ctx, []string{"../x"}, false); err == nil {
+		t.Error("ignored a path outside the worktree")
+	}
+}
+
 func TestIndex(t *testing.T) {
 	ctx := context.Background()
 	r := opsRepo(t, map[string]string{"a.txt": "one\ntwo\n", "b.txt": "b\n"})

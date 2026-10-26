@@ -44,6 +44,8 @@ Until you or an agent name a session, the `session-name` setting (**Name session
 
 A **project** is a folder. Kero groups sessions under their project in the sidebar. Open one with <kbd>⌘</kbd> <kbd>O</kbd>, drag folders from your file manager into the sidebar, or let `kero new` pick it by the directory a session starts in. Dropping folders opens one session per unique project; folders already registered reuse their project. Native folder drops always open on This Computer, even when a remote session is selected. Files and inaccessible folders are rejected. On macOS, file packages such as `.app` bundles are rejected too, matching the Open Project folder picker.
 
+Drag a project by its name to move it, with its sessions, before or after another project of the same host. kerod keeps the order, so every window shows it.
+
 ```sh
 kero projects            # list projects
 kero new -p my-app       # start a session in a project by name

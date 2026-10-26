@@ -219,6 +219,104 @@ func (r Repo) Discard(ctx context.Context, tracked, untracked []string) error {
 	return nil
 }
 
+// Tracked returns the files under paths that the index has: those git
+// goes on tracking however .gitignore lists them.
+func (r Repo) Tracked(ctx context.Context, paths []string) ([]string, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	out, err := run(ctx, r.Root, nil, pathArgs([]string{"ls-files", "-z"}, paths)...)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for f := range strings.SplitSeq(string(out), "\x00") {
+		if f != "" {
+			files = append(files, f)
+		}
+	}
+	return files, nil
+}
+
+// Ignore adds files and folders, a folder's path ending in a slash, to
+// the worktree's .gitignore, each as a pattern that matches it alone, as
+// its line endings are; and with untrack takes them out of the index,
+// leaving them on disk, so that the next commit removes them.
+func (r Repo) Ignore(ctx context.Context, paths []string, untrack bool) error {
+	if len(paths) == 0 {
+		return errors.New("nothing to ignore")
+	}
+	var plain []string
+	for _, p := range paths {
+		p = strings.TrimSuffix(p, "/")
+		if _, err := r.local(p); err != nil {
+			return err
+		}
+		plain = append(plain, p)
+	}
+	file, err := r.local(".gitignore")
+	if err != nil {
+		return err
+	}
+	old, err := os.ReadFile(file)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	have := map[string]bool{}
+	for l := range strings.SplitSeq(string(old), "\n") {
+		have[strings.TrimRight(l, "\r")] = true
+	}
+	eol := "\n"
+	if strings.Contains(string(old), "\r\n") {
+		eol = "\r\n"
+	}
+	text := string(old)
+	for _, p := range paths {
+		line := ignorePattern(p)
+		if have[line] {
+			continue
+		}
+		have[line] = true
+		if text != "" && !strings.HasSuffix(text, "\n") {
+			text += eol
+		}
+		text += line + eol
+	}
+	if text != string(old) {
+		if err := os.WriteFile(file, []byte(text), 0o644); err != nil {
+			return err
+		}
+	}
+	if !untrack {
+		return nil
+	}
+	_, err = r.write(ctx, "", nil, pathArgs([]string{"rm", "-r", "-q", "--cached", "--ignore-unmatch"}, plain)...)
+	return err
+}
+
+// ignorePattern is the line of .gitignore that matches the file or folder
+// at a path from the worktree's top alone: anchored there by its slash,
+// its wildcards and the spaces at its end, which git would drop, escaped.
+func ignorePattern(p string) string {
+	dir := strings.HasSuffix(p, "/")
+	p = strings.TrimSuffix(p, "/")
+	var b strings.Builder
+	b.WriteByte('/')
+	for i, r := range p {
+		switch {
+		case r == '*' || r == '?' || r == '[' || r == '\\':
+			b.WriteByte('\\')
+		case r == ' ' && strings.TrimRight(p[i:], " ") == "":
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	if dir {
+		b.WriteByte('/')
+	}
+	return b.String()
+}
+
 // emptyBlob is the hash of an empty file: the index's of one added with
 // intent to add (git add -N), whose text is yet the working tree's.
 const emptyBlob = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"

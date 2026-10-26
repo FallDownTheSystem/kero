@@ -44,6 +44,12 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 	band := ui.Row(c.Key("title")).Height(34).Margin(top, 0, 4, 0).Padding(0, 6, 0, 12).Gap(7).AlignItems(ui.Center).Background(col.Alpha(0.1))
 	band.Draw(func(p *ui.Painter, r ui.Rect) { p.Fill(ui.Rect{X: r.X, Y: r.Y, W: 3, H: r.H}, col, 0) })
 	band.Children(func() {
+		scope := changesScope(pane, git.BaseHead)
+		keys := make([]string, len(list))
+		for i, f := range list {
+			keys[i] = fileKey(scope, section, f.Path)
+		}
+		a.foldAllButton(c, pal, keys)
 		ui.Icon(c, icon).Size(13, 13).TextColor(col).Shrink(0)
 		ui.Text(c, title).FontSize(12.5).FontWeight(650).TextColor(pal.text).SingleLine().Shrink(0)
 		ui.Box(c).Height(16).Padding(0, 6).Radius(8).Center().Background(col.Alpha(0.16)).Children(func() {
@@ -98,7 +104,7 @@ func (a *App) moveFiles(pane *proto.Pane, from string, files []proto.GitFile) {
 		ch.collapsed = map[string]bool{}
 	}
 	for _, f := range files {
-		ch.collapsed[fileKey(scope, to, f.Path)] = a.fileCollapsed(fileKey(scope, from, f.Path), f)
+		ch.collapsed[fileKey(scope, to, f.Path)] = a.fileCollapsed(fileKey(scope, from, f.Path))
 	}
 }
 
@@ -161,6 +167,27 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			a.runGit(id, root, proto.GitOpParams{Op: "stage", Paths: paths}, locales.GitStage(), nil)
 		})
 	}
+}
+
+// ignore adds a file, or a folder by its path ending in a slash, to its
+// worktree's .gitignore: at once while git tracks nothing of it, else as
+// the user says, who may take what it tracks out of the repository too,
+// as git goes on tracking what .gitignore lists.
+func (a *App) ignore(pane *proto.Pane, p string) {
+	id, root := pane.ID, pane.Git.Root
+	plain := strings.TrimSuffix(p, "/")
+	run := func(untrack bool) {
+		a.runGit(id, root, proto.GitOpParams{Op: "ignore", Paths: []string{p}, Untrack: untrack}, locales.GitIgnore(), nil)
+	}
+	a.runGit(id, root, proto.GitOpParams{Op: "tracked", Paths: []string{plain}}, locales.GitIgnore(), func(out string) {
+		if out == "" {
+			run(false)
+			return
+		}
+		a.confirm = &confirmation{open: true, title: locales.GitIgnoreTrackedTitle(path.Base(plain)), detail: locales.GitIgnoreTrackedDetail(strings.Count(out, "\n") + 1),
+			action: locales.GitIgnoreUntrack(), run: func() { run(true) },
+			alt: locales.GitIgnoreOnly(), altRun: func() { run(false) }}
+	})
 }
 
 // discard drops the changes of files not staged once the user says so,
