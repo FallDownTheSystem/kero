@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -609,17 +608,6 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		})
 	})
 
-	root := ""
-	switch {
-	case ch.base == git.BaseTurn && pane.Turn != nil:
-		root = pane.Turn.Root
-	case pane.Git != nil:
-		root = pane.Git.Root
-	}
-	if root != "" {
-		a.reviewBar(c, pal, pane, root)
-	}
-
 	res := list
 	if held {
 		c.After(400 * time.Millisecond)
@@ -632,9 +620,11 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 			ui.Column(c).Grow(1).Center().Children(func() { ui.Spinner(c) })
 		} else {
 			c.After(260 * time.Millisecond)
+			ui.Spacer(c)
 		}
 	case len(res.Files) == 0 && held:
 		// Another base's "no changes" would say the wrong thing.
+		ui.Spacer(c)
 	case len(res.Files) == 0:
 		detail := map[string]string{git.BaseTurn: locales.ChangesNoneTurn(), git.BaseHead: locales.ChangesNoneUncommitted()}[ch.base]
 		if ch.base == git.BaseBranch {
@@ -767,7 +757,7 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 							}
 						}
 					}
-					a.fileHeader(c, pal, key, res.Root, r.f, depth, func() {
+					a.fileHeader(c, pal, key, here.ID, res.Root, r.f, depth, func() {
 						// Folding it as the list pins it brings it back where
 						// it stays: at the top.
 						ls.ScrollIntoView(i)
@@ -775,6 +765,19 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 				})
 			}).Grow(1).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
 		})
+	}
+
+	// The review's comments and Send to Agent, below what they are on and
+	// above the commit box.
+	root := ""
+	switch {
+	case ch.base == git.BaseTurn && pane.Turn != nil:
+		root = pane.Turn.Root
+	case pane.Git != nil:
+		root = pane.Git.Root
+	}
+	if root != "" {
+		a.reviewBar(c, pal, pane, root)
 	}
 	if ch.base == git.BaseHead && here.Git != nil && ix != nil {
 		a.commitBox(c, pal, here, ix)
@@ -931,9 +934,10 @@ func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, sf *sideFi
 // change, its name and, in a list (depth flatList), its folder, and the
 // lines it adds and removes, which a click folds or unfolds, running
 // folding first when set; in a tree, indented by its depth. tools, when
-// set, draws its buttons before Open; menu, when set, is its context
-// menu.
-func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.GitFile, depth int, folding, tools func(), menu func(*ui.Menu)) {
+// set, draws its buttons at its end. Its context menu opens the file, of
+// pane's host in its worktree's root, and drags it onto a pane, unless it
+// was deleted; then come menu's items, when set.
+func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f proto.GitFile, depth int, folding, tools func(), menu func(*ui.Menu)) {
 	ch := &a.side.changes
 	collapsed := a.fileCollapsed(key)
 	// Across the panel, edge to edge, its content in line with the bases'.
@@ -941,8 +945,25 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.
 	if hdr.Hovered() {
 		hdr.Background(pal.rowHover.Mix(pal.chip, 0.5))
 	}
-	if menu != nil {
-		hdr.ContextMenu(menu)
+	full, gone := joinRel(root, f.Path), f.Status == "deleted"
+	if !gone || menu != nil {
+		hdr.ContextMenu(func(m *ui.Menu) {
+			if !gone {
+				a.openItems(m, pane, full, 0)
+			}
+			if menu != nil {
+				if !gone {
+					m.Separator()
+				}
+				menu(m)
+			}
+		})
+	}
+	if !gone {
+		hdr.Drag(fileDrag{pane: pane, path: full})
+		if hdr.Dragging() {
+			hdr.Opacity(0.4)
+		}
 	}
 	if hdr.Clicked() {
 		if folding != nil {
@@ -980,10 +1001,6 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.
 		}
 		if tools != nil {
 			tools()
-		}
-		if f.Status != "deleted" {
-			full := filepath.Join(root, filepath.FromSlash(f.Path))
-			iconButton(c, "open", openFileIcon, locales.ChangesOpenFile(), pal, func() { openPath(full) })
 		}
 	})
 }

@@ -234,7 +234,7 @@ func (a *App) searchView(c *ui.Context, pal *palette, s *proto.Session) {
 		f := res.Files[r.file]
 		file := joinRel(root, f.Path)
 		if r.match < 0 {
-			a.searchFileRow(c, pal, h, f, file)
+			a.searchFileRow(c, pal, h, pane.ID, f, file)
 			return
 		}
 		m := f.Matches[r.match]
@@ -242,6 +242,7 @@ func (a *App) searchView(c *ui.Context, pal *palette, s *proto.Session) {
 		if row.Hovered() {
 			row.Background(pal.rowHover)
 		}
+		a.searchFileActions(row, pane.ID, file, m.Line)
 		if row.Clicked() {
 			id, line := pane.ID, m.Line
 			a.defer_(func() { a.openAt(id, file, line) })
@@ -261,9 +262,20 @@ func (a *App) searchView(c *ui.Context, pal *palette, s *proto.Session) {
 	}).Grow(1).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
 }
 
+// searchFileActions gives a row of the matches of a file of pane's host
+// the menu that opens the file, and a drag of it onto a pane: at line,
+// from 1, a match's, else 0 for the file's header.
+func (a *App) searchFileActions(row ui.Element, pane, file string, line int) {
+	row.ContextMenu(func(m *ui.Menu) { a.openItems(m, pane, file, line) })
+	row.Drag(fileDrag{pane: pane, path: file, line: line})
+	if row.Dragging() {
+		row.Opacity(0.4)
+	}
+}
+
 // searchFileRow is a file's header among the matches, which a click folds
 // or unfolds.
-func (a *App) searchFileRow(c *ui.Context, pal *palette, h *host, f proto.FSSearchFile, file string) {
+func (a *App) searchFileRow(c *ui.Context, pal *palette, h *host, pane string, f proto.FSSearchFile, file string) {
 	ss := &a.side.search
 	key := gotoKey(h, file)
 	folded := ss.folded[key]
@@ -272,6 +284,7 @@ func (a *App) searchFileRow(c *ui.Context, pal *palette, h *host, f proto.FSSear
 	if row.Hovered() {
 		row.Background(pal.rowHover)
 	}
+	a.searchFileActions(row, pane, file, 0)
 	if row.Clicked() {
 		if ss.folded == nil {
 			ss.folded = map[string]bool{}

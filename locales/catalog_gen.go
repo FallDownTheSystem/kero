@@ -4788,16 +4788,6 @@ func (msgs Messages) ChangesCantRead() string {
 	return Catalog.Format(msgs.locale, "changesCantRead", nil)
 }
 
-// ChangesOpenFile says "Open File"
-// in the language the app shows.
-func ChangesOpenFile() string { return In(i18n.Locale()).ChangesOpenFile() }
-
-// ChangesOpenFile says "Open File"
-// in the language of msgs.
-func (msgs Messages) ChangesOpenFile() string {
-	return Catalog.Format(msgs.locale, "changesOpenFile", nil)
-}
-
 // ChangesUnified says "Unified"
 // in the language the app shows.
 func ChangesUnified() string { return In(i18n.Locale()).ChangesUnified() }

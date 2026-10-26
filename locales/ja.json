@@ -472,7 +472,6 @@
   "changesGitOff": "git の状態表示はオフです",
   "changesGitOffDetail": "ここに変更を表示するには、設定で“git の状態を表示”をオンにしてください。",
   "changesCantRead": "変更を読み取れません",
-  "changesOpenFile": "ファイルを開く",
   "changesUnified": "統合表示",
   "changesSplit": "左右に並べて表示",
   "changesUnfoldFiles": "すべてのファイルを展開",

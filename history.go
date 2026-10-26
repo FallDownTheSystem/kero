@@ -189,7 +189,7 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 	// The list leaves room at its right, past the rows' times, for the
 	// scroll bar.
 	ls := &hs.list
-	ls.Key =func(i int) any { r := rows[i]; return [3]any{r.kind, r.hash, r.f.Path} }
+	ls.Key = func(i int) any { r := rows[i]; return [3]any{r.kind, r.hash, r.f.Path} }
 	ui.List(c.Key("history-"+hs.key), ls, len(rows), func(i int) {
 		r := rows[i]
 		switch r.kind {
@@ -756,12 +756,12 @@ func (a *App) histFile(c *ui.Context, pal *palette, pane *proto.Pane, r histRow,
 		}
 		ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Children(func() {
 			f := r.f
-			tools := func() {
-				iconButton(c, "file-history", historyIcon, locales.HistoryOfFile(), pal, func() {
+			menu := func(m *ui.Menu) {
+				if m.Item(locales.HistoryOfFile()).Chosen() {
 					hs.path, hs.query, hs.asked = f.Path, "", ""
-				})
+				}
 			}
-			a.fileHeader(c, pal, histKey(r.hash, f.Path), pane.Git.Root, f, flatList, nil, tools, nil)
+			a.fileHeader(c, pal, histKey(r.hash, f.Path), pane.ID, pane.Git.Root, f, flatList, nil, nil, menu)
 		})
 	})
 }

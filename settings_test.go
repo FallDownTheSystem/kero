@@ -182,7 +182,8 @@ func TestThemePerAppearance(t *testing.T) {
 func TestDimToggles(t *testing.T) {
 	a := testApp(t)
 	a.ss.page = "appearance"
-	tt := ui.NewTester(a.settingsView, 820, 640)
+	// Tall enough for the whole page, the toggles at its end unscrolled.
+	tt := ui.NewTester(a.settingsView, 820, 1200)
 	tt.Frame()
 	for _, label := range []string{"Dim unfocused: Terminal", "Dim unfocused: Web"} {
 		if err := tt.Click(label); err != nil {

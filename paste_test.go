@@ -135,7 +135,9 @@ func TestPasteImageAsPath(t *testing.T) {
 	if b, err := os.ReadFile(files[0]); err != nil || !bytes.Equal(b, fakePNG) {
 		t.Errorf("the file holds %q (%v), want the image", b, err)
 	}
-	if st, err := os.Stat(dir); err != nil || st.Mode().Perm()&0o077 != 0 {
+	// Windows has no permission bits: there the user's own temporary
+	// directory, which the directory is in, keeps it from others.
+	if st, err := os.Stat(dir); err != nil || runtime.GOOS != "windows" && st.Mode().Perm()&0o077 != 0 {
 		t.Errorf("directory %v (%v) is open to others", st, err)
 	}
 	if got := sink.written(t); got != files[0] {
@@ -396,7 +398,8 @@ func TestPasteImageError(t *testing.T) {
 		{"permission", &fs.PathError{Op: "mkdir", Path: dir, Err: syscall.EACCES}, []string{"can’t write to " + dir, "drop the image file"}},
 		{"permission wrapped", fmt.Errorf("x: %w", fs.ErrPermission), []string{"can’t write to " + dir}},
 		{"disk full", &fs.PathError{Op: "write", Path: dir, Err: syscall.ENOSPC}, []string{"disk is full", "Free some space"}},
-		{"other", &fs.PathError{Op: "mkdir", Path: dir, Err: syscall.ENOTDIR}, []string{"not a directory", "drop the image file"}},
+		// The system's words for it: Windows' aren't "not a directory".
+		{"other", &fs.PathError{Op: "mkdir", Path: dir, Err: syscall.ENOTDIR}, []string{syscall.ENOTDIR.Error(), "drop the image file"}},
 	}
 	for _, c := range cases {
 		got := pasteImageError(c.err, dir)
