@@ -197,6 +197,21 @@ kero diff review --branch                 # since the default branch
 
 See [Changes](./changes.md).
 
+## Draft reviews
+
+An agent that reviews a pull request writes its comments to a [draft review](./changes.md#draft-reviews), which you post from Kero. Lines are the file's lines at the pull request's head, or of the base with `--base`, and must be in the pull request's diff:
+
+```sh
+kero pr comment src/parse.go:42 "This drops the last token."
+kero pr comment src/parse.go:40-44 -      # the text from stdin
+kero pr summary "Two bugs in the parser."
+kero pr show                              # the draft, each comment with its id
+kero pr edit 3 "Clearer text"
+kero pr delete 3
+```
+
+In a review started from Kero, the pane knows its pull request; elsewhere, name it with `--pr <number>`.
+
 ## Configuration and setup
 
 ```sh

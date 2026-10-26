@@ -523,7 +523,7 @@ func (d *Daemon) gitMessage(p proto.GitMessageParams) (proto.GitMessage, error) 
 	if forked {
 		at = dir
 	}
-	msg, err := commitmsg.Write(ctx, at, argv, commitmsg.Prompt(forked, strings.Join(subjects, "\n"), stat, patch))
+	msg, err := commitmsg.Write(ctx, at, argv, commitmsg.Prompt(forked, p.Prompt, strings.Join(subjects, "\n"), stat, patch))
 	if errors.Is(err, context.Canceled) {
 		return proto.GitMessage{}, errors.New("canceled")
 	}

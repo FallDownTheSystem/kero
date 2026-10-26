@@ -9941,3 +9941,1239 @@ func ReviewSent(count int, agent string) string { return In(i18n.Locale()).Revie
 func (msgs Messages) ReviewSent(count int, agent string) string {
 	return Catalog.Format(msgs.locale, "reviewSent", map[string]any{"count": count, "agent": agent})
 }
+
+// SideReview says "Review"
+// in the language the app shows.
+func SideReview() string { return In(i18n.Locale()).SideReview() }
+
+// SideReview says "Review"
+// in the language of msgs.
+func (msgs Messages) SideReview() string {
+	return Catalog.Format(msgs.locale, "sideReview", nil)
+}
+
+// ActionToggleReview says "Toggle Review"
+// in the language the app shows.
+func ActionToggleReview() string { return In(i18n.Locale()).ActionToggleReview() }
+
+// ActionToggleReview says "Toggle Review"
+// in the language of msgs.
+func (msgs Messages) ActionToggleReview() string {
+	return Catalog.Format(msgs.locale, "actionToggleReview", nil)
+}
+
+// SetCommitPrompt says "Commit message prompt"
+// in the language the app shows.
+func SetCommitPrompt() string { return In(i18n.Locale()).SetCommitPrompt() }
+
+// SetCommitPrompt says "Commit message prompt"
+// in the language of msgs.
+func (msgs Messages) SetCommitPrompt() string {
+	return Catalog.Format(msgs.locale, "setCommitPrompt", nil)
+}
+
+// SetCommitPromptDetail says "How the agent writes a commit message. Kero adds the recent commits and the staged diff after it."
+// in the language the app shows.
+func SetCommitPromptDetail() string { return In(i18n.Locale()).SetCommitPromptDetail() }
+
+// SetCommitPromptDetail says "How the agent writes a commit message. Kero adds the recent commits and the staged diff after it."
+// in the language of msgs.
+func (msgs Messages) SetCommitPromptDetail() string {
+	return Catalog.Format(msgs.locale, "setCommitPromptDetail", nil)
+}
+
+// SetPRPrompt says "Pull request prompt"
+// in the language the app shows.
+func SetPRPrompt() string { return In(i18n.Locale()).SetPRPrompt() }
+
+// SetPRPrompt says "Pull request prompt"
+// in the language of msgs.
+func (msgs Messages) SetPRPrompt() string {
+	return Catalog.Format(msgs.locale, "setPRPrompt", nil)
+}
+
+// SetPRPromptDetail says "How the agent writes a pull request's title and description. Kero adds the commits and the diff after it."
+// in the language the app shows.
+func SetPRPromptDetail() string { return In(i18n.Locale()).SetPRPromptDetail() }
+
+// SetPRPromptDetail says "How the agent writes a pull request's title and description. Kero adds the commits and the diff after it."
+// in the language of msgs.
+func (msgs Messages) SetPRPromptDetail() string {
+	return Catalog.Format(msgs.locale, "setPRPromptDetail", nil)
+}
+
+// SetResetPrompt says "Reset to Default"
+// in the language the app shows.
+func SetResetPrompt() string { return In(i18n.Locale()).SetResetPrompt() }
+
+// SetResetPrompt says "Reset to Default"
+// in the language of msgs.
+func (msgs Messages) SetResetPrompt() string {
+	return Catalog.Format(msgs.locale, "setResetPrompt", nil)
+}
+
+// PrsNoRepo says "No repository"
+// in the language the app shows.
+func PrsNoRepo() string { return In(i18n.Locale()).PrsNoRepo() }
+
+// PrsNoRepo says "No repository"
+// in the language of msgs.
+func (msgs Messages) PrsNoRepo() string {
+	return Catalog.Format(msgs.locale, "prsNoRepo", nil)
+}
+
+// PrsNoRepoDetail says "Pull requests show for the Git repository of the pane you are in."
+// in the language the app shows.
+func PrsNoRepoDetail() string { return In(i18n.Locale()).PrsNoRepoDetail() }
+
+// PrsNoRepoDetail says "Pull requests show for the Git repository of the pane you are in."
+// in the language of msgs.
+func (msgs Messages) PrsNoRepoDetail() string {
+	return Catalog.Format(msgs.locale, "prsNoRepoDetail", nil)
+}
+
+// PrsRefresh says "Refresh"
+// in the language the app shows.
+func PrsRefresh() string { return In(i18n.Locale()).PrsRefresh() }
+
+// PrsRefresh says "Refresh"
+// in the language of msgs.
+func (msgs Messages) PrsRefresh() string {
+	return Catalog.Format(msgs.locale, "prsRefresh", nil)
+}
+
+// PrsSetup says "Review Setup…"
+// in the language the app shows.
+func PrsSetup() string { return In(i18n.Locale()).PrsSetup() }
+
+// PrsSetup says "Review Setup…"
+// in the language of msgs.
+func (msgs Messages) PrsSetup() string {
+	return Catalog.Format(msgs.locale, "prsSetup", nil)
+}
+
+// PrsNew says "New Pull Request"
+// in the language the app shows.
+func PrsNew() string { return In(i18n.Locale()).PrsNew() }
+
+// PrsNew says "New Pull Request"
+// in the language of msgs.
+func (msgs Messages) PrsNew() string {
+	return Catalog.Format(msgs.locale, "prsNew", nil)
+}
+
+// PrsBack says "Back to Pull Requests"
+// in the language the app shows.
+func PrsBack() string { return In(i18n.Locale()).PrsBack() }
+
+// PrsBack says "Back to Pull Requests"
+// in the language of msgs.
+func (msgs Messages) PrsBack() string {
+	return Catalog.Format(msgs.locale, "prsBack", nil)
+}
+
+// PrsAll says "Open"
+// in the language the app shows.
+func PrsAll() string { return In(i18n.Locale()).PrsAll() }
+
+// PrsAll says "Open"
+// in the language of msgs.
+func (msgs Messages) PrsAll() string {
+	return Catalog.Format(msgs.locale, "prsAll", nil)
+}
+
+// PrsMine says "Mine"
+// in the language the app shows.
+func PrsMine() string { return In(i18n.Locale()).PrsMine() }
+
+// PrsMine says "Mine"
+// in the language of msgs.
+func (msgs Messages) PrsMine() string {
+	return Catalog.Format(msgs.locale, "prsMine", nil)
+}
+
+// PrsReviewRequested says "To Review"
+// in the language the app shows.
+func PrsReviewRequested() string { return In(i18n.Locale()).PrsReviewRequested() }
+
+// PrsReviewRequested says "To Review"
+// in the language of msgs.
+func (msgs Messages) PrsReviewRequested() string {
+	return Catalog.Format(msgs.locale, "prsReviewRequested", nil)
+}
+
+// PrsCantList says "Couldn't list the pull requests"
+// in the language the app shows.
+func PrsCantList() string { return In(i18n.Locale()).PrsCantList() }
+
+// PrsCantList says "Couldn't list the pull requests"
+// in the language of msgs.
+func (msgs Messages) PrsCantList() string {
+	return Catalog.Format(msgs.locale, "prsCantList", nil)
+}
+
+// PrsNone says "No pull requests"
+// in the language the app shows.
+func PrsNone() string { return In(i18n.Locale()).PrsNone() }
+
+// PrsNone says "No pull requests"
+// in the language of msgs.
+func (msgs Messages) PrsNone() string {
+	return Catalog.Format(msgs.locale, "prsNone", nil)
+}
+
+// PrsNoneDetail says "{repo} has no open pull requests that match."
+// in the language the app shows.
+func PrsNoneDetail(repo string) string { return In(i18n.Locale()).PrsNoneDetail(repo) }
+
+// PrsNoneDetail says "{repo} has no open pull requests that match."
+// in the language of msgs.
+func (msgs Messages) PrsNoneDetail(repo string) string {
+	return Catalog.Format(msgs.locale, "prsNoneDetail", map[string]any{"repo": repo})
+}
+
+// PrsRepo says "Repository"
+// in the language the app shows.
+func PrsRepo() string { return In(i18n.Locale()).PrsRepo() }
+
+// PrsRepo says "Repository"
+// in the language of msgs.
+func (msgs Messages) PrsRepo() string {
+	return Catalog.Format(msgs.locale, "prsRepo", nil)
+}
+
+// PrsOpenRepo says "Open Pull Requests on GitHub"
+// in the language the app shows.
+func PrsOpenRepo() string { return In(i18n.Locale()).PrsOpenRepo() }
+
+// PrsOpenRepo says "Open Pull Requests on GitHub"
+// in the language of msgs.
+func (msgs Messages) PrsOpenRepo() string {
+	return Catalog.Format(msgs.locale, "prsOpenRepo", nil)
+}
+
+// PrsOpen says "Open on GitHub"
+// in the language the app shows.
+func PrsOpen() string { return In(i18n.Locale()).PrsOpen() }
+
+// PrsOpen says "Open on GitHub"
+// in the language of msgs.
+func (msgs Messages) PrsOpen() string {
+	return Catalog.Format(msgs.locale, "prsOpen", nil)
+}
+
+// PrsCopyLink says "Copy Link"
+// in the language the app shows.
+func PrsCopyLink() string { return In(i18n.Locale()).PrsCopyLink() }
+
+// PrsCopyLink says "Copy Link"
+// in the language of msgs.
+func (msgs Messages) PrsCopyLink() string {
+	return Catalog.Format(msgs.locale, "prsCopyLink", nil)
+}
+
+// PrsDraft says "Draft"
+// in the language the app shows.
+func PrsDraft() string { return In(i18n.Locale()).PrsDraft() }
+
+// PrsDraft says "Draft"
+// in the language of msgs.
+func (msgs Messages) PrsDraft() string {
+	return Catalog.Format(msgs.locale, "prsDraft", nil)
+}
+
+// PrsChecksPassed says "Checks"
+// in the language the app shows.
+func PrsChecksPassed() string { return In(i18n.Locale()).PrsChecksPassed() }
+
+// PrsChecksPassed says "Checks"
+// in the language of msgs.
+func (msgs Messages) PrsChecksPassed() string {
+	return Catalog.Format(msgs.locale, "prsChecksPassed", nil)
+}
+
+// PrsChecksFailed says "Checks"
+// in the language the app shows.
+func PrsChecksFailed() string { return In(i18n.Locale()).PrsChecksFailed() }
+
+// PrsChecksFailed says "Checks"
+// in the language of msgs.
+func (msgs Messages) PrsChecksFailed() string {
+	return Catalog.Format(msgs.locale, "prsChecksFailed", nil)
+}
+
+// PrsChecksPending says "Checks"
+// in the language the app shows.
+func PrsChecksPending() string { return In(i18n.Locale()).PrsChecksPending() }
+
+// PrsChecksPending says "Checks"
+// in the language of msgs.
+func (msgs Messages) PrsChecksPending() string {
+	return Catalog.Format(msgs.locale, "prsChecksPending", nil)
+}
+
+// PrsApproved says "Approved"
+// in the language the app shows.
+func PrsApproved() string { return In(i18n.Locale()).PrsApproved() }
+
+// PrsApproved says "Approved"
+// in the language of msgs.
+func (msgs Messages) PrsApproved() string {
+	return Catalog.Format(msgs.locale, "prsApproved", nil)
+}
+
+// PrsChangesRequested says "Changes requested"
+// in the language the app shows.
+func PrsChangesRequested() string { return In(i18n.Locale()).PrsChangesRequested() }
+
+// PrsChangesRequested says "Changes requested"
+// in the language of msgs.
+func (msgs Messages) PrsChangesRequested() string {
+	return Catalog.Format(msgs.locale, "prsChangesRequested", nil)
+}
+
+// PrsReview says "Review"
+// in the language the app shows.
+func PrsReview() string { return In(i18n.Locale()).PrsReview() }
+
+// PrsReview says "Review"
+// in the language of msgs.
+func (msgs Messages) PrsReview() string {
+	return Catalog.Format(msgs.locale, "prsReview", nil)
+}
+
+// PrsReviewTip says "Have an agent review this pull request in a new worktree. Right-click for more places."
+// in the language the app shows.
+func PrsReviewTip() string { return In(i18n.Locale()).PrsReviewTip() }
+
+// PrsReviewTip says "Have an agent review this pull request in a new worktree. Right-click for more places."
+// in the language of msgs.
+func (msgs Messages) PrsReviewTip() string {
+	return Catalog.Format(msgs.locale, "prsReviewTip", nil)
+}
+
+// PrsReviewWorktree says "Review in New Worktree"
+// in the language the app shows.
+func PrsReviewWorktree() string { return In(i18n.Locale()).PrsReviewWorktree() }
+
+// PrsReviewWorktree says "Review in New Worktree"
+// in the language of msgs.
+func (msgs Messages) PrsReviewWorktree() string {
+	return Catalog.Format(msgs.locale, "prsReviewWorktree", nil)
+}
+
+// PrsReviewHere says "Review in Current Agent"
+// in the language the app shows.
+func PrsReviewHere() string { return In(i18n.Locale()).PrsReviewHere() }
+
+// PrsReviewHere says "Review in Current Agent"
+// in the language of msgs.
+func (msgs Messages) PrsReviewHere() string {
+	return Catalog.Format(msgs.locale, "prsReviewHere", nil)
+}
+
+// PrsReviewSession says "Review in New Session"
+// in the language the app shows.
+func PrsReviewSession() string { return In(i18n.Locale()).PrsReviewSession() }
+
+// PrsReviewSession says "Review in New Session"
+// in the language of msgs.
+func (msgs Messages) PrsReviewSession() string {
+	return Catalog.Format(msgs.locale, "prsReviewSession", nil)
+}
+
+// PrsReviewWorktreeDetail says "Kero fetches the pull request's branch and starts the agent in a new session, in a worktree of that branch."
+// in the language the app shows.
+func PrsReviewWorktreeDetail() string { return In(i18n.Locale()).PrsReviewWorktreeDetail() }
+
+// PrsReviewWorktreeDetail says "Kero fetches the pull request's branch and starts the agent in a new session, in a worktree of that branch."
+// in the language of msgs.
+func (msgs Messages) PrsReviewWorktreeDetail() string {
+	return Catalog.Format(msgs.locale, "prsReviewWorktreeDetail", nil)
+}
+
+// PrsReviewHereDetail says "Kero sends the prompt to the agent in the pane you are in."
+// in the language the app shows.
+func PrsReviewHereDetail() string { return In(i18n.Locale()).PrsReviewHereDetail() }
+
+// PrsReviewHereDetail says "Kero sends the prompt to the agent in the pane you are in."
+// in the language of msgs.
+func (msgs Messages) PrsReviewHereDetail() string {
+	return Catalog.Format(msgs.locale, "prsReviewHereDetail", nil)
+}
+
+// PrsReviewSessionDetail says "Kero starts the agent in a new session, in the pane's folder."
+// in the language the app shows.
+func PrsReviewSessionDetail() string { return In(i18n.Locale()).PrsReviewSessionDetail() }
+
+// PrsReviewSessionDetail says "Kero starts the agent in a new session, in the pane's folder."
+// in the language of msgs.
+func (msgs Messages) PrsReviewSessionDetail() string {
+	return Catalog.Format(msgs.locale, "prsReviewSessionDetail", nil)
+}
+
+// PrsReviewTitle says "Review #{number}"
+// in the language the app shows.
+func PrsReviewTitle(number int) string { return In(i18n.Locale()).PrsReviewTitle(number) }
+
+// PrsReviewTitle says "Review #{number}"
+// in the language of msgs.
+func (msgs Messages) PrsReviewTitle(number int) string {
+	return Catalog.Format(msgs.locale, "prsReviewTitle", map[string]any{"number": number})
+}
+
+// PrsTicket says "Ticket"
+// in the language the app shows.
+func PrsTicket() string { return In(i18n.Locale()).PrsTicket() }
+
+// PrsTicket says "Ticket"
+// in the language of msgs.
+func (msgs Messages) PrsTicket() string {
+	return Catalog.Format(msgs.locale, "prsTicket", nil)
+}
+
+// PrsReviewPrompt says "Prompt"
+// in the language the app shows.
+func PrsReviewPrompt() string { return In(i18n.Locale()).PrsReviewPrompt() }
+
+// PrsReviewPrompt says "Prompt"
+// in the language of msgs.
+func (msgs Messages) PrsReviewPrompt() string {
+	return Catalog.Format(msgs.locale, "prsReviewPrompt", nil)
+}
+
+// PrsStart says "Start Review"
+// in the language the app shows.
+func PrsStart() string { return In(i18n.Locale()).PrsStart() }
+
+// PrsStart says "Start Review"
+// in the language of msgs.
+func (msgs Messages) PrsStart() string {
+	return Catalog.Format(msgs.locale, "prsStart", nil)
+}
+
+// PrsFetching says "Fetching #{number}…"
+// in the language the app shows.
+func PrsFetching(number int) string { return In(i18n.Locale()).PrsFetching(number) }
+
+// PrsFetching says "Fetching #{number}…"
+// in the language of msgs.
+func (msgs Messages) PrsFetching(number int) string {
+	return Catalog.Format(msgs.locale, "prsFetching", map[string]any{"number": number})
+}
+
+// PrsFetchFailed says "Couldn't fetch the pull request: {error}"
+// in the language the app shows.
+func PrsFetchFailed(error string) string { return In(i18n.Locale()).PrsFetchFailed(error) }
+
+// PrsFetchFailed says "Couldn't fetch the pull request: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsFetchFailed(error string) string {
+	return Catalog.Format(msgs.locale, "prsFetchFailed", map[string]any{"error": error})
+}
+
+// PrsAgentLate says "The agent isn't ready. Kero copied the prompt: paste it to the agent."
+// in the language the app shows.
+func PrsAgentLate() string { return In(i18n.Locale()).PrsAgentLate() }
+
+// PrsAgentLate says "The agent isn't ready. Kero copied the prompt: paste it to the agent."
+// in the language of msgs.
+func (msgs Messages) PrsAgentLate() string {
+	return Catalog.Format(msgs.locale, "prsAgentLate", nil)
+}
+
+// PrsSetupTitle says "Review Setup for {repo}"
+// in the language the app shows.
+func PrsSetupTitle(repo string) string { return In(i18n.Locale()).PrsSetupTitle(repo) }
+
+// PrsSetupTitle says "Review Setup for {repo}"
+// in the language of msgs.
+func (msgs Messages) PrsSetupTitle(repo string) string {
+	return Catalog.Format(msgs.locale, "prsSetupTitle", map[string]any{"repo": repo})
+}
+
+// PrsSetupDetail says "How an agent reviews this repository's pull requests. Kero saves this setup for this repository only."
+// in the language the app shows.
+func PrsSetupDetail() string { return In(i18n.Locale()).PrsSetupDetail() }
+
+// PrsSetupDetail says "How an agent reviews this repository's pull requests. Kero saves this setup for this repository only."
+// in the language of msgs.
+func (msgs Messages) PrsSetupDetail() string {
+	return Catalog.Format(msgs.locale, "prsSetupDetail", nil)
+}
+
+// PrsSetupCommand says "Agent command"
+// in the language the app shows.
+func PrsSetupCommand() string { return In(i18n.Locale()).PrsSetupCommand() }
+
+// PrsSetupCommand says "Agent command"
+// in the language of msgs.
+func (msgs Messages) PrsSetupCommand() string {
+	return Catalog.Format(msgs.locale, "prsSetupCommand", nil)
+}
+
+// PrsSetupPrompt says "Prompt"
+// in the language the app shows.
+func PrsSetupPrompt() string { return In(i18n.Locale()).PrsSetupPrompt() }
+
+// PrsSetupPrompt says "Prompt"
+// in the language of msgs.
+func (msgs Messages) PrsSetupPrompt() string {
+	return Catalog.Format(msgs.locale, "prsSetupPrompt", nil)
+}
+
+// PrsUseDefault says "Reset to Default"
+// in the language the app shows.
+func PrsUseDefault() string { return In(i18n.Locale()).PrsUseDefault() }
+
+// PrsUseDefault says "Reset to Default"
+// in the language of msgs.
+func (msgs Messages) PrsUseDefault() string {
+	return Catalog.Format(msgs.locale, "prsUseDefault", nil)
+}
+
+// PrsSetupPlaceholders says "Kero replaces '{number}', '{url}', '{title}', '{branch}', '{base}', '{author}' and '{ticket}' with the pull request's…"
+// in the language the app shows.
+func PrsSetupPlaceholders() string { return In(i18n.Locale()).PrsSetupPlaceholders() }
+
+// PrsSetupPlaceholders says "Kero replaces '{number}', '{url}', '{title}', '{branch}', '{base}', '{author}' and '{ticket}' with the pull request's…"
+// in the language of msgs.
+func (msgs Messages) PrsSetupPlaceholders() string {
+	return Catalog.Format(msgs.locale, "prsSetupPlaceholders", nil)
+}
+
+// PrsCantDraft says "Couldn't prepare the pull request"
+// in the language the app shows.
+func PrsCantDraft() string { return In(i18n.Locale()).PrsCantDraft() }
+
+// PrsCantDraft says "Couldn't prepare the pull request"
+// in the language of msgs.
+func (msgs Messages) PrsCantDraft() string {
+	return Catalog.Format(msgs.locale, "prsCantDraft", nil)
+}
+
+// PrsBaseTip says "The branch that the pull request goes into"
+// in the language the app shows.
+func PrsBaseTip() string { return In(i18n.Locale()).PrsBaseTip() }
+
+// PrsBaseTip says "The branch that the pull request goes into"
+// in the language of msgs.
+func (msgs Messages) PrsBaseTip() string {
+	return Catalog.Format(msgs.locale, "prsBaseTip", nil)
+}
+
+// PrsExisting says "This branch already has pull request #{number}: {title}"
+// in the language the app shows.
+func PrsExisting(number int, title string) string {
+	return In(i18n.Locale()).PrsExisting(number, title)
+}
+
+// PrsExisting says "This branch already has pull request #{number}: {title}"
+// in the language of msgs.
+func (msgs Messages) PrsExisting(number int, title string) string {
+	return Catalog.Format(msgs.locale, "prsExisting", map[string]any{"number": number, "title": title})
+}
+
+// PrsTitle says "Title"
+// in the language the app shows.
+func PrsTitle() string { return In(i18n.Locale()).PrsTitle() }
+
+// PrsTitle says "Title"
+// in the language of msgs.
+func (msgs Messages) PrsTitle() string {
+	return Catalog.Format(msgs.locale, "prsTitle", nil)
+}
+
+// PrsBody says "Description"
+// in the language the app shows.
+func PrsBody() string { return In(i18n.Locale()).PrsBody() }
+
+// PrsBody says "Description"
+// in the language of msgs.
+func (msgs Messages) PrsBody() string {
+	return Catalog.Format(msgs.locale, "prsBody", nil)
+}
+
+// PrsBodyPlaceholder says "Description (Markdown)"
+// in the language the app shows.
+func PrsBodyPlaceholder() string { return In(i18n.Locale()).PrsBodyPlaceholder() }
+
+// PrsBodyPlaceholder says "Description (Markdown)"
+// in the language of msgs.
+func (msgs Messages) PrsBodyPlaceholder() string {
+	return Catalog.Format(msgs.locale, "prsBodyPlaceholder", nil)
+}
+
+// PrsWrite says "Write Title and Description"
+// in the language the app shows.
+func PrsWrite() string { return In(i18n.Locale()).PrsWrite() }
+
+// PrsWrite says "Write Title and Description"
+// in the language of msgs.
+func (msgs Messages) PrsWrite() string {
+	return Catalog.Format(msgs.locale, "prsWrite", nil)
+}
+
+// PrsWriteTip says "Write the title and the description with a coding agent"
+// in the language the app shows.
+func PrsWriteTip() string { return In(i18n.Locale()).PrsWriteTip() }
+
+// PrsWriteTip says "Write the title and the description with a coding agent"
+// in the language of msgs.
+func (msgs Messages) PrsWriteTip() string {
+	return Catalog.Format(msgs.locale, "prsWriteTip", nil)
+}
+
+// PrsCommits says "{count, plural, one {# commit} other {# commits}}"
+// in the language the app shows.
+func PrsCommits(count int) string { return In(i18n.Locale()).PrsCommits(count) }
+
+// PrsCommits says "{count, plural, one {# commit} other {# commits}}"
+// in the language of msgs.
+func (msgs Messages) PrsCommits(count int) string {
+	return Catalog.Format(msgs.locale, "prsCommits", map[string]any{"count": count})
+}
+
+// PrsNoCommits says "This branch has no commits that {base} doesn't have."
+// in the language the app shows.
+func PrsNoCommits(base string) string { return In(i18n.Locale()).PrsNoCommits(base) }
+
+// PrsNoCommits says "This branch has no commits that {base} doesn't have."
+// in the language of msgs.
+func (msgs Messages) PrsNoCommits(base string) string {
+	return Catalog.Format(msgs.locale, "prsNoCommits", map[string]any{"base": base})
+}
+
+// PrsFiles says "{count, plural, one {# file changed} other {# files changed}}"
+// in the language the app shows.
+func PrsFiles(count int) string { return In(i18n.Locale()).PrsFiles(count) }
+
+// PrsFiles says "{count, plural, one {# file changed} other {# files changed}}"
+// in the language of msgs.
+func (msgs Messages) PrsFiles(count int) string {
+	return Catalog.Format(msgs.locale, "prsFiles", map[string]any{"count": count})
+}
+
+// PrsUnpushed says "{count, plural, one {# commit isn't} other {# commits aren't}} on {remote}. Kero pushes before it creates the pull re…"
+// in the language the app shows.
+func PrsUnpushed(count int, remote string) string {
+	return In(i18n.Locale()).PrsUnpushed(count, remote)
+}
+
+// PrsUnpushed says "{count, plural, one {# commit isn't} other {# commits aren't}} on {remote}. Kero pushes before it creates the pull re…"
+// in the language of msgs.
+func (msgs Messages) PrsUnpushed(count int, remote string) string {
+	return Catalog.Format(msgs.locale, "prsUnpushed", map[string]any{"count": count, "remote": remote})
+}
+
+// PrsUncommitted says "{count, plural, one {# uncommitted file stays out of the pull request.} other {# uncommitted files stay out of the pu…"
+// in the language the app shows.
+func PrsUncommitted(count int) string { return In(i18n.Locale()).PrsUncommitted(count) }
+
+// PrsUncommitted says "{count, plural, one {# uncommitted file stays out of the pull request.} other {# uncommitted files stay out of the pu…"
+// in the language of msgs.
+func (msgs Messages) PrsUncommitted(count int) string {
+	return Catalog.Format(msgs.locale, "prsUncommitted", map[string]any{"count": count})
+}
+
+// PrsCreate says "Create Pull Request"
+// in the language the app shows.
+func PrsCreate() string { return In(i18n.Locale()).PrsCreate() }
+
+// PrsCreate says "Create Pull Request"
+// in the language of msgs.
+func (msgs Messages) PrsCreate() string {
+	return Catalog.Format(msgs.locale, "prsCreate", nil)
+}
+
+// PrsCreateTip says "Push the branch, then create the pull request on GitHub"
+// in the language the app shows.
+func PrsCreateTip() string { return In(i18n.Locale()).PrsCreateTip() }
+
+// PrsCreateTip says "Push the branch, then create the pull request on GitHub"
+// in the language of msgs.
+func (msgs Messages) PrsCreateTip() string {
+	return Catalog.Format(msgs.locale, "prsCreateTip", nil)
+}
+
+// PrsCreateOptions says "More Ways to Create"
+// in the language the app shows.
+func PrsCreateOptions() string { return In(i18n.Locale()).PrsCreateOptions() }
+
+// PrsCreateOptions says "More Ways to Create"
+// in the language of msgs.
+func (msgs Messages) PrsCreateOptions() string {
+	return Catalog.Format(msgs.locale, "prsCreateOptions", nil)
+}
+
+// PrsCreateDraft says "Create as Draft"
+// in the language the app shows.
+func PrsCreateDraft() string { return In(i18n.Locale()).PrsCreateDraft() }
+
+// PrsCreateDraft says "Create as Draft"
+// in the language of msgs.
+func (msgs Messages) PrsCreateDraft() string {
+	return Catalog.Format(msgs.locale, "prsCreateDraft", nil)
+}
+
+// PrsShow says "Show on GitHub"
+// in the language the app shows.
+func PrsShow() string { return In(i18n.Locale()).PrsShow() }
+
+// PrsShow says "Show on GitHub"
+// in the language of msgs.
+func (msgs Messages) PrsShow() string {
+	return Catalog.Format(msgs.locale, "prsShow", nil)
+}
+
+// PrsAlreadyOpen says "This branch already has an open pull request"
+// in the language the app shows.
+func PrsAlreadyOpen() string { return In(i18n.Locale()).PrsAlreadyOpen() }
+
+// PrsAlreadyOpen says "This branch already has an open pull request"
+// in the language of msgs.
+func (msgs Messages) PrsAlreadyOpen() string {
+	return Catalog.Format(msgs.locale, "prsAlreadyOpen", nil)
+}
+
+// PrsTitleFirst says "Type a title first"
+// in the language the app shows.
+func PrsTitleFirst() string { return In(i18n.Locale()).PrsTitleFirst() }
+
+// PrsTitleFirst says "Type a title first"
+// in the language of msgs.
+func (msgs Messages) PrsTitleFirst() string {
+	return Catalog.Format(msgs.locale, "prsTitleFirst", nil)
+}
+
+// PrsCreateFailed says "Couldn't create the pull request: {error}"
+// in the language the app shows.
+func PrsCreateFailed(error string) string { return In(i18n.Locale()).PrsCreateFailed(error) }
+
+// PrsCreateFailed says "Couldn't create the pull request: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsCreateFailed(error string) string {
+	return Catalog.Format(msgs.locale, "prsCreateFailed", map[string]any{"error": error})
+}
+
+// PrsCreated says "Pull request created"
+// in the language the app shows.
+func PrsCreated() string { return In(i18n.Locale()).PrsCreated() }
+
+// PrsCreated says "Pull request created"
+// in the language of msgs.
+func (msgs Messages) PrsCreated() string {
+	return Catalog.Format(msgs.locale, "prsCreated", nil)
+}
+
+// PrsFilesTab says "Files"
+// in the language the app shows.
+func PrsFilesTab() string { return In(i18n.Locale()).PrsFilesTab() }
+
+// PrsFilesTab says "Files"
+// in the language of msgs.
+func (msgs Messages) PrsFilesTab() string {
+	return Catalog.Format(msgs.locale, "prsFilesTab", nil)
+}
+
+// PrsFilesTabCount says "Files ({count})"
+// in the language the app shows.
+func PrsFilesTabCount(count int) string { return In(i18n.Locale()).PrsFilesTabCount(count) }
+
+// PrsFilesTabCount says "Files ({count})"
+// in the language of msgs.
+func (msgs Messages) PrsFilesTabCount(count int) string {
+	return Catalog.Format(msgs.locale, "prsFilesTabCount", map[string]any{"count": count})
+}
+
+// PrsConversation says "Conversation"
+// in the language the app shows.
+func PrsConversation() string { return In(i18n.Locale()).PrsConversation() }
+
+// PrsConversation says "Conversation"
+// in the language of msgs.
+func (msgs Messages) PrsConversation() string {
+	return Catalog.Format(msgs.locale, "prsConversation", nil)
+}
+
+// PrsCantView says "Couldn't load the pull request"
+// in the language the app shows.
+func PrsCantView() string { return In(i18n.Locale()).PrsCantView() }
+
+// PrsCantView says "Couldn't load the pull request"
+// in the language of msgs.
+func (msgs Messages) PrsCantView() string {
+	return Catalog.Format(msgs.locale, "prsCantView", nil)
+}
+
+// PrsOpenState says "Open"
+// in the language the app shows.
+func PrsOpenState() string { return In(i18n.Locale()).PrsOpenState() }
+
+// PrsOpenState says "Open"
+// in the language of msgs.
+func (msgs Messages) PrsOpenState() string {
+	return Catalog.Format(msgs.locale, "prsOpenState", nil)
+}
+
+// PrsMerged says "Merged"
+// in the language the app shows.
+func PrsMerged() string { return In(i18n.Locale()).PrsMerged() }
+
+// PrsMerged says "Merged"
+// in the language of msgs.
+func (msgs Messages) PrsMerged() string {
+	return Catalog.Format(msgs.locale, "prsMerged", nil)
+}
+
+// PrsClosed says "Closed"
+// in the language the app shows.
+func PrsClosed() string { return In(i18n.Locale()).PrsClosed() }
+
+// PrsClosed says "Closed"
+// in the language of msgs.
+func (msgs Messages) PrsClosed() string {
+	return Catalog.Format(msgs.locale, "prsClosed", nil)
+}
+
+// PrsByInto says "{author} wants to merge {head} into {base}"
+// in the language the app shows.
+func PrsByInto(author string, head string, base string) string {
+	return In(i18n.Locale()).PrsByInto(author, head, base)
+}
+
+// PrsByInto says "{author} wants to merge {head} into {base}"
+// in the language of msgs.
+func (msgs Messages) PrsByInto(author string, head string, base string) string {
+	return Catalog.Format(msgs.locale, "prsByInto", map[string]any{"author": author, "head": head, "base": base})
+}
+
+// PrsNoDescription says "No description."
+// in the language the app shows.
+func PrsNoDescription() string { return In(i18n.Locale()).PrsNoDescription() }
+
+// PrsNoDescription says "No description."
+// in the language of msgs.
+func (msgs Messages) PrsNoDescription() string {
+	return Catalog.Format(msgs.locale, "prsNoDescription", nil)
+}
+
+// PrsDetails says "Details"
+// in the language the app shows.
+func PrsDetails() string { return In(i18n.Locale()).PrsDetails() }
+
+// PrsDetails says "Details"
+// in the language of msgs.
+func (msgs Messages) PrsDetails() string {
+	return Catalog.Format(msgs.locale, "prsDetails", nil)
+}
+
+// PrsReviewers says "Reviewers"
+// in the language the app shows.
+func PrsReviewers() string { return In(i18n.Locale()).PrsReviewers() }
+
+// PrsReviewers says "Reviewers"
+// in the language of msgs.
+func (msgs Messages) PrsReviewers() string {
+	return Catalog.Format(msgs.locale, "prsReviewers", nil)
+}
+
+// PrsNoReviewers says "No one has reviewed it, and no review is requested."
+// in the language the app shows.
+func PrsNoReviewers() string { return In(i18n.Locale()).PrsNoReviewers() }
+
+// PrsNoReviewers says "No one has reviewed it, and no review is requested."
+// in the language of msgs.
+func (msgs Messages) PrsNoReviewers() string {
+	return Catalog.Format(msgs.locale, "prsNoReviewers", nil)
+}
+
+// PrsAwaiting says "Awaiting review"
+// in the language the app shows.
+func PrsAwaiting() string { return In(i18n.Locale()).PrsAwaiting() }
+
+// PrsAwaiting says "Awaiting review"
+// in the language of msgs.
+func (msgs Messages) PrsAwaiting() string {
+	return Catalog.Format(msgs.locale, "prsAwaiting", nil)
+}
+
+// PrsDismissed says "Dismissed"
+// in the language the app shows.
+func PrsDismissed() string { return In(i18n.Locale()).PrsDismissed() }
+
+// PrsDismissed says "Dismissed"
+// in the language of msgs.
+func (msgs Messages) PrsDismissed() string {
+	return Catalog.Format(msgs.locale, "prsDismissed", nil)
+}
+
+// PrsCommented says "Commented"
+// in the language the app shows.
+func PrsCommented() string { return In(i18n.Locale()).PrsCommented() }
+
+// PrsCommented says "Commented"
+// in the language of msgs.
+func (msgs Messages) PrsCommented() string {
+	return Catalog.Format(msgs.locale, "prsCommented", nil)
+}
+
+// PrsReviewed says "reviewed"
+// in the language the app shows.
+func PrsReviewed() string { return In(i18n.Locale()).PrsReviewed() }
+
+// PrsReviewed says "reviewed"
+// in the language of msgs.
+func (msgs Messages) PrsReviewed() string {
+	return Catalog.Format(msgs.locale, "prsReviewed", nil)
+}
+
+// PrsChecks says "Checks"
+// in the language the app shows.
+func PrsChecks() string { return In(i18n.Locale()).PrsChecks() }
+
+// PrsChecks says "Checks"
+// in the language of msgs.
+func (msgs Messages) PrsChecks() string {
+	return Catalog.Format(msgs.locale, "prsChecks", nil)
+}
+
+// PrsNoComments says "No comments yet."
+// in the language the app shows.
+func PrsNoComments() string { return In(i18n.Locale()).PrsNoComments() }
+
+// PrsNoComments says "No comments yet."
+// in the language of msgs.
+func (msgs Messages) PrsNoComments() string {
+	return Catalog.Format(msgs.locale, "prsNoComments", nil)
+}
+
+// PrsLineComments says "{count, plural, one {# comment on lines: see Files} other {# comments on lines: see Files}}"
+// in the language the app shows.
+func PrsLineComments(count int) string { return In(i18n.Locale()).PrsLineComments(count) }
+
+// PrsLineComments says "{count, plural, one {# comment on lines: see Files} other {# comments on lines: see Files}}"
+// in the language of msgs.
+func (msgs Messages) PrsLineComments(count int) string {
+	return Catalog.Format(msgs.locale, "prsLineComments", map[string]any{"count": count})
+}
+
+// PrsCantFetch says "Couldn't fetch the changes"
+// in the language the app shows.
+func PrsCantFetch() string { return In(i18n.Locale()).PrsCantFetch() }
+
+// PrsCantFetch says "Couldn't fetch the changes"
+// in the language of msgs.
+func (msgs Messages) PrsCantFetch() string {
+	return Catalog.Format(msgs.locale, "prsCantFetch", nil)
+}
+
+// PrsNoFiles says "The pull request changes no files"
+// in the language the app shows.
+func PrsNoFiles() string { return In(i18n.Locale()).PrsNoFiles() }
+
+// PrsNoFiles says "The pull request changes no files"
+// in the language of msgs.
+func (msgs Messages) PrsNoFiles() string {
+	return Catalog.Format(msgs.locale, "prsNoFiles", nil)
+}
+
+// PrsCheckedOut says "Checked out in {dir}: right-click a file to open it"
+// in the language the app shows.
+func PrsCheckedOut(dir string) string { return In(i18n.Locale()).PrsCheckedOut(dir) }
+
+// PrsCheckedOut says "Checked out in {dir}: right-click a file to open it"
+// in the language of msgs.
+func (msgs Messages) PrsCheckedOut(dir string) string {
+	return Catalog.Format(msgs.locale, "prsCheckedOut", map[string]any{"dir": dir})
+}
+
+// PrsOutdated says "outdated · {place}"
+// in the language the app shows.
+func PrsOutdated(place string) string { return In(i18n.Locale()).PrsOutdated(place) }
+
+// PrsOutdated says "outdated · {place}"
+// in the language of msgs.
+func (msgs Messages) PrsOutdated(place string) string {
+	return Catalog.Format(msgs.locale, "prsOutdated", map[string]any{"place": place})
+}
+
+// ReviewByAgent says "Agent"
+// in the language the app shows.
+func ReviewByAgent() string { return In(i18n.Locale()).ReviewByAgent() }
+
+// ReviewByAgent says "Agent"
+// in the language of msgs.
+func (msgs Messages) ReviewByAgent() string {
+	return Catalog.Format(msgs.locale, "reviewByAgent", nil)
+}
+
+// ReviewAskAgent says "Ask the Agent About It"
+// in the language the app shows.
+func ReviewAskAgent() string { return In(i18n.Locale()).ReviewAskAgent() }
+
+// ReviewAskAgent says "Ask the Agent About It"
+// in the language of msgs.
+func (msgs Messages) ReviewAskAgent() string {
+	return Catalog.Format(msgs.locale, "reviewAskAgent", nil)
+}
+
+// ReviewAskText says "About your draft comment {id} on {place}:"
+// in the language the app shows.
+func ReviewAskText(id int, place string) string { return In(i18n.Locale()).ReviewAskText(id, place) }
+
+// ReviewAskText says "About your draft comment {id} on {place}:"
+// in the language of msgs.
+func (msgs Messages) ReviewAskText(id int, place string) string {
+	return Catalog.Format(msgs.locale, "reviewAskText", map[string]any{"id": id, "place": place})
+}
+
+// PrsDraftReview says "{count, plural, =0 {Your review, no comments yet} one {Your review, # comment} other {Your review, # comments}}"
+// in the language the app shows.
+func PrsDraftReview(count int) string { return In(i18n.Locale()).PrsDraftReview(count) }
+
+// PrsDraftReview says "{count, plural, =0 {Your review, no comments yet} one {Your review, # comment} other {Your review, # comments}}"
+// in the language of msgs.
+func (msgs Messages) PrsDraftReview(count int) string {
+	return Catalog.Format(msgs.locale, "prsDraftReview", map[string]any{"count": count})
+}
+
+// PrsDraftOptions says "Review Options"
+// in the language the app shows.
+func PrsDraftOptions() string { return In(i18n.Locale()).PrsDraftOptions() }
+
+// PrsDraftOptions says "Review Options"
+// in the language of msgs.
+func (msgs Messages) PrsDraftOptions() string {
+	return Catalog.Format(msgs.locale, "prsDraftOptions", nil)
+}
+
+// PrsDiscardReview says "Discard Review…"
+// in the language the app shows.
+func PrsDiscardReview() string { return In(i18n.Locale()).PrsDiscardReview() }
+
+// PrsDiscardReview says "Discard Review…"
+// in the language of msgs.
+func (msgs Messages) PrsDiscardReview() string {
+	return Catalog.Format(msgs.locale, "prsDiscardReview", nil)
+}
+
+// PrsDiscardTitle says "Discard the draft review?"
+// in the language the app shows.
+func PrsDiscardTitle() string { return In(i18n.Locale()).PrsDiscardTitle() }
+
+// PrsDiscardTitle says "Discard the draft review?"
+// in the language of msgs.
+func (msgs Messages) PrsDiscardTitle() string {
+	return Catalog.Format(msgs.locale, "prsDiscardTitle", nil)
+}
+
+// PrsDiscardDetail says "Its comments and summary are deleted. Nothing was posted to GitHub."
+// in the language the app shows.
+func PrsDiscardDetail() string { return In(i18n.Locale()).PrsDiscardDetail() }
+
+// PrsDiscardDetail says "Its comments and summary are deleted. Nothing was posted to GitHub."
+// in the language of msgs.
+func (msgs Messages) PrsDiscardDetail() string {
+	return Catalog.Format(msgs.locale, "prsDiscardDetail", nil)
+}
+
+// PrsDiscard says "Discard"
+// in the language the app shows.
+func PrsDiscard() string { return In(i18n.Locale()).PrsDiscard() }
+
+// PrsDiscard says "Discard"
+// in the language of msgs.
+func (msgs Messages) PrsDiscard() string {
+	return Catalog.Format(msgs.locale, "prsDiscard", nil)
+}
+
+// PrsDraftOld says "The pull request changed after the review began. The comments stay on the older commit."
+// in the language the app shows.
+func PrsDraftOld() string { return In(i18n.Locale()).PrsDraftOld() }
+
+// PrsDraftOld says "The pull request changed after the review began. The comments stay on the older commit."
+// in the language of msgs.
+func (msgs Messages) PrsDraftOld() string {
+	return Catalog.Format(msgs.locale, "prsDraftOld", nil)
+}
+
+// PrsSummary says "Summary (Markdown), the review's text on GitHub"
+// in the language the app shows.
+func PrsSummary() string { return In(i18n.Locale()).PrsSummary() }
+
+// PrsSummary says "Summary (Markdown), the review's text on GitHub"
+// in the language of msgs.
+func (msgs Messages) PrsSummary() string {
+	return Catalog.Format(msgs.locale, "prsSummary", nil)
+}
+
+// PrsEventComment says "Comment"
+// in the language the app shows.
+func PrsEventComment() string { return In(i18n.Locale()).PrsEventComment() }
+
+// PrsEventComment says "Comment"
+// in the language of msgs.
+func (msgs Messages) PrsEventComment() string {
+	return Catalog.Format(msgs.locale, "prsEventComment", nil)
+}
+
+// PrsApprove says "Approve"
+// in the language the app shows.
+func PrsApprove() string { return In(i18n.Locale()).PrsApprove() }
+
+// PrsApprove says "Approve"
+// in the language of msgs.
+func (msgs Messages) PrsApprove() string {
+	return Catalog.Format(msgs.locale, "prsApprove", nil)
+}
+
+// PrsRequestChanges says "Request Changes"
+// in the language the app shows.
+func PrsRequestChanges() string { return In(i18n.Locale()).PrsRequestChanges() }
+
+// PrsRequestChanges says "Request Changes"
+// in the language of msgs.
+func (msgs Messages) PrsRequestChanges() string {
+	return Catalog.Format(msgs.locale, "prsRequestChanges", nil)
+}
+
+// PrsPost says "Post Review"
+// in the language the app shows.
+func PrsPost() string { return In(i18n.Locale()).PrsPost() }
+
+// PrsPost says "Post Review"
+// in the language of msgs.
+func (msgs Messages) PrsPost() string {
+	return Catalog.Format(msgs.locale, "prsPost", nil)
+}
+
+// PrsPostTitle says "Post the review to {pr}?"
+// in the language the app shows.
+func PrsPostTitle(pr string) string { return In(i18n.Locale()).PrsPostTitle(pr) }
+
+// PrsPostTitle says "Post the review to {pr}?"
+// in the language of msgs.
+func (msgs Messages) PrsPostTitle(pr string) string {
+	return Catalog.Format(msgs.locale, "prsPostTitle", map[string]any{"pr": pr})
+}
+
+// PrsPostDetail says "{count, plural, =0 {The review has no comments on lines. Everyone with access to the pull request sees it.} one {The …"
+// in the language the app shows.
+func PrsPostDetail(count int) string { return In(i18n.Locale()).PrsPostDetail(count) }
+
+// PrsPostDetail says "{count, plural, =0 {The review has no comments on lines. Everyone with access to the pull request sees it.} one {The …"
+// in the language of msgs.
+func (msgs Messages) PrsPostDetail(count int) string {
+	return Catalog.Format(msgs.locale, "prsPostDetail", map[string]any{"count": count})
+}
+
+// PrsPosted says "Review posted"
+// in the language the app shows.
+func PrsPosted() string { return In(i18n.Locale()).PrsPosted() }
+
+// PrsPosted says "Review posted"
+// in the language of msgs.
+func (msgs Messages) PrsPosted() string {
+	return Catalog.Format(msgs.locale, "prsPosted", nil)
+}
+
+// PrsDraftFailed says "Couldn't start the draft review: {error}"
+// in the language the app shows.
+func PrsDraftFailed(error string) string { return In(i18n.Locale()).PrsDraftFailed(error) }
+
+// PrsDraftFailed says "Couldn't start the draft review: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsDraftFailed(error string) string {
+	return Catalog.Format(msgs.locale, "prsDraftFailed", map[string]any{"error": error})
+}
+
+// PrsNotifyReview says "Review requested in {repo}"
+// in the language the app shows.
+func PrsNotifyReview(repo string) string { return In(i18n.Locale()).PrsNotifyReview(repo) }
+
+// PrsNotifyReview says "Review requested in {repo}"
+// in the language of msgs.
+func (msgs Messages) PrsNotifyReview(repo string) string {
+	return Catalog.Format(msgs.locale, "prsNotifyReview", map[string]any{"repo": repo})
+}
+
+// PrsNotifyNew says "New pull request in {repo}"
+// in the language the app shows.
+func PrsNotifyNew(repo string) string { return In(i18n.Locale()).PrsNotifyNew(repo) }
+
+// PrsNotifyNew says "New pull request in {repo}"
+// in the language of msgs.
+func (msgs Messages) PrsNotifyNew(repo string) string {
+	return Catalog.Format(msgs.locale, "prsNotifyNew", map[string]any{"repo": repo})
+}
+
+// SetPRNotify says "Notify of new pull requests"
+// in the language the app shows.
+func SetPRNotify() string { return In(i18n.Locale()).SetPRNotify() }
+
+// SetPRNotify says "Notify of new pull requests"
+// in the language of msgs.
+func (msgs Messages) SetPRNotify() string {
+	return Catalog.Format(msgs.locale, "setPRNotify", nil)
+}
+
+// SetPRNotifyDetail says "Kero checks the GitHub repositories of your projects with the GitHub CLI, and notifies you of each new pull request t…"
+// in the language the app shows.
+func SetPRNotifyDetail() string { return In(i18n.Locale()).SetPRNotifyDetail() }
+
+// SetPRNotifyDetail says "Kero checks the GitHub repositories of your projects with the GitHub CLI, and notifies you of each new pull request t…"
+// in the language of msgs.
+func (msgs Messages) SetPRNotifyDetail() string {
+	return Catalog.Format(msgs.locale, "setPRNotifyDetail", nil)
+}
+
+// SetPRNotifyReview says "Review Requested"
+// in the language the app shows.
+func SetPRNotifyReview() string { return In(i18n.Locale()).SetPRNotifyReview() }
+
+// SetPRNotifyReview says "Review Requested"
+// in the language of msgs.
+func (msgs Messages) SetPRNotifyReview() string {
+	return Catalog.Format(msgs.locale, "setPRNotifyReview", nil)
+}
+
+// SetPRNotifyAll says "All"
+// in the language the app shows.
+func SetPRNotifyAll() string { return In(i18n.Locale()).SetPRNotifyAll() }
+
+// SetPRNotifyAll says "All"
+// in the language of msgs.
+func (msgs Messages) SetPRNotifyAll() string {
+	return Catalog.Format(msgs.locale, "setPRNotifyAll", nil)
+}
+
+// SetPRNotifyOff says "Off"
+// in the language the app shows.
+func SetPRNotifyOff() string { return In(i18n.Locale()).SetPRNotifyOff() }
+
+// SetPRNotifyOff says "Off"
+// in the language of msgs.
+func (msgs Messages) SetPRNotifyOff() string {
+	return Catalog.Format(msgs.locale, "setPRNotifyOff", nil)
+}
+
+// SetPRPoll says "Check every"
+// in the language the app shows.
+func SetPRPoll() string { return In(i18n.Locale()).SetPRPoll() }
+
+// SetPRPoll says "Check every"
+// in the language of msgs.
+func (msgs Messages) SetPRPoll() string {
+	return Catalog.Format(msgs.locale, "setPRPoll", nil)
+}
+
+// SetPRPollMinutes says "{count, plural, one {# minute} other {# minutes}}"
+// in the language the app shows.
+func SetPRPollMinutes(count int) string { return In(i18n.Locale()).SetPRPollMinutes(count) }
+
+// SetPRPollMinutes says "{count, plural, one {# minute} other {# minutes}}"
+// in the language of msgs.
+func (msgs Messages) SetPRPollMinutes(count int) string {
+	return Catalog.Format(msgs.locale, "setPRPollMinutes", map[string]any{"count": count})
+}

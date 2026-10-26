@@ -23,6 +23,7 @@ import (
 	"kero/internal/adblock"
 	"kero/internal/cli"
 	"kero/internal/client"
+	"kero/internal/commitmsg"
 	"kero/internal/proto"
 	"kero/internal/settings"
 	"kero/internal/shell"
@@ -68,6 +69,9 @@ type settingsState struct {
 	editorEdit   bool
 	messageDraft string
 	messageEdit  bool
+	// prompts are the commit message's and the pull request's prompts as
+	// typed, kept while their fields have the focus.
+	prompts [2]promptDraft
 	// resumeDraft is each agent's resume command as typed, and
 	// resumeEdit the agent whose field has the focus.
 	resumeDraft map[string]*string
@@ -454,6 +458,62 @@ func settingRow(c *ui.Context, pal *palette, label, detail string, control func(
 	})
 }
 
+// promptDraft is a prompt's field as typed, while edit says it has the
+// focus.
+type promptDraft struct {
+	text string
+	edit bool
+}
+
+// promptSetting is a row of a prompt an agent is given, as wide as the
+// group, its field under its label: the default's words show while value
+// is "", which they leave so, and Reset to Default brings them back.
+func promptSetting(c *ui.Context, pal *palette, key, label, detail string, value *string, def string, d *promptDraft) {
+	if groupRows++; groupRows > 1 {
+		ui.Box(c).Height(1).Shrink(0).Background(pal.text.Alpha(0.07))
+	}
+	if !d.edit {
+		d.text = *value
+		if strings.TrimSpace(d.text) == "" {
+			d.text = def
+		}
+	}
+	keep := func() {
+		v := strings.TrimSpace(d.text)
+		if v == strings.TrimSpace(def) {
+			v = ""
+		}
+		*value = v
+	}
+	col := ui.Column(c.Key("row-"+label)).Padding(11, 0).Gap(8).AlignItems(ui.Stretch)
+	col.Children(func() {
+		searchHighlight(c, col, label, pal, 10, -2)
+		ui.Row(c).Gap(16).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
+				ui.Text(c, label).FontSize(13.5).TextColor(pal.text)
+				ui.Text(c, detail).FontSize(12).TextColor(pal.textMuted).LineHeight(1.35)
+			})
+			if *value != "" || strings.TrimSpace(d.text) != strings.TrimSpace(def) {
+				if button(c, key+"-reset", locales.SetResetPrompt(), "", false, pal) {
+					d.text, d.edit, *value = def, false, ""
+				}
+			}
+		})
+		frame := ui.Row(c.Key(key)).AlignItems(ui.Start).Cursor(ui.CursorText)
+		var in ui.Element
+		frame.Children(func() {
+			in = ui.TextAreaBase(c.Key("in"), &d.text).Grow(1).MinWidth(0).MinHeight(90).MaxHeight(260).Padding(8).FontSize(12.5).
+				Label(label)
+		})
+		fieldLook(c, frame, in.Focused(), pal).Padding(0)
+		// Kept as the field loses the focus.
+		if d.edit && !in.Focused() {
+			keep()
+		}
+		d.edit = in.Focused()
+	})
+}
+
 // segmented chooses one of ids into value, as macOS's segmented control
 // shows it: a soft track, the choice a lighter fill raised a hair, thin
 // separators between the others, and labels of one weight.
@@ -575,6 +635,28 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				a.set.CommitMessageCommand = strings.TrimSpace(a.ss.messageDraft)
 			}
 		})
+		settingRow(c, pal, locales.SetPRNotify(), locales.SetPRNotifyDetail(), func() {
+			segmented(c, "pr-notify", &s.PRNotify, []string{"review", "all", "off"},
+				[]string{locales.SetPRNotifyReview(), locales.SetPRNotifyAll(), locales.SetPRNotifyOff()})
+		})
+		if s.PRNotify != "off" {
+			settingRow(c, pal, locales.SetPRPoll(), "", func() {
+				every := strconv.Itoa(s.PRPollMinutes)
+				opts := []string{"1", "2", "5", "10", "15", "30", "60"}
+				if !slices.Contains(opts, every) {
+					opts = append(opts, every)
+				}
+				popup(c, "pr-poll", &every, opts, func(v string) string {
+					n, _ := strconv.Atoi(v)
+					return locales.SetPRPollMinutes(n)
+				}, 140, pal)
+				if n, err := strconv.Atoi(every); err == nil {
+					s.PRPollMinutes = n
+				}
+			})
+		}
+		promptSetting(c, pal, "commit-prompt", locales.SetCommitPrompt(), locales.SetCommitPromptDetail(), &s.CommitMessagePrompt, commitmsg.DefaultCommitPrompt, &a.ss.prompts[0])
+		promptSetting(c, pal, "pr-prompt", locales.SetPRPrompt(), locales.SetPRPromptDetail(), &s.PRMessagePrompt, commitmsg.DefaultPRPrompt, &a.ss.prompts[1])
 	})
 	settingsGroup(c, pal, locales.SetFiles(), "", func() {
 		settingRow(c, pal, locales.SetEditor(), locales.SetEditorDetail(), func() {

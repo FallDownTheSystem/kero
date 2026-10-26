@@ -634,6 +634,55 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.gitMessage(p)
 
+	case "pr.list":
+		var p proto.PRListParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prList(p)
+
+	case "pr.view":
+		var p proto.PRViewParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prView(p)
+
+	case "pr.review":
+		var p proto.PRReviewParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prReview(p)
+
+	case "pr.draft":
+		var p proto.PRDraftParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prDraft(p)
+
+	case "pr.create":
+		var p proto.PRCreateParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prCreate(p)
+
+	case "pr.fetch":
+		var p proto.PRFetchParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prFetch(p)
+
+	case "pr.message":
+		var p proto.PRMessageParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prMessage(p)
+
 	case "fs.list":
 		var p proto.FSListParams
 		if err := decode(&p); err != nil {

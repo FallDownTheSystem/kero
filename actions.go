@@ -122,6 +122,8 @@ func (a *App) run(id string, args map[string]string) {
 		a.toggleSide(sideFiles)
 	case "history.toggle":
 		a.toggleSide(sideHistory)
+	case "review.toggle":
+		a.toggleSide(sideReview)
 	case "search.toggle":
 		a.toggleSearch()
 	case "search.show":
@@ -207,6 +209,7 @@ var actionTitles = map[string]func() string{
 	"files.toggle":        locales.ActionToggleFiles,
 	"history.toggle":      locales.ActionToggleHistory,
 	"search.toggle":       locales.ActionToggleSearch,
+	"review.toggle":       locales.ActionToggleReview,
 	"changes.show":        locales.ActionShowChanges,
 	"files.show":          locales.ActionShowFiles,
 	"history.show":        locales.ActionShowHistory,
@@ -274,7 +277,7 @@ func (a *App) menuBar() []*mygo.MenuItem {
 			{Label: locales.MenuQuit(), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 			a.item("app.quitAll")}}
 	}
-	view := append(a.items("View", []string{"sidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{quickAction}),
+	view := append(a.items("View", []string{"sidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle", "review.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{quickAction}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})
 	return []*mygo.MenuItem{
 		kero,

@@ -127,6 +127,18 @@ Usage:
   kero restart <target>         start an exited pane's shell again
   kero notify [target] <message>
                                 flag the pane as needing you
+  kero pr comment <path>:<line>[-<end>] <text…|->
+                                draft a review comment on lines of the
+                                pull request's diff (- reads the text from
+                                stdin); --base: on the base's lines
+  kero pr edit <id> <text…|->   change a draft comment's text
+  kero pr delete <id>           delete a draft comment
+  kero pr summary <text…|->     the review's summary, its body on GitHub
+  kero pr show [--json]         the draft review: summary and comments;
+                                the user posts it from Kero
+      --pr <number>               the pull request, when the review wasn't
+                                  started in this pane from Kero
+      --remote <name>             its repository's remote
   kero report <state> [message] [--kind k] [--progress n] [--app a] [--id i]
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear
@@ -172,7 +184,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "pr", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -841,6 +853,8 @@ func run(args []string, host string) error {
 			return err
 		}
 		return c.Call("notify", proto.NotifyParams{ID: t.ref(), Title: f.vals["title"], Body: strings.Join(append(f.pos, f.rest...), " ")}, nil)
+	case "pr":
+		return prCommand(c, args)
 	}
 	return usageErr("unknown command %q (see kero help)", cmd)
 }

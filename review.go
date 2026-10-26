@@ -30,6 +30,11 @@ type review struct {
 	draft *reviewComment
 	edits *reviewComment
 	last  int // the id given last
+	// sync, when set, keeps elsewhere what the user does to a comment: a
+	// pull request's draft review, which kerod keeps (prPage). ask, when
+	// set, asks the agent that wrote a comment about it.
+	sync func(cm *reviewComment, deleted bool)
+	ask  func(cm *reviewComment)
 }
 
 // reviewComment is a comment on lines of a diff's side.
@@ -47,6 +52,8 @@ type reviewComment struct {
 	code       string // their text, as they were
 	text       string
 	focus      bool // the draft's field takes the keyboard, as it shows
+	// agent tells a pull request's draft comment the agent wrote.
+	agent bool
 }
 
 // reviewKey is what a.review keeps a worktree's review by.
@@ -85,9 +92,24 @@ func (a *App) fileRoot(sf *sideFile) string {
 	return ""
 }
 
-// reviewable tells a diff that takes comments: one of what changes, not
-// of a commit, nor a patch, whose lines are not the file's.
-func reviewable(sf *sideFile) bool { return sf.base != baseRev && !sf.patch }
+// reviewable tells a diff that takes comments: one of what changes, or of
+// a pull request's, not of a commit, nor a patch, whose lines are not the
+// file's.
+func reviewable(sf *sideFile) bool { return (sf.base != baseRev || sf.pr != nil) && !sf.patch }
+
+// reviewFor returns the review a diff's comments go to: its pull
+// request's, else its worktree's, made as it is first asked for when
+// make; nil for none.
+func (a *App) reviewFor(sf *sideFile, make bool) *review {
+	if sf.pr != nil {
+		return sf.pr.rv
+	}
+	root := a.fileRoot(sf)
+	if root == "" {
+		return nil
+	}
+	return a.reviewOf(a.hostOf(sf.pane), root, make)
+}
 
 // diffID is what tells a file's diff among a review's: its base, and the
 // file.
@@ -96,8 +118,8 @@ func diffID(sf *sideFile) string { return sf.base + "|" + sf.f.Path }
 // startComment opens a draft on lines of a diff's side, from start to end,
 // from 0.
 func (a *App) startComment(sf *sideFile, side editor.DiffSide, start, end int) {
-	root := a.fileRoot(sf)
-	if root == "" || sf.d == nil {
+	rv := a.reviewFor(sf, true)
+	if rv == nil || sf.d == nil {
 		return
 	}
 	buf := sf.d.New
@@ -110,7 +132,6 @@ func (a *App) startComment(sf *sideFile, side editor.DiffSide, start, end int) {
 	for l := start; l <= end; l++ {
 		code = append(code, buf.Line(l))
 	}
-	rv := a.reviewOf(a.hostOf(sf.pane), root, true)
 	rv.last++
 	rv.draft = &reviewComment{id: rv.last, path: sf.f.Path, diff: diffID(sf), side: side, start: start, end: end, code: strings.Join(code, "\n"), focus: true}
 	rv.edits = nil
@@ -185,21 +206,30 @@ const (
 func (a *App) reviewOptions(c *ui.Context, pal *palette, sf *sideFile, width float32) {
 	d := sf.d
 	d.Annotations, d.RenderAnnotation, d.OnGutterButton = nil, nil, nil
-	if !reviewable(sf) {
+	if sf.pr != nil {
+		a.prNotes(c, pal, sf, width)
 		return
 	}
-	root := a.fileRoot(sf)
-	if root == "" {
+	if !reviewable(sf) || a.fileRoot(sf) == "" {
 		return
 	}
 	d.OnGutterButton = func(line editor.DiffLineRange) {
 		start, end := commentLines(d.SelectedRanges(), line)
 		a.startComment(sf, line.Side, start, end)
 	}
-	rv := a.reviewOf(a.hostOf(sf.pane), root, false)
+	rv := a.reviewFor(sf, false)
 	if rv == nil {
 		return
 	}
+	render := a.commentNotes(c, pal, sf, rv, width)
+	d.RenderAnnotation = func(c *ui.Context, an editor.DiffAnnotation) { render(c, an) }
+}
+
+// commentNotes adds a review's comments on a diff, and the draft, to the
+// diff's annotations, under their lines, and returns what builds one of
+// them, which reports whether the annotation was one.
+func (a *App) commentNotes(c *ui.Context, pal *palette, sf *sideFile, rv *review, width float32) func(c *ui.Context, an editor.DiffAnnotation) bool {
+	d := sf.d
 	id := diffID(sf)
 	// The text wraps in the card, which a split view's side halves.
 	textW := width - 2*commentMargin - commentPadLeft - commentPadRight - 60
@@ -217,16 +247,18 @@ func (a *App) reviewOptions(c *ui.Context, pal *palette, sf *sideFile, width flo
 	if dr := rv.draft; dr != nil && dr.diff == id {
 		d.Annotations = append(d.Annotations, editor.DiffAnnotation{Side: dr.side, Line: dr.end, Height: draftH, Key: dr.id})
 	}
-	d.RenderAnnotation = func(c *ui.Context, an editor.DiffAnnotation) {
+	return func(c *ui.Context, an editor.DiffAnnotation) bool {
 		if dr := rv.draft; dr != nil && an.Key == dr.id {
 			a.commentDraft(c, pal, rv)
-			return
+			return true
 		}
 		for _, cm := range rv.comments {
 			if an.Key == cm.id {
 				a.commentCard(c, pal, rv, cm)
+				return true
 			}
 		}
+		return false
 	}
 }
 
@@ -237,8 +269,14 @@ func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewCom
 		Background(pal.accent.Alpha(0.08)).InsetShadow(0, 0, 0, 1, pal.accent.Alpha(0.25)).AlignItems(ui.Stretch).Children(func() {
 		ui.Row(c).Height(commentTitleH).Gap(6).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, commentIcon).Size(12, 12).TextColor(pal.accent).Shrink(0)
+			if cm.agent {
+				ui.Text(c, locales.ReviewByAgent()).FontSize(11.5).FontWeight(600).TextColor(pal.accent).SingleLine().Shrink(0)
+			}
 			ui.Text(c, commentPlace(cm)).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0)
 			ui.Spacer(c)
+			if rv.ask != nil && cm.agent {
+				iconButton(c, "ask", sparklesIcon, locales.ReviewAskAgent(), pal, func() { rv.ask(cm) })
+			}
 			iconButton(c, "edit", editIcon, locales.ReviewEdit(), pal, func() {
 				d := *cm
 				d.focus = true
@@ -246,6 +284,9 @@ func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewCom
 			})
 			iconButton(c, "delete", closeIcon, locales.ReviewDelete(), pal, func() {
 				rv.comments = slices.DeleteFunc(rv.comments, func(x *reviewComment) bool { return x == cm })
+				if rv.sync != nil {
+					rv.sync(cm, true)
+				}
 			})
 		})
 		// Of the line height MeasureText measures it at, for the room
@@ -259,15 +300,21 @@ func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewCom
 func (a *App) commentDraft(c *ui.Context, pal *palette, rv *review) {
 	dr := rv.draft
 	done := func(keep bool) {
+		var kept *reviewComment
 		switch {
 		case !keep || strings.TrimSpace(dr.text) == "":
 		case rv.edits != nil:
 			rv.edits.text = strings.TrimSpace(dr.text)
+			kept = rv.edits
 		default:
 			dr.text = strings.TrimSpace(dr.text)
 			rv.comments = append(rv.comments, dr)
+			kept = dr
 		}
 		rv.draft, rv.edits = nil, nil
+		if kept != nil && rv.sync != nil {
+			rv.sync(kept, false)
+		}
 	}
 	ui.Column(c.Key("draft")).Grow(1).Margin(4, commentMargin, 6, commentMargin).Padding(8).Gap(8).Radius(8).
 		Background(pal.card).InsetShadow(0, 0, 0, 1, pal.accent.Alpha(0.45)).AlignItems(ui.Stretch).Children(func() {

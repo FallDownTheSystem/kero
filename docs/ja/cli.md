@@ -192,6 +192,21 @@ kero diff review --branch                 # デフォルトブランチ以降
 
 [変更](./changes.md)を参照してください。
 
+## 下書きのレビュー
+
+プルリクエストをレビューするエージェントは、コメントを[下書きのレビュー](./changes.md#draft-reviews)に書き、それを Kero から投稿します。行はプルリクエストのヘッドでのファイルの行 (`--base` ではベースの行) で、プルリクエストの差分の中にある必要があります:
+
+```sh
+kero pr comment src/parse.go:42 "This drops the last token."
+kero pr comment src/parse.go:40-44 -      # 本文は標準入力から
+kero pr summary "Two bugs in the parser."
+kero pr show                              # 下書きと、各コメントの id
+kero pr edit 3 "Clearer text"
+kero pr delete 3
+```
+
+Kero から始めたレビューでは、ペインがそのプルリクエストを知っています。それ以外では `--pr <番号>` で指定します。
+
 ## 構成とセットアップ
 
 ```sh

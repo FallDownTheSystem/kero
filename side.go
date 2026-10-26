@@ -44,11 +44,11 @@ const (
 	defaultSide = 420 // the panel's width, as it first opens
 	minSide     = 300
 	// compactSide is the width below which the header's tabs but the shown
-	// one show their icons alone, beside the window's controls: the three
-	// tabs' labels, the side's buttons and the controls take some 450.
+	// one show their icons alone, beside the window's controls: the four
+	// tabs' labels, the side's buttons and the controls take some 520.
 	// Below tinySide, the shown one's label gives its room too.
-	compactSide = 460
-	tinySide    = 370
+	compactSide = 530
+	tinySide    = 400
 	minPanes    = 360 // the room the panel leaves the panes
 	splitWidth  = 760 // past which diff-layout auto shows diffs side by side
 )
@@ -71,6 +71,7 @@ type sideState struct {
 	changes changesState
 	files   filesState
 	search  searchState
+	pulls   pullsState
 	git     gitUI
 	// theme is the colors of code, made again only as the theme they are
 	// of, themeOf, changes.
@@ -127,6 +128,7 @@ type sideFile struct {
 	busy       bool
 	writing    bool
 	err        string
+	pr         *prPage // the pull request whose change it is, nil for none
 }
 
 // known is what of the file's text the client has, as git.file takes it:
@@ -189,7 +191,7 @@ func (a *App) sideView() string {
 // knownView is a view of the panel: Changes for one it doesn't know.
 func knownView(view string) string {
 	switch view {
-	case sideFiles, sideHistory, sideSearch:
+	case sideFiles, sideHistory, sideSearch, sideReview:
 		return view
 	}
 	return sideChanges
@@ -204,6 +206,8 @@ func sideAction(view string) string {
 		return "history.toggle"
 	case sideSearch:
 		return "search.toggle"
+	case sideReview:
+		return "review.toggle"
 	}
 	return "changes.toggle"
 }
@@ -346,6 +350,7 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			a.sideTab(c, pal, sideFiles, folderIcon, locales.SideFiles(), "files.toggle", compact)
 			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle", compact)
 			a.sideTab(c, pal, sideHistory, historyIcon, locales.SideHistory(), "history.toggle", compact)
+			a.sideTab(c, pal, sideReview, prIcon, locales.SideReview(), "review.toggle", compact)
 			dir := a.changesDir(s)
 			switch view {
 			case sideFiles, sideSearch:
@@ -377,6 +382,8 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 				a.historyView(c, pal, s, width)
 			case sideSearch:
 				a.searchView(c, pal, s)
+			case sideReview:
+				a.pullsView(c, pal, s, width)
 			default:
 				a.changesView(c, pal, s, width)
 			}
@@ -699,7 +706,8 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		box.Opacity(box.Animate("held", 1-0.45*b2f(held), 120*time.Millisecond))
 		box.Children(func() {
 			// The scroll bar runs below the header pinned at the top, not
-			// under it.
+			// under it, in room of its own at the right, as History's does,
+			// clear of the files' line counts.
 			ui.List(c.Key("rows"), ls, len(rows), func(i int) {
 				r := rows[i]
 				key := fileKey(scope, r.section, r.f.Path)
@@ -763,7 +771,7 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 						ls.ScrollIntoView(i)
 					}, tools, menu)
 				})
-			}).Grow(1).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
+			}).Grow(1).MinHeight(0).Padding(0, 6, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
 		})
 	}
 
@@ -936,7 +944,7 @@ func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, sf *sideFi
 // folding first when set; in a tree, indented by its depth. tools, when
 // set, draws its buttons at its end. Its context menu opens the file, of
 // pane's host in its worktree's root, and drags it onto a pane, unless it
-// was deleted; then come menu's items, when set.
+// was deleted, or root is ""; then come menu's items, when set.
 func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f proto.GitFile, depth int, folding, tools func(), menu func(*ui.Menu)) {
 	ch := &a.side.changes
 	collapsed := a.fileCollapsed(key)
@@ -945,7 +953,9 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f 
 	if hdr.Hovered() {
 		hdr.Background(pal.rowHover.Mix(pal.chip, 0.5))
 	}
-	full, gone := joinRel(root, f.Path), f.Status == "deleted"
+	// Without a root, the file is on no disk: of a pull request no worktree
+	// has checked out.
+	full, gone := joinRel(root, f.Path), f.Status == "deleted" || root == ""
 	if !gone || menu != nil {
 		hdr.ContextMenu(func(m *ui.Menu) {
 			if !gone {
@@ -1287,7 +1297,7 @@ func (a *App) diffSplit(width float32) bool {
 // diffOptions sets a file's diff's looks and actions for this frame: in a
 // turn, Revert and Keep on each change, as the user reviews what the
 // agent did; in Uncommitted, Stage and Discard on a change not staged,
-// and Unstage on one staged.
+// and Unstage on one staged; in Branch, Revert.
 func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sideFile, width float32) {
 	d := sf.d
 	d.FitContent = true
@@ -1304,10 +1314,12 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 	// would write back as one; nor of a file the index has in conflict.
 	// Uncommitted's stage and unstage the lines selected by their numbers
 	// too, from the bar of a change they are of (lineActions).
+	// Branch's Revert puts the branch's base's lines back in the file, a
+	// change not committed yet.
 	editable := !sf.patch && !sf.writing && !sf.text.Mixed
 	switch sf.base {
 	case git.BaseTurn:
-	case baseStaged, baseUnstaged:
+	case baseStaged, baseUnstaged, git.BaseBranch:
 		editable = editable && sf.f.Status != "conflict"
 	default:
 		editable = false
@@ -1362,7 +1374,9 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 			if hunkButton(c, "revert", revertIcon, locales.ChangesRevert(), locales.ChangesRevertTip(), pal) {
 				a.revertChange(sf, h)
 			}
-			if hunkButton(c, "keep", checkIcon, locales.ChangesKeep(), locales.ChangesKeepTip(), pal) {
+			// What a branch changed is committed: there is nothing to mark
+			// as reviewed.
+			if sf.base != git.BaseBranch && hunkButton(c, "keep", checkIcon, locales.ChangesKeep(), locales.ChangesKeepTip(), pal) {
 				h.Keep()
 			}
 		})

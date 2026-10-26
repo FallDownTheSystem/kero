@@ -14,7 +14,7 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, type into them, wait for them, read their screens, and report your own status. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, or the user's attention.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, type into them, wait for them, read their screens, report your own status, and draft pull request review comments. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, or a review of a pull request the user started from Kero.
 ---
 
 # Kero
@@ -85,6 +85,29 @@ fails: take a new snapshot.
 With no target, kero browser drives your session's browser pane; name
 one (kero browser <target> text) when there are several. It needs the app
 open and Remote Control on, in Settings › Agents.
+
+## Review a pull request
+
+When the user starts a review of a pull request from Kero, your comments
+go to a draft review, which the user reads, edits and posts to GitHub from
+Kero. Never post them yourself, with gh or otherwise:
+
+    kero pr comment src/parse.go:42 "This drops the last token."
+    kero pr comment src/parse.go:40-44 - <<'EOF'
+    A comment of several lines,
+    read from stdin.
+    EOF
+    kero pr comment src/old.go:10 --base "Why remove this?"   # the base's lines
+    kero pr summary "Two bugs in the parser; the rest looks good."
+    kero pr show                               # the draft so far, with ids
+    kero pr edit 3 "Clearer text"              # or delete 3
+
+Lines are the file's line numbers at the pull request's head (of the base
+with --base), which is checked out where you review it. GitHub takes
+comments only on lines of the diff, a change and the three lines around
+it: kero pr comment says which lines a file has when it refuses one. The
+user's own comments show in kero pr show too; don't remove them. Outside a
+review the user started in your pane, name the pull request: --pr 123.
 
 ## Tell the user
 

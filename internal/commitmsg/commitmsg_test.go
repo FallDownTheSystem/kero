@@ -94,14 +94,44 @@ func TestCommandInShell(t *testing.T) {
 }
 
 func TestPrompt(t *testing.T) {
-	p := Prompt(true, "Add x\nFix y", " a.go | 2 +-", "diff --git a/a.go b/a.go\n")
-	for _, want := range []string{"You made these changes", "Fix y", "a.go | 2 +-", "diff --git"} {
+	p := Prompt(true, "", "Add x\nFix y", " a.go | 2 +-", "diff --git a/a.go b/a.go\n")
+	for _, want := range []string{"You made these changes", DefaultCommitPrompt, msgOpen, "Fix y", "a.go | 2 +-", "diff --git"} {
 		if !strings.Contains(p, want) {
 			t.Errorf("the prompt has no %q", want)
 		}
 	}
-	if strings.Contains(Prompt(false, "", "s", "p"), "You made") {
+	if strings.Contains(Prompt(false, "", "", "s", "p"), "You made") {
 		t.Error("a new run's prompt says it made the changes")
+	}
+	// The user's words take the place of the default's, and the reply's
+	// form, which Clean reads, stays.
+	own := Prompt(false, "Use Conventional Commits.", "", "s", "p")
+	if !strings.Contains(own, "Use Conventional Commits.") || strings.Contains(own, DefaultCommitPrompt) || !strings.Contains(own, msgClose) {
+		t.Errorf("with the user's prompt:\n%s", own)
+	}
+}
+
+func TestPRPrompt(t *testing.T) {
+	p := PRPrompt(false, "", "abc Add x", "M a.go +1 -0", "diff --git")
+	for _, want := range []string{DefaultPRPrompt, prOpen, prClose, "abc Add x", "M a.go", "diff --git"} {
+		if !strings.Contains(p, want) {
+			t.Errorf("the prompt has no %q", want)
+		}
+	}
+}
+
+// A pull request's reply splits into its title, its first line, and its
+// description, whatever a model put around them.
+func TestSplitPR(t *testing.T) {
+	for in, want := range map[string][2]string{
+		"banner\n<pull-request>\nAdd login\n\nIt adds login.\n\n- a\n</pull-request>": {"Add login", "It adds login.\n\n- a"},
+		"<pull-request>\nTitle: Add login\nBody here\n</pull-request>":                {"Add login", "Body here"},
+		"<pull-request>\n# Add login\n</pull-request>":                                {"Add login", ""},
+	} {
+		title, body := SplitPR(CleanPR(in))
+		if title != want[0] || body != want[1] {
+			t.Errorf("SplitPR(%q) = %q, %q; want %q, %q", in, title, body, want[0], want[1])
+		}
 	}
 }
 

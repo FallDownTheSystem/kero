@@ -79,6 +79,8 @@ var (
 	historyIcon     = glyph("lucide-git-graph")
 	commitIcon      = glyph("lucide-git-commit-horizontal")
 	mergeIcon       = glyph("lucide-git-merge")
+	prIcon          = glyph("lucide-git-pull-request")
+	draftPRIcon     = glyph("lucide-git-pull-request-draft")
 	warningIcon     = glyph("f7-exclamationmark-triangle")
 	clockIcon       = glyph("f7-clock")
 	sparklesIcon    = glyph("f7-sparkles")

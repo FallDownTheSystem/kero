@@ -138,6 +138,12 @@ kero config check             # 不明なキーと不正な値を報告
 | `worktree-base` | `default` | [セッション専用のワークツリー](./changes.md#sessions-in-their-own-worktree)の起点: リポジトリのデフォルトブランチ `default`、または今いるセッションのブランチ `current` |
 | `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
 | `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。シェルで実行され、プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。中の `{session}` はフォークするペインのエージェントの会話の ID になります（`cc -p --resume {session} --fork-session` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
+| `commit-message-prompt` |  | エージェントがコミットメッセージを書く方法。最近のコミットとステージした差分の前に置く指示です。空なら Kero のもの（設定 › 一般 に表示）。改行は `\n` と書きます |
+| `pr-message-prompt` |  | エージェントが[プルリクエスト](./changes.md#new-pull-request)のタイトルと説明を書く方法。`commit-message-prompt` と同様です |
+| `pr-notify` | `review` | プロジェクトの GitHub リポジトリの新しいプルリクエストのうち、[通知する](./changes.md#pull-request-notifications)もの。`review` はレビューを依頼するもの、`all` は他の人が開いたものすべて、`off` はなし (確認も止まります) |
+| `pr-poll-interval` | `5` | 新しいプルリクエストを確認する間隔 (分) |
+| `review-command` |  | リポジトリのプルリクエストを[レビュー](./changes.md#review)するエージェントのコマンド（`owner/name=codex --full-auto` など）。空なら `claude`。リポジトリごとに繰り返します |
+| `review-prompt` |  | レビューするエージェントへの指示（`owner/name=/code-review {ticket} #{number}` など）。空なら Kero のもの。改行は `\n` と書きます。リポジトリごとに繰り返します |
 
 ## ファイル
 
