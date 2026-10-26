@@ -87,6 +87,7 @@ func settingsIndex() []searchEntry {
 		{"agents", "Claude Code", "skill agents install"},
 		{"agents", "Codex, OpenCode, Pi", "skill agents install"},
 		{"agents", locales.SetProgramStatus(), "osc 7501 report progress"},
+		{"agents", locales.SetResumeCommands(), "resume-command claude codex pi opencode launcher cc yolo flags conversation restore"},
 
 		{"hosts", locales.SetHosts(), "host hosts remote server ssh tailscale tailnet wsl machine linux devbox -H kero hosts"},
 		{"hosts", locales.SetHostAdd(), "add host address ssh wsl https"},
@@ -127,6 +128,7 @@ var actionWords = map[string]string{
 	"session.newHome":     "create add tab terminal shell home directory ~",
 	"session.newWorktree": "create add worktree branch checkout agent isolate parallel",
 	"conversation.resume": "history agent claude codex pi opencode continue reopen restore past chat",
+	"conversation.search": "find history agent claude codex pi resume past chat message transcript fast-resume",
 	"project.open":        "folder directory repo repository workspace add",
 	"palette.open":        "switch jump search find command palette",
 	"session.attention":   "waiting blocked attention notification needs input agent",

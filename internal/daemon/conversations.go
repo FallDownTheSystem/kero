@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"kero/internal/convsearch"
 	"kero/internal/proto"
 )
 
@@ -60,7 +61,7 @@ func (d *Daemon) loadConversations() {
 		return
 	}
 	list = slices.DeleteFunc(list, func(c proto.Conversation) bool {
-		return resumeCommand(&proto.AgentSession{Agent: c.Agent, ID: c.ID}) == nil
+		return !resumable(&proto.AgentSession{Agent: c.Agent, ID: c.ID})
 	})
 	d.convs.mu.Lock()
 	d.convs.list = list
@@ -86,7 +87,7 @@ func (d *Daemon) saveConversations() {
 // note remembers a conversation as it runs, at, keeping what c leaves out
 // of what was known, and when it started.
 func (cs *convStore) note(c proto.Conversation, at int64) {
-	if resumeCommand(&proto.AgentSession{Agent: c.Agent, ID: c.ID}) == nil {
+	if !resumable(&proto.AgentSession{Agent: c.Agent, ID: c.ID}) {
 		return
 	}
 	cs.mu.Lock()
@@ -260,23 +261,11 @@ func (d *Daemon) conversations() []proto.Conversation {
 	d.convs.mu.Lock()
 	list := slices.Clone(d.convs.list)
 	d.convs.mu.Unlock()
-	type where struct{ session, pane string }
-	running := map[proto.AgentSession]where{}
-	d.mu.Lock()
-	for _, s := range d.sessions {
-		for _, p := range s.panes {
-			p.mu.Lock()
-			if as := p.info.AgentSession; as != nil {
-				running[*as] = where{s.id, p.info.ID}
-			}
-			p.mu.Unlock()
-		}
-	}
-	d.mu.Unlock()
+	running := d.runningConversations()
 	for i := range list {
 		c := &list[i]
 		if w, ok := running[proto.AgentSession{Agent: c.Agent, ID: c.ID}]; ok {
-			c.Session, c.Pane = w.session, w.pane
+			c.Session, c.Pane = w[0], w[1]
 		}
 		if c.Agent == "claude" {
 			if t := d.convs.claudeTitle(c.ID); t != "" {
@@ -287,10 +276,70 @@ func (d *Daemon) conversations() []proto.Conversation {
 	return list
 }
 
+// searchIndex is the index of the agents' histories, which kerod keeps
+// beside its state.
+func (d *Daemon) searchIndex() *convsearch.Index {
+	d.searchOnce.Do(func() {
+		if d.search == nil {
+			d.search = convsearch.New(filepath.Join(d.dir, "search.gob"), convsearch.Sources(proto.Home()))
+		}
+	})
+	return d.search
+}
+
+// searchConversations finds conversations in the agents' histories, each
+// as kerod remembers it, if it ran in Kero, with the pane that runs it
+// now. A conversation no agent of Kero's resumes is none to show.
+func (d *Daemon) searchConversations(p proto.SearchParams) proto.SearchResult {
+	res := d.searchIndex().Search(p, time.Now())
+	running := d.runningConversations()
+	hits := res.Hits[:0]
+	for _, h := range res.Hits {
+		as := proto.AgentSession{Agent: h.Agent, ID: h.ID}
+		if !resumable(&as) {
+			res.Matched--
+			continue
+		}
+		if c, ok := d.convs.find(h.Agent, h.ID); ok {
+			h.Name, h.Project, h.Archived = c.Name, c.Project, c.Archived
+		}
+		if w, ok := running[as]; ok {
+			h.Session, h.Pane = w[0], w[1]
+		}
+		hits = append(hits, h)
+	}
+	res.Hits = hits
+	return res
+}
+
+// runningConversations are the conversations the panes' agents run, by
+// the session and pane of each.
+func (d *Daemon) runningConversations() map[proto.AgentSession][2]string {
+	running := map[proto.AgentSession][2]string{}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, s := range d.sessions {
+		for _, p := range s.panes {
+			p.mu.Lock()
+			if as := p.info.AgentSession; as != nil {
+				running[*as] = [2]string{s.id, p.info.ID}
+			}
+			p.mu.Unlock()
+		}
+	}
+	return running
+}
+
 // resumeConversation shows the session running a conversation, or starts
-// one that resumes it, in the directory and project it ran in.
+// one that resumes it, in the directory and project it ran in: one kerod
+// remembers, or one a search found in its agent's history.
 func (d *Daemon) resumeConversation(p proto.ConversationParams) (proto.Session, error) {
 	c, ok := d.convs.find(p.Agent, p.ID)
+	if !ok {
+		if doc, found := d.searchIndex().Find(p.Agent, p.ID); found {
+			c, ok = proto.Conversation{Agent: doc.Agent, ID: doc.ID, Dir: doc.Dir, Title: doc.Title, Started: doc.Started, Updated: doc.Updated}, true
+		}
+	}
 	if !ok {
 		return proto.Session{}, fmt.Errorf("no conversation %s of %s", p.ID, p.Agent)
 	}

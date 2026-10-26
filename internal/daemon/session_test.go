@@ -5,11 +5,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 // testPane is a pane with no program, whose output the test writes.
@@ -195,6 +197,8 @@ func TestWorkingHeldBeforeIdle(t *testing.T) {
 // A restore resumes Claude Code's and Codex's sessions, and nothing a
 // state file could slip in.
 func TestResumeCommand(t *testing.T) {
+	// The agents' own commands, not the user's.
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
 	for _, c := range []struct {
 		agent, id, want string
 	}{
@@ -213,6 +217,38 @@ func TestResumeCommand(t *testing.T) {
 	}
 	if resumeCommand(nil) != nil {
 		t.Error("resumed nothing")
+	}
+}
+
+// The user's resume command runs in the shell as a line, the id where it
+// says, {session} or {{session}}, else at its end; never one a state file
+// could slip in.
+func TestUserResumeCommand(t *testing.T) {
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
+	set := settings.Load()
+	set.ResumeClaude = "cc --yolo --resume {{session}}"
+	set.ResumeCodex = "cx resume {session} --full-auto"
+	set.ResumePi = "mypi --session"
+	if err := settings.Save(set); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		agent, id string
+		want      []string
+	}{
+		{"claude", "13b997c3", []string{"cc --yolo --resume 13b997c3"}},
+		{"codex", "019a", []string{"cx resume 019a --full-auto"}},
+		{"pi", "0f3c", []string{"mypi --session 0f3c"}},
+		{"opencode", "ses_1", []string{"opencode", "--session", "ses_1"}},
+		{"claude", "x; rm -rf ~", nil},
+	} {
+		if got := resumeCommand(&proto.AgentSession{Agent: c.agent, ID: c.id}); !slices.Equal(got, c.want) {
+			t.Errorf("%s %q: got %q, want %q", c.agent, c.id, got, c.want)
+		}
+	}
+	// As a line, the shell runs it as it is, the user's functions too.
+	if got := shellArgs("pwsh", "", resumeCommand(&proto.AgentSession{Agent: "claude", ID: "13b997c3"})); !strings.Contains(got[len(got)-1], "; cc --yolo --resume 13b997c3;") {
+		t.Errorf("pwsh runs %q", got)
 	}
 }
 
