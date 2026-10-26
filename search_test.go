@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -37,7 +38,11 @@ func TestSearchView(t *testing.T) {
 		return nil, errors.New("no " + method + " in a test")
 	})
 	a.local().cl = cl
-	tt := ui.NewTester(a.view, 1280, 720)
+	var card ui.Rect
+	tt := ui.NewTester(func(c *ui.Context) {
+		a.view(c)
+		card = a.paneRef("card-b").Bounds(c)
+	}, 1280, 720)
 	tt.Frame()
 	a.run("search.toggle", nil)
 	tt.Frame()
@@ -113,4 +118,51 @@ func TestSearchView(t *testing.T) {
 	if pos, ok := a.gotos[gotoKey(a.local(), "/tmp/src/a.go")]; !ok || pos.Line != 8 {
 		t.Errorf("the caret goes to %+v", pos)
 	}
+	opened := func(how, beside string, line int) {
+		t.Helper()
+		select {
+		case p := <-splits:
+			if p.File != "/tmp/src/a.go" || p.Split != beside || p.Direction != "right" {
+				t.Errorf("%s opened %+v", how, p)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("%s opened nothing", how)
+		}
+		if pos, ok := a.gotos[gotoKey(a.local(), "/tmp/src/a.go")]; !ok || pos.Line != line-1 {
+			t.Errorf("%s puts the caret at %+v, want line %d", how, pos, line)
+		}
+	}
+
+	// A match's menu opens its file at its line too.
+	if err := tt.RightClick("func Hello() {}"); err != nil {
+		t.Fatal(err)
+	}
+	if items := tt.Menu(); !slices.Equal(items, []string{"Open in Editor", "Open in Pane"}) {
+		t.Errorf("a match's menu has %q", items)
+	}
+	if err := tt.ChooseMenuItem("Open in Pane"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	opened("Open in Pane", a.focusOf(&a.st.Sessions[0]), 3)
+
+	// And a match dragged onto a pane opens there, at its line. No pane
+	// opened to take the caret Open in Pane left.
+	clear(a.gotos)
+	r, ok = tt.Find("func Hello() {}")
+	if !ok {
+		t.Fatalf("no match; texts %q", tt.Texts())
+	}
+	fx, fy := r.X+4, r.Y+r.H/2
+	tt.Advance(time.Second)
+	tt.Press(fx, fy)
+	tt.Frame()
+	tt.Move(fx+12, fy)
+	tt.Frame()
+	x, y := card.X+card.W-20, card.Y+card.H/2
+	tt.Move(x, y)
+	tt.Frame()
+	tt.Release(x, y)
+	tt.Frame()
+	opened("a drag", "b", 3)
 }

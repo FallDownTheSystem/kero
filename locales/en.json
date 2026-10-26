@@ -611,7 +611,6 @@
   "changesGitOff": "Git status is off",
   "changesGitOffDetail": "Turn on Show Git Status in Settings to see the changes here.",
   "changesCantRead": "Can't read the changes",
-  "changesOpenFile": "Open File",
   "changesUnified": "Unified",
   "changesSplit": "Side by Side",
   "changesUnfoldFiles": "Expand All Files",

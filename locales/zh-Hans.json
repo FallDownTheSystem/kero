@@ -456,7 +456,6 @@
   "changesGitOff": "Git 状态已关闭",
   "changesGitOffDetail": "在设置中打开“显示 Git 状态”即可在这里查看改动。",
   "changesCantRead": "无法读取改动",
-  "changesOpenFile": "打开文件",
   "changesUnified": "合并",
   "changesSplit": "并排",
   "changesUnfoldFiles": "展开所有文件",

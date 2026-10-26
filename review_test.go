@@ -89,6 +89,12 @@ func TestReview(t *testing.T) {
 	if !tt.HasText("1 review comment") || !tt.HasText("b.go:3–4") || !tt.HasText("Name these\nafter what they do") {
 		t.Errorf("no band, or no comment under its lines; texts %q", tt.Texts())
 	}
+	// The band is below the files, the comment it lists above it.
+	band, _ := tt.Find("1 review comment")
+	card, _ := tt.Find("Name these\nafter what they do")
+	if band.Y <= card.Y+card.H {
+		t.Errorf("the band at %v is above the comment at %v", band, card)
+	}
 	shot(t, tt, "review")
 
 	// Escape drops a draft, and leaves the panel the keyboard.

@@ -258,7 +258,10 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 		case paneDrag:
 			a.defer_(func() { a.movePane(sid, d.pane, target, drop) })
 		case fileDrag:
-			a.defer_(func() { a.dropFile(sid, target, d.path, drop) })
+			a.defer_(func() {
+				a.goToLine(d.pane, d.path, d.line)
+				a.dropFile(sid, target, d.path, drop)
+			})
 		}
 	}
 	if zone != zoneNone {
@@ -348,9 +351,13 @@ type cardDrop interface{ dropsOnCard() }
 // paneDrag is a pane dragged by its title to another place.
 type paneDrag struct{ session, pane string }
 
-// fileDrag is a file of the Files view dragged onto a pane, the tree's pane
-// telling its host.
-type fileDrag struct{ pane, path string }
+// fileDrag is a file dragged onto a pane, from the Files view, a changed
+// file's header or the Search view, pane telling its host; line, from 1,
+// is where its caret goes, a match's, else 0.
+type fileDrag struct {
+	pane, path string
+	line       int
+}
 
 func (paneDrag) dropsOnCard() {}
 func (fileDrag) dropsOnCard() {}

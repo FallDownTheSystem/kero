@@ -43,11 +43,20 @@ func (a *App) openAt(pane, file string, line int) {
 			return
 		}
 	}
+	a.goToLine(pane, file, line)
+	a.openInPane(pane, file)
+}
+
+// goToLine has the editor pane a file of a pane's host opens in next put
+// the caret at a line, from 1; 0 leaves it where the file opens.
+func (a *App) goToLine(pane, file string, line int) {
+	if line < 1 {
+		return
+	}
 	if a.gotos == nil {
 		a.gotos = map[string]editor.Pos{}
 	}
-	a.gotos[gotoKey(h, file)] = pos
-	a.openInPane(pane, file)
+	a.gotos[gotoKey(a.hostOf(pane), file)] = editor.Pos{Line: line - 1}
 }
 
 // goToFile is Go to File's: the files of the project of the pane the user

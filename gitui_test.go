@@ -135,6 +135,9 @@ func TestChangesTreeIgnore(t *testing.T) {
 	if err := tt.RightClick("new.txt"); err != nil {
 		t.Fatal(err)
 	}
+	if items := tt.Menu(); !slices.Contains(items, "Open in Editor") || !slices.Contains(items, "Open in Pane") {
+		t.Errorf("a changed file's menu opens it not: %q", items)
+	}
 	if err := tt.ChooseMenuItem("Add to .gitignore"); err != nil {
 		t.Fatalf("%v; menu %q", err, tt.Menu())
 	}

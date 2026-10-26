@@ -661,7 +661,7 @@ func (a *App) treeView(c *ui.Context, pal *palette, t *fileTree) {
 		row.ContextMenu(func(m *ui.Menu) { a.fileMenu(c, m, t, path, dir) })
 		// A file drags onto a pane, to open there (paneCard).
 		if !dir {
-			row.Drag(fileDrag{t.pane, path})
+			row.Drag(fileDrag{pane: t.pane, path: path})
 			if row.Dragging() {
 				// Where the file was, as it moves with the pointer.
 				row.Opacity(0.4)
@@ -793,14 +793,7 @@ func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir 
 		if t.shown != path && m.Item(locales.FilesPreview()).Chosen() {
 			a.openFile(t, path)
 		}
-		if m.Item(locales.FilesOpenInPane()).Chosen() {
-			a.openInPane(t.pane, path)
-		}
-		// Open in Pane takes the place of a file pane's file then
-		// (openInPane), so a pane of its own is asked for.
-		if a.set.FilePane == "replace" && m.Item(locales.FilesOpenInNewPane()).Chosen() {
-			a.openInNewPane(t.pane, path)
-		}
+		a.paneItems(m, t.pane, path, 0)
 		if g := a.paneGit(t.pane); g != nil && g.Root == t.root && m.Item(locales.FilesShowHistory()).Chosen() {
 			a.showHistory(strings.ReplaceAll(t.rel(path), `\`, "/"))
 		}
@@ -824,6 +817,35 @@ func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir 
 	}
 	if m.Item(locales.FilesCopyRelativePath()).Chosen() {
 		c.WriteClipboard(t.rel(path))
+	}
+}
+
+// openItems are the items of a menu of a file of a pane's host, outside
+// the tree, that open it: in the user's editor, on this machine, then in
+// an editor pane (paneItems), there with the caret at a line, from 1,
+// unless 0.
+func (a *App) openItems(m *ui.Menu, pane, file string, line int) {
+	if !a.hostOf(pane).remote() && m.Item(locales.FilesOpenInEditor()).Chosen() {
+		a.openInEditor(file)
+	}
+	a.paneItems(m, pane, file, line)
+}
+
+// paneItems are the items of a file's menu that open it in an editor pane,
+// with the caret at a line, from 1, unless 0: Open in Pane, and Open in
+// New Pane while Open in Pane takes the place of a file pane's file
+// (openInPane), so that a pane of its own is asked for.
+func (a *App) paneItems(m *ui.Menu, pane, file string, line int) {
+	if m.Item(locales.FilesOpenInPane()).Chosen() {
+		if line > 0 {
+			a.openAt(pane, file, line)
+		} else {
+			a.openInPane(pane, file)
+		}
+	}
+	if a.set.FilePane == "replace" && m.Item(locales.FilesOpenInNewPane()).Chosen() {
+		a.goToLine(pane, file, line)
+		a.openInNewPane(pane, file)
 	}
 }
 
