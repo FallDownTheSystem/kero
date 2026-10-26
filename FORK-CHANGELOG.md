@@ -5,6 +5,21 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.5
+
+- The Changes view's files start folded, a list of what changed: each
+  section, and Last Turn's and Branch's lists, has a button that unfolds
+  all its files, or folds them while one is unfolded
+- **Tree View**, beside Wrap Lines, shows the changed files in their
+  folders
+- Right-click a file, or a folder of the tree, to **Add to .gitignore**:
+  for what git tracks already, Kero asks whether to stop tracking it too
+- Drag a project by its name to reorder the sidebar's projects, which a
+  faint line now keeps apart
+- **Preview Markdown** shows a Markdown file as it reads, in an editor
+  pane and in the Files view
+- Chevrons turn quicker, without overshooting
+
 ## 2.1.21-fork.4
 
 - **Search conversations** finds a Claude Code conversation by the slash
