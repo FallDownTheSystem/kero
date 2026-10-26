@@ -923,6 +923,8 @@
   "searchTurns": "あなたのメッセージ {count} 件",
   "searchYou": "あなた",
   "searchShowSession": "セッションを表示",
+  "searchRestart": "Kero のサービスが古いバージョンで動いているため、検索できません。再起動すると、このマシンの会話を検索できます。",
+  "searchRestartHost": "{host} は古い Kero で動いているため、検索できません。更新すると、その会話を検索できます。",
   "setResumeCommands": "再開コマンド",
   "setResumeCommandsDetail": "各エージェントの会話を再開するコマンド。再開、検索、セッションの復元で使われます。自分のコマンドや関数と同じようにシェルで実行されます（例: cc --yolo --resume '{session}'）。中の '{session}' は会話の ID になります。空なら、エージェント自身のコマンドを使います。"
 }

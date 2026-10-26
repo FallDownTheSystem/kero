@@ -287,14 +287,13 @@ func injected(s string) bool {
 
 // parseClaude reads a Claude Code transcript: its user's and Claude's
 // messages, not the tools', nor what Claude Code adds, and its title, the
-// user's (/rename) over Claude's. A conversation run by a program, as
-// claude -p runs one, is none to look for.
+// user's (/rename) over Claude's. Its entrypoint tells nothing: builds of
+// Claude Code that others wrap, as an interactive session, write an SDK's.
 func parseClaude(path string) ([]Doc, error) {
 	b := &builder{}
 	b.doc.Agent = "claude"
 	b.doc.ID = strings.TrimSuffix(filepath.Base(path), ".jsonl")
 	custom, ai := "", ""
-	program := false
 	err := lines(path, func(line []byte) bool {
 		user := bytes.Contains(line, []byte(`"type":"user"`))
 		if !user && !bytes.Contains(line, []byte(`"type":"assistant"`)) && !bytes.Contains(line, []byte(`-title"`)) {
@@ -311,7 +310,6 @@ func parseClaude(path string) ([]Doc, error) {
 			IsCompactSummary bool   `json:"isCompactSummary"`
 			Cwd              string `json:"cwd"`
 			Timestamp        string `json:"timestamp"`
-			Entrypoint       string `json:"entrypoint"`
 			CustomTitle      string `json:"customTitle"`
 			AITitle          string `json:"aiTitle"`
 			Message          struct {
@@ -332,10 +330,6 @@ func parseClaude(path string) ([]Doc, error) {
 		default:
 			return true
 		}
-		if strings.HasPrefix(e.Entrypoint, "sdk") {
-			program = true
-			return false
-		}
 		if e.IsSidechain || e.IsMeta || e.IsCompactSummary {
 			return true
 		}
@@ -351,7 +345,7 @@ func parseClaude(path string) ([]Doc, error) {
 		}
 		return true
 	})
-	if err != nil || program {
+	if err != nil {
 		return nil, err
 	}
 	if custom == "" {

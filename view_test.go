@@ -533,6 +533,33 @@ func TestConversationSearch(t *testing.T) {
 	}
 }
 
+// A kerod of a Kero with no search says to restart it, not that nothing
+// matched.
+func TestConversationSearchOlderKerod(t *testing.T) {
+	a := testApp(t)
+	cl, _ := projectClient(t, func(method string, _ json.RawMessage) (any, error) {
+		return nil, fmt.Errorf("unknown method %q", method)
+	})
+	a.local().conn, a.local().cl = connReady, cl
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("login")
+	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
+	tt.Frame()
+	for deadline := time.Now().Add(5 * time.Second); len(a.srch.older) == 0 && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		a.runEarly()
+	}
+	tt.Frame()
+	if !tt.HasText(locales.SearchRestart()) || !tt.HasText(locales.CommonRestartService()) || tt.HasText(locales.SearchNoMatches()) {
+		t.Errorf("texts %q", tt.Texts())
+	}
+}
+
 // A session's tooltip shows below the pointer where it rested, as macOS
 // shows tooltips, not centered over the row ($KERO_SHOTS).
 func TestSessionTooltipAtPointer(t *testing.T) {

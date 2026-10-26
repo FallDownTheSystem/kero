@@ -923,6 +923,8 @@
   "searchTurns": "你写了 {count} 条消息",
   "searchYou": "你",
   "searchShowSession": "显示会话",
+  "searchRestart": "Kero 的服务运行的是旧版本，无法搜索。重启它即可搜索本机的对话。",
+  "searchRestartHost": "{host} 运行的是旧版 Kero，无法搜索。更新它即可搜索它的对话。",
   "setResumeCommands": "恢复命令",
   "setResumeCommandsDetail": "恢复各智能体对话的命令，用于恢复、搜索和恢复会话。它像你自己的命令和函数一样在你的 shell 中运行，例如 cc --yolo --resume '{session}'；其中的 '{session}' 会换成对话的 ID。留空则使用智能体自己的命令。"
 }

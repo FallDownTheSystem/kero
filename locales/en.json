@@ -1578,6 +1578,15 @@
   },
   "searchYou": "You",
   "searchShowSession": "Show Session",
+  "searchRestart": "Kero's service runs an older version, which can't search. Restart it to search this machine's conversations.",
+  "searchRestartHost": "{host} runs an older Kero, which can't search. Update it to search its conversations.",
+  "@searchRestartHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
   "setResumeCommands": "Resume commands",
   "setResumeCommandsDetail": "The command that resumes each agent's conversations, as Resume, the search and restoring sessions start them. It runs in your shell, as your own commands and functions do, as cc --yolo --resume '{session}'; '{session}' in it becomes the conversation's ID. Empty uses the agent's own command."
 }
