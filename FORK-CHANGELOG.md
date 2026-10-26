@@ -5,6 +5,26 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.8
+
+- **App Font** (Settings › Appearance) sets the font of Kero's own text,
+  apart from the terminals': Kero comes with Inter, Geist, Mona Sans,
+  Public Sans, IBM Plex Sans, Plus Jakarta Sans, Manrope, Figtree, DM
+  Serif Display and Playfair Display, and any installed font works
+- Text sits centered beside the icons next to it, where it sat low before
+- The branch switcher lists the tags after the remote branches: choosing
+  one checks out its commit
+- In the History view, a branch and its remote's at the same commit share
+  one chip, with both icons; refs too many for the row are cut off rather
+  than drawn over the commit's message. Hovering a commit shows the author
+  and the email on lines of their own, and a click on an open commit's
+  message closes it
+- A changed file's path shows when you hover its name, not anywhere on
+  its row
+- **Search** moved from the Explorer's tabs to a button in the Files
+  view's toolbar; Find (Ctrl+Shift+F) in the Explorer opens it, and in a
+  diff or a file there still finds in it
+
 ## 2.1.21-fork.7
 
 - **Review comments**: comment on lines of the Changes view's diffs, as on
