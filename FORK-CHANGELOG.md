@@ -5,6 +5,21 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.9
+
+- Right-click a changed file in the Changes view, or a commit's file in
+  the History view, to open it: **Open in Editor**, **Open in Pane**, and
+  **Open in New Pane** when Open in Pane replaces an editor pane's file.
+  This takes the place of the file's Open File button, and History's
+  **Show File History** moved into the same menu
+- The Search view's files and found lines have that menu too; a line opens
+  its file at that line
+- Drag a changed file, a commit's file, or a search result onto a pane to
+  open it there, as from the Files view; a found line opens at its line
+- A review comment's card no longer cuts off its bottom edge
+- The review comments and **Send to Agent** now sit below the files,
+  above the commit box
+
 ## 2.1.21-fork.8
 
 - **App Font** (Settings › Appearance) sets the font of Kero's own text,
