@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"kero/internal/proto"
@@ -214,8 +215,34 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 }
 
 // resumeCommand is the command that resumes an agent's session, nil for
-// none.
+// none: the user's (settings' Resume), a line for the shell to run as it
+// runs the user's own commands and functions, else the agent's own.
 func resumeCommand(a *proto.AgentSession) []string {
+	if !resumable(a) {
+		return nil
+	}
+	set := settings.Load()
+	if p := set.Resume(a.Agent); p != nil && strings.TrimSpace(*p) != "" {
+		line := strings.TrimSpace(*p)
+		// {{session}} too, as a template writes it. The id is letters,
+		// digits, - and _ alone (agentSessionRe): nothing for the shell.
+		line = strings.ReplaceAll(line, "{"+settings.SessionPlaceholder+"}", settings.SessionPlaceholder)
+		if strings.Contains(line, settings.SessionPlaceholder) {
+			line = strings.ReplaceAll(line, settings.SessionPlaceholder, a.ID)
+		} else {
+			line += " " + a.ID
+		}
+		return []string{line}
+	}
+	return agentResume(a)
+}
+
+// resumable tells an agent's session that a resume can start: one of an
+// agent Kero resumes, by an id that is safe on a command line.
+func resumable(a *proto.AgentSession) bool { return agentResume(a) != nil }
+
+// agentResume is the agent's own command that resumes its session.
+func agentResume(a *proto.AgentSession) []string {
 	if a == nil || !agentSessionRe.MatchString(a.ID) {
 		return nil
 	}

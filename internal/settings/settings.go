@@ -85,6 +85,14 @@ type Settings struct {
 
 	// Agents
 	RemoteControl bool `json:"remoteControl"` // kero focus and kero do drive the app
+	// ResumeClaude, ResumeCodex, ResumePi and ResumeOpenCode resume each
+	// agent's conversation, in the user's shell, as their launchers and
+	// flags do: SessionPlaceholder in one is the conversation's id. "" for
+	// the agent's own resume (Resume).
+	ResumeClaude   string `json:"resumeClaude"`
+	ResumeCodex    string `json:"resumeCodex"`
+	ResumePi       string `json:"resumePi"`
+	ResumeOpenCode string `json:"resumeOpenCode"`
 
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
@@ -154,6 +162,30 @@ type Host struct {
 	// Color marks the host's sessions in the sidebar and its panes: one of
 	// HostColors, "" for the one its name picks.
 	Color string `json:"color,omitempty"`
+}
+
+// SessionPlaceholder is what a resume command has for the id of the
+// conversation it resumes.
+const SessionPlaceholder = "{session}"
+
+// ResumeAgents are the agents whose conversations Kero resumes, in the
+// order Settings shows their commands.
+var ResumeAgents = []string{"claude", "codex", "pi", "opencode"}
+
+// Resume returns the user's command that resumes an agent's
+// conversations, nil for an agent with none to set.
+func (s *Settings) Resume(agent string) *string {
+	switch agent {
+	case "claude":
+		return &s.ResumeClaude
+	case "codex":
+		return &s.ResumeCodex
+	case "pi":
+		return &s.ResumePi
+	case "opencode":
+		return &s.ResumeOpenCode
+	}
+	return nil
 }
 
 // HostColors are the colors a host takes.

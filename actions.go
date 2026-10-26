@@ -52,6 +52,8 @@ func (a *App) run(id string, args map[string]string) {
 		a.openPalette()
 	case "conversation.resume":
 		a.openConversations()
+	case "conversation.search":
+		a.focusSearch()
 	case "session.attention":
 		a.jumpToAttention()
 	case "session.next":
@@ -165,6 +167,7 @@ var actionTitles = map[string]func() string{
 	"project.open":        locales.ActionOpenProject,
 	"palette.open":        locales.ActionGoToSession,
 	"conversation.resume": locales.ActionResumeConversation,
+	"conversation.search": locales.ActionSearchConversations,
 	"session.attention":   locales.ActionJumpToAttention,
 	"session.next":        locales.ActionNextSession,
 	"session.previous":    locales.ActionPreviousSession,
@@ -262,7 +265,7 @@ func (a *App) menuBar() []*mygo.MenuItem {
 		kero,
 		{Label: locales.MenuSession(), Submenu: a.items("Session",
 			[]string{"session.new", "session.newHome", "session.newWorktree", "project.open"},
-			[]string{"palette.open", "conversation.resume", "session.attention", "session.next", "session.previous"},
+			[]string{"palette.open", "conversation.resume", "conversation.search", "session.attention", "session.next", "session.previous"},
 			[]string{"session.rename", "pane.restart"},
 			[]string{"pane.close", "session.close"})},
 		// The Edit menu's own items, then finding.

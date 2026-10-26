@@ -71,7 +71,7 @@ Kero remembers the conversations of Claude Code, Codex, Pi and OpenCode that ran
 - <kbd>⌘</kbd> <kbd>P</kbd> lists the last few under **Recent Conversations**, and finds older ones as you type.
 - **Session › Resume Conversation…** (<kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>O</kbd>) lists them all.
 
-Picking one starts a session in the directory and project it ran in, under the name its session had, and resumes it as the agent's own resume option would. A conversation a pane still runs takes you to that pane instead. Each conversation shows by its session's name, else by its title: Claude Code's own, or what the agent showed as the pane's title.
+Picking one starts a session in the directory and project it ran in, under the name its session had, and resumes it as the agent's own resume option would. A conversation a pane still runs takes you to that pane instead. Each conversation shows by its session's name, else by its title: Claude Code's own, or what the agent showed as the pane's title. To resume an agent's conversations with a launcher of your own, or with flags, set its command in Settings › Agents › **Resume commands**, as `cc --yolo --resume {session}`: it runs in your shell, so your shell's functions work too.
 
 kerod keeps the last 200, in `conversations.json` beside its state, and each host keeps its own.
 
@@ -90,3 +90,17 @@ Turn on Settings › General › **Session history**, or `session-history = true
 - Click one to resume it, as the palette does.
 - Hover one and click the archive button to move it to **Archived**, below, where it can still be resumed. It leaves Archived when it runs again.
 - Right-click one to resume, archive or restore it, copy its id or folder, show the folder, or delete it, which only Kero forgets. Right-click **Ended** to archive them all, or **Archived** to delete them all.
+
+### Search
+
+The **Search conversations** field at the foot of the sidebar finds conversations by what was said in them, as [fast-resume](https://github.com/angristan/fast-resume) does. It searches every conversation that Claude Code, Codex and Pi keep on each of your hosts, also those that never ran in Kero, and needs no skill. **Session › Search Conversations…** (<kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>F</kbd>) goes to the field.
+
+What it finds shows in place of the sessions, best first: a match in a title counts most, and newer conversations count more. Each shows its agent, folder, how many messages you wrote and when it last ran, then its title.
+
+- Click one to show the messages that have your words, and **Resume** it. Double-click it to resume it at once.
+- <kbd>↑</kbd> <kbd>↓</kbd> choose one, <kbd>Enter</kbd> resumes it, and <kbd>Esc</kbd> clears the search.
+- Every word must be in the conversation. Quote a phrase, as `"login redirect"`, and leave out what has a word with `-word`.
+- `agent:codex` or `agent:claude,pi` keeps those agents' conversations, `agent:!pi` or `-agent:pi` leaves one out. `dir:kero` keeps those in a folder whose path has `kero`.
+- `date:today`, `date:yesterday`, `date:week` and `date:month` keep the newer ones; `date:<2d` those of the last two days, `date:>1w` those older than a week, in `m`, `h`, `d`, `w`, `mo` or `y`.
+
+Conversations that a program ran, as `claude -p`, `codex exec` and subagents do, are left out. OpenCode keeps its conversations in a database that Kero doesn't read, so they aren't searched. kerod reads the agents' histories as a search first asks, and keeps what it read in `search.gob` beside its state, to read again only the histories that changed.

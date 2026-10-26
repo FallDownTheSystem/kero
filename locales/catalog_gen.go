@@ -9267,3 +9267,123 @@ func GitDiscardLinesTip() string { return In(i18n.Locale()).GitDiscardLinesTip()
 func (msgs Messages) GitDiscardLinesTip() string {
 	return Catalog.Format(msgs.locale, "gitDiscardLinesTip", nil)
 }
+
+// ActionSearchConversations says "Search Conversations…"
+// in the language the app shows.
+func ActionSearchConversations() string { return In(i18n.Locale()).ActionSearchConversations() }
+
+// ActionSearchConversations says "Search Conversations…"
+// in the language of msgs.
+func (msgs Messages) ActionSearchConversations() string {
+	return Catalog.Format(msgs.locale, "actionSearchConversations", nil)
+}
+
+// SearchPlaceholder says "Search conversations"
+// in the language the app shows.
+func SearchPlaceholder() string { return In(i18n.Locale()).SearchPlaceholder() }
+
+// SearchPlaceholder says "Search conversations"
+// in the language of msgs.
+func (msgs Messages) SearchPlaceholder() string {
+	return Catalog.Format(msgs.locale, "searchPlaceholder", nil)
+}
+
+// SearchTip says "Finds the agents' conversations by what was said in them, their titles and folders. Narrow it with agent:codex, dir:k…"
+// in the language the app shows.
+func SearchTip() string { return In(i18n.Locale()).SearchTip() }
+
+// SearchTip says "Finds the agents' conversations by what was said in them, their titles and folders. Narrow it with agent:codex, dir:k…"
+// in the language of msgs.
+func (msgs Messages) SearchTip() string {
+	return Catalog.Format(msgs.locale, "searchTip", nil)
+}
+
+// SearchClear says "Clear Search"
+// in the language the app shows.
+func SearchClear() string { return In(i18n.Locale()).SearchClear() }
+
+// SearchClear says "Clear Search"
+// in the language of msgs.
+func (msgs Messages) SearchClear() string {
+	return Catalog.Format(msgs.locale, "searchClear", nil)
+}
+
+// SearchIndexing says "Reading the agents' histories… {done} of {todo}"
+// in the language the app shows.
+func SearchIndexing(done int, todo int) string { return In(i18n.Locale()).SearchIndexing(done, todo) }
+
+// SearchIndexing says "Reading the agents' histories… {done} of {todo}"
+// in the language of msgs.
+func (msgs Messages) SearchIndexing(done int, todo int) string {
+	return Catalog.Format(msgs.locale, "searchIndexing", map[string]any{"done": done, "todo": todo})
+}
+
+// SearchNoMatches says "No conversation has that"
+// in the language the app shows.
+func SearchNoMatches() string { return In(i18n.Locale()).SearchNoMatches() }
+
+// SearchNoMatches says "No conversation has that"
+// in the language of msgs.
+func (msgs Messages) SearchNoMatches() string {
+	return Catalog.Format(msgs.locale, "searchNoMatches", nil)
+}
+
+// SearchCount says "{count, plural, one {# conversation} other {# conversations}}"
+// in the language the app shows.
+func SearchCount(count int) string { return In(i18n.Locale()).SearchCount(count) }
+
+// SearchCount says "{count, plural, one {# conversation} other {# conversations}}"
+// in the language of msgs.
+func (msgs Messages) SearchCount(count int) string {
+	return Catalog.Format(msgs.locale, "searchCount", map[string]any{"count": count})
+}
+
+// SearchTurns says "{count, plural, one {You wrote # message} other {You wrote # messages}}"
+// in the language the app shows.
+func SearchTurns(count int) string { return In(i18n.Locale()).SearchTurns(count) }
+
+// SearchTurns says "{count, plural, one {You wrote # message} other {You wrote # messages}}"
+// in the language of msgs.
+func (msgs Messages) SearchTurns(count int) string {
+	return Catalog.Format(msgs.locale, "searchTurns", map[string]any{"count": count})
+}
+
+// SearchYou says "You"
+// in the language the app shows.
+func SearchYou() string { return In(i18n.Locale()).SearchYou() }
+
+// SearchYou says "You"
+// in the language of msgs.
+func (msgs Messages) SearchYou() string {
+	return Catalog.Format(msgs.locale, "searchYou", nil)
+}
+
+// SearchShowSession says "Show Session"
+// in the language the app shows.
+func SearchShowSession() string { return In(i18n.Locale()).SearchShowSession() }
+
+// SearchShowSession says "Show Session"
+// in the language of msgs.
+func (msgs Messages) SearchShowSession() string {
+	return Catalog.Format(msgs.locale, "searchShowSession", nil)
+}
+
+// SetResumeCommands says "Resume commands"
+// in the language the app shows.
+func SetResumeCommands() string { return In(i18n.Locale()).SetResumeCommands() }
+
+// SetResumeCommands says "Resume commands"
+// in the language of msgs.
+func (msgs Messages) SetResumeCommands() string {
+	return Catalog.Format(msgs.locale, "setResumeCommands", nil)
+}
+
+// SetResumeCommandsDetail says "The command that resumes each agent's conversations, as Resume, the search and restoring sessions start them. It runs…"
+// in the language the app shows.
+func SetResumeCommandsDetail() string { return In(i18n.Locale()).SetResumeCommandsDetail() }
+
+// SetResumeCommandsDetail says "The command that resumes each agent's conversations, as Resume, the search and restoring sessions start them. It runs…"
+// in the language of msgs.
+func (msgs Messages) SetResumeCommandsDetail() string {
+	return Catalog.Format(msgs.locale, "setResumeCommandsDetail", nil)
+}
