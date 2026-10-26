@@ -120,7 +120,7 @@ type (
 	}
 
 	// GitBranches are a worktree's repository's branches, local ones
-	// first, and its remotes.
+	// first, then the remotes', then its tags, and its remotes.
 	GitBranches struct {
 		Branches []GitBranch `json:"branches"`
 		Remotes  []string    `json:"remotes,omitempty"`
@@ -128,6 +128,7 @@ type (
 	GitBranch struct {
 		Name     string `json:"name"`
 		Remote   bool   `json:"remote,omitempty"`
+		Tag      bool   `json:"tag,omitempty"`
 		Current  bool   `json:"current,omitempty"`
 		Head     string `json:"head"`
 		Upstream string `json:"upstream,omitempty"`

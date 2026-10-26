@@ -37,6 +37,7 @@ type Settings struct {
 	Appearance string `json:"appearance"` // "system", "light" or "dark"
 	Language   string `json:"language"`   // "system", or one of Languages
 	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
+	AppFont    string `json:"appFont"`    // the family of the app's own text, "" the system's
 	// SessionsSide is the window's side the sessions' sidebar takes, "left"
 	// or "right": the Explorer, the side panel of Changes and Files, takes
 	// the other.

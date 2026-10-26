@@ -445,7 +445,7 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 		row.Background(pal.rowHover.Alpha(0.5))
 	}
 	when := time.Unix(cm.Time, 0)
-	wideTooltip(c, row, cm.Author+" <"+cm.Email+">\n"+when.Format("2006-01-02 15:04")+"\n"+shortHash(cm.Hash))
+	wideTooltip(c, row, cm.Author+"\n"+cm.Email+"\n"+when.Format("2006-01-02 15:04")+"\n"+shortHash(cm.Hash))
 	if row.Clicked() {
 		a.toggleCommit(pane.ID, cm.Hash)
 	}
@@ -479,11 +479,24 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 		if open {
 			// Its first line centered in the row's height, as when closed.
 			subject.LineHeight(1.3).Padding(4.5, 0, 4.5, 0).Selectable()
+			// Selectable, the subject takes the row's clicks: one that
+			// selects nothing closes the commit, as the row's would.
+			if subject.Clicked() {
+				if start, end := subject.TextSelection(); start == end {
+					a.toggleCommit(pane.ID, cm.Hash)
+				}
+			}
 		} else {
-			subject.SingleLine().Ellipsis("…")
+			// Kept wide enough to read, the refs giving way instead: shrunk
+			// below its ellipsis, it drew it over them.
+			subject.SingleLine().Ellipsis("…").MinWidth(80)
 		}
 		ui.Row(c).Height(commitRowH).Gap(7).AlignItems(ui.Center).MinWidth(0).Children(func() {
-			a.refChips(c, pal, refs)
+			// Clipped, so that refs too many to fit are cut, not drawn
+			// over the subject.
+			ui.Row(c).Gap(7).AlignItems(ui.Center).MinWidth(0).ClipX().Children(func() {
+				a.refChips(c, pal, refs)
+			})
 			ui.Text(c, ago(cm.Time*1000, time.Now())).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
 		})
 	})
@@ -496,6 +509,9 @@ type gitRef struct {
 	remote bool
 	tag    bool
 	head   bool // HEAD is on it, or at it, detached
+	// tracked are the remotes' branches of a local branch's name at the
+	// same commit, which its chip shows with it (chipRefs).
+	tracked []string
 }
 
 // parseRefs reads %D's refs: "HEAD -> main, origin/main, tag: v1".
@@ -538,17 +554,51 @@ func branchRefs(refs []gitRef) []string {
 	return names
 }
 
+// chipRefs are the refs a commit's row shows: a remote's branch of a
+// local branch's name, at the same commit, goes into the local branch's
+// chip, as its tracked, since the two names say the same.
+func chipRefs(refs []gitRef) []gitRef {
+	out := make([]gitRef, 0, len(refs))
+	local := map[string]int{}
+	for _, r := range refs {
+		if !r.tag && !r.remote && r.name != "HEAD" {
+			local[r.name] = len(out)
+		}
+		out = append(out, r)
+	}
+	merged := make([]bool, len(out))
+	for j, r := range out {
+		if r.remote {
+			_, branch, _ := strings.Cut(r.name, "/")
+			if i, ok := local[branch]; ok {
+				out[i].tracked = append(out[i].tracked, r.name)
+				merged[j] = true
+			}
+		}
+	}
+	n := 0
+	for j, r := range out {
+		if !merged[j] {
+			out[n] = r
+			n++
+		}
+	}
+	return out[:n]
+}
+
 // refChips shows a commit's refs, three at most, then how many more: a
 // local branch filled, with the branch's icon, and a remote's outlined,
-// with a globe, each apart from the other, so that a branch and its
-// remote's at the same commit show both.
+// with a globe; a local branch with its remote's at the same commit shows
+// both icons in its chip.
 func (a *App) refChips(c *ui.Context, pal *palette, refs []gitRef) {
 	const shown = 3
+	refs = chipRefs(refs)
 	for i, r := range refs {
 		if i == shown {
 			more := make([]string, 0, len(refs)-shown)
 			for _, o := range refs[shown:] {
 				more = append(more, o.name)
+				more = append(more, o.tracked...)
 			}
 			ui.Text(c, "+"+itoa(len(refs)-shown)).FontSize(11).TextColor(pal.textFaint).SingleLine().Shrink(0).Tooltip(strings.Join(more, "\n"))
 			return
@@ -569,9 +619,12 @@ func (a *App) refChips(c *ui.Context, pal *palette, refs []gitRef) {
 		if r.remote {
 			chip.Border(1, pal.text.Alpha(0.14))
 		}
-		chip.Tooltip(r.name).Children(func() {
+		chip.Tooltip(strings.Join(append([]string{r.name}, r.tracked...), "\n")).Children(func() {
 			if icon != nil {
 				ui.Icon(c, icon).Size(9, 9).TextColor(fg).Shrink(0)
+			}
+			if len(r.tracked) > 0 {
+				ui.Icon(c, globeIcon).Size(9, 9).TextColor(fg).Shrink(0)
 			}
 			ui.Text(c, r.name).FontSize(11).FontWeight(550).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0)
 		})

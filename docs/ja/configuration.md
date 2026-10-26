@@ -58,6 +58,7 @@ kero config check             # 不明なキーと不正な値を報告
 | `window-theme`       | `system`   | アプリの外観: `system`、`light`、`dark`                         |
 | `language`           | `system`   | アプリの言語: `system`、`en`、`ja`、`zh-Hans`                   |
 | `window-translucent` | `true`     | ウインドウからデスクトップを透けて見せる                        |
+| `app-font`           | （空）     | アプリ自身のテキストのフォント（ターミナルのものではない）: 空ならシステムのフォント。Inter、Geist、Mona Sans、Public Sans、IBM Plex Sans、Plus Jakarta Sans、Manrope、Figtree、DM Serif Display、Playfair Display が付属し、インストール済みのフォントならどれでも使えます |
 | `sessions-sidebar`   | `left`     | セッションのサイドバーを置くウインドウの側: `left` または `right`。変更とファイルを示すエクスプローラーは反対側に置きます |
 | `pane-folder`        | `fit`      | ペインのヘッダーにフォルダをどう示すか: `hidden`、`folder`（名前）、`full`（パス）、または幅に収まる限り多くを示す `fit` |
 | `explorer-folder`    | `fit`      | エクスプローラーのヘッダーにフォルダをどう示すか。値は `pane-folder` と同じ |

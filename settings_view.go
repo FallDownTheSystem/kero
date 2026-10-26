@@ -736,6 +736,23 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetTranslucent(), locales.SetTranslucentDetail(), func() {
 			toggle(c.Key("vibrancy"), &s.Vibrancy, pal)
 		})
+		settingRow(c, pal, locales.SetAppFont(), locales.SetAppFontDetail(), func() {
+			// The picker's name for the setting's "": the system's font.
+			family := s.AppFont
+			if family == "" {
+				family = locales.SetFontSystem()
+			}
+			opts := appFontOptions()
+			if !slices.Contains(opts, family) {
+				opts = append([]string{family}, opts...)
+			}
+			a.searchPopup(c, "app-font", family, opts, 240, locales.SetUseFont, nil, pal, func(v string) {
+				if v == locales.SetFontSystem() {
+					v = ""
+				}
+				a.set.AppFont = v
+			})
+		})
 	})
 	settingsGroup(c, pal, locales.SetLayout(), "", func() {
 		settingRow(c, pal, locales.SetSessionsSide(), locales.SetSessionsSideDetail(), func() {
@@ -895,6 +912,25 @@ var otherFonts = sync.OnceValue(func() []string {
 	for _, f := range ui.FontFamilies() {
 		if f.Monospaced {
 			add(f.Name)
+		}
+	}
+	return opts
+})
+
+// appFontOptions are the families the app font menu offers: the
+// system's, those kero carries, then every other proportional family the
+// machine has.
+func appFontOptions() []string {
+	return append(append([]string{locales.SetFontSystem()}, appFonts...), otherAppFonts()...)
+}
+
+// otherAppFonts are the families of appFontOptions after the system's
+// and kero's, listed once.
+var otherAppFonts = sync.OnceValue(func() []string {
+	var opts []string
+	for _, f := range ui.FontFamilies() {
+		if !f.Monospaced && !f.Registered && !slices.Contains(appFontFamilies, f.Name) {
+			opts = append(opts, f.Name)
 		}
 	}
 	return opts

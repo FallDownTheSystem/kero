@@ -311,7 +311,7 @@ func (d *Daemon) gitBranches(p proto.GitParams) (proto.GitBranches, error) {
 	}
 	res := proto.GitBranches{Branches: make([]proto.GitBranch, 0, len(list))}
 	for _, b := range list {
-		res.Branches = append(res.Branches, proto.GitBranch{Name: b.Name, Remote: b.Remote, Current: b.Current, Head: b.Head,
+		res.Branches = append(res.Branches, proto.GitBranch{Name: b.Name, Remote: b.Remote, Tag: b.Tag, Current: b.Current, Head: b.Head,
 			Upstream: b.Upstream, Ahead: b.Ahead, Behind: b.Behind, Gone: b.Gone, Time: b.Time, Subject: b.Subject, Worktree: b.Worktree})
 	}
 	res.Remotes, _ = r.Remotes(ctx)

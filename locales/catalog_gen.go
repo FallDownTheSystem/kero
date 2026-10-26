@@ -2682,6 +2682,26 @@ func (msgs Messages) SetFontSystem() string {
 	return Catalog.Format(msgs.locale, "setFontSystem", nil)
 }
 
+// SetAppFont says "App Font"
+// in the language the app shows.
+func SetAppFont() string { return In(i18n.Locale()).SetAppFont() }
+
+// SetAppFont says "App Font"
+// in the language of msgs.
+func (msgs Messages) SetAppFont() string {
+	return Catalog.Format(msgs.locale, "setAppFont", nil)
+}
+
+// SetAppFontDetail says "The font of Kero’s own text: its sidebar, Explorer, menus and settings. Kero comes with Inter, Geist, Mona Sans and…"
+// in the language the app shows.
+func SetAppFontDetail() string { return In(i18n.Locale()).SetAppFontDetail() }
+
+// SetAppFontDetail says "The font of Kero’s own text: its sidebar, Explorer, menus and settings. Kero comes with Inter, Geist, Mona Sans and…"
+// in the language of msgs.
+func (msgs Messages) SetAppFontDetail() string {
+	return Catalog.Format(msgs.locale, "setAppFontDetail", nil)
+}
+
 // SetUseFont says "Use “{name}”"
 // in the language the app shows.
 func SetUseFont(name string) string { return In(i18n.Locale()).SetUseFont(name) }
@@ -7658,6 +7678,16 @@ func GitRemoteBranches() string { return In(i18n.Locale()).GitRemoteBranches() }
 // in the language of msgs.
 func (msgs Messages) GitRemoteBranches() string {
 	return Catalog.Format(msgs.locale, "gitRemoteBranches", nil)
+}
+
+// GitTags says "Tags"
+// in the language the app shows.
+func GitTags() string { return In(i18n.Locale()).GitTags() }
+
+// GitTags says "Tags"
+// in the language of msgs.
+func (msgs Messages) GitTags() string {
+	return Catalog.Format(msgs.locale, "gitTags", nil)
 }
 
 // GitBranchInWorktree says "Checked out in {path}"

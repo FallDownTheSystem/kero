@@ -105,7 +105,9 @@ var chevronTurn = ui.Animation{Spring: ui.SpringOptions{Duration: 200 * time.Mil
 func (a *App) view(c *ui.Context) {
 	a.looks()
 	pal := paletteFor(c)
-	c.SetTheme(borderless(c, pal))
+	th := borderless(c, pal)
+	th.Font = a.set.AppFont
+	c.SetTheme(th)
 	a.runEarly()
 
 	if a.pendingToast != "" {

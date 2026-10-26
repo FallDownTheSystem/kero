@@ -282,7 +282,8 @@ type branchRow struct {
 }
 
 // branchRows are the switcher's rows, as the query filters them: local
-// branches, then the remotes' that no local branch has the name of.
+// branches, then the remotes' that no local branch has the name of, then
+// the tags.
 func branchRows(list *proto.GitBranches, query string) []branchRow {
 	q := strings.ToLower(strings.TrimSpace(query))
 	var rows []branchRow
@@ -290,7 +291,7 @@ func branchRows(list *proto.GitBranches, query string) []branchRow {
 	local := map[string]bool{}
 	for i := range list.Branches {
 		b := &list.Branches[i]
-		if !b.Remote {
+		if !b.Remote && !b.Tag {
 			local[b.Name] = true
 			exact = exact || strings.ToLower(b.Name) == q
 		}
@@ -298,15 +299,16 @@ func branchRows(list *proto.GitBranches, query string) []branchRow {
 	if q != "" && !exact {
 		rows = append(rows, branchRow{create: strings.TrimSpace(query)})
 	}
-	for _, remote := range []bool{false, true} {
-		label := locales.GitBranches()
-		if remote {
-			label = locales.GitRemoteBranches()
-		}
+	sections := []struct {
+		label       string
+		remote, tag bool
+	}{{locales.GitBranches(), false, false}, {locales.GitRemoteBranches(), true, false}, {locales.GitTags(), false, true}}
+	for _, sec := range sections {
+		remote := sec.remote
 		first := true
 		for i := range list.Branches {
 			b := &list.Branches[i]
-			if b.Remote != remote || q != "" && !strings.Contains(strings.ToLower(b.Name), q) {
+			if b.Remote != remote || b.Tag != sec.tag || q != "" && !strings.Contains(strings.ToLower(b.Name), q) {
 				continue
 			}
 			if remote {
@@ -316,7 +318,7 @@ func branchRows(list *proto.GitBranches, query string) []branchRow {
 			}
 			r := branchRow{b: b}
 			if first {
-				r.label, first = label, false
+				r.label, first = sec.label, false
 			}
 			rows = append(rows, r)
 		}
@@ -473,20 +475,20 @@ func (a *App) branchMenuItems(m *ui.Menu, s *proto.Session, pane *proto.Pane, b 
 		a.side.git.menu.open = false
 		a.askNewBranch(id, root, b.Name, b.Name)
 	}
-	if m.Item(locales.GitOpenInWorktree()).Disabled(b.Current || b.Worktree != "").Chosen() {
+	if m.Item(locales.GitOpenInWorktree()).Disabled(b.Current || b.Worktree != "" || b.Tag).Chosen() {
 		a.side.git.menu.open = false
 		a.branchSession(s, pane, b)
 	}
 	m.Separator()
 	a.mergeItems(m, pane, b.Name, b.Name, b.Current)
 	m.Separator()
-	if m.Item(locales.GitRenameBranch()).Disabled(b.Remote).Chosen() {
+	if m.Item(locales.GitRenameBranch()).Disabled(b.Remote || b.Tag).Chosen() {
 		a.side.git.menu.open = false
 		a.askName(locales.GitRenameBranchTitle(b.Name), "", locales.GitBranchName(), b.Name, locales.GitRename(), func(to string) {
 			a.runGit(id, root, proto.GitOpParams{Op: "renameBranch", Name: b.Name, To: to}, locales.GitRenameNamed(b.Name), nil)
 		})
 	}
-	if m.Item(locales.GitDeleteBranch()).Disabled(b.Remote || b.Current || b.Worktree != "").Chosen() {
+	if m.Item(locales.GitDeleteBranch()).Disabled(b.Remote || b.Tag || b.Current || b.Worktree != "").Chosen() {
 		a.side.git.menu.open = false
 		a.deleteBranch(id, root, b.Name, false)
 	}
@@ -551,8 +553,13 @@ func (a *App) switchBranch(s *proto.Session, pane *proto.Pane, b proto.GitBranch
 		return
 	}
 	name := b.Name
+	op := proto.GitOpParams{Op: "switch", Name: name, Remote: b.Remote, Rev: at}
+	if b.Tag {
+		// A tag is checked out as its commit, HEAD detached.
+		op = proto.GitOpParams{Op: "checkout", Rev: b.Head}
+	}
 	sw := func() {
-		a.runGit(id, root, proto.GitOpParams{Op: "switch", Name: name, Remote: b.Remote, Rev: at}, locales.GitSwitchTo(name), nil)
+		a.runGit(id, root, op, locales.GitSwitchTo(name), nil)
 	}
 	a.guarded(id, root, locales.GitSwitchTo(name), func() {
 		if g.Files == 0 {

@@ -58,6 +58,10 @@ const (
 type sideState struct {
 	drag    float32 // the width as a drag of the edge began, 0 while none
 	focused bool    // the panel has the keyboard: its Escape, its diff's find
+	// editing tells that an editor of the panel's, a diff or a file, has
+	// the keyboard, as the panel last built it: Find opens its find bar,
+	// and the Search view elsewhere in the panel.
+	editing bool
 	// drafting is the review whose draft comment has the keyboard, as the
 	// panel last built it, which the panel's Escape drops.
 	drafting *review
@@ -317,7 +321,7 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 	pal = cardPalette(pal, a.fileTheme(c.Theme().Dark))
 	paned(card.Background(card.AnimateColor("bg", cardBackground(wpal, pal, dim), ui.Animation{Duration: 140 * time.Millisecond})), wpal)
 	view := knownView(a.prefs.Side)
-	a.side.drafting = nil
+	a.side.drafting, a.side.editing = nil, false
 	// The side's buttons and the window's controls take the header's room
 	// at the window's edge: in a narrow panel the tabs give theirs, down to
 	// their icons, so that the controls stay in it.
@@ -343,7 +347,6 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			a.sideTab(c, pal, sideFiles, folderIcon, locales.SideFiles(), "files.toggle", compact)
 			a.sideTab(c, pal, sideChanges, diffIcon, locales.SideChanges(), "changes.toggle", compact)
 			a.sideTab(c, pal, sideHistory, historyIcon, locales.SideHistory(), "history.toggle", compact)
-			a.sideTab(c, pal, sideSearch, searchIcon, locales.SideSearch(), "search.toggle", compact)
 			dir := a.changesDir(s)
 			switch view {
 			case sideFiles, sideSearch:
@@ -391,9 +394,11 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 }
 
 // sideTab is a view's tab in the panel's header, which shows it: its icon
-// alone while compact, but the shown view's while only somewhat.
+// alone while compact, but the shown view's while only somewhat. Search,
+// which the Files view's toolbar opens, has none: Files' stands for it.
 func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, label, action string, compact sideCompact) {
-	on := knownView(a.prefs.Side) == view
+	shown := knownView(a.prefs.Side)
+	on := shown == view || view == sideFiles && shown == sideSearch
 	b := ui.ButtonBase(c.Key("tab-"+view)).Height(28).Padding(0, 8).Gap(6).Radius(8).AlignItems(ui.Center).Shrink(0).
 		TextColor(pal.textMuted).Label(label).Tooltip(a.tip(label, action))
 	iconOnly := compact == tabsIcons || compact == tabsShownLabel && !on
@@ -412,7 +417,7 @@ func (a *App) sideTab(c *ui.Context, pal *palette, view string, svg *ui.SVG, lab
 			ui.Text(c, label).FontSize(13.5).FontWeight(600).SingleLine()
 		}
 	})
-	if b.Clicked() && !on {
+	if b.Clicked() && shown != view {
 		a.defer_(func() { a.showSide(view) })
 	}
 }
@@ -916,7 +921,7 @@ func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, sf *sideFi
 			a.diffOptions(c, pal, s, sf, width)
 			diff := editor.DiffView(c.Key("diff"), sf.d)
 			if diff.FocusWithin() {
-				ch.focus = sf
+				ch.focus, a.side.editing = sf, true
 			}
 		}
 	})
@@ -939,11 +944,6 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.
 	if menu != nil {
 		hdr.ContextMenu(menu)
 	}
-	tip := f.Path
-	if f.OldPath != "" {
-		tip = f.OldPath + " → " + f.Path
-	}
-	hdr.Tooltip(tip)
 	if hdr.Clicked() {
 		if folding != nil {
 			folding()
@@ -965,7 +965,13 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, root string, f proto.
 		if f.Status == "deleted" {
 			fg = pal.textMuted
 		}
-		ui.Text(c, name).FontSize(13).FontWeight(600).TextColor(fg).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(260)
+		// The path on the name only: across the row, it hid what the row
+		// already shows.
+		tip := f.Path
+		if f.OldPath != "" {
+			tip = f.OldPath + " → " + f.Path
+		}
+		ui.Text(c, name).FontSize(13).FontWeight(600).TextColor(fg).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(260).Tooltip(tip)
 		ui.Text(c, strings.TrimSuffix(dir, "/")).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
 		if f.Binary {
 			ui.Text(c, locales.ChangesBinary()).FontSize(11.5).TextColor(pal.textFaint).SingleLine()
