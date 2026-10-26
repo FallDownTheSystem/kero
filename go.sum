@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/FallDownTheSystem/mygo v0.0.0-20261026082536-bb8bfd3e5361 h1:8JeMi1voUtoh2LGsmxyDv07vtevgyY+/ImDc71ecztI=
-github.com/FallDownTheSystem/mygo v0.0.0-20261026082536-bb8bfd3e5361/go.mod h1:dVav53PwF2xEotjf4oA5lTY2Jp2exgzyjLhbSXhbMwE=
+github.com/FallDownTheSystem/mygo v0.0.0-20261026170642-a391eb032f73 h1:QtyIkoBgelKHghM9d6x9S/GFel6jCMKLxBOmiuH5KjM=
+github.com/FallDownTheSystem/mygo v0.0.0-20261026170642-a391eb032f73/go.mod h1:dVav53PwF2xEotjf4oA5lTY2Jp2exgzyjLhbSXhbMwE=
 github.com/coder/websocket v1.8.14 h1:9L0p0iKiNOibykf283eHkKUHHrpG7f65OE3BhhO7v9g=
 github.com/coder/websocket v1.8.14/go.mod h1:NX3SzP+inril6yawo5CQXx8+fk145lPDC6pumgx0mVg=
 github.com/ebitengine/purego v0.11.1 h1:2zpWRSQNVKN4eKsKO9eM1ILDgWfYMY9GwqRmK6XeQ/0=

@@ -363,6 +363,9 @@ func TestBranchesAndStash(t *testing.T) {
 	if _, err := r.CreateBranch(ctx, "spare", "main", false); err != nil {
 		t.Fatal(err)
 	}
+	gitIn(t, r.Root, "tag", "light")
+	gitIn(t, r.Root, "tag", "-a", "-m", "annotated", "v1")
+	head := strings.TrimSpace(gitIn(t, r.Root, "rev-parse", "HEAD"))
 	list, err := r.Branches(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -373,9 +376,18 @@ func TestBranchesAndStash(t *testing.T) {
 		if b.Current != (b.Name == "feature") {
 			t.Errorf("%s current %v", b.Name, b.Current)
 		}
+		if b.Tag != (b.Name == "light" || b.Name == "v1") {
+			t.Errorf("%s tag %v", b.Name, b.Tag)
+		}
+		if b.Tag && (b.Head != head || b.Subject == "annotated") {
+			t.Errorf("tag %s at %s %q, want its commit %s", b.Name, b.Head, b.Subject, head)
+		}
+	}
+	if n := len(list); n != 5 || !list[n-1].Tag || !list[n-2].Tag {
+		t.Errorf("tags not last: %v", names)
 	}
 	slices.Sort(names)
-	if strings.Join(names, ",") != "feature,main,spare" {
+	if strings.Join(names, ",") != "feature,light,main,spare,v1" {
 		t.Errorf("branches %v", names)
 	}
 	if _, err := r.RenameBranch(ctx, "spare", "spare2"); err != nil {

@@ -58,6 +58,7 @@ kero config check             # report unknown keys and bad values
 | `language`           | `system` | The app's language: `system`, `en`, `ja` or `zh-Hans`           |
 | `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
 | `window-translucent` | `true`   | Let the desktop show through the window                         |
+| `app-font`           | (empty)  | The font of the app's own text, not the terminals': empty for the system's. Kero carries Inter, Geist, Mona Sans, Public Sans, IBM Plex Sans, Plus Jakarta Sans, Manrope, Figtree, DM Serif Display and Playfair Display; any installed font works |
 | `sessions-sidebar`   | `left`   | The side of the window the sessions' sidebar takes: `left` or `right`; the Explorer, which shows Changes and Files, takes the other |
 | `pane-folder`        | `fit`    | What a pane's header shows of its folder: `hidden`, `folder` (its name), `full` (its path), or `fit`, the most of those that fits |
 | `explorer-folder`    | `fit`    | What the Explorer's header shows of its folder, as `pane-folder` |

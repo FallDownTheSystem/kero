@@ -159,6 +159,8 @@ func (a *App) searchView(c *ui.Context, pal *palette, s *proto.Session) {
 					*on, ss.typed = !*on, time.Time{}
 				}
 			}
+			// Apart from the field, which the toggles would hug.
+			ui.Box(c).Width(4).Shrink(0)
 			toggle("case", caseIcon, locales.SearchMatchCase(), &ss.matchCase)
 			toggle("word", wordIcon, locales.SearchWholeWord(), &ss.word)
 			toggle("regex", regexIcon, locales.SearchRegex(), &ss.regex)

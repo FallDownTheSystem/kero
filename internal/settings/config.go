@@ -156,6 +156,7 @@ var keys = []key{
 	mapChoice("background", "the window's wash", func(s *Settings) *string { return &s.Background },
 		[]string{"petal", "mist", "meadow", "dusk", "plain"}, []string{"rex", "mist", "meadow", "dusk", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
+	stringKey("app-font", "the font of the app's own text, not the terminals': empty for the system's; Kero carries Inter, Geist, Mona Sans, Public Sans, IBM Plex Sans, Plus Jakarta Sans, Manrope, Figtree, DM Serif Display and Playfair Display", func(s *Settings) *string { return &s.AppFont }),
 	choiceKey("sessions-sidebar", "the side of the window the sessions' sidebar takes; the Explorer takes the other", func(s *Settings) *string { return &s.SessionsSide }, "left", "right"),
 	choiceKey("explorer-folder", "what the Explorer's header shows of its folder: nothing, its name, its path, or the most of those that fits", func(s *Settings) *string { return &s.ExplorerFolder }, "hidden", "folder", "full", "fit"),
 	boolKey("dim-unfocused-files", "fade the file panes you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimFiles }),
