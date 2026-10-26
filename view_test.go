@@ -1037,6 +1037,76 @@ func TestCommandKeysEditLine(t *testing.T) {
 
 // A long name in a narrow sidebar ends in an ellipsis: the time beside
 // it, and the ⌘ shortcut in its place, show whole.
+// A project dragged by its header goes before or after the one it is
+// dropped on, by the half the pointer is in, in the sidebar at once and
+// in kerod's order.
+func TestSidebarDragsProjects(t *testing.T) {
+	a := testApp(t)
+	a.local().conn = connReady
+	moves := make(chan proto.MoveProjectParams, 4)
+	a.local().cl, _ = projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method != "project.move" {
+			return nil, fmt.Errorf("test daemon rejected %s", method)
+		}
+		var p proto.MoveProjectParams
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return nil, err
+		}
+		moves <- p
+		return true, nil
+	})
+	a.st.Projects = []proto.Project{{ID: "p1", Name: "alpha", Dir: "/a"}, {ID: "p2", Name: "bravo", Dir: "/b"}, {ID: "p3", Name: "charlie", Dir: "/c"}}
+	for i, p := range []string{"p2", "p3"} {
+		s := a.st.Sessions[0]
+		s.ID, s.Project, s.Name = "s"+itoa(i+2), p, "work "+p
+		a.st.Sessions = append(a.st.Sessions, s)
+	}
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	shot(t, tt, "sidebar-projects")
+	order := func() string {
+		var names []string
+		for _, p := range a.st.Projects {
+			names = append(names, p.Name)
+		}
+		return strings.Join(names, ",")
+	}
+	drag := func(name string, toX, toY float32) {
+		t.Helper()
+		r, ok := tt.Find(name)
+		if !ok {
+			t.Fatalf("no %s", name)
+		}
+		x, y := r.X+r.W/2, r.Y+r.H/2
+		tt.Press(x, y)
+		tt.Move(x, y+6)
+		tt.Move(toX, toY)
+		tt.Frame()
+		tt.Release(toX, toY)
+		tt.Frame()
+	}
+	alpha, _ := tt.Find("alpha")
+	drag("charlie", alpha.X, alpha.Y+2)
+	if got := order(); got != "charlie,alpha,bravo" {
+		t.Errorf("charlie dropped on alpha's top: %s", got)
+	}
+	select {
+	case p := <-moves:
+		if p.ID != "p3" || p.Index != 0 {
+			t.Errorf("kerod moved %+v", p)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("kerod wasn't told")
+	}
+	tt.Frame()
+	// On the lower half of the last project's block: after it.
+	session, _ := tt.Find("work p2")
+	drag("charlie", session.X, session.Y+session.H/2)
+	if got := order(); got != "alpha,bravo,charlie" {
+		t.Errorf("charlie dropped below bravo's session: %s", got)
+	}
+}
+
 func TestSidebarRowKeepsTime(t *testing.T) {
 	widths := func(name string) (ago, key float32) {
 		a := testApp(t)

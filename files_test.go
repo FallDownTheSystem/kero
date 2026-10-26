@@ -209,6 +209,47 @@ func TestEditorPane(t *testing.T) {
 	}
 }
 
+// A Markdown file previews as it reads, in place of its text, and back;
+// another file has no preview.
+func TestMarkdownPreview(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/README.md", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	f := a.edits["b"]
+	f.read("", false, false, nil, []byte("# Title\n\nSome **bold** text.\n"), nil)
+	tt.Frame()
+	if tt.HasText("Title") && !tt.HasText("# Title") {
+		t.Error("the text shows rendered before the preview")
+	}
+	if err := tt.Click("Preview Markdown"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if !f.preview || !tt.HasText("Title") || tt.HasText("Wrap Lines") {
+		t.Errorf("no preview; texts %q", tt.Texts())
+	}
+	shot(t, tt, "markdown-preview")
+	if err := tt.Click("Preview Markdown"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if f.preview || !tt.HasText("Wrap Lines") {
+		t.Error("the preview stayed")
+	}
+
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/main.go", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	delete(a.edits, "b")
+	tt.Frame()
+	a.edits["b"].read("", false, false, nil, []byte("package main\n"), nil)
+	tt.Frame()
+	if tt.HasText("Preview Markdown") {
+		t.Error("a Go file has a Markdown preview")
+	}
+}
+
 // New File, from the tree's toolbar or a folder's menu, names a file in
 // the folder chosen; once kerod makes it, it is chosen in the tree, and
 // opens below it.

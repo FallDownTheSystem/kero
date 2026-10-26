@@ -4798,6 +4798,96 @@ func (msgs Messages) ChangesSplit() string {
 	return Catalog.Format(msgs.locale, "changesSplit", nil)
 }
 
+// ChangesUnfoldFiles says "Expand All Files"
+// in the language the app shows.
+func ChangesUnfoldFiles() string { return In(i18n.Locale()).ChangesUnfoldFiles() }
+
+// ChangesUnfoldFiles says "Expand All Files"
+// in the language of msgs.
+func (msgs Messages) ChangesUnfoldFiles() string {
+	return Catalog.Format(msgs.locale, "changesUnfoldFiles", nil)
+}
+
+// ChangesFoldFiles says "Collapse All Files"
+// in the language the app shows.
+func ChangesFoldFiles() string { return In(i18n.Locale()).ChangesFoldFiles() }
+
+// ChangesFoldFiles says "Collapse All Files"
+// in the language of msgs.
+func (msgs Messages) ChangesFoldFiles() string {
+	return Catalog.Format(msgs.locale, "changesFoldFiles", nil)
+}
+
+// ChangesTree says "Tree View"
+// in the language the app shows.
+func ChangesTree() string { return In(i18n.Locale()).ChangesTree() }
+
+// ChangesTree says "Tree View"
+// in the language of msgs.
+func (msgs Messages) ChangesTree() string {
+	return Catalog.Format(msgs.locale, "changesTree", nil)
+}
+
+// GitIgnore says "Add to .gitignore"
+// in the language the app shows.
+func GitIgnore() string { return In(i18n.Locale()).GitIgnore() }
+
+// GitIgnore says "Add to .gitignore"
+// in the language of msgs.
+func (msgs Messages) GitIgnore() string {
+	return Catalog.Format(msgs.locale, "gitIgnore", nil)
+}
+
+// GitIgnoreFolder says "Add Folder to .gitignore"
+// in the language the app shows.
+func GitIgnoreFolder() string { return In(i18n.Locale()).GitIgnoreFolder() }
+
+// GitIgnoreFolder says "Add Folder to .gitignore"
+// in the language of msgs.
+func (msgs Messages) GitIgnoreFolder() string {
+	return Catalog.Format(msgs.locale, "gitIgnoreFolder", nil)
+}
+
+// GitIgnoreTrackedTitle says "Stop tracking {name}?"
+// in the language the app shows.
+func GitIgnoreTrackedTitle(name string) string { return In(i18n.Locale()).GitIgnoreTrackedTitle(name) }
+
+// GitIgnoreTrackedTitle says "Stop tracking {name}?"
+// in the language of msgs.
+func (msgs Messages) GitIgnoreTrackedTitle(name string) string {
+	return Catalog.Format(msgs.locale, "gitIgnoreTrackedTitle", map[string]any{"name": name})
+}
+
+// GitIgnoreTrackedDetail says "{count, plural, one {Git tracks this file, and keeps tracking it when .gitignore lists it. Stop tracking it to remove…"
+// in the language the app shows.
+func GitIgnoreTrackedDetail(count int) string { return In(i18n.Locale()).GitIgnoreTrackedDetail(count) }
+
+// GitIgnoreTrackedDetail says "{count, plural, one {Git tracks this file, and keeps tracking it when .gitignore lists it. Stop tracking it to remove…"
+// in the language of msgs.
+func (msgs Messages) GitIgnoreTrackedDetail(count int) string {
+	return Catalog.Format(msgs.locale, "gitIgnoreTrackedDetail", map[string]any{"count": count})
+}
+
+// GitIgnoreUntrack says "Ignore and Stop Tracking"
+// in the language the app shows.
+func GitIgnoreUntrack() string { return In(i18n.Locale()).GitIgnoreUntrack() }
+
+// GitIgnoreUntrack says "Ignore and Stop Tracking"
+// in the language of msgs.
+func (msgs Messages) GitIgnoreUntrack() string {
+	return Catalog.Format(msgs.locale, "gitIgnoreUntrack", nil)
+}
+
+// GitIgnoreOnly says "Only Add to .gitignore"
+// in the language the app shows.
+func GitIgnoreOnly() string { return In(i18n.Locale()).GitIgnoreOnly() }
+
+// GitIgnoreOnly says "Only Add to .gitignore"
+// in the language of msgs.
+func (msgs Messages) GitIgnoreOnly() string {
+	return Catalog.Format(msgs.locale, "gitIgnoreOnly", nil)
+}
+
 // ChangesBinary says "Binary file"
 // in the language the app shows.
 func ChangesBinary() string { return In(i18n.Locale()).ChangesBinary() }
@@ -5486,6 +5576,16 @@ func FilesWrap() string { return In(i18n.Locale()).FilesWrap() }
 // in the language of msgs.
 func (msgs Messages) FilesWrap() string {
 	return Catalog.Format(msgs.locale, "filesWrap", nil)
+}
+
+// FilesPreviewMarkdown says "Preview Markdown"
+// in the language the app shows.
+func FilesPreviewMarkdown() string { return In(i18n.Locale()).FilesPreviewMarkdown() }
+
+// FilesPreviewMarkdown says "Preview Markdown"
+// in the language of msgs.
+func (msgs Messages) FilesPreviewMarkdown() string {
+	return Catalog.Format(msgs.locale, "filesPreviewMarkdown", nil)
 }
 
 // FilesConfirmCloseTitle says "Close without saving?"

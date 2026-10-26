@@ -63,6 +63,8 @@ type prefs struct {
 	// Wrap wraps the lines of the files the Files view and editor panes
 	// show at their width.
 	Wrap bool `json:"wrap,omitempty"`
+	// ChangesTree shows the Changes view's files in their folders.
+	ChangesTree bool `json:"changesTree,omitempty"`
 }
 
 const (

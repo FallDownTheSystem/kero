@@ -12,6 +12,7 @@ import (
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
+	"github.com/egoist/mygo/ui/markdown"
 
 	"kero/internal/actions"
 	"kero/internal/git"
@@ -241,6 +242,19 @@ type openFile struct {
 	// save makes it.
 	fresh  bool
 	absent bool
+	// preview shows a Markdown file as it reads, in place of its text,
+	// which md shows it by.
+	preview bool
+	md      *markdown.Options
+}
+
+// markdownFile tells a file of Markdown, which previews, by its name.
+func markdownFile(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".md", ".markdown", ".mdown", ".mkd":
+		return true
+	}
+	return false
 }
 
 // modified tells that the file has edits not saved.
@@ -1262,7 +1276,20 @@ func (a *App) fileActions(c *ui.Context, pal *palette, pane string, f *openFile)
 	if !f.saving && (f.modified() || f.absent && f.st != nil) {
 		iconButton(c, "save", checkIcon, a.saveTip(), pal, func() { a.saveFile(pane, f, false) })
 	}
-	if f.st != nil {
+	if f.st != nil && markdownFile(f.path) {
+		b := ui.ButtonBase(c.Key("preview")).Size(28, 26).Margin(0, 2).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FilesPreviewMarkdown()).Tooltip(locales.FilesPreviewMarkdown())
+		switch {
+		case f.preview:
+			b.Background(pal.rowHover).TextColor(pal.text)
+		case b.Hovered() || b.Pressed():
+			b.Background(pal.rowHover.Alpha(0.5)).TextColor(pal.text)
+		}
+		b.Children(func() { ui.Icon(c, previewIcon).Size(16, 16) })
+		if b.Clicked() {
+			f.preview = !f.preview
+		}
+	}
+	if f.st != nil && !f.preview {
 		a.wrapButton(c, pal)
 	}
 	if !a.hostOf(pane).remote() {
@@ -1309,6 +1336,18 @@ func (a *App) fileBody(c *ui.Context, pal *palette, pane string, f *openFile, re
 			})
 		case f.st == nil:
 			ui.Column(c.Key("loading")).Grow(1).Center().Children(func() { ui.Spinner(c) })
+		case f.preview && markdownFile(f.path):
+			if f.md == nil {
+				f.md = &markdown.Options{}
+				// Its images are files beside it, which only this machine's
+				// disk has.
+				if !a.hostOf(pane).remote() {
+					f.md.LoadImage = markdown.FileImages(filepath.Dir(f.path))
+				}
+			}
+			ui.Scroll(c.Key("preview")).Grow(1).MinHeight(0).Padding(12, 16, 24, 16).Children(func() {
+				markdown.View(c, f.st.Buffer.String(), f.md)
+			})
 		default:
 			st := f.st
 			st.Font = ui.Font{Family: a.termFamily(), Size: max(a.set.FontSize-1, 10)}

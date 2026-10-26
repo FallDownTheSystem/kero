@@ -98,6 +98,10 @@ func b2f(b bool) float32 {
 	return 0
 }
 
+// chevronTurn is how a chevron turns as what it folds opens or closes:
+// quickly, without overshooting, as it follows a click.
+var chevronTurn = ui.Animation{Spring: ui.SpringOptions{Duration: 200 * time.Millisecond}}
+
 func (a *App) view(c *ui.Context) {
 	a.looks()
 	pal := paletteFor(c)
@@ -391,7 +395,7 @@ func (a *App) sessionList(c *ui.Context, pal *palette) {
 }
 
 func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
-	id, key := g.project.ID, g.key()
+	key := g.key()
 	collapsed := a.prefs.Collapsed[key]
 	needs := 0
 	for _, s := range g.sessions {
@@ -399,19 +403,104 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 			needs++
 		}
 	}
-	top := float32(18)
-	if gi == 0 {
-		top = 2
-	}
 	// Its name starts where its sessions' names do (sessionRow), past the
 	// edge a row keeps in dark mode.
 	inset := float32(rowInset)
 	if pal.dark {
 		inset++
 	}
+	// The project and its sessions are one block, which a project dragged
+	// over it goes before or after, by the half the pointer is in.
+	col := ui.Column(c.Key("group-" + key)).AlignItems(ui.Stretch)
+	if d, over := ui.DragOver[projectDrag](col); over && a.takesProject(d, g) {
+		_, y, _ := col.PointerPosition()
+		before := y < col.Bounds().H/2
+		col.DrawOver(func(p *ui.Painter, r ui.Rect) {
+			at := r.Y + r.H - 1
+			if before {
+				at = r.Y - 1
+			}
+			p.Fill(ui.Rect{X: r.X + inset, Y: at, W: r.W - 2*inset, H: 2}, pal.accent, 1)
+		})
+	}
+	if d, ok := ui.Drop[projectDrag](col); ok && a.takesProject(d, g) {
+		_, y, _ := col.PointerPosition()
+		a.moveProject(d, g, y < col.Bounds().H/2)
+	}
+	col.Children(func() { a.groupBody(c, pal, g, gi, n, inset, needs, collapsed) })
+}
+
+// projectDrag is a project dragged in the sidebar, by its header, to
+// another place among its host's.
+type projectDrag struct {
+	host *host
+	id   string
+}
+
+// takesProject reports whether a project dragged goes beside group g: one
+// of the same host, as each host keeps its own projects' order.
+func (a *App) takesProject(d projectDrag, g group) bool {
+	return d.host == g.host && d.id != "" && d.id != g.project.ID
+}
+
+// moveProject puts the project dragged before or after group g, at once
+// in the sidebar, and in its kerod's order, which every window shows; the
+// sessions of no project stay last.
+func (a *App) moveProject(d projectDrag, g group, before bool) {
+	var ids []string
+	for _, p := range a.st.Projects {
+		if a.hostOf(p.ID) == d.host {
+			ids = append(ids, p.ID)
+		}
+	}
+	from := slices.Index(ids, d.id)
+	if from < 0 {
+		return
+	}
+	to := len(ids)
+	if g.project.ID != "" {
+		to = slices.Index(ids, g.project.ID)
+		if !before {
+			to++
+		}
+	}
+	if from < to {
+		to--
+	}
+	if to == from {
+		return
+	}
+	ids = slices.Insert(slices.Delete(ids, from, from+1), to, d.id)
+	moved := make([]proto.Project, 0, len(ids))
+	for _, id := range ids {
+		moved = append(moved, *a.project(id))
+	}
+	for i, p := range a.st.Projects {
+		if a.hostOf(p.ID) == d.host {
+			a.st.Projects[i], moved = moved[0], moved[1:]
+		}
+	}
+	a.call(d.id, "project.move", proto.MoveProjectParams{ID: d.id, Index: to}, nil)
+}
+
+// groupBody is a project's header, below a hairline apart from the one
+// above, and its sessions.
+func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, n *int, inset float32, needs int, collapsed bool) {
+	id, key := g.project.ID, g.key()
+	top := float32(2)
+	// Below a host's own row, its first project needs no line.
+	if gi > 0 && !(g.first && a.hostNeedsRow(g.host)) {
+		ui.Box(c).Height(1).Margin(8, inset, 0, inset).Background(pal.divider)
+		top = 9
+	} else if gi > 0 {
+		top = 18
+	}
 	hdr := ui.Row(c.Key("project-"+key)).Height(28).Margin(top, 0, 3, 0).Padding(0, 6, 0, inset).Gap(6).AlignItems(ui.Center).Radius(6)
 	hovered := hdr.Hovered()
 	renaming := id != "" && a.renamingProject == id
+	if id != "" && !renaming {
+		hdr.Drag(projectDrag{g.host, id})
+	}
 	if hdr.Clicked() && !renaming {
 		a.toggleProject(key)
 	}
@@ -481,7 +570,7 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi int, n *int) {
 		}
 		ui.Textf(c, "%d", len(g.sessions)).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum")
 		chev := ui.Icon(c, chevronIcon).Size(11, 11).TextColor(pal.textFaint)
-		turn := chev.AnimateTo("turn", 90*(1-b2f(collapsed)), ui.Snappy)
+		turn := chev.AnimateTo("turn", 90*(1-b2f(collapsed)), chevronTurn)
 		chev.Rotate(turn).Opacity(chev.Animate("shown", b2f(hovered || collapsed), 120*time.Millisecond))
 		ui.Spacer(c)
 		// A host with no row of its own tells how the app stands with it

@@ -26,6 +26,8 @@ type (
 	//
 	//	stage, unstage      Paths, or all
 	//	discard             Paths tracked, Untracked
+	//	tracked             Paths; Output the files under them git tracks, a line each
+	//	ignore              Paths, a folder's ending in a slash, Untrack
 	//	setIndex            Path, Known (the index's hash), Text
 	//	commit              Message, Amend, Signoff, NoVerify
 	//	lastMessage, undo, continue, abort
@@ -55,6 +57,7 @@ type (
 
 		Paths     []string `json:"paths,omitempty"`
 		Untracked []string `json:"untracked,omitempty"`
+		Untrack   bool     `json:"untrack,omitempty"`
 		Path      string   `json:"path,omitempty"`
 		Known     string   `json:"known,omitempty"`
 		Text      string   `json:"text,omitempty"`

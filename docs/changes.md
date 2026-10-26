@@ -21,9 +21,9 @@ Click a pane's branch, or the Explorer button at the window's top right, or pres
 - **Uncommitted**: the last commit, untracked files included.
 - **Branch**: where the branch left the repository's default branch, as a pull request would show it.
 
-Each file shows with its diff right below it, one after another, and the diffs follow the files while the agent keeps editing them. Scrolled into a long diff, its file's name stays at the top. Click a file's name to fold its diff away, or to unfold it: a binary file and one with very many changed lines start folded. Drag the panel's edge to resize it.
+Each file shows with its diff right below it, one after another, and the diffs follow the files while the agent keeps editing them. Scrolled into a long diff, its file's name stays at the top. Files start folded, as a list of what changed: click a file's name to unfold its diff, or to fold it away. The button beside the list's summary unfolds all the files, or folds them all while one is unfolded; in **Uncommitted**, each section's title has its own. Drag the panel's edge to resize it.
 
-Diffs show unified while the panel is narrow and side by side once it's wide. The button at the right of the list's summary switches between the two, which the `diff-layout` setting keeps. The wrap button beside it wraps long lines at the panel's width, as it does in the Files view and editor panes.
+Diffs show unified while the panel is narrow and side by side once it's wide. The button at the right of the list's summary switches between the two, which the `diff-layout` setting keeps. The wrap button beside it wraps long lines at the panel's width, as it does in the Files view and editor panes. **Tree View** beside that shows the files in their folders: click a folder to fold it. A folder that holds only another folder shares its row, as `src/app`.
 
 ### Reviewing a turn
 
@@ -37,6 +37,8 @@ Revert works only while no agent in the session is working, so it never races an
 ## Staging and committing
 
 In **Uncommitted**, the files list in two sections: **Staged Changes**, what the next commit takes, and **Changes**, what it doesn't yet. Each file's buttons stage or unstage it, or discard its changes, which asks first: an untracked file is deleted, a deleted one comes back. The buttons on a section's title do the same for all of its files. **Stage All Changes** leaves conflicts out, as staging one marks it resolved.
+
+Right-click a file and choose **Add to .gitignore**, or a folder of the tree and **Add Folder to .gitignore**, to add it to the `.gitignore` at the top of the worktree. Git goes on tracking a file it tracks already, however `.gitignore` lists it: for a tracked file, or a folder with tracked files, Kero asks whether to stop tracking them too. They then leave the repository at the next commit, and stay on disk.
 
 To stage part of a file, hover a change of its diff, and click **Stage**, or **Unstage** in Staged Changes; **Discard** in Changes puts its old lines back in the file. To take some lines of a change alone, click their numbers, Shift-click to select a range, and the change's buttons become **Stage N Lines**, **Unstage N Lines** and **Discard N Lines**. A file a git filter changes as it's stored, as Git LFS does, stages whole.
 
@@ -115,7 +117,7 @@ kero close fix-login --remove-worktree --force   # even with uncommitted changes
 
 The Explorer's **Files** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> on Windows and Linux), shows the files of the worktree of the pane you're in, or of its folder outside a repository. On a remote host, they're that host's.
 
-Click a folder, or press <kbd>→</kbd> and <kbd>←</kbd>, to open and close it. Click a file to open it below the tree, highlighted as its language is, and edit it there: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, keeping its line endings. A file you edited stays open, marked unsaved, while you look at others. The wrap button above it wraps long lines at the view's width. Images show as pictures; binary files and those over 4 MB don't open. With `files-preview` off, a click only chooses a file, and its menu's **Preview** opens it below the tree. To keep a file beside your terminals, open it in an [editor pane](./panes.md#editor-panes).
+Click a folder, or press <kbd>→</kbd> and <kbd>←</kbd>, to open and close it. Click a file to open it below the tree, highlighted as its language is, and edit it there: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, keeping its line endings. A file you edited stays open, marked unsaved, while you look at others. The wrap button above it wraps long lines at the view's width, and for a Markdown file, **Preview Markdown** shows it as it reads. Images show as pictures; binary files and those over 4 MB don't open. With `files-preview` off, a click only chooses a file, and its menu's **Preview** opens it below the tree. To keep a file beside your terminals, open it in an [editor pane](./panes.md#editor-panes).
 
 The buttons under the tree make a new file or folder in the folder you chose, or in the chosen file's folder: type its name, or a path such as `src/util/new.go`, and press <kbd>Return</kbd> (<kbd>Enter</kbd>), or <kbd>Esc</kbd> to leave it. A new file opens below the tree. The other buttons there refresh the tree and collapse its folders. A folder's menu makes a new file or folder in it, and opens a terminal there.
 

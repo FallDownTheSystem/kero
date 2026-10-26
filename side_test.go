@@ -71,10 +71,22 @@ func TestSidePanel(t *testing.T) {
 	}
 
 	// Each file is its header, then its diff, in one scroll: none opens
-	// on its own.
+	// on its own. The files come folded, and Expand All Files unfolds them.
 	sf := ch.files[turnScope+"|internal/auth/login.go"]
 	if sf == nil {
 		t.Fatal("no diff kept for login.go")
+	}
+	if !a.fileCollapsed(fileKey(turnScope, "", sf.f.Path)) || tt.HasText("Collapse All Files") {
+		t.Error("login.go came unfolded")
+	}
+	if err := tt.Click("Expand All Files"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	for _, f := range ch.res.Files {
+		if a.fileCollapsed(fileKey(turnScope, "", f.Path)) {
+			t.Errorf("Expand All Files left %s folded", f.Path)
+		}
 	}
 	a.showText(sf, proto.GitText{
 		Old:  "package auth\n\nfunc Login(user string) error {\n\treturn nil\n}\n",
@@ -139,12 +151,12 @@ func TestSidePanel(t *testing.T) {
 	tt.ClickAt(hdr.X+hdr.W/2, hdr.Y+hdr.H/2)
 	tt.Frame()
 	login := fileKey(turnScope, "", ch.res.Files[0].Path)
-	if !a.fileCollapsed(login, ch.res.Files[0]) {
+	if !a.fileCollapsed(login) {
 		t.Error("a click didn't fold login.go")
 	}
 	tt.ClickAt(hdr.X+hdr.W/2, hdr.Y+hdr.H/2)
 	tt.Frame()
-	if a.fileCollapsed(login, ch.res.Files[0]) {
+	if a.fileCollapsed(login) {
 		t.Error("a second click didn't unfold login.go")
 	}
 	tt.SetDark(true)
@@ -313,6 +325,18 @@ func TestStickyHeaderStaysInList(t *testing.T) {
 	}
 }
 
+// unfold unfolds the files of paths in a list of a scope, which come
+// folded.
+func unfold(a *App, scope string, paths ...string) {
+	ch := &a.side.changes
+	if ch.collapsed == nil {
+		ch.collapsed = map[string]bool{}
+	}
+	for _, p := range paths {
+		ch.collapsed[fileKey(scope, "", p)] = false
+	}
+}
+
 // Folding the file pinned at the top near the list's end makes the list
 // shorter, which then scrolls back to its end: the header of the file
 // whose diff runs past the top stays in every frame, never gone for one.
@@ -331,6 +355,7 @@ func TestStickyHeaderAsFoldShortensList(t *testing.T) {
 		ch.res.Files = append(ch.res.Files, proto.GitFile{Path: n, Status: "added", Added: 60})
 	}
 	ch.fetched = time.Now()
+	unfold(a, scope, names...)
 	var tt *ui.Tester
 	var top ui.Rect
 	// The file whose header shows at the top of the list.
@@ -376,7 +401,7 @@ func TestStickyHeaderAsFoldShortensList(t *testing.T) {
 	}
 	recording = false
 	stuck = append(stuck, atTop())
-	if !a.fileCollapsed(fileKey(scope, "", ch.res.Files[2].Path), ch.res.Files[2]) {
+	if !a.fileCollapsed(fileKey(scope, "", ch.res.Files[2].Path)) {
 		t.Fatal("a click on the header at the top didn't fold c.go")
 	}
 	for i, f := range stuck {
