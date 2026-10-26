@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.1
+
+The fork on Kero 2.1.21:
+
+- A session's time stays whole beside a long name in a narrow sidebar
+- **Split Right** starts a session when the window has none
+
 ## 2.1.20-fork.4
 
 - Pushing a branch made from another's remote branch, as from
