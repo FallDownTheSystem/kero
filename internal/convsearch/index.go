@@ -40,7 +40,7 @@ type Source struct {
 
 // cacheVersion changes as what the index keeps does, or what a Source
 // reads: an index of another version is read anew.
-const cacheVersion = 1
+const cacheVersion = 2
 
 // refreshEvery is how long a scan of the histories stands before a
 // search asks for another.

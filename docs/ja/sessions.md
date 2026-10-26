@@ -107,4 +107,4 @@ kero resume 13b9         # ID、その先頭部分、または名前で再開
 - `agent:codex` や `agent:claude,pi` でそのエージェントの会話に絞り、`agent:!pi` や `-agent:pi` で除外します。`dir:kero` でパスに `kero` を含むフォルダの会話に絞ります。
 - `date:today`、`date:yesterday`、`date:week`、`date:month` で新しいものに絞ります。`date:<2d` は過去 2 日間、`date:>1w` は 1 週間より前のものです。単位は `m`、`h`、`d`、`w`、`mo`、`y` です。
 
-`claude -p`、`codex exec`、サブエージェントのように、プログラムが動かした会話は除外されます。OpenCode は会話を Kero が読まないデータベースに保存するため、検索の対象外です。kerod は最初の検索のときにエージェントの履歴を読み、読んだ内容を状態の隣の `search.gob` に保存します。次からは、変わった履歴だけを読み直します。
+`codex exec` やサブエージェントのように、プログラムが動かした会話は除外されます。Claude Code の `claude -p` の会話は残ります: Claude Code をラップしたビルドは、対話セッションにも同じ印を付けるためです。OpenCode は会話を Kero が読まないデータベースに保存するため、検索の対象外です。kerod は最初の検索のときにエージェントの履歴を読み、読んだ内容を状態の隣の `search.gob` に保存します。次からは、変わった履歴だけを読み直します。
