@@ -46,6 +46,7 @@ func settingsIndex() []searchEntry {
 		{"appearance", locales.SetAppearance(), "window-theme dark light mode system"},
 		{"appearance", locales.SetLanguage(), "language locale translation chinese english 语言 中文"},
 		{"appearance", locales.SetTranslucent(), "window-translucent vibrancy blur material transparency"},
+		{"appearance", locales.SetAppFont(), "app-font font typeface family ui interface sans serif inter geist"},
 		{"appearance", locales.SetSessionsSide(), "sessions-sidebar sidebar left right swap side panel changes files layout"},
 		{"appearance", locales.SetExplorerFolder(), "explorer-folder explorer panel path folder header changes files hide fit"},
 		{"appearance", locales.SetDimUnfocused(), "dim-unfocused-terminals dim-unfocused-files dim-unfocused-web dim-unfocused-explorer panes terminals files editor web browser explorer panel fade inactive split opacity veil blur"},

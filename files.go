@@ -1060,6 +1060,7 @@ func (a *App) filesToolbar(c *ui.Context, pal *palette, t *fileTree) {
 				iconButton(c, "clear", closeIcon, locales.FilesClearFilter(), pal, func() { a.endFind(t) })
 			}
 		})
+		iconButton(c, "search", searchIcon, a.tip(locales.SideSearch(), "find.open"), pal, func() { a.defer_(func() { a.showSearch("") }) })
 		iconButton(c, "refresh", reloadIcon, locales.FilesRefresh(), pal, t.refresh)
 		iconButton(c, "collapse", collapseIcon, locales.FilesCollapse(), pal, func() {
 			ol, _ := t.active()
@@ -1372,6 +1373,9 @@ func (a *App) fileBody(c *ui.Context, pal *palette, pane string, f *openFile, re
 			ed := editor.View(c.Key("text"), st).Grow(1).MinHeight(0)
 			if ref != nil {
 				ed.Bind(ref)
+			}
+			if ed.FocusWithin() {
+				a.side.editing = true
 			}
 			editing = true
 		}

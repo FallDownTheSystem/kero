@@ -760,11 +760,13 @@ func TestHistoryGraph(t *testing.T) {
 		t.Error("the changes not committed list below the commits")
 	}
 
-	// A branch and its remote's at the same commit show both, apart.
-	local, okLocal := tt.Find("main")
-	remote, okRemote := tt.Find("origin/main")
-	if !okLocal || !okRemote || local.X == remote.X {
-		t.Errorf("main %v and origin/main %v don't both show; texts %q", local, remote, tt.Texts())
+	// A branch and its remote's at the same commit show as one chip, the
+	// branch's name.
+	if _, ok := tt.Find("main"); !ok {
+		t.Errorf("main doesn't show; texts %q", tt.Texts())
+	}
+	if r, ok := tt.Find("origin/main"); ok && r.W > 0 {
+		t.Errorf("origin/main shows apart from main at %v", r)
 	}
 	if err := tt.RightClick("Merge branch 'side'"); err != nil {
 		t.Fatal(err)

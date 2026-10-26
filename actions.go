@@ -73,22 +73,23 @@ func (a *App) run(id string, args map[string]string) {
 	case "session.close":
 		a.closeSession(a.selected, true)
 	case "find.open":
-		// In the Search view, its field.
-		if a.side.focused && a.prefs.Side == sideSearch {
-			a.side.search.focus = true
+		if !a.side.focused {
+			a.openFind()
 			break
 		}
-		// In the Changes view, its diff's find bar.
-		if f := a.side.changes.focus; a.side.focused && a.prefs.Side != sideFiles && f != nil && f.d != nil {
+		// In the panel, an editor with the keyboard finds in itself: a
+		// diff, in the Changes or History view, its find bar.
+		if f := a.side.changes.focus; a.side.editing && a.prefs.Side != sideFiles && f != nil && f.d != nil {
 			f.d.Find("")
 			break
 		}
 		// In the Files view, the open file's.
-		if t := a.side.files.shown; a.side.focused && a.prefs.Side == sideFiles && t != nil && t.files[t.shown] != nil && t.files[t.shown].st != nil {
+		if t := a.side.files.shown; a.side.editing && a.prefs.Side == sideFiles && t != nil && t.files[t.shown] != nil && t.files[t.shown].st != nil {
 			t.files[t.shown].st.Find("")
 			break
 		}
-		a.openFind()
+		// Elsewhere in it, the folder's files: the Search view, its field.
+		a.showSearch("")
 	case "find.next":
 		a.findStep(false)
 	case "find.previous":

@@ -9,12 +9,13 @@ import (
 	"strings"
 )
 
-// Branch is a local branch or a remote's.
+// Branch is a local branch, a remote's, or a tag.
 type Branch struct {
-	Name    string // as git shows it: main, origin/main
+	Name    string // as git shows it: main, origin/main, v1
 	Remote  bool
+	Tag     bool
 	Current bool   // HEAD is on it
-	Head    string // its commit
+	Head    string // its commit, an annotated tag's too
 	// Upstream is the branch a local one follows, and Ahead and Behind how
 	// far it is from it; Gone, that the upstream is no more.
 	Upstream string
@@ -28,22 +29,34 @@ type Branch struct {
 }
 
 // Branches returns the repository's local branches, then its remotes',
-// each by its last commit, newest first.
+// then its tags, each by its last commit, a tag by when it was made,
+// newest first.
 func (r Repo) Branches(ctx context.Context) ([]Branch, error) {
+	// An annotated tag's object, subject and date are its own, its
+	// commit's the dereferenced (*) fields; creatordate is a commit's
+	// committer date, an annotated tag's tagger date.
 	format := strings.Join([]string{"%(HEAD)", "%(refname)", "%(refname:short)", "%(objectname)", "%(upstream:short)",
-		"%(upstream:track,nobracket)", "%(committerdate:unix)", "%(worktreepath)", "%(subject)"}, "%00")
-	out, err := run(ctx, r.Root, nil, "for-each-ref", "--sort=-committerdate", "--format="+format, "refs/heads", "refs/remotes")
+		"%(upstream:track,nobracket)", "%(creatordate:unix)", "%(worktreepath)", "%(*objectname)", "%(*subject)", "%(subject)"}, "%00")
+	out, err := run(ctx, r.Root, nil, "for-each-ref", "--sort=-creatordate", "--format="+format, "refs/heads", "refs/remotes", "refs/tags")
 	if err != nil {
 		return nil, err
 	}
-	var local, remote []Branch
+	var local, remote, tags []Branch
 	for _, line := range strings.Split(string(out), "\n") {
 		f := strings.Split(line, "\x00")
-		if len(f) != 9 {
+		if len(f) != 11 {
 			continue
 		}
-		b := Branch{Current: f[0] == "*", Name: f[2], Head: f[3], Upstream: f[4], Subject: f[8], Worktree: f[7]}
+		b := Branch{Current: f[0] == "*", Name: f[2], Head: f[3], Upstream: f[4], Subject: f[10], Worktree: f[7]}
+		if f[8] != "" {
+			b.Head, b.Subject = f[8], f[9]
+		}
 		b.Time, _ = strconv.ParseInt(f[6], 10, 64)
+		if strings.HasPrefix(f[1], "refs/tags/") {
+			b.Tag = true
+			tags = append(tags, b)
+			continue
+		}
 		for _, part := range strings.Split(f[5], ",") {
 			part = strings.TrimSpace(part)
 			switch {
@@ -67,7 +80,7 @@ func (r Repo) Branches(ctx context.Context) ([]Branch, error) {
 		}
 		local = append(local, b)
 	}
-	return append(local, remote...), nil
+	return slices.Concat(local, remote, tags), nil
 }
 
 // checkName refuses what can't name a branch, or git would take as an
