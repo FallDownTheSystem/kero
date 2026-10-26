@@ -56,7 +56,7 @@ A file that isn't there yet opens empty, marked new, in a folder that is: saving
 
 Right-click a pane's split button, right or down, and choose **New File** for an empty `untitled.txt` in the pane's folder. Until you type in it, its bar's **Open File…** opens a file of your choice in its place. With `files-pane = replace`, a file opened in a pane takes the place of the one in the editor pane you were in last, unless that one has unsaved edits; a file's **Open in New Pane** still opens it in a pane of its own.
 
-The bar below the file says whether it's new or unsaved, and has its buttons: save, wrap long lines, and open it in your editor.
+The bar below the file says whether it's new or unsaved, and has its buttons: save, wrap long lines, and open it in your editor. A Markdown file has **Preview Markdown** too, which shows it as it reads, its images beside it included, until you click it again to edit its text.
 
 ## Browser panes
 

@@ -214,6 +214,11 @@ func (d *Daemon) runOp(ctx context.Context, r git.Repo, p proto.GitOpParams, cmd
 		return "", r.Unstage(ctx, p.Paths)
 	case "discard":
 		return "", r.Discard(ctx, p.Paths, p.Untracked)
+	case "tracked":
+		files, err := r.Tracked(ctx, p.Paths)
+		return strings.Join(files, "\n"), err
+	case "ignore":
+		return "", r.Ignore(ctx, p.Paths, p.Untrack)
 	case "setIndex":
 		return "", r.SetIndex(ctx, p.Path, p.Known, p.Text)
 	case "commit":
