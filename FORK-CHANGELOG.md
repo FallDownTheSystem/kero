@@ -5,6 +5,15 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.3
+
+- **Search conversations** finds Claude Code conversations that a wrapped
+  build of Claude Code ran, and `claude -p`'s, which it left out
+- AltGr types its characters in a terminal on Windows, as AltGr+Q types
+  ä, where it sent Control and the key
+- Searching a host whose kerod is too old for it says to restart kerod,
+  where it said no conversation matched
+
 ## 2.1.21-fork.2
 
 - **Search conversations** at the foot of the sidebar finds the agents'
