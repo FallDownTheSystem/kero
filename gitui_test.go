@@ -73,6 +73,70 @@ func gitDemo(a *App) (*proto.GitInfo, *proto.GitIndex) {
 	return g, ix
 }
 
+// In Branch, a change's Revert writes the file back with the base's lines
+// in its place; there is no Keep, as nothing of a branch waits for review.
+func TestBranchRevert(t *testing.T) {
+	a := testApp(t)
+	g, _ := gitDemo(a)
+	g.Branch = "feature"
+	writes := make(chan proto.GitWriteParams, 4)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.file":
+			return proto.GitText{Old: "package b\n\nfunc a() {}\n", New: "package b\n\nfunc b() {}\n", Hash: "h"}, nil
+		case "git.revert":
+			var p proto.GitWriteParams
+			json.Unmarshal(raw, &p)
+			writes <- p
+			return "h2", nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().cl = cl
+	s := &a.st.Sessions[0]
+	a.prefs.Side = sideChanges
+	ch := &a.side.changes
+	scope := changesScope(&s.Panes[0], git.BaseBranch)
+	ch.base, ch.scope, ch.stamp, ch.fetched = git.BaseBranch, scope, gitStamp(g)+"|0", time.Now()
+	ch.res = &proto.GitChanges{Root: g.Root, BaseName: "main", Files: []proto.GitFile{{Path: "b.go", Status: "modified", Added: 1, Removed: 1}}}
+	key := fileKey(scope, "", "b.go")
+	ch.collapsed = map[string]bool{key: false}
+
+	tt := ui.NewTester(a.view, 1280, 720)
+	for range 100 {
+		tt.Frame()
+		if sf := ch.files[key]; sf != nil && sf.d != nil && len(sf.d.Hunks()) > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	// The change's bar shows under the pointer, down the diff below the
+	// file's header.
+	hdr, ok := tt.Find("b.go")
+	if !ok {
+		t.Fatalf("no b.go; texts %q", tt.Texts())
+	}
+	for y := hdr.Y + hdr.H; y < hdr.Y+200 && !tt.HasText("Revert"); y += 6 {
+		tt.Move(hdr.X+40, y)
+		tt.Frame()
+	}
+	if tt.HasText("Keep") {
+		t.Error("a branch's change has Keep")
+	}
+	if err := tt.Click("Revert"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	select {
+	case p := <-writes:
+		if p.Base != git.BaseBranch || p.Path != "b.go" || p.Hash != "h" || p.Text != "package b\n\nfunc a() {}\n" {
+			t.Errorf("wrote %+v", p)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Revert wrote nothing")
+	}
+}
+
 // The tree shows a section's files in their folders, and a file's or a
 // folder's menu adds it to .gitignore: at once while git tracks nothing
 // of it, else as the user says, who may stop tracking it too.

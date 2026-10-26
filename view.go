@@ -182,6 +182,9 @@ func (a *App) view(c *ui.Context) {
 	a.rebaseView(c, pal)
 	a.confirmView(c, pal)
 	a.worktreeView(c, pal)
+	a.prReviewView(c, pal)
+	a.prSetupView(c, pal)
+	a.pollLaunches(c)
 	// A preview that showed no more fades in anew next time.
 	if !a.previewShown {
 		a.previewKey = ""

@@ -55,6 +55,62 @@ func TestCommitMessagePlaceholder(t *testing.T) {
 	}
 }
 
+// The review setup's text names the placeholders as they are typed.
+func TestReviewPlaceholders(t *testing.T) {
+	for _, loc := range []string{"en", "ja", "zh-Hans"} {
+		s := locales.In(loc).PrsSetupPlaceholders()
+		for _, p := range []string{"{number}", "{url}", "{title}", "{branch}", "{base}", "{author}", "{ticket}"} {
+			if !strings.Contains(s, p) {
+				t.Errorf("%s: no %s in %q", loc, p, s)
+			}
+		}
+	}
+}
+
+// The commit message's prompt shows the default's words until the user
+// changes them, which are kept as the field loses the focus; Reset to
+// Default goes back to the default, kept as none.
+func TestCommitPromptSetting(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "general"
+	tt := ui.NewTester(a.settingsView, 820, 1600)
+	tt.Frame()
+	shot(t, tt, "settings-prompts")
+	if a.ss.prompts[0].text != commitmsg.DefaultCommitPrompt {
+		t.Fatalf("the field has %q", a.ss.prompts[0].text)
+	}
+	if tt.HasText("Reset to Default") {
+		t.Error("Reset to Default shows for the default")
+	}
+	detail, ok := tt.Find(locales.SetCommitPromptDetail())
+	if !ok {
+		t.Fatal("no prompt row")
+	}
+	tt.ClickAt(detail.X+40, detail.Y+detail.H+40)
+	tt.Frame()
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Type("Write it in French.")
+	tt.Frame()
+	if a.set.CommitMessagePrompt != "" {
+		t.Errorf("kept as typed: %q", a.set.CommitMessagePrompt)
+	}
+	if err := tt.Click("Diffs"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if a.set.CommitMessagePrompt != "Write it in French." {
+		t.Fatalf("kept %q", a.set.CommitMessagePrompt)
+	}
+	if err := tt.Click("Reset to Default"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if a.set.CommitMessagePrompt != "" || a.ss.prompts[0].text != commitmsg.DefaultCommitPrompt {
+		t.Errorf("after the reset: %q", a.set.CommitMessagePrompt)
+	}
+}
+
 // Each agent's resume command is typed on the Agents page, and kept as
 // its field loses the focus; its text names its placeholder.
 func TestResumeCommandSetting(t *testing.T) {

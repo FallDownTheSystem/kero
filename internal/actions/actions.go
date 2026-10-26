@@ -65,6 +65,7 @@ var All = []Action{
 	{ID: "files.toggle", Title: "Toggle Files", Menu: "View", Keys: "CmdOrCtrl+Alt+E", Remote: true},
 	{ID: "history.toggle", Title: "Toggle History", Menu: "View", Keys: "CmdOrCtrl+Alt+Y", Remote: true},
 	{ID: "search.toggle", Title: "Toggle Search", Menu: "View", Keys: "CmdOrCtrl+Alt+F", Remote: true},
+	{ID: "review.toggle", Title: "Toggle Review", Menu: "View", Keys: "CmdOrCtrl+Alt+P", Remote: true},
 	// Show, as kero do runs them, never hide: files.show takes path=, a
 	// file or folder of the view's tree to show in it; history.show a
 	// file, whose history to show; search.show query=, what to search for.
@@ -120,6 +121,7 @@ var pcKeys = map[string]string{
 	"files.toggle":        "Ctrl+Shift+E",
 	"history.toggle":      "Ctrl+Shift+Y",
 	"search.toggle":       "Ctrl+Shift+S",
+	"review.toggle":       "Ctrl+Shift+K",
 	"text.bigger":         "Ctrl+=",
 	"text.smaller":        "Ctrl+-",
 	"text.reset":          "Ctrl+0",

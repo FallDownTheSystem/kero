@@ -230,10 +230,8 @@ func countLines(path string) int {
 // goes into: origin's HEAD, else main or master, "" when none of these
 // is. It reads the refs' files, running nothing.
 func (r Repo) DefaultBranch() string {
-	if b, err := os.ReadFile(filepath.Join(r.Common, "refs", "remotes", "origin", "HEAD")); err == nil {
-		if ref, ok := strings.CutPrefix(strings.TrimSpace(string(b)), "ref: refs/remotes/origin/"); ok {
-			return ref
-		}
+	if b := r.remoteHead("origin"); b != "" {
+		return b
 	}
 	for _, name := range []string{"main", "master"} {
 		if r.hasRef("refs/heads/" + name) {

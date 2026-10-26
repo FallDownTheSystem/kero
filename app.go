@@ -66,6 +66,9 @@ type prefs struct {
 	Wrap bool `json:"wrap,omitempty"`
 	// ChangesTree shows the Changes view's files in their folders.
 	ChangesTree bool `json:"changesTree,omitempty"`
+	// PRSeen are the open pull requests seen last, by host and repository,
+	// of which those not there before notify (prpoll.go).
+	PRSeen map[string][]int `json:"prSeen,omitempty"`
 }
 
 const (
@@ -149,6 +152,13 @@ type App struct {
 	srch    convSearch
 	confirm *confirmation
 	wtAsk   *worktreeAsk
+	// prReview asks the prompt of a review of a pull request, prSetup sets
+	// up a repository's reviews, and launches are the agents started that
+	// are sent their prompts as they are ready (pulls.go).
+	prReview *prReview
+	prSetup  *prSetup
+	launches []*agentLaunch
+	poll     prPoll
 	// endedAll shows all of the sidebar's Ended; skillMissing tells, as
 	// of skillsAt, that no kind of agent has Kero's skill (ended.go).
 	endedAll     bool
@@ -341,6 +351,14 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 			title = h.name + ": " + title
 		}
 		a.showNotification(n.Session, title, n.Body)
+	case "review":
+		// A draft review changed, as its agent wrote to it: the page that
+		// shows it asks for it anew.
+		g, r := a.side.pulls.page, m.Review
+		if g == nil || r == nil || a.hostOf(g.pane) != h || g.pr.Number != r.Number || !strings.EqualFold(g.repoSlug(), r.Slug) {
+			return
+		}
+		a.fetchDraftReview(g)
 	}
 }
 
@@ -392,15 +410,23 @@ func (a *App) setState(h *host, st proto.State) {
 // showNotification shows a notification about a session, which a click
 // on it selects.
 func (a *App) showNotification(id, title, body string) {
-	if !mygo.NotificationsSupported() {
-		return
-	}
-	n := mygo.NewNotification(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body, Silent: !a.set.NotifySound})
-	n.OnClick(func() {
+	showNote(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body, Silent: !a.set.NotifySound}, func() {
 		a.update(func() {
 			a.selectSession(id)
 			a.showWindow()
 		})
+	})
+}
+
+// showNote shows a notification, which click runs on; a variable, which
+// tests replace, as the system's notifications need the app running.
+var showNote = func(o mygo.NotificationOptions, click func()) {
+	if !mygo.NotificationsSupported() {
+		return
+	}
+	n := mygo.NewNotification(o)
+	n.OnClick(func() {
+		click()
 		n.Close()
 	})
 	go n.Show()
@@ -1179,6 +1205,12 @@ func (a *App) newSessionOn(h *host, projectID string) {
 // create starts a session on a host, and shows it, opening the project
 // expand in the sidebar.
 func (a *App) create(h *host, p proto.CreateParams, expand string) {
+	a.createThen(h, p, expand, nil)
+}
+
+// createThen creates a session as create does, then, when set, runs then
+// with it.
+func (a *App) createThen(h *host, p proto.CreateParams, expand string, then func(s proto.Session)) {
 	cl := h.cl
 	if cl == nil {
 		return
@@ -1197,6 +1229,9 @@ func (a *App) create(h *host, p proto.CreateParams, expand string) {
 			// The state with it may come after the answer.
 			a.addPending(h, s)
 			a.selectSession(s.ID)
+			if then != nil {
+				then(s)
+			}
 		})
 	}()
 }

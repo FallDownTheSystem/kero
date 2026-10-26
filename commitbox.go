@@ -271,10 +271,10 @@ func (a *App) writeMessage(pane *proto.Pane, d *commitDraft) {
 	}
 	id := opID()
 	d.writing, d.writePane, d.err = id, pane.ID, ""
-	command := a.set.CommitMessageCommand
+	p := proto.GitMessageParams{Pane: pane.ID, ID: id, Command: a.set.CommitMessageCommand, Prompt: a.set.CommitMessagePrompt}
 	go func() {
 		var res proto.GitMessage
-		err := cl.Call("git.message", proto.GitMessageParams{Pane: pane.ID, ID: id, Command: command}, &res)
+		err := cl.Call("git.message", p, &res)
 		a.update(func() {
 			if d.writing != id {
 				return // stopped, or written over by another

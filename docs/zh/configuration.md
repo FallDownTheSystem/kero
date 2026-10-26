@@ -138,6 +138,12 @@ kero config check             # 报告未知的配置项和无效的值
 | `worktree-base` | `default` | [会话专属工作树](./changes.md#sessions-in-their-own-worktree)的起点：`default` 为仓库的默认分支，`current` 为你所在会话的分支 |
 | `worktree-dir` |        | 会话专属工作树的存放位置，各自放在仓库名之下；留空则放在仓库内的 `.kero/worktrees` |
 | `commit-message-command` |  | 为已暂存的改动[撰写提交信息](./changes.md#committing)的命令，在你的 shell 中运行，提示通过标准输入传入，如 `llm -m gpt-5`；其中的 `{session}` 会换成要分叉的窗格中智能体对话的 ID，如 `cc -p --resume {session} --fork-session`；留空则分叉窗格中智能体的对话，没有对话时新运行 Claude Code 或 Codex |
+| `commit-message-prompt` |  | 智能体撰写提交信息的方式：放在最近的提交和已暂存的差异之前的说明；留空则用 Kero 自己的（显示在 设置 › 通用 中）。换行写作 `\n` |
+| `pr-message-prompt` |  | 智能体撰写[拉取请求](./changes.md#new-pull-request)标题和描述的方式，同 `commit-message-prompt` |
+| `pr-notify` | `review` | 项目所在 GitHub 仓库的哪些新拉取请求会[通知你](./changes.md#pull-request-notifications)：`review`，请求你审查的；`all`，别人打开的每一个；`off`，都不通知，此时也停止检查 |
+| `pr-poll-interval` | `5` | Kero 检查新拉取请求的间隔，单位为分钟 |
+| `review-command` |  | [审查](./changes.md#review)仓库拉取请求的智能体命令，如 `owner/name=codex --full-auto`；留空则为 `claude`。每个仓库重复一行 |
+| `review-prompt` |  | 交给审查智能体的提示词，如 `owner/name=/code-review {ticket} #{number}`；留空则用 Kero 自己的。换行写作 `\n`。每个仓库重复一行 |
 
 ## 文件
 

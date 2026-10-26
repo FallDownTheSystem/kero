@@ -34,6 +34,8 @@ In **Last Turn**, hover a change for two buttons:
 
 Revert works only while no agent in the session is working, so it never races an agent's edits, and only on a file that's still as the diff shows it. A file that changed meanwhile shows anew instead.
 
+In **Branch**, a change has **Revert** alone: it puts back the lines the file had where the branch began, as a change you haven't committed yet.
+
 <a id="review-comments"></a>
 
 ### Review comments
@@ -149,6 +151,42 @@ Double-click a file, or right-click it, to open it in your editor: the `editor` 
 The Explorer's **Search** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>F</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>S</kbd> on Windows and Linux), searches the text of the files the Files view shows, on the host they're on. It searches as you stop typing, of any case, and <kbd>Return</kbd> (<kbd>Enter</kbd>) searches again, as the files change. The buttons beside the field match case, match whole words, and take the text as a regular expression, as Go writes them.
 
 The lines found list under their files, the text found highlighted: click a file to fold it, and a line to open its file at that line in an editor pane, or in the editor pane that shows it already. Right-click a file or a line to open it in your editor or in an editor pane, or drag it onto a pane to open it there, at the line. Files that git ignores, binary files, and files over 2 MB aren't searched, and a search shows its first 2,000 lines.
+
+<a id="review"></a>
+
+## Review
+
+The Explorer's **Review** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>P</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>K</kbd> on Windows and Linux), lists the open pull requests of the repository of the pane you're in, on GitHub. It reads them with the [GitHub CLI](https://cli.github.com) on the host the repository is on, so `gh` must be installed and signed in there. The list is of the remote the branch pushes to, `origin` most often; the repository's name above the list chooses another of its remotes on GitHub. **Open**, **Mine** and **To Review** filter the list, which shows each pull request's branches, checks and review.
+
+Click a pull request to see it in the Explorer; the arrow beside it opens it on GitHub. **Conversation** shows its description, each reviewer and how their review stands (approved, changes requested, or awaiting review), its checks, which a click lists, and its comments and reviews. **Files** shows its changes, fetched with its base, each file's diff with the comments on its lines under them. A comment whose lines changed since shows in the conversation, marked outdated. When a worktree of the repository has the pull request's head checked out, as a review's worktree has, right-click a file to open it, or drag it onto a pane; otherwise its files aren't on disk, and don't open.
+
+**Review** on a pull request has an agent review it. A click fetches the pull request's branch and starts the agent in a new session, in a [worktree of its own](#sessions-in-their-own-worktree) of that branch; a pull request from a fork checks out as `pr-<number>`. Right-click it, or the pull request, to send the review to the agent in the pane you're in, or to start the agent in a new session in the pane's folder. Before the review starts, its prompt shows for you to edit. Kero types it into the agent once the agent is ready, or copies it if the agent isn't ready after 90 seconds.
+
+**Review Setup…**, the gear, sets the agent command and the prompt for each repository, as your repositories have different skills and tools: `/code-review high {ticket}`, for one. In the prompt, `{number}`, `{url}`, `{title}`, `{branch}`, `{base}` and `{author}` become the pull request's, and `{ticket}` the first issue key, such as `PROJ-123`, in its title, its description or its branch; when none has one, the review asks you for it. The command is `claude` unless you set another.
+
+<a id="draft-reviews"></a>
+
+### Draft reviews
+
+The agent never posts to GitHub. Its comments go to a draft review that Kero keeps, with `kero pr comment`, which [Kero's skill](./agents.md) teaches it; Kero checks that each comment is on lines of the pull request's diff, the only lines GitHub takes comments on. The default prompt has the agent review the whole pull request first, then check each comment it would leave against the code before it adds it.
+
+The comments show on the pull request's **Files** as the agent adds them, marked **Agent**. Edit or delete any of them, or add your own from a line's gutter, as in the Changes view. The sparkles on an agent's comment type a question about it into the agent's pane, for you to finish. The bar under the pull request has the review's summary, its text on GitHub, and its verdict: **Comment**, **Approve** or **Request Changes** (only Comment on your own pull request). **Post Review** asks first, then posts the summary and the comments as one review, so the author gets one notification. **Discard Review…**, in the bar's menu, deletes the draft.
+
+<a id="pull-request-notifications"></a>
+
+### Notifications
+
+Kero checks the GitHub repositories of your projects every 5 minutes, and notifies you of each new pull request that asks for your review. Settings › General › Git sets which pull requests notify you, `pr-notify`: those that ask for your review, every new one someone else opens, or none, which stops checking; and how often Kero checks, `pr-poll-interval`. Click the notification to see the pull request in a session of its project. Kero remembers what it has seen, so a restart doesn't notify you again; the first check of a repository only learns what is open.
+
+<a id="new-pull-request"></a>
+
+### New pull request
+
+**New Pull Request** makes a pull request of the branch of the pane you're in. The form shows the branch it goes into, the default branch of the push remote's repository at first; click it to choose another branch, or another remote's repository. It lists the default branch first, then the most recently changed, and typing filters the list. Under the title and the description, it lists the commits the pull request brings, and the files they change, each of whose diff a click unfolds. Only commits go in: the form says how many files you haven't committed, and how many commits the push remote doesn't have yet. The sparkles beside the title have the title and the description written, as **Write Message** writes a commit message, by `commit-message-command`. A branch with only one commit takes its subject as the title.
+
+**Create Pull Request** pushes the commits the push remote doesn't have, then creates the pull request with `gh` and opens it. The arrow beside it has **Create as Draft**, and **Show on GitHub**, which opens GitHub's page that creates the pull request, with the title and the description filled in, for you to finish there. If the branch already has an open pull request, the form links to it instead.
+
+Settings › General › Git has the prompts that tell the agent how to write a commit message and a pull request, `commit-message-prompt` and `pr-message-prompt`. They show Kero's own until you change them, and **Reset to Default** brings those back.
 
 ## From the command line
 

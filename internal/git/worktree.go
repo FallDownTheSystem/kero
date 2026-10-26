@@ -33,6 +33,45 @@ func CheckBranch(ctx context.Context, dir, name string) error {
 	return nil
 }
 
+// Checkout is a worktree of the repository: where it is, and the commit
+// it has checked out.
+type Checkout struct {
+	Path string
+	Head string
+}
+
+// Checkouts returns the repository's worktrees, the main one first, but
+// a bare one's, which has no files.
+func (r Repo) Checkouts(ctx context.Context) ([]Checkout, error) {
+	out, err := run(ctx, r.Root, nil, "worktree", "list", "--porcelain")
+	if err != nil {
+		return nil, err
+	}
+	var list []Checkout
+	var cur Checkout
+	bare := false
+	flush := func() {
+		if cur.Path != "" && !bare {
+			list = append(list, cur)
+		}
+		cur, bare = Checkout{}, false
+	}
+	for _, line := range strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n") {
+		switch {
+		case line == "":
+			flush()
+		case strings.HasPrefix(line, "worktree "):
+			cur.Path = filepath.FromSlash(strings.TrimPrefix(line, "worktree "))
+		case strings.HasPrefix(line, "HEAD "):
+			cur.Head = strings.TrimPrefix(line, "HEAD ")
+		case line == "bare":
+			bare = true
+		}
+	}
+	flush()
+	return list, nil
+}
+
 // HasBranch reports whether the repository has a local branch name.
 func (r Repo) HasBranch(name string) bool { return r.hasRef("refs/heads/" + name) }
 

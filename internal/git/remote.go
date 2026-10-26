@@ -3,6 +3,8 @@ package git
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -14,6 +16,75 @@ func (r Repo) Remotes(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return strings.Fields(string(out)), nil
+}
+
+// RemoteURL returns the URL a remote fetches from.
+func (r Repo) RemoteURL(ctx context.Context, name string) (string, error) {
+	if name == "" || strings.HasPrefix(name, "-") {
+		return "", errors.New("not a remote: " + name)
+	}
+	out, err := run(ctx, r.Root, nil, "remote", "get-url", name)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// RemoteDefault returns the branch a remote's HEAD is on, as the last
+// fetch left it, else main or master of those the remote has; "" for
+// none.
+func (r Repo) RemoteDefault(remote string) string {
+	if b := r.remoteHead(remote); b != "" {
+		return b
+	}
+	for _, name := range []string{"main", "master"} {
+		if r.hasRef("refs/remotes/" + remote + "/" + name) {
+			return name
+		}
+	}
+	return ""
+}
+
+// FetchRef fetches a ref of a remote into a ref of the repository's,
+// over what it was: src as the remote names it, dst as
+// refs/remotes/<remote>/<name>.
+func (r Repo) FetchRef(ctx context.Context, remote, src, dst string) error {
+	for _, s := range []string{remote, src, dst} {
+		if s == "" || strings.HasPrefix(s, "-") || strings.ContainsAny(s, " :\x00\n~^?*[\\") {
+			return errors.New("not a ref to fetch: " + s)
+		}
+	}
+	_, err := r.write(ctx, "", nil, "fetch", "--no-tags", remote, "+"+src+":"+dst)
+	return err
+}
+
+// remoteHead returns the branch a remote's HEAD is on, as the last fetch
+// left it, "" when unknown. It reads the ref's file, running nothing.
+func (r Repo) remoteHead(remote string) string {
+	b, err := os.ReadFile(filepath.Join(r.Common, "refs", "remotes", remote, "HEAD"))
+	if err != nil {
+		return ""
+	}
+	ref, ok := strings.CutPrefix(strings.TrimSpace(string(b)), "ref: refs/remotes/"+remote+"/")
+	if !ok {
+		return ""
+	}
+	return ref
+}
+
+// MergeBase returns the commit where a and b's histories meet.
+func (r Repo) MergeBase(ctx context.Context, a, b string) (string, error) {
+	if err := checkRev(a); err != nil {
+		return "", err
+	}
+	if err := checkRev(b); err != nil {
+		return "", err
+	}
+	out, err := run(ctx, r.Root, nil, "merge-base", a, b)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // FetchOptions are a fetch's: every remote's, or the upstream's alone,
@@ -112,9 +183,33 @@ func (r Repo) PushArgs(ctx context.Context, branch string, o PushOptions) ([]str
 	if o.Tags {
 		args = append(args, "--follow-tags")
 	}
-	out, err := run(ctx, r.Root, nil, "for-each-ref", "--format=%(push:remotename)%00%(push:remoteref)%00%(upstream:remotename)%00%(upstream:remoteref)", "refs/heads/"+branch)
+	remote, ref, setUpstream, err := r.pushTarget(ctx, branch)
 	if err != nil {
 		return nil, err
+	}
+	if setUpstream {
+		args = append(args, "--set-upstream")
+	}
+	return append(args, remote, "refs/heads/"+branch+":"+ref), nil
+}
+
+// PushRemote returns the remote a push of branch goes to, and the branch
+// it is there, as PushArgs pushes it.
+func (r Repo) PushRemote(ctx context.Context, branch string) (remote, name string, err error) {
+	if branch == "" || strings.HasPrefix(branch, "-") {
+		return "", "", errors.New("HEAD is on no branch to push")
+	}
+	remote, ref, _, err := r.pushTarget(ctx, branch)
+	return remote, strings.TrimPrefix(ref, "refs/heads/"), err
+}
+
+// pushTarget returns where PushArgs pushes branch: the remote and the ref
+// there, and whether the push makes it branch's upstream, as a branch
+// with none takes the one it's pushed to.
+func (r Repo) pushTarget(ctx context.Context, branch string) (remote, ref string, setUpstream bool, err error) {
+	out, err := run(ctx, r.Root, nil, "for-each-ref", "--format=%(push:remotename)%00%(push:remoteref)%00%(upstream:remotename)%00%(upstream:remoteref)", "refs/heads/"+branch)
+	if err != nil {
+		return "", "", false, err
 	}
 	var pushRemote, pushRef, upstream string
 	if f := strings.Split(strings.TrimSpace(string(out)), "\x00"); len(f) == 4 {
@@ -124,24 +219,21 @@ func (r Repo) PushArgs(ctx context.Context, branch string, o PushOptions) ([]str
 		pushRemote = ""
 	}
 	if pushRemote != "" && pushRef != "" {
-		if upstream == "" {
-			args = append(args, "--set-upstream")
-		}
-		return append(args, pushRemote, "refs/heads/"+branch+":"+pushRef), nil
+		return pushRemote, pushRef, upstream == "", nil
 	}
-	remote := pushRemote
+	remote = pushRemote
 	if remote == "" {
 		remotes, err := r.Remotes(ctx)
 		if err != nil {
-			return nil, err
+			return "", "", false, err
 		}
 		if len(remotes) == 0 {
-			return nil, errors.New("the repository has no remote to push to")
+			return "", "", false, errors.New("the repository has no remote to push to")
 		}
 		remote = remotes[0]
 		if slices.Contains(remotes, "origin") {
 			remote = "origin"
 		}
 	}
-	return append(args, "--set-upstream", remote, "refs/heads/"+branch+":refs/heads/"+branch), nil
+	return remote, "refs/heads/" + branch, true, nil
 }

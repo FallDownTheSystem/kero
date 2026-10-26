@@ -203,11 +203,13 @@ type (
 	// GitMessageParams ask for a commit message of what a pane's worktree
 	// has staged, written by Command, given what to write on its stdin;
 	// "" for a fork of the conversation of the pane's agent, else a new
-	// one of an agent's.
+	// one of an agent's. Prompt is how to write it, the user's words; ""
+	// for kerod's own.
 	GitMessageParams struct {
 		Pane    string `json:"pane"`
 		ID      string `json:"id,omitempty"`
 		Command string `json:"command,omitempty"`
+		Prompt  string `json:"prompt,omitempty"`
 	}
 	GitMessage struct {
 		Message string `json:"message"`

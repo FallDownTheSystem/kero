@@ -191,6 +191,21 @@ kero diff review --branch                 # 自默认分支以来的改动
 
 见 [改动](./changes.md)。
 
+## 草稿审查
+
+审查拉取请求的智能体把评论写进[草稿审查](./changes.md#draft-reviews)，由你在 Kero 中发布。行号是拉取请求头部中文件的行号（加 `--base` 时为基础分支的行号），并且必须在拉取请求的差异中：
+
+```sh
+kero pr comment src/parse.go:42 "This drops the last token."
+kero pr comment src/parse.go:40-44 -      # 正文从标准输入读取
+kero pr summary "Two bugs in the parser."
+kero pr show                              # 草稿，以及每条评论的 id
+kero pr edit 3 "Clearer text"
+kero pr delete 3
+```
+
+在从 Kero 开始的审查中，窗格知道它的拉取请求；在其他地方，用 `--pr <编号>` 指定。
+
 ## 配置与设置
 
 ```sh
