@@ -1664,5 +1664,219 @@
   "reviewSendTip": "Paste the comments as one prompt in the pane of the agent in this worktree, and send it",
   "reviewNoAgent": "No agent works in this worktree",
   "reviewSendFailed": "Couldn't send the review to the agent: {error}",
-  "reviewSent": "{count, plural, one {# comment} other {# comments}} sent to {agent}"
+  "reviewSent": "{count, plural, one {# comment} other {# comments}} sent to {agent}",
+  "sideReview": "Review",
+  "actionToggleReview": "Toggle Review",
+  "setCommitPrompt": "Commit message prompt",
+  "setCommitPromptDetail": "How the agent writes a commit message. Kero adds the recent commits and the staged diff after it.",
+  "setPRPrompt": "Pull request prompt",
+  "setPRPromptDetail": "How the agent writes a pull request's title and description. Kero adds the commits and the diff after it.",
+  "setResetPrompt": "Reset to Default",
+  "prsNoRepo": "No repository",
+  "prsNoRepoDetail": "Pull requests show for the Git repository of the pane you are in.",
+  "prsRefresh": "Refresh",
+  "prsSetup": "Review Setup…",
+  "prsNew": "New Pull Request",
+  "prsBack": "Back to Pull Requests",
+  "prsAll": "Open",
+  "prsMine": "Mine",
+  "prsReviewRequested": "To Review",
+  "prsCantList": "Couldn't list the pull requests",
+  "prsNone": "No pull requests",
+  "prsNoneDetail": "{repo} has no open pull requests that match.",
+  "prsRepo": "Repository",
+  "prsOpenRepo": "Open Pull Requests on GitHub",
+  "prsOpen": "Open on GitHub",
+  "prsCopyLink": "Copy Link",
+  "prsDraft": "Draft",
+  "prsChecksPassed": "Checks",
+  "prsChecksFailed": "Checks",
+  "prsChecksPending": "Checks",
+  "prsApproved": "Approved",
+  "prsChangesRequested": "Changes requested",
+  "prsReview": "Review",
+  "prsReviewTip": "Have an agent review this pull request in a new worktree. Right-click for more places.",
+  "prsReviewWorktree": "Review in New Worktree",
+  "prsReviewHere": "Review in Current Agent",
+  "prsReviewSession": "Review in New Session",
+  "prsReviewWorktreeDetail": "Kero fetches the pull request's branch and starts the agent in a new session, in a worktree of that branch.",
+  "prsReviewHereDetail": "Kero sends the prompt to the agent in the pane you are in.",
+  "prsReviewSessionDetail": "Kero starts the agent in a new session, in the pane's folder.",
+  "prsReviewTitle": "Review #{number}",
+  "@prsReviewTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsTicket": "Ticket",
+  "prsReviewPrompt": "Prompt",
+  "prsStart": "Start Review",
+  "prsFetching": "Fetching #{number}…",
+  "@prsFetching": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsFetchFailed": "Couldn't fetch the pull request: {error}",
+  "prsAgentLate": "The agent isn't ready. Kero copied the prompt: paste it to the agent.",
+  "prsSetupTitle": "Review Setup for {repo}",
+  "prsSetupDetail": "How an agent reviews this repository's pull requests. Kero saves this setup for this repository only.",
+  "prsSetupCommand": "Agent command",
+  "prsSetupPrompt": "Prompt",
+  "prsUseDefault": "Reset to Default",
+  "prsSetupPlaceholders": "Kero replaces '{number}', '{url}', '{title}', '{branch}', '{base}', '{author}' and '{ticket}' with the pull request's values. '{ticket}' is the first issue key, such as PROJ-123, in the title, the description or the branch.",
+  "prsCantDraft": "Couldn't prepare the pull request",
+  "prsBaseTip": "The branch that the pull request goes into",
+  "prsExisting": "This branch already has pull request #{number}: {title}",
+  "@prsExisting": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsTitle": "Title",
+  "prsBody": "Description",
+  "prsBodyPlaceholder": "Description (Markdown)",
+  "prsWrite": "Write Title and Description",
+  "prsWriteTip": "Write the title and the description with a coding agent",
+  "prsCommits": "{count, plural, one {# commit} other {# commits}}",
+  "@prsCommits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsNoCommits": "This branch has no commits that {base} doesn't have.",
+  "prsFiles": "{count, plural, one {# file changed} other {# files changed}}",
+  "@prsFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsUnpushed": "{count, plural, one {# commit isn't} other {# commits aren't}} on {remote}. Kero pushes before it creates the pull request.",
+  "@prsUnpushed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsUncommitted": "{count, plural, one {# uncommitted file stays out of the pull request.} other {# uncommitted files stay out of the pull request.}}",
+  "@prsUncommitted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsCreate": "Create Pull Request",
+  "prsCreateTip": "Push the branch, then create the pull request on GitHub",
+  "prsCreateOptions": "More Ways to Create",
+  "prsCreateDraft": "Create as Draft",
+  "prsShow": "Show on GitHub",
+  "prsAlreadyOpen": "This branch already has an open pull request",
+  "prsTitleFirst": "Type a title first",
+  "prsCreateFailed": "Couldn't create the pull request: {error}",
+  "prsCreated": "Pull request created",
+  "prsFilesTab": "Files",
+  "prsFilesTabCount": "Files ({count})",
+  "@prsFilesTabCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsConversation": "Conversation",
+  "prsCantView": "Couldn't load the pull request",
+  "prsOpenState": "Open",
+  "prsMerged": "Merged",
+  "prsClosed": "Closed",
+  "prsByInto": "{author} wants to merge {head} into {base}",
+  "prsNoDescription": "No description.",
+  "prsDetails": "Details",
+  "prsReviewers": "Reviewers",
+  "prsNoReviewers": "No one has reviewed it, and no review is requested.",
+  "prsAwaiting": "Awaiting review",
+  "prsDismissed": "Dismissed",
+  "prsCommented": "Commented",
+  "prsReviewed": "reviewed",
+  "prsChecks": "Checks",
+  "prsNoComments": "No comments yet.",
+  "prsLineComments": "{count, plural, one {# comment on lines: see Files} other {# comments on lines: see Files}}",
+  "@prsLineComments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsCantFetch": "Couldn't fetch the changes",
+  "prsNoFiles": "The pull request changes no files",
+  "prsCheckedOut": "Checked out in {dir}: right-click a file to open it",
+  "prsOutdated": "outdated · {place}",
+  "reviewByAgent": "Agent",
+  "reviewAskAgent": "Ask the Agent About It",
+  "reviewAskText": "About your draft comment {id} on {place}:",
+  "@reviewAskText": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDraftReview": "{count, plural, =0 {Your review, no comments yet} one {Your review, # comment} other {Your review, # comments}}",
+  "@prsDraftReview": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDraftOptions": "Review Options",
+  "prsDiscardReview": "Discard Review…",
+  "prsDiscardTitle": "Discard the draft review?",
+  "prsDiscardDetail": "Its comments and summary are deleted. Nothing was posted to GitHub.",
+  "prsDiscard": "Discard",
+  "prsDraftOld": "The pull request changed after the review began. The comments stay on the older commit.",
+  "prsSummary": "Summary (Markdown), the review's text on GitHub",
+  "prsEventComment": "Comment",
+  "prsApprove": "Approve",
+  "prsRequestChanges": "Request Changes",
+  "prsPost": "Post Review",
+  "prsPostTitle": "Post the review to {pr}?",
+  "prsPostDetail": "{count, plural, =0 {The review has no comments on lines. Everyone with access to the pull request sees it.} one {The review and its # comment go to GitHub as one review. Everyone with access to the pull request sees them.} other {The review and its # comments go to GitHub as one review. Everyone with access to the pull request sees them.}}",
+  "@prsPostDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsPosted": "Review posted",
+  "prsDraftFailed": "Couldn't start the draft review: {error}",
+  "prsNotifyReview": "Review requested in {repo}",
+  "prsNotifyNew": "New pull request in {repo}",
+  "setPRNotify": "Notify of new pull requests",
+  "setPRNotifyDetail": "Kero checks the GitHub repositories of your projects with the GitHub CLI, and notifies you of each new pull request that asks for your review, or of every new one that someone else opens.",
+  "setPRNotifyReview": "Review Requested",
+  "setPRNotifyAll": "All",
+  "setPRNotifyOff": "Off",
+  "setPRPoll": "Check every",
+  "setPRPollMinutes": "{count, plural, one {# minute} other {# minutes}}",
+  "@setPRPollMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

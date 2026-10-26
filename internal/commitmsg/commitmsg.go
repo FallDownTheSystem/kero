@@ -28,20 +28,55 @@ type Agent struct {
 // ErrNoWriter: there is no agent to ask, nor a command set.
 var ErrNoWriter = errors.New("no coding agent to write the message: set a command in Settings › Git")
 
-// Prompt is what the message is asked for with: the repository's recent
+// DefaultCommitPrompt is how a commit message is written, unless the user
+// says otherwise (settings' commit-message-prompt): what Prompt asks
+// besides the reply's form, which Clean reads it by.
+const DefaultCommitPrompt = "Keep to the style of the repository's recent commit messages: a subject line of at most 72 characters, then, when the change needs one, a blank line and a body wrapped at 72 that says why."
+
+// DefaultPRPrompt is how a pull request's title and description are
+// written, unless the user says otherwise (settings' pr-message-prompt).
+const DefaultPRPrompt = "The title says what the pull request does in at most 72 characters. The description, in Markdown, sums up what changed and why in a sentence or two, then lists the notable changes; it says how the change was tested when the commits tell. Keep it short: no headings for a small change, and nothing a reviewer sees in the diff at a glance."
+
+// Prompt is what the commit message is asked for with: how to write it
+// (instructions, DefaultCommitPrompt when ""), the repository's recent
 // subjects, as the style to keep, then what is staged.
-func Prompt(forked bool, recent, stat, patch string) string {
+func Prompt(forked bool, instructions, recent, stat, patch string) string {
 	var b strings.Builder
 	b.WriteString("Write a git commit message for the staged changes below.\n\n")
 	if forked {
 		b.WriteString("You made these changes, or some of them, in this conversation: say why they were made, as you know it. The diff is what the commit takes; describe it, not the rest of the conversation's work.\n\n")
 	}
-	b.WriteString("Keep to the style of the repository's recent commit messages. Reply with the message alone, between a line " + msgOpen + " and a line " + msgClose + ": a subject line of at most 72 characters, then, when the change needs one, a blank line and a body wrapped at 72 that says why. No code fences, no quotes, no commentary, and no tools.\n\n")
+	b.WriteString(orDefault(instructions, DefaultCommitPrompt) + "\n\n")
+	b.WriteString("Reply with the message alone, between a line " + msgOpen + " and a line " + msgClose + ". No code fences, no quotes, no commentary, and no tools.\n\n")
 	if recent = strings.TrimSpace(recent); recent != "" {
 		b.WriteString("Recent commit subjects:\n" + recent + "\n\n")
 	}
 	b.WriteString("Staged changes:\n" + stat + "\n\n" + patch)
 	return b.String()
+}
+
+// PRPrompt is what a pull request's title and description are asked for
+// with: how to write them (instructions, DefaultPRPrompt when ""), then
+// the commits it brings, oldest first, the files they change, and their
+// diff.
+func PRPrompt(forked bool, instructions, commits, files, patch string) string {
+	var b strings.Builder
+	b.WriteString("Write the title and the description of a GitHub pull request of the commits below.\n\n")
+	if forked {
+		b.WriteString("You made these changes, or some of them, in this conversation: say why they were made, as you know it. The commits are what the pull request takes; describe them, not the rest of the conversation's work.\n\n")
+	}
+	b.WriteString(orDefault(instructions, DefaultPRPrompt) + "\n\n")
+	b.WriteString("Reply between a line " + prOpen + " and a line " + prClose + ": the title on the first line, then a blank line, then the description. No code fence around them, no commentary, and no tools.\n\n")
+	b.WriteString("Commits:\n" + strings.TrimSpace(commits) + "\n\nFiles:\n" + strings.TrimSpace(files) + "\n\n" + patch)
+	return b.String()
+}
+
+// orDefault is the user's instructions, else def.
+func orDefault(instructions, def string) string {
+	if s := strings.TrimSpace(instructions); s != "" {
+		return s
+	}
+	return def
 }
 
 // SessionPlaceholder is what the user's command has for the id of the
@@ -104,6 +139,8 @@ func Command(user string, agent *Agent, sh string) (argv []string, forked bool, 
 const (
 	msgOpen  = "<commit-message>"
 	msgClose = "</commit-message>"
+	prOpen   = "<pull-request>"
+	prClose  = "</pull-request>"
 )
 
 func isCodex(program string) bool {
@@ -160,6 +197,26 @@ var validID = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_-]{0,127}$`)
 // Write runs argv in dir with prompt on its stdin, and returns the message
 // it printed.
 func Write(ctx context.Context, dir string, argv []string, prompt string) (string, error) {
+	return write(ctx, dir, argv, prompt, Clean)
+}
+
+// WritePR runs argv in dir with a pull request's prompt (PRPrompt) on its
+// stdin, and returns the title and the description it printed.
+func WritePR(ctx context.Context, dir string, argv []string, prompt string) (title, body string, err error) {
+	msg, err := write(ctx, dir, argv, prompt, CleanPR)
+	if err != nil {
+		return "", "", err
+	}
+	title, body = SplitPR(msg)
+	if title == "" {
+		return "", "", errors.New(filepath.Base(argv[0]) + " wrote no title")
+	}
+	return title, body, nil
+}
+
+// write runs argv in dir with prompt on its stdin, and returns what it
+// printed, as clean takes the reply out of it.
+func write(ctx context.Context, dir string, argv []string, prompt string, clean func(string) string) (string, error) {
 	if len(argv) == 0 {
 		return "", ErrNoWriter
 	}
@@ -203,22 +260,49 @@ func Write(ctx context.Context, dir string, argv []string, prompt string) (strin
 			out = string(b)
 		}
 	}
-	msg := Clean(out)
+	msg := clean(out)
 	if msg == "" {
 		return "", errors.New(filepath.Base(argv[0]) + " wrote no message")
 	}
 	return msg, nil
 }
 
-// Clean takes a message out of what a model printed: what is between its
-// last msgOpen and the msgClose after it, when it printed them, without
-// its code fence, the quotes around it, and the trailing spaces of its
-// lines.
-func Clean(s string) string {
+// Clean takes a commit message out of what a model printed: what is
+// between its last msgOpen and the msgClose after it, when it printed
+// them, without its code fence, the quotes around it, and the trailing
+// spaces of its lines.
+func Clean(s string) string { return clean(s, msgOpen, msgClose) }
+
+// CleanPR takes a pull request's reply out of what a model printed, as
+// Clean takes a commit message, between prOpen and prClose.
+func CleanPR(s string) string { return clean(s, prOpen, prClose) }
+
+// SplitPR splits a pull request's reply into its title, its first line,
+// without a label or a heading's mark a model may put before it, and its
+// description, the rest.
+func SplitPR(msg string) (title, body string) {
+	title, body, _ = strings.Cut(strings.TrimSpace(msg), "\n")
+	title = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(title), "#"))
+	for _, label := range []string{"Title:", "**Title:**"} {
+		if t, ok := strings.CutPrefix(title, label); ok {
+			title = strings.TrimSpace(t)
+		}
+	}
+	title = strings.Trim(title, "*`\"")
+	body = strings.TrimSpace(body)
+	for _, label := range []string{"Description:", "Body:", "**Description:**"} {
+		if b, ok := strings.CutPrefix(body, label); ok {
+			body = strings.TrimSpace(b)
+		}
+	}
+	return strings.TrimSpace(title), body
+}
+
+func clean(s, open, close string) string {
 	s = strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
-	if i := strings.LastIndex(s, msgOpen); i >= 0 {
-		s = s[i+len(msgOpen):]
-		if j := strings.Index(s, msgClose); j >= 0 {
+	if i := strings.LastIndex(s, open); i >= 0 {
+		s = s[i+len(open):]
+		if j := strings.Index(s, close); j >= 0 {
 			s = s[:j]
 		}
 		s = strings.TrimSpace(s)

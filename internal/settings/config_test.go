@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -118,6 +119,44 @@ func TestKeybinds(t *testing.T) {
 	}
 	if out := format(s2, ""); !strings.Contains(out, "keybind = "+keys+"=unbind\n") {
 		t.Errorf("formatted:\n%s", out)
+	}
+}
+
+// A prompt's lines, quotes, comment marks and backslashes, and each
+// repository's review setup, come back from the file as they went in,
+// each on one line of it.
+func TestPromptsRoundTrip(t *testing.T) {
+	s := Default()
+	s.PRMessagePrompt = "Title first.\n\n# Notes\nSay \"why\", as C:\\new\\tools does."
+	s.Reviews = map[string]ReviewSetup{
+		"acme/web":    {Command: "cc --yolo", Prompt: "/code-review high {url}\nRead {ticket} = the ticket."},
+		"egoist/kero": {Prompt: "Review #{number}"},
+	}
+	out := format(s, "")
+	for _, l := range strings.Split(strings.TrimSpace(out), "\n") {
+		if strings.HasPrefix(l, "#") || l == "" {
+			continue
+		}
+		if !strings.HasPrefix(l, "pr-message-prompt = ") && !strings.HasPrefix(l, "review-") {
+			t.Errorf("a line of no new key: %q", l)
+		}
+	}
+	back, probs := parse(out)
+	if len(probs) != 0 {
+		t.Fatalf("problems %q in:\n%s", probs, out)
+	}
+	if back.PRMessagePrompt != s.PRMessagePrompt {
+		t.Errorf("prompt %q, want %q", back.PRMessagePrompt, s.PRMessagePrompt)
+	}
+	if !maps.Equal(back.Reviews, s.Reviews) {
+		t.Errorf("reviews %+v, want %+v", back.Reviews, s.Reviews)
+	}
+	// A backslash before anything else is the user's own, as a path's.
+	if got := unescapeText(`C:\tools\x`); got != `C:\tools\x` {
+		t.Errorf("unescapeText = %q", got)
+	}
+	if _, probs := parse("review-prompt = no-repo\n"); len(probs) != 1 {
+		t.Errorf("a review line without a repository: problems %q", probs)
 	}
 }
 

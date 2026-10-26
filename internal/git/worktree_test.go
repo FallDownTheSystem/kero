@@ -46,6 +46,15 @@ func TestWorktree(t *testing.T) {
 	if wt.Main() != r.Root {
 		t.Errorf("the worktree's main checkout %q", wt.Main())
 	}
+	cos, err := r.Checkouts(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _ := run(ctx, r.Root, nil, "rev-parse", "HEAD")
+	head := strings.TrimSpace(string(out))
+	if len(cos) != 2 || !strings.EqualFold(filepath.Clean(cos[0].Path), filepath.Clean(r.Root)) || !strings.EqualFold(filepath.Clean(cos[1].Path), filepath.Clean(path)) || cos[1].Head != head {
+		t.Errorf("checkouts %+v, head %s", cos, head)
+	}
 	state := func() WorktreeState {
 		t.Helper()
 		st, err := wt.State(ctx, "fix/login", "main")

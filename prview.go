@@ -1,0 +1,745 @@
+package main
+
+import (
+	"html"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/editor"
+	"github.com/egoist/mygo/ui/markdown"
+
+	"kero/internal/proto"
+
+	"kero/locales"
+)
+
+// A pull request's page, in the Review view, as GitHub's shows it: its
+// title, its state and branches, then its conversation (its description,
+// its reviewers, its checks, its comments and reviews) or its changes,
+// whose diffs show its comments on lines under them.
+
+// prPage is the pull request shown, of a pane's repository's remote.
+type prPage struct {
+	pane, root   string
+	remote, slug string
+	pr           proto.PullRequest // as the list had it, shown until res comes
+	res          *proto.PRView
+	err          string
+	busy         bool
+	gen          int
+	tab          string // prConversation or prFiles
+	files        map[string]*sideFile
+	md           map[string]*markdown.Options // each text's, by its key
+	parts        map[string]prText
+	opened       map[string]bool // the <details> opened or closed, by key
+	scroll       ui.ScrollState
+	checksOpen   bool
+	// rv shows the draft review's comments on the diffs (prdraft.go).
+	rv     *review
+	review prDraftState
+}
+
+// The page's tabs.
+const (
+	prConversation = "conversation"
+	prFiles        = "files"
+)
+
+// repoSlug is the page's repository, as OWNER/NAME.
+func (g *prPage) repoSlug() string {
+	if g.slug == "" && g.res != nil {
+		return g.res.Repo.Slug
+	}
+	return g.slug
+}
+
+// openPRPage shows a pull request of the list's remote.
+func (a *App) openPRPage(pane *proto.Pane, remote, slug string, pr proto.PullRequest) {
+	a.openPRPageOf(pane.ID, pane.Git.Root, remote, slug, pr)
+}
+
+// openPRPageOf shows a pull request in the Review view of pane, whose
+// worktree's root is root, "" for the one it comes to have.
+func (a *App) openPRPageOf(pane, root, remote, slug string, pr proto.PullRequest) {
+	g := &prPage{pane: pane, root: root, remote: remote, slug: slug, pr: pr, tab: prConversation,
+		files: map[string]*sideFile{}, md: map[string]*markdown.Options{}, parts: map[string]prText{}, opened: map[string]bool{}}
+	g.rv = a.newPageReview(g)
+	a.side.pulls.page = g
+	a.fetchPRPage(g)
+}
+
+// fetchPRPage asks for the pull request, and its changes.
+func (a *App) fetchPRPage(g *prPage) {
+	cl := a.hostOf(g.pane).cl
+	if cl == nil {
+		return
+	}
+	g.gen++
+	gen := g.gen
+	g.busy, g.err = true, ""
+	a.fetchDraftReview(g)
+	p := proto.PRViewParams{Pane: g.pane, Remote: g.remote, Number: g.pr.Number}
+	go func() {
+		var res proto.PRView
+		err := cl.Call("pr.view", p, &res)
+		a.update(func() {
+			if g.gen != gen {
+				return
+			}
+			g.busy = false
+			if err != nil {
+				g.err = err.Error()
+				return
+			}
+			if g.res == nil || g.res.HeadOID != res.HeadOID || g.res.MergeBase != res.MergeBase {
+				g.files = map[string]*sideFile{}
+			}
+			g.res, g.pr = &res, res.PullRequest
+		})
+	}()
+}
+
+func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *proto.Pane, width float32) {
+	ps := &a.side.pulls
+	g := ps.page
+	ui.Row(c.Key("page-bar")).Shrink(0).Height(32).Padding(0, 10, 4, 6).Gap(4).AlignItems(ui.Center).Children(func() {
+		iconButton(c, "back", chevronLeftIcon, locales.PrsBack(), pal, func() { ps.page = nil })
+		ui.Text(c, "#"+strconv.Itoa(g.pr.Number)).FontSize(13.5).FontWeight(650).FontFeatures("tnum").TextColor(pal.textMuted).SingleLine()
+		ui.Spacer(c)
+		if g.busy {
+			ui.Spinner(c).Size(12, 12).Margin(0, 4, 0, 0)
+		}
+		iconButton(c, "refresh", reloadIcon, locales.PrsRefresh(), pal, func() { a.fetchPRPage(g) })
+		iconButton(c, "open", linkIcon, locales.PrsOpen(), pal, func() { openURL(g.pr.URL) })
+		pr := g.pr
+		a.reviewButton(c, pal, func(mode string) { a.askReview(s, pane, g.remote, g.slug, pr, mode) })
+	})
+	if ps.page == nil {
+		return
+	}
+	ui.Column(c.Key("page-head")).Shrink(0).Padding(0, 12, 8, 12).Gap(6).AlignItems(ui.Stretch).Children(func() {
+		ui.Text(c, g.pr.Title).FontSize(15).FontWeight(650).TextColor(pal.text).LineHeight(1.3).Selectable()
+		a.prMeta(c, pal, g)
+		files := locales.PrsFilesTab()
+		if g.res != nil {
+			files = locales.PrsFilesTabCount(len(g.res.Files))
+		}
+		ui.Row(c).Margin(4, 0, 0, 0).Children(func() {
+			segmented(c, "tab", &g.tab, []string{prConversation, prFiles}, []string{locales.PrsConversation(), files})
+		})
+	})
+	switch {
+	case g.res == nil && g.err != "":
+		a.sideMessage(c, pal, locales.PrsCantView(), g.err)
+		return
+	case g.res == nil:
+		ui.Column(c).Grow(1).Center().Children(func() { ui.Spinner(c) })
+		return
+	}
+	if g.err != "" {
+		_, removed, _ := a.diffColors(c, pal)
+		ui.Text(c, g.err).FontSize(12).TextColor(removed).LineHeight(1.35).Padding(0, 12, 6, 12).Selectable()
+	}
+	if g.tab == prFiles {
+		a.prPageFiles(c, pal, s, pane, g, width)
+	} else {
+		ui.Scroll(c.Key("conversation")).Grow(1).MinHeight(0).TrackScroll(&g.scroll).Children(func() {
+			ui.Column(c).Padding(4, 12, 20, 12).Gap(16).AlignItems(ui.Stretch).Children(func() {
+				a.prDescription(c, pal, g)
+				a.prReviewers(c, pal, g.res)
+				a.prChecks(c, pal, g)
+				a.prTimeline(c, pal, g)
+			})
+		})
+	}
+	a.prDraftBar(c, pal, g)
+}
+
+// reviewButton is Review, which has an agent review the pull request in a
+// worktree of its own; its menu, in the other places (reviewItems).
+func (a *App) reviewButton(c *ui.Context, pal *palette, launch func(mode string)) {
+	b := ui.ButtonBase(c.Key("review")).Height(24).Padding(0, 8).Gap(5).Radius(6).AlignItems(ui.Center).Shrink(0).
+		TextColor(pal.textMuted).Label(locales.PrsReview()).Tooltip(locales.PrsReviewTip())
+	if b.Hovered() || b.Pressed() {
+		b.Background(pal.rowHover).TextColor(pal.text)
+	}
+	b.Children(func() {
+		ui.Icon(c, sparklesIcon).Size(12, 12)
+		ui.Text(c, locales.PrsReview()).FontSize(12).FontWeight(500).SingleLine()
+	})
+	b.ContextMenu(func(m *ui.Menu) { reviewItems(m, launch) })
+	if b.Clicked() {
+		launch(reviewWorktree)
+	}
+}
+
+// prMeta is the pull request's state, its author, its branches and the
+// lines it adds and removes.
+func (a *App) prMeta(c *ui.Context, pal *palette, g *prPage) {
+	ui.Row(c.Key("meta")).Gap(6).AlignItems(ui.Center).Wrap().Children(func() {
+		state, col := locales.PrsOpenState(), pal.accent
+		switch {
+		case g.res != nil && g.res.State == "MERGED":
+			state = locales.PrsMerged()
+		case g.res != nil && g.res.State == "CLOSED":
+			state, col = locales.PrsClosed(), pal.textFaint
+		case g.pr.Draft:
+			state, col = locales.PrsDraft(), pal.textFaint
+		}
+		icon := prIcon
+		if g.pr.Draft {
+			icon = draftPRIcon
+		}
+		ui.Row(c.Key("state")).Height(20).Padding(0, 7).Gap(4).Radius(10).AlignItems(ui.Center).Background(col.Alpha(0.14)).TextColor(col).Shrink(0).Children(func() {
+			ui.Icon(c, icon).Size(11, 11)
+			ui.Text(c, state).FontSize(11.5).FontWeight(600).SingleLine()
+		})
+		head := g.pr.Head
+		if g.pr.CrossRepo && g.pr.HeadOwner != "" {
+			head = g.pr.HeadOwner + ":" + head
+		}
+		ui.Text(c, locales.PrsByInto(g.pr.Author, head, g.pr.Base)).FontSize(12).TextColor(pal.textMuted).LineHeight(1.35).MinWidth(0).Shrink(1)
+		if g.res != nil {
+			a.lineCounts(c, pal, g.res.Additions, g.res.Deletions, 12)
+		}
+		if g.res != nil {
+			for _, l := range g.res.Labels {
+				ui.Text(c, l).FontSize(11).FontWeight(550).TextColor(pal.textMuted).Padding(2, 7).Radius(9).Background(pal.chip).SingleLine().Shrink(0)
+			}
+		}
+	})
+}
+
+// prText is a text's parts, kept while the text is the same.
+type prText struct {
+	src   string
+	parts []mdPart
+}
+
+// prMarkdown shows text as markdown, its parse kept by key: links open,
+// images show as their descriptions, <details> fold, and other HTML, as
+// GitHub's bots write it, shows as the markdown it means (mdhtml.go).
+func (a *App) prMarkdown(c *ui.Context, g *prPage, key, text string) {
+	t, ok := g.parts[key]
+	if !ok || t.src != text {
+		t = prText{src: text, parts: mdParts(text)}
+		g.parts[key] = t
+	}
+	ui.Column(c.Key("md-" + key)).Gap(10).AlignItems(ui.Stretch).Children(func() { a.prParts(c, g, key, t.parts) })
+}
+
+// prParts shows parts of a text, key's.
+func (a *App) prParts(c *ui.Context, g *prPage, key string, parts []mdPart) {
+	pal := paletteFor(c)
+	for i, p := range parts {
+		k := key + "." + itoa(i)
+		if !p.details {
+			o := g.md[k]
+			if o == nil {
+				o = &markdown.Options{HTML: a.prHTML(g, k)}
+				g.md[k] = o
+			}
+			ui.Column(c.Key(k)).AlignItems(ui.Stretch).Children(func() { markdown.View(c, p.text, o) })
+			continue
+		}
+		open, ok := g.opened[k]
+		if !ok {
+			open = p.open
+		}
+		ui.Column(c.Key(k)).AlignItems(ui.Stretch).Children(func() {
+			head := ui.Row(c.Key("head")).Gap(6).Padding(3, 0).AlignItems(ui.Center).Cursor(ui.CursorPointer)
+			if head.Clicked() {
+				open = !open
+				g.opened[k] = open
+			}
+			head.Children(func() {
+				chev := ui.Icon(c, chevronIcon).Size(9, 9).TextColor(pal.textFaint).Shrink(0)
+				chev.Rotate(chev.AnimateTo("turn", 90*b2f(open), chevronTurn))
+				summary := p.summary
+				if summary == "" {
+					summary = locales.PrsDetails()
+				}
+				ui.Text(c, summary).FontWeight(600).LineHeight(1.35).MinWidth(0).Shrink(1)
+			})
+			if open {
+				ui.Column(c.Key("body")).Gap(10).Padding(6, 0, 4, 15).AlignItems(ui.Stretch).Children(func() {
+					a.prParts(c, g, k, p.parts)
+				})
+			}
+		})
+	}
+}
+
+// prHTML shows an HTML block of the text key names as the markdown it
+// means, and that markdown's own HTML blocks as their text.
+func (a *App) prHTML(g *prPage, key string) func(c *ui.Context, h string) {
+	key += "/html"
+	done := map[string]string{}
+	return func(c *ui.Context, h string) {
+		md, ok := done[h]
+		if !ok {
+			md = htmlMarkdown(h)
+			done[h] = md
+		}
+		o := g.md[key]
+		if o == nil {
+			o = &markdown.Options{HTML: func(c *ui.Context, h string) {
+				if t := htmlText(h); t != "" {
+					ui.Text(c, t).TextColor(paletteFor(c).textMuted).LineHeight(1.4).Selectable()
+				}
+			}}
+			g.md[key] = o
+		}
+		markdown.View(c, md, o)
+	}
+}
+
+var (
+	htmlComment = regexp.MustCompile(`(?s)<!--.*?-->`)
+	htmlTag     = regexp.MustCompile(`(?s)<[^>]*>`)
+	blankLines  = regexp.MustCompile(`[ \t]*\n\s*`)
+)
+
+// htmlText is the text of HTML, without its tags and comments: a line
+// where a tag was, as a block's summary and its text are apart.
+func htmlText(h string) string {
+	t := htmlTag.ReplaceAllString(htmlComment.ReplaceAllString(h, ""), "\n")
+	return strings.TrimSpace(blankLines.ReplaceAllString(html.UnescapeString(t), "\n"))
+}
+
+// prDescription is the pull request's description.
+func (a *App) prDescription(c *ui.Context, pal *palette, g *prPage) {
+	if strings.TrimSpace(g.res.Body) == "" {
+		ui.Text(c, locales.PrsNoDescription()).FontSize(12.5).TextColor(pal.textFaint)
+		return
+	}
+	a.prMarkdown(c, g, "body", g.res.Body)
+}
+
+// prSection is a section's title.
+func prSection(c *ui.Context, pal *palette, title string) {
+	ui.Text(c, title).FontSize(12).FontWeight(650).TextColor(pal.textMuted)
+}
+
+// prReviewer is a reviewer's review as it stands: the state of the last
+// review that decided (approved, changes requested, dismissed), else of
+// the last that commented; pending while it is asked again, or yet.
+type prReviewer struct {
+	login, state string
+	pending      bool
+}
+
+// prReviewersOf are those who reviewed, then those whose review is asked,
+// but the pull request's author.
+func prReviewersOf(v *proto.PRView) []prReviewer {
+	var out []prReviewer
+	at := map[string]int{}
+	for _, r := range v.Reviews {
+		if r.State == "PENDING" || r.Author == v.Author {
+			continue
+		}
+		i, ok := at[r.Author]
+		if !ok {
+			at[r.Author] = len(out)
+			out = append(out, prReviewer{login: r.Author, state: r.State})
+			continue
+		}
+		if r.State != "COMMENTED" || out[i].state == "COMMENTED" {
+			out[i].state = r.State
+		}
+	}
+	for _, q := range v.Requested {
+		if i, ok := at[q]; ok {
+			out[i].pending = true
+			continue
+		}
+		at[q] = len(out)
+		out = append(out, prReviewer{login: q, pending: true})
+	}
+	return out
+}
+
+// prReviewers are the reviewers and how each one's review stands, and
+// GitHub's decision.
+func (a *App) prReviewers(c *ui.Context, pal *palette, v *proto.PRView) {
+	added, removed, _ := a.diffColors(c, pal)
+	ui.Column(c.Key("reviewers")).Gap(4).AlignItems(ui.Stretch).Children(func() {
+		prSection(c, pal, locales.PrsReviewers())
+		rs := prReviewersOf(v)
+		if len(rs) == 0 {
+			ui.Text(c, locales.PrsNoReviewers()).FontSize(12.5).TextColor(pal.textFaint)
+		}
+		for _, r := range rs {
+			text, col := locales.PrsAwaiting(), pal.attention
+			switch {
+			case r.pending:
+			case r.state == "APPROVED":
+				text, col = locales.PrsApproved(), added
+			case r.state == "CHANGES_REQUESTED":
+				text, col = locales.PrsChangesRequested(), removed
+			case r.state == "DISMISSED":
+				text, col = locales.PrsDismissed(), pal.textFaint
+			default:
+				text, col = locales.PrsCommented(), pal.textMuted
+			}
+			ui.Row(c.Key("r-" + r.login)).Height(22).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Box(c).Size(7, 7).Radius(4).Background(col).Shrink(0)
+				ui.Text(c, r.login).FontSize(12.5).FontWeight(550).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
+				ui.Spacer(c)
+				ui.Text(c, text).FontSize(12).TextColor(col).SingleLine().Shrink(0)
+			})
+		}
+	})
+}
+
+// prChecks sums the checks up, which a click lists, the failed and the
+// pending first; each opens its page.
+func (a *App) prChecks(c *ui.Context, pal *palette, g *prPage) {
+	runs := g.res.CheckRuns
+	if len(runs) == 0 {
+		return
+	}
+	added, removed, _ := a.diffColors(c, pal)
+	count := map[string]int{}
+	for _, r := range runs {
+		count[r.State]++
+	}
+	look := func(state string) (string, ui.Color) {
+		switch state {
+		case "success":
+			return "✓", added
+		case "failure":
+			return "✕", removed
+		case "pending":
+			return "●", pal.attention
+		}
+		return "–", pal.textFaint
+	}
+	ui.Column(c.Key("checks")).Gap(2).AlignItems(ui.Stretch).Children(func() {
+		head := ui.Row(c.Key("head")).Height(24).Gap(6).AlignItems(ui.Center).Cursor(ui.CursorPointer)
+		if head.Clicked() {
+			g.checksOpen = !g.checksOpen
+		}
+		head.Children(func() {
+			chev := ui.Icon(c, chevronIcon).Size(9, 9).TextColor(pal.textFaint).Shrink(0)
+			chev.Rotate(chev.AnimateTo("turn", 90*b2f(g.checksOpen), chevronTurn))
+			prSection(c, pal, locales.PrsChecks())
+			for _, st := range []string{"failure", "pending", "success"} {
+				if n := count[st]; n > 0 {
+					mark, col := look(st)
+					ui.Text(c, mark+" "+itoa(n)).FontSize(12).FontWeight(550).FontFeatures("tnum").TextColor(col).SingleLine().Shrink(0)
+				}
+			}
+		})
+		if !g.checksOpen {
+			return
+		}
+		order := map[string]int{"failure": 0, "pending": 1, "success": 2}
+		sorted := slices.Clone(runs)
+		slices.SortStableFunc(sorted, func(x, y proto.PRCheck) int {
+			ox, ok := order[x.State]
+			if !ok {
+				ox = 3
+			}
+			oy, ok := order[y.State]
+			if !ok {
+				oy = 3
+			}
+			return ox - oy
+		})
+		for i, r := range sorted {
+			mark, col := look(r.State)
+			name := r.Name
+			if r.Workflow != "" {
+				name = r.Workflow + " / " + r.Name
+			}
+			row := ui.Row(c.Key(i)).Height(22).Padding(0, 6, 0, 15).Gap(8).Radius(5).AlignItems(ui.Center).Tooltip(r.URL)
+			if r.URL != "" {
+				row.Cursor(ui.CursorPointer)
+				if row.Hovered() {
+					row.Background(pal.rowHover.Alpha(0.6))
+				}
+				if row.Clicked() {
+					openURL(r.URL)
+				}
+			}
+			row.Children(func() {
+				ui.Text(c, mark).FontSize(12).TextColor(col).Shrink(0)
+				ui.Text(c, name).FontSize(12).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
+			})
+		}
+	})
+}
+
+// prEntry is an entry of the conversation: a comment, a review, or a
+// comment on lines that changed since (place says which).
+type prEntry struct {
+	key, author, state, body, url string
+	place                         string
+	at                            int64
+}
+
+// prTimeline is the conversation, the oldest first: comments, and reviews
+// that say something, or decide; then how many comments on lines the
+// changes have, which show on them.
+func (a *App) prTimeline(c *ui.Context, pal *palette, g *prPage) {
+	v := g.res
+	var es []prEntry
+	for i, cm := range v.Comments {
+		es = append(es, prEntry{key: "c" + itoa(i), author: cm.Author, body: cm.Body, url: cm.URL, at: cm.Created})
+	}
+	for i, r := range v.Reviews {
+		if r.State == "PENDING" || r.State == "COMMENTED" && strings.TrimSpace(r.Body) == "" {
+			continue
+		}
+		es = append(es, prEntry{key: "r" + itoa(i), author: r.Author, state: r.State, body: r.Body, at: r.Submitted})
+	}
+	// The diffs show the others under their lines.
+	outdated := map[int64]bool{}
+	for _, lc := range v.LineComments {
+		old := lc.ReplyTo == 0 && lc.Line == 0 || outdated[lc.ReplyTo]
+		if !old {
+			continue
+		}
+		outdated[lc.ID] = true
+		if lc.ReplyTo != 0 {
+			outdated[lc.ReplyTo] = true
+		}
+		es = append(es, prEntry{key: "l" + strconv.FormatInt(lc.ID, 10), author: lc.Author, body: lc.Body, url: lc.URL, at: lc.Created,
+			place: locales.PrsOutdated(lc.Path + ":" + itoa(max(lc.OriginalLine, 1)))})
+	}
+	slices.SortStableFunc(es, func(x, y prEntry) int { return int(x.at - y.at) })
+	added, removed, _ := a.diffColors(c, pal)
+	now := time.Now()
+	ui.Column(c.Key("timeline")).Gap(10).AlignItems(ui.Stretch).Children(func() {
+		prSection(c, pal, locales.PrsConversation())
+		if len(es) == 0 {
+			ui.Text(c, locales.PrsNoComments()).FontSize(12.5).TextColor(pal.textFaint)
+		}
+		for _, e := range es {
+			ui.Column(c.Key(e.key)).Padding(8, 10).Gap(6).Radius(8).Background(pal.chip).AlignItems(ui.Stretch).Children(func() {
+				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, e.author).FontSize(12.5).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
+					switch e.state {
+					case "APPROVED":
+						ui.Text(c, locales.PrsApproved()).FontSize(11.5).FontWeight(550).TextColor(added).SingleLine().Shrink(0)
+					case "CHANGES_REQUESTED":
+						ui.Text(c, locales.PrsChangesRequested()).FontSize(11.5).FontWeight(550).TextColor(removed).SingleLine().Shrink(0)
+					case "COMMENTED":
+						ui.Text(c, locales.PrsReviewed()).FontSize(11.5).TextColor(pal.textMuted).SingleLine().Shrink(0)
+					case "DISMISSED":
+						ui.Text(c, locales.PrsDismissed()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
+					}
+					if e.place != "" {
+						ui.Text(c, e.place).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+					}
+					ui.Spacer(c)
+					ui.Text(c, ago(e.at*1000, now)).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
+				})
+				if strings.TrimSpace(e.body) != "" {
+					a.prMarkdown(c, g, e.key, e.body)
+				}
+			})
+		}
+		if on := len(v.LineComments) - len(outdated); on > 0 {
+			l := ui.Link(c, locales.PrsLineComments(on), "")
+			if l.Clicked() {
+				g.tab = prFiles
+			}
+		}
+	})
+}
+
+// prPageFiles are the files the pull request changes, each of whose
+// headers unfolds its diff, with the comments on its lines. A worktree
+// that has the pull request checked out opens them, or drags them onto a
+// pane; else they are no file on disk.
+func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *proto.Pane, g *prPage, width float32) {
+	v := g.res
+	if v.FetchError != "" {
+		a.sideMessage(c, pal, locales.PrsCantFetch(), v.FetchError)
+		return
+	}
+	if len(v.Files) == 0 {
+		a.sideMessage(c, pal, locales.PrsNoFiles(), "")
+		return
+	}
+	asking := 0
+	for _, sf := range g.files {
+		if sf.busy {
+			asking++
+		}
+	}
+	ui.Scroll(c.Key("files")).Grow(1).MinHeight(0).Children(func() {
+		ui.Column(c).Padding(0, 6, 16, 0).AlignItems(ui.Stretch).Children(func() {
+			if v.Checkout != "" {
+				ui.Text(c, locales.PrsCheckedOut(a.hostOf(pane.ID).shortDir(v.Checkout))).FontSize(11.5).TextColor(pal.textFaint).
+					SingleLine().Ellipsis("…").Padding(0, 6, 6, 12)
+			}
+			for _, fl := range v.Files {
+				key := "prv|" + v.HeadOID + "|" + fl.Path
+				ui.Column(c.Key(key)).AlignItems(ui.Stretch).Padding(0, 0, 2, 0).Children(func() {
+					a.fileHeader(c, pal, key, pane.ID, v.Checkout, fl, flatList, nil, func() {
+						if n := prThreadCount(v, fl.Path); n > 0 {
+							ui.Row(c).Gap(3).AlignItems(ui.Center).Shrink(0).Children(func() {
+								ui.Icon(c, commentIcon).Size(11, 11).TextColor(pal.textFaint)
+								ui.Text(c, itoa(n)).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine()
+							})
+						}
+					}, nil)
+					if a.fileCollapsed(key) {
+						return
+					}
+					sf := g.files[fl.Path]
+					if sf == nil {
+						sf = &sideFile{pane: pane.ID, base: baseRev, f: fl, pr: g}
+						g.files[fl.Path] = sf
+					}
+					if !sf.busy && sf.d == nil && !sf.text.Binary && !sf.text.Large && sf.err == "" && asking < 4 {
+						asking++
+						a.fetchFile(sf, "")
+					}
+					a.fileDiff(c, pal, s, sf, width-6)
+				})
+			}
+		})
+	})
+}
+
+// prThreadCount is how many threads of comments a file's diff shows.
+func prThreadCount(v *proto.PRView, path string) int {
+	n := 0
+	for _, lc := range v.LineComments {
+		if lc.Path == path && lc.ReplyTo == 0 && lc.Line > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// prThread is a thread of comments on lines: its first, and the replies.
+type prThread struct {
+	side       editor.DiffSide
+	line       int // the last line, from 0
+	start      int // the first, from 0
+	comments   []proto.PRLineComment
+	outdated   bool
+	originally int // the line it was written on, from 1, when outdated
+}
+
+// prThreads are a file's threads, in the order they were started.
+func prThreads(v *proto.PRView, path string) []*prThread {
+	var ts []*prThread
+	by := map[int64]*prThread{}
+	for _, lc := range v.LineComments {
+		if lc.Path != path {
+			continue
+		}
+		if lc.ReplyTo != 0 {
+			if t := by[lc.ReplyTo]; t != nil {
+				t.comments = append(t.comments, lc)
+				by[lc.ID] = t
+			}
+			continue
+		}
+		t := &prThread{side: editor.DiffNew, comments: []proto.PRLineComment{lc}, outdated: lc.Line == 0, originally: lc.OriginalLine}
+		if lc.Side == "LEFT" {
+			t.side = editor.DiffOld
+		}
+		t.line, t.start = lc.Line-1, lc.Line-1
+		if lc.StartLine > 0 && lc.StartLine < lc.Line {
+			t.start = lc.StartLine - 1
+		}
+		ts = append(ts, t)
+		by[lc.ID] = t
+	}
+	return ts
+}
+
+// Heights of a thread's card under its lines, besides its comments' text.
+const (
+	threadChrome  = commentAbove + commentBelow + commentPadTop + commentPadBottom
+	threadHeadH   = 20 // a comment's author and time
+	threadBetween = 8  // between a thread's comments
+)
+
+// prNotes sets what a pull request's diff shows under its lines: its
+// threads of comments, those whose lines changed since on the
+// conversation, as outdated; and the draft review's comments, which the
+// gutter's button adds to.
+func (a *App) prNotes(c *ui.Context, pal *palette, sf *sideFile, width float32) {
+	d, v := sf.d, sf.pr.res
+	if v == nil {
+		return
+	}
+	textW := max(width-2*commentMargin-commentPadLeft-commentPadRight-60, 120)
+	if d.Layout == editor.DiffSplit {
+		textW = max(width/2-2*commentMargin-commentPadLeft-commentPadRight-40, 120)
+	}
+	threads := prThreads(v, sf.f.Path)
+	byKey := map[int64]*prThread{}
+	for _, t := range threads {
+		if t.outdated {
+			continue
+		}
+		buf := d.New
+		if t.side == editor.DiffOld {
+			buf = d.Old
+		}
+		if t.line < 0 || t.line >= buf.LineCount() {
+			continue
+		}
+		h := float32(threadChrome)
+		for i, cm := range t.comments {
+			_, th := c.MeasureText(textW, ui.Span{Text: cm.Body, Size: 13})
+			h += threadHeadH + th
+			if i > 0 {
+				h += threadBetween
+			}
+		}
+		key := t.comments[0].ID
+		byKey[key] = t
+		d.Annotations = append(d.Annotations, editor.DiffAnnotation{Side: t.side, Line: t.line, Height: h, Key: key})
+	}
+	// The draft review's comments, and the user's to add from the gutter.
+	d.OnGutterButton = func(line editor.DiffLineRange) {
+		start, end := commentLines(d.SelectedRanges(), line)
+		a.startComment(sf, line.Side, start, end)
+	}
+	drafts := a.commentNotes(c, pal, sf, sf.pr.rv, width)
+	now := time.Now()
+	d.RenderAnnotation = func(c *ui.Context, an editor.DiffAnnotation) {
+		if drafts(c, an) {
+			return
+		}
+		id, _ := an.Key.(int64)
+		t := byKey[id]
+		if t == nil {
+			return
+		}
+		ui.Column(c.Key("thread")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
+			Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(threadBetween).Radius(8).
+			Background(pal.chip).InsetShadow(0, 0, 0, 1, pal.text.Alpha(0.1)).AlignItems(ui.Stretch).Children(func() {
+			for _, cm := range t.comments {
+				ui.Column(c.Key(cm.ID)).AlignItems(ui.Stretch).Children(func() {
+					ui.Row(c).Height(threadHeadH).Gap(6).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, cm.Author).FontSize(12).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
+						ui.Text(c, ago(cm.Created*1000, now)).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
+						ui.Spacer(c)
+						if cm.URL != "" {
+							url := cm.URL
+							iconButton(c, "open", linkIcon, locales.PrsOpen(), pal, func() { openURL(url) })
+						}
+					})
+					// Of the line height MeasureText measures it at, for the
+					// room prNotes leaves.
+					ui.Text(c, cm.Body).FontSize(13).TextColor(pal.text).Selectable()
+				})
+			}
+		})
+	}
+}

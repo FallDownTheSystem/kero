@@ -139,6 +139,12 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `worktree-base` | `default` | What a [session's own worktree](./changes.md#sessions-in-their-own-worktree) branches from: `default`, the repository's default branch, or `current`, the branch of the session you're in |
 | `worktree-dir` |        | Where sessions' own worktrees go, each under its repository's name; empty for `.kero/worktrees` in the repository |
 | `commit-message-command` |  | The command that [writes a commit message](./changes.md#committing) of what's staged, run in your shell and given the prompt on its stdin, as `llm -m gpt-5`; `{session}` in it is the ID of the pane's agent's conversation, to fork it, as `cc -p --resume {session} --fork-session`; empty for a fork of the conversation of the agent in the pane, else a new run of Claude Code's or Codex's |
+| `commit-message-prompt` |  | How the agent writes a commit message: the instructions before the recent commits and the staged diff; empty for Kero's own, which Settings › General shows. Write a line break as `\n` |
+| `pr-message-prompt` |  | How the agent writes a [pull request](./changes.md#new-pull-request)'s title and description, as `commit-message-prompt` |
+| `pr-notify` | `review` | Which new pull requests of your projects' GitHub repositories [notify you](./changes.md#pull-request-notifications): `review`, those that ask for your review; `all`, every one someone else opens; `off`, none, which stops checking |
+| `pr-poll-interval` | `5` | How often Kero checks for new pull requests, in minutes |
+| `review-command` |  | The agent command that [reviews](./changes.md#review) a repository's pull requests, as `owner/name=codex --full-auto`; empty for `claude`. Repeat it for each repository |
+| `review-prompt` |  | What the review agent is asked, as `owner/name=/code-review {ticket} #{number}`; empty for Kero's own. Write a line break as `\n`. Repeat it for each repository |
 
 ## Files
 

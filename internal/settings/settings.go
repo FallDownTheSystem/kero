@@ -7,6 +7,7 @@ package settings
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -108,6 +109,20 @@ type Settings struct {
 	// it is the id of the pane's agent's conversation, to fork. "" for a
 	// fork of that conversation, else a new run of Claude Code's or Codex's.
 	CommitMessageCommand string `json:"commitMessageCommand"`
+	// CommitMessagePrompt and PRMessagePrompt say how a commit message,
+	// and a pull request's title and description, are written; "" for
+	// kerod's own (commitmsg.DefaultCommitPrompt, DefaultPRPrompt).
+	CommitMessagePrompt string `json:"commitMessagePrompt"`
+	PRMessagePrompt     string `json:"prMessagePrompt"`
+	// Reviews are how the Review view has an agent review a pull request,
+	// by its repository on GitHub (OWNER/NAME).
+	Reviews map[string]ReviewSetup `json:"reviews,omitempty"`
+	// PRNotify is which new pull requests of the projects' repositories on
+	// GitHub notify: "review", those the user's review is asked of; "all",
+	// every one another opens; "off", none, which polls no more. They are
+	// polled every PRPollMinutes.
+	PRNotify      string `json:"prNotify"`
+	PRPollMinutes int    `json:"prPollMinutes"`
 	// WorktreeBase is what a session's own worktree branches from:
 	// "default", the repository's default branch, or "current", the
 	// branch of the session the user is in. WorktreeDir is where its
@@ -247,6 +262,8 @@ func Default() Settings {
 		GitStatus:       true,
 		DiffLayout:      "auto",
 		WorktreeBase:    "default",
+		PRNotify:        "review",
+		PRPollMinutes:   5,
 		FileOpen:        "editor",
 		FilePane:        "new",
 		HiddenFiles:     true,
@@ -422,6 +439,15 @@ func target(path string) string {
 	return path
 }
 
+// ReviewSetup is how an agent reviews a repository's pull requests:
+// Command starts the agent in a new session ("" for the shell alone), and
+// Prompt is what it is asked, its {placeholders} filled in for the pull
+// request.
+type ReviewSetup struct {
+	Command string `json:"command,omitempty"`
+	Prompt  string `json:"prompt,omitempty"`
+}
+
 // Clone returns a copy that shares nothing with s.
 func (s Settings) Clone() Settings { return clone(s) }
 
@@ -438,6 +464,7 @@ func clone(s Settings) Settings {
 		}
 		s.Shortcuts = m
 	}
+	s.Reviews = maps.Clone(s.Reviews)
 	return s
 }
 
@@ -461,6 +488,10 @@ func (s *Settings) normalize() {
 	oneOf(&s.RightClick, d.RightClick, "menu", "paste", "copyOrPaste")
 	oneOf(&s.DiffLayout, d.DiffLayout, "auto", "unified", "split")
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
+	oneOf(&s.PRNotify, d.PRNotify, "review", "all", "off")
+	if s.PRPollMinutes < 1 || s.PRPollMinutes > 1440 {
+		s.PRPollMinutes = d.PRPollMinutes
+	}
 	oneOf(&s.AppIcon, d.AppIcon, AppIcons...)
 	oneOf(&s.SessionsSide, d.SessionsSide, "left", "right")
 	oneOf(&s.ExplorerFolder, d.ExplorerFolder, "hidden", "folder", "full", "fit")

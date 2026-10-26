@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -74,6 +75,108 @@ func stringKey(name, doc string, f func(*Settings) *string) key {
 	return key{name: name, doc: doc,
 		get: func(s *Settings) []string { return []string{*f(s)} },
 		set: func(s *Settings, v []string) error { *f(s) = v[len(v)-1]; return nil }}
+}
+
+// textKey is a string of lines, which the file holds on one line, as
+// escapeText writes it.
+func textKey(name, doc string, f func(*Settings) *string) key {
+	return key{name: name, doc: doc,
+		get: func(s *Settings) []string { return []string{escapeText(*f(s))} },
+		set: func(s *Settings, v []string) error { *f(s) = unescapeText(v[len(v)-1]); return nil }}
+}
+
+// reviewKey is a field of Settings.Reviews, one line a repository:
+// <owner>/<name>=<value>, the value as escapeText writes it. The keys of
+// the setup's other fields leave them as they are.
+func reviewKey(name, doc string, f func(*ReviewSetup) *string) key {
+	return key{name: name, doc: doc, list: true,
+		get: func(s *Settings) []string {
+			var out []string
+			for _, repo := range slices.Sorted(maps.Keys(s.Reviews)) {
+				r := s.Reviews[repo]
+				if v := *f(&r); v != "" {
+					out = append(out, repo+"="+escapeText(v))
+				}
+			}
+			return out
+		},
+		set: func(s *Settings, v []string) error {
+			for repo, r := range s.Reviews {
+				*f(&r) = ""
+				s.Reviews[repo] = r
+			}
+			var bad []string
+			for _, line := range v {
+				repo, value, ok := strings.Cut(line, "=")
+				repo = strings.ToLower(strings.TrimSpace(repo))
+				if !ok || !strings.Contains(repo, "/") {
+					if strings.TrimSpace(line) != "" {
+						bad = append(bad, fmt.Sprintf("%q is not <owner>/<name>=<value>", line))
+					}
+					continue
+				}
+				if s.Reviews == nil {
+					s.Reviews = map[string]ReviewSetup{}
+				}
+				r := s.Reviews[repo]
+				*f(&r) = unescapeText(strings.TrimSpace(value))
+				s.Reviews[repo] = r
+			}
+			if bad != nil {
+				return fmt.Errorf("%s", strings.Join(bad, "; "))
+			}
+			return nil
+		}}
+}
+
+// escapeText writes text on one line, as a value the file keeps as it is:
+// its newlines as \n, its quotes and backslashes escaped with a
+// backslash, and # as \x23, as a # would have format quote the value,
+// which parse doesn't take the escapes out of.
+func escapeText(text string) string {
+	var b strings.Builder
+	for _, r := range strings.TrimSpace(strings.ReplaceAll(text, "\r\n", "\n")) {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+		case '"':
+			b.WriteString(`\"`)
+		case '#':
+			b.WriteString(`\x23`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// unescapeText reads what escapeText wrote; a backslash before anything
+// else stays, as a hand-written path's does.
+func unescapeText(v string) string {
+	var b strings.Builder
+	for i := 0; i < len(v); i++ {
+		if v[i] != '\\' || i+1 == len(v) {
+			b.WriteByte(v[i])
+			continue
+		}
+		switch {
+		case v[i+1] == 'n':
+			b.WriteByte('\n')
+		case v[i+1] == '\\' || v[i+1] == '"':
+			b.WriteByte(v[i+1])
+		case strings.HasPrefix(v[i+1:], "x23"):
+			b.WriteByte('#')
+			i += 2
+		default:
+			b.WriteByte('\\')
+			continue
+		}
+		i++
+	}
+	return b.String()
 }
 
 func numberKey(name, doc string, get func(*Settings) float64, set func(*Settings, float64)) key {
@@ -321,6 +424,12 @@ var keys = []key{
 	stringKey("worktree-dir", "where sessions' own git worktrees go, each under its repository's name; empty for .kero/worktrees in the repository", func(s *Settings) *string { return &s.WorktreeDir }),
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
 	stringKey("commit-message-command", "the command that writes a commit message of what is staged, run in your shell and given the prompt on its stdin, as llm -m gpt-5; {session} in it is the id of the pane's agent's conversation, to fork it, as cc -p --resume {session} --fork-session: empty for a fork of that conversation, else a new run of Claude Code's or Codex's", func(s *Settings) *string { return &s.CommitMessageCommand }),
+	textKey("commit-message-prompt", "how a commit message is written, over Kero's own, with \\n between lines; empty for Kero's", func(s *Settings) *string { return &s.CommitMessagePrompt }),
+	textKey("pr-message-prompt", "how a pull request's title and description are written, over Kero's own, with \\n between lines; empty for Kero's", func(s *Settings) *string { return &s.PRMessagePrompt }),
+	reviewKey("review-command", "<owner>/<name>=<command>: the command that starts the agent that reviews a pull request of that GitHub repository, in a new session", func(r *ReviewSetup) *string { return &r.Command }),
+	choiceKey("pr-notify", "which new pull requests of your projects' GitHub repositories notify you: those your review is asked of, every one another opens, or none, which stops checking", func(s *Settings) *string { return &s.PRNotify }, "review", "all", "off"),
+	numberKey("pr-poll-interval", "how often Kero checks for new pull requests, in minutes", func(s *Settings) float64 { return float64(s.PRPollMinutes) }, func(s *Settings, n float64) { s.PRPollMinutes = int(n) }),
+	reviewKey("review-prompt", "<owner>/<name>=<prompt>: what that agent is asked, with \\n between lines; {number}, {url}, {title}, {branch}, {base}, {author} and {ticket} in it are the pull request's", func(r *ReviewSetup) *string { return &r.Prompt }),
 	stringKey("editor", "the command Open in Editor runs with a file's path, as code or zed: empty for the app the system opens the file with, or a folder in the one it opens text files with", func(s *Settings) *string { return &s.Editor }),
 	choiceKey("files-double-click", "what a double click on a file in the Files view does: open it in the editor, or in a file pane", func(s *Settings) *string { return &s.FileOpen }, "editor", "pane"),
 	choiceKey("files-pane", "where a file opened in a pane goes: a new pane, or the file pane you were in last, in its place, unless it has unsaved edits", func(s *Settings) *string { return &s.FilePane }, "new", "replace"),
