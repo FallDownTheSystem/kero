@@ -5,6 +5,17 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.2
+
+- **Search conversations** at the foot of the sidebar finds the agents'
+  conversations by what was said in them, as fast-resume does: every one
+  Claude Code, Codex and Pi keep on each host, also those that never ran
+  in Kero. Click one for its messages that have your words, and resume it;
+  filter with `agent:`, `dir:` and `date:`
+- **Resume commands** in Settings › Agents: resume each agent's
+  conversations with a launcher or flags of your own, as
+  `cc --yolo --resume {session}`, in your shell
+
 ## 2.1.21-fork.1
 
 The fork on Kero 2.1.21:
