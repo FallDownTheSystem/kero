@@ -285,15 +285,44 @@ func injected(s string) bool {
 	return false
 }
 
+// slashCommand is what the user typed for a slash command, which Claude
+// Code writes as markup: its name and arguments, as /review the push fix.
+// Claude Code's own commands it writes with the name first, and those
+// without arguments, as /clear and /model, tell what was done, not what
+// was said: none.
+func slashCommand(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	_, name, ok := strings.Cut(s, "<command-name>")
+	if !ok || !strings.HasPrefix(s, "<command-") {
+		return "", false
+	}
+	name, _, _ = strings.Cut(name, "</command-name>")
+	name = strings.TrimSpace(name)
+	_, args, _ := strings.Cut(s, "<command-args>")
+	args, _, _ = strings.Cut(args, "</command-args>")
+	args = strings.TrimSpace(args)
+	if name == "" || args == "" && strings.HasPrefix(s, "<command-name>") {
+		return "", false
+	}
+	if !strings.HasPrefix(name, "/") {
+		name = "/" + name
+	}
+	if args == "" {
+		return name, true
+	}
+	return name + " " + args, true
+}
+
 // parseClaude reads a Claude Code transcript: its user's and Claude's
 // messages, not the tools', nor what Claude Code adds, and its title, the
-// user's (/rename) over Claude's. Its entrypoint tells nothing: builds of
-// Claude Code that others wrap, as an interactive session, write an SDK's.
+// user's (/rename) over Claude's. A conversation run by a program, as
+// claude -p runs one, is none to look for.
 func parseClaude(path string) ([]Doc, error) {
 	b := &builder{}
 	b.doc.Agent = "claude"
 	b.doc.ID = strings.TrimSuffix(filepath.Base(path), ".jsonl")
 	custom, ai := "", ""
+	program := false
 	err := lines(path, func(line []byte) bool {
 		user := bytes.Contains(line, []byte(`"type":"user"`))
 		if !user && !bytes.Contains(line, []byte(`"type":"assistant"`)) && !bytes.Contains(line, []byte(`-title"`)) {
@@ -310,6 +339,7 @@ func parseClaude(path string) ([]Doc, error) {
 			IsCompactSummary bool   `json:"isCompactSummary"`
 			Cwd              string `json:"cwd"`
 			Timestamp        string `json:"timestamp"`
+			Entrypoint       string `json:"entrypoint"`
 			CustomTitle      string `json:"customTitle"`
 			AITitle          string `json:"aiTitle"`
 			Message          struct {
@@ -330,6 +360,10 @@ func parseClaude(path string) ([]Doc, error) {
 		default:
 			return true
 		}
+		if strings.HasPrefix(e.Entrypoint, "sdk") {
+			program = true
+			return false
+		}
 		if e.IsSidechain || e.IsMeta || e.IsCompactSummary {
 			return true
 		}
@@ -338,14 +372,18 @@ func parseClaude(path string) ([]Doc, error) {
 		}
 		b.at(e.Timestamp)
 		for _, t := range content(e.Message.Content, "text") {
-			if e.Type == "user" && injected(t) {
-				continue
+			if e.Type == "user" {
+				if c, ok := slashCommand(t); ok {
+					t = c
+				} else if injected(t) {
+					continue
+				}
 			}
 			b.add(e.Type == "user", t)
 		}
 		return true
 	})
-	if err != nil {
+	if err != nil || program {
 		return nil, err
 	}
 	if custom == "" {

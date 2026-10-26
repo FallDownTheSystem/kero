@@ -106,4 +106,4 @@ kero resume 13b9         # 用 ID、ID 的前缀或名字恢复
 - `agent:codex` 或 `agent:claude,pi` 只保留这些智能体的对话，`agent:!pi` 或 `-agent:pi` 排除一个。`dir:kero` 只保留路径中含有 `kero` 的文件夹里的对话。
 - `date:today`、`date:yesterday`、`date:week` 和 `date:month` 只保留较新的对话；`date:<2d` 是最近两天的，`date:>1w` 是一周以前的，单位为 `m`、`h`、`d`、`w`、`mo` 或 `y`。
 
-由程序运行的对话（如 `codex exec` 和子智能体）不在其中。Claude Code 的 `claude -p` 对话会保留：封装 Claude Code 的构建也会给交互式会话加上同样的标记。OpenCode 把对话保存在 Kero 不读取的数据库中，因此不会被搜索。kerod 在第一次搜索时读取智能体的历史，并把读到的内容保存在状态旁边的 `search.gob` 中，之后只重新读取有变化的历史。
+由程序运行的对话（如 `claude -p`、`codex exec` 和子智能体）不在其中。OpenCode 把对话保存在 Kero 不读取的数据库中，因此不会被搜索。kerod 在第一次搜索时读取智能体的历史，并把读到的内容保存在状态旁边的 `search.gob` 中，之后只重新读取有变化的历史。

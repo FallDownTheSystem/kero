@@ -64,11 +64,28 @@ func TestParseClaude(t *testing.T) {
 		t.Errorf("times = %d, %d", d.Started, d.Updated)
 	}
 
-	// An SDK's entrypoint, which wrapped builds of Claude Code write for
-	// interactive sessions too: kept.
-	p = write(t, dir, "sdk.jsonl", `{"type":"user","entrypoint":"sdk-cli","cwd":"/w","message":{"role":"user","content":"Write a commit message"}}`)
-	if docs, err := parseClaude(p); err != nil || len(docs) != 1 || docs[0].Title != "Write a commit message" {
-		t.Errorf("an SDK's = %+v, %v", docs, err)
+	// Run by a program, as claude -p: none.
+	p = write(t, dir, "prog.jsonl", `{"type":"user","entrypoint":"sdk-cli","cwd":"/w","message":{"role":"user","content":"Write a commit message"}}`)
+	if docs, err := parseClaude(p); err != nil || len(docs) != 0 {
+		t.Errorf("a program's = %v, %v", docs, err)
+	}
+	// A slash command alone, as the user typed it, with the skill Claude
+	// Code adds after it left out; Claude Code's own commands only with
+	// what the user typed after them.
+	p = write(t, dir, "cmd.jsonl",
+		`{"type":"user","entrypoint":"cli","message":{"role":"user","content":"<command-message>client-checkin</command-message>\n<command-name>/client-checkin</command-name>\n<command-args>KLS000 Koillis Lapin Sähkö</command-args>"}}`,
+		`{"type":"user","isMeta":true,"message":{"role":"user","content":[{"type":"text","text":"Check in KLS000"}]}}`,
+		`{"type":"user","message":{"role":"user","content":"<command-name>/clear</command-name>\n            <command-message>clear</command-message>\n            <command-args></command-args>"}}`,
+		`{"type":"user","message":{"role":"user","content":"<command-name>/goal</command-name>\n            <command-message>goal</command-message>\n            <command-args>Ship it</command-args>"}}`,
+		`{"type":"user","message":{"role":"user","content":"<local-command-stdout>Goal set</local-command-stdout>"}}`,
+	)
+	docs, err = parseClaude(p)
+	if err != nil || len(docs) != 1 {
+		t.Fatalf("a slash command's = %v, %v", docs, err)
+	}
+	want = []string{"u: /client-checkin KLS000 Koillis Lapin Sähkö", "u: /goal Ship it"}
+	if got := messages(docs[0]); !slices.Equal(got, want) || docs[0].Title != "/client-checkin KLS000 Koillis Lapin Sähkö" || docs[0].Turns != 2 {
+		t.Errorf("a slash command's = %+v, messages %q", docs[0], got)
 	}
 	// Titled by its first message, without a title of Claude's.
 	p = write(t, dir, "untitled.jsonl", `{"type":"user","entrypoint":"cli","message":{"role":"user","content":"Line one\nline two"}}`)
