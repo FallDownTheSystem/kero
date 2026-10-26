@@ -5,6 +5,27 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.21-fork.10
+
+- The Explorer has a **Review** tab: your GitHub repository's pull
+  requests, those asking for your review, yours, or all open ones
+- **New Pull Request** pushes your branch and opens a pull request, or a
+  draft, from a form of its base, title and description, with its
+  commits and files under it. ✨ writes the title and description, from
+  the prompt in Settings › General › Git
+- Click a pull request to see it in Kero: its description, reviewers,
+  checks, comments and reviews, and its changes with the comments on
+  their lines. Folded sections, as Dependabot writes, open with a click
+- **Review with Agent** starts an agent on the pull request, in a
+  worktree of its branch. Its comments go to a draft review that you
+  read, edit or delete, and ask the agent about, then post as one review
+  with **Post Review**: the agent never posts. Run `kero skill setup`
+  again so agents learn the `kero pr` commands
+- Kero notifies you of new pull requests that ask for your review, or of
+  every new one (Settings › General › Git)
+- In **Branch**, a change has **Revert**, which puts back the file's
+  lines from where the branch began
+
 ## 2.1.21-fork.9
 
 - Right-click a changed file in the Changes view, or a commit's file in
