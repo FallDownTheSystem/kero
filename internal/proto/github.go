@@ -191,6 +191,11 @@ type (
 		Created int64  `json:"created"`
 		URL     string `json:"url,omitempty"`
 	}
+	// PRDraftsParams ask for the draft reviews of the pull requests of
+	// Slug's repository, which pr.drafts answers with, as []PRReviewDraft.
+	PRDraftsParams struct {
+		Slug string `json:"slug"`
+	}
 	// PRReviewRef names a pull request: its repository's slug, as
 	// GitHubRepo's, and its number.
 	PRReviewRef struct {

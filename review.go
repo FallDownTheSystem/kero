@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -35,6 +34,11 @@ type review struct {
 	// set, asks the agent that wrote a comment about it.
 	sync func(cm *reviewComment, deleted bool)
 	ask  func(cm *reviewComment)
+	// at is the id of the comment a pull request's page jumped to, which
+	// shows marked, 0 for none; reveal, when set, brings it into view as it
+	// shows (prPage.reveal).
+	at     int
+	reveal func(c *ui.Context)
 }
 
 // reviewComment is a comment on lines of a diff's side.
@@ -264,9 +268,17 @@ func (a *App) commentNotes(c *ui.Context, pal *palette, sf *sideFile, rv *review
 
 // commentCard is a comment under its lines: its text, and Edit and Delete.
 func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewComment) {
+	at := rv.at != 0 && rv.at == cm.id
+	ring := pal.accent.Alpha(0.25)
+	if at {
+		ring = pal.accent
+	}
 	ui.Column(c.Key("comment")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
 		Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(commentGap).Radius(8).
-		Background(pal.accent.Alpha(0.08)).InsetShadow(0, 0, 0, 1, pal.accent.Alpha(0.25)).AlignItems(ui.Stretch).Children(func() {
+		Background(pal.accent.Alpha(0.08)).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch).Children(func() {
+		if at && rv.reveal != nil {
+			rv.reveal(c)
+		}
 		ui.Row(c).Height(commentTitleH).Gap(6).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, commentIcon).Size(12, 12).TextColor(pal.accent).Shrink(0)
 			if cm.agent {
@@ -495,9 +507,7 @@ func reviewPrompt(comments []*reviewComment) string {
 }
 
 // sendReview pastes a review's prompt in the worktree's agent's pane, then
-// Enter, as kero prompt does, and lets the comments go once it is sent.
-// It pastes rather than types it, whose newlines would send it line by
-// line.
+// Enter (submit), and lets the comments go once it is sent.
 func (a *App) sendReview(pane *proto.Pane, rv *review) {
 	ap := a.reviewAgent(pane)
 	cl := a.hostOf(pane.ID).cl
@@ -511,12 +521,7 @@ func (a *App) sendReview(pane *proto.Pane, rv *review) {
 		name = locales.GitAnAgent()
 	}
 	go func() {
-		err := cl.Call("send", proto.SendParams{ID: id, Data: text, Paste: true}, nil)
-		if err == nil {
-			// Apart from the paste, which the program takes in whole first.
-			time.Sleep(120 * time.Millisecond)
-			err = cl.Call("send", proto.SendParams{ID: id, Data: "\r"}, nil)
-		}
+		err := a.submit(cl, id, text)
 		a.update(func() {
 			if err != nil {
 				a.toast(locales.ReviewSendFailed(err.Error()))

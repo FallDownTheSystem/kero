@@ -82,8 +82,19 @@ func TestPRReviewDraft(t *testing.T) {
 	if err != nil || got == nil || len(got.Comments) != 1 {
 		t.Fatalf("got %+v, %v", got, err)
 	}
+	// The list marks the repository's drafts, whatever the case of its
+	// name, and no other's.
+	if err := saveReview(&proto.PRReviewDraft{Repo: "Acme/api", Number: 5, Comments: []proto.PRDraftComment{}}); err != nil {
+		t.Fatal(err)
+	}
+	if drs, err := repoReviews("acme/WEB"); err != nil || len(drs) != 1 || drs[0].Number != 5 || len(drs[0].Comments) != 1 {
+		t.Errorf("the repository's drafts %+v, %v", drs, err)
+	}
 	if _, err := d.prReview(proto.PRReviewParams{Op: "discard", Pane: s.ID, Number: 5}); err != nil {
 		t.Fatal(err)
+	}
+	if drs, err := repoReviews("Acme/web"); err != nil || len(drs) != 0 {
+		t.Errorf("drafts after the discard %+v, %v", drs, err)
 	}
 	if _, err := op(proto.PRReviewParams{Op: "comment", Comment: proto.PRDraftComment{Path: "big.txt", Line: 20, Body: "x"}}); err == nil || !strings.Contains(err.Error(), "--pr") {
 		t.Errorf("a comment after the discard: %v", err)

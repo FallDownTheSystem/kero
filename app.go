@@ -352,10 +352,17 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 		}
 		a.showNotification(n.Session, title, n.Body)
 	case "review":
-		// A draft review changed, as its agent wrote to it: the page that
-		// shows it asks for it anew.
-		g, r := a.side.pulls.page, m.Review
-		if g == nil || r == nil || a.hostOf(g.pane) != h || g.pr.Number != r.Number || !strings.EqualFold(g.repoSlug(), r.Slug) {
+		// A draft review changed, as its agent wrote to it: the list that
+		// marks it, and the page that shows it, ask for it anew.
+		ps, r := &a.side.pulls, m.Review
+		if r == nil {
+			return
+		}
+		if slug := pullsSlug(ps.res); strings.EqualFold(slug, r.Slug) && strings.HasPrefix(ps.key, h.name+"\x00") {
+			a.fetchDrafts(h, slug)
+		}
+		g := ps.page
+		if g == nil || a.hostOf(g.pane) != h || g.pr.Number != r.Number || !strings.EqualFold(g.repoSlug(), r.Slug) {
 			return
 		}
 		a.fetchDraftReview(g)
@@ -1245,12 +1252,12 @@ func (a *App) newSessionOn(h *host, projectID string) {
 // create starts a session on a host, and shows it, opening the project
 // expand in the sidebar.
 func (a *App) create(h *host, p proto.CreateParams, expand string) {
-	a.createThen(h, p, expand, nil)
+	a.createThen(h, p, expand, true, nil)
 }
 
-// createThen creates a session as create does, then, when set, runs then
-// with it.
-func (a *App) createThen(h *host, p proto.CreateParams, expand string, then func(s proto.Session)) {
+// createThen creates a session as create does, shown when show, else left
+// to work in the background; then, when set, runs then with it.
+func (a *App) createThen(h *host, p proto.CreateParams, expand string, show bool, then func(s proto.Session)) {
 	cl := h.cl
 	if cl == nil {
 		return
@@ -1268,7 +1275,9 @@ func (a *App) createThen(h *host, p proto.CreateParams, expand string, then func
 			}
 			// The state with it may come after the answer.
 			a.addPending(h, s)
-			a.selectSession(s.ID)
+			if show {
+				a.selectSession(s.ID)
+			}
 			if then != nil {
 				then(s)
 			}

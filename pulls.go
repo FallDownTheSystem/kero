@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/client"
 	"kero/internal/commitmsg"
 	"kero/internal/github"
 	"kero/internal/proto"
@@ -38,6 +39,10 @@ type pullsState struct {
 	filter  string // github.Filter*
 	remote  string // the remote asked for, "" for the branch's push remote
 	list    ui.ListState
+	// drafts are the draft reviews of the list's repository, by their
+	// pull requests' numbers, of draftsKey's host and repository.
+	drafts    map[int]proto.PRReviewDraft
+	draftsKey string
 	// form is the New Pull Request form, and page a pull request's page,
 	// shown in the list's place while set.
 	form *prForm
@@ -85,8 +90,7 @@ func (a *App) pullsView(c *ui.Context, pal *palette, s *proto.Session, width flo
 		return
 	}
 	ps.form = nil
-	if g := ps.page; g != nil && g.pane == pane.ID && (g.root == "" || g.root == pane.Git.Root) {
-		g.root = pane.Git.Root
+	if g := ps.page; g != nil && g.pane == pane.ID && g.root == pane.Git.Root {
 		a.prPageView(c, pal, s, pane, width)
 		return
 	}
@@ -225,17 +229,64 @@ func (a *App) fetchPulls(pane *proto.Pane, key string) {
 				return
 			}
 			ps.res, ps.err = &res, ""
+			a.fetchDrafts(a.hostOf(p.Pane), pullsSlug(&res))
 		})
 	}()
 }
 
+// fetchDrafts asks a host for the draft reviews of a repository's pull
+// requests, which the list marks. A kerod older than pr.drafts has none
+// to show.
+func (a *App) fetchDrafts(h *host, slug string) {
+	ps := &a.side.pulls
+	if h.cl == nil || slug == "" {
+		return
+	}
+	key := h.name + "\x00" + strings.ToLower(slug)
+	cl := h.cl
+	go func() {
+		var drs []proto.PRReviewDraft
+		err := cl.Call("pr.drafts", proto.PRDraftsParams{Slug: slug}, &drs)
+		a.update(func() {
+			if err != nil {
+				return
+			}
+			ps.drafts, ps.draftsKey = map[int]proto.PRReviewDraft{}, key
+			for _, dr := range drs {
+				ps.drafts[dr.Number] = dr
+			}
+		})
+	}()
+}
+
+// listDraft returns the draft review of a pull request of the list, which
+// h shows; false for none.
+func (a *App) listDraft(h *host, res *proto.PRList, number int) (proto.PRReviewDraft, bool) {
+	ps := &a.side.pulls
+	if ps.draftsKey != h.name+"\x00"+strings.ToLower(pullsSlug(res)) {
+		return proto.PRReviewDraft{}, false
+	}
+	dr, ok := ps.drafts[number]
+	return dr, ok
+}
+
 // pullRow is an open pull request: its number and title, its author, its
 // branches, its checks and its review, which a click opens on GitHub, with
-// Review, which has an agent review it.
+// Review, which has an agent review it; or, while it has a draft review,
+// the review's pill under them, and the row marked.
 func (a *App) pullRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto.Pane, res *proto.PRList, pr proto.PullRequest) {
+	dr, drafted := a.listDraft(a.hostOf(pane.ID), res, pr.Number)
 	row := ui.Row(c).FillWidth().Padding(6, 6, 6, 6).Gap(8).AlignItems(ui.Center).Radius(6).Cursor(ui.CursorPointer).Tooltip(pr.URL)
-	if row.Hovered() {
+	switch {
+	case row.Hovered():
 		row.Background(pal.rowHover.Alpha(0.6))
+	case drafted:
+		row.Background(pal.accent.Alpha(0.07))
+	}
+	if drafted {
+		row.Draw(func(p *ui.Painter, r ui.Rect) {
+			p.Fill(ui.Rect{X: r.X, Y: r.Y + 6, W: 3, H: r.H - 12}, pal.accent, 1.5)
+		})
 	}
 	slug := pullsSlug(res)
 	launch := func(mode string) { a.askReview(s, pane, res.Remote, slug, pr, mode) }
@@ -271,11 +322,51 @@ func (a *App) pullRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto
 				ui.Text(c, meta).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
 				a.prBadges(c, pal, pr)
 			})
+			// A line of its own, which takes nothing of the title's.
+			if drafted {
+				ui.Row(c).Margin(3, 0, 1, 0).Children(func() { a.draftPill(c, pal, dr) })
+			}
 		})
 		if row.Hovered() {
 			iconButton(c, "open", linkIcon, locales.PrsOpen(), pal, func() { openURL(pr.URL) })
 		}
-		a.reviewButton(c, pal, launch)
+		if !drafted {
+			a.reviewButton(c, pal, launch)
+		}
+	})
+}
+
+// draftPill is a pull request's draft review, in the list: Reviewing while
+// its agent works, Review Ready once it is done, In Review for the user's
+// own; and how many comments it has so far. A click on it goes to the row,
+// which opens the pull request.
+func (a *App) draftPill(c *ui.Context, pal *palette, dr proto.PRReviewDraft) {
+	p := a.paneByID(dr.Agent)
+	working := p != nil && p.Status == proto.Working
+	n := len(dr.Comments)
+	pill := ui.Row(c.Key("draft")).Height(22).Padding(0, 9, 0, 8).Gap(6).Radius(11).AlignItems(ui.Center).MinWidth(0)
+	label, fg := locales.PrsReviewReady(), ui.Hex("#ffffff")
+	switch {
+	case working:
+		label, fg = locales.PrsReviewing(), pal.accent
+		pill.Background(pal.accent.Alpha(0.16)).InsetShadow(0, 0, 0, 1, pal.accent.Alpha(0.45))
+	case dr.Agent == "":
+		label = locales.PrsInReview()
+		pill.Background(pal.accent)
+	default:
+		pill.Background(pal.accent)
+	}
+	pill.TextColor(fg).Children(func() {
+		switch {
+		case working:
+			ui.Spinner(c).Size(10, 10)
+		case dr.Agent != "":
+			ui.Text(c, "✓").FontSize(11.5).FontWeight(700).SingleLine()
+		}
+		ui.Text(c, label).FontSize(11.5).FontWeight(650).SingleLine()
+		ui.Box(c).Size(1, 11).Background(fg.Alpha(0.4))
+		ui.Icon(c, commentIcon).Size(11, 11).Shrink(0)
+		ui.Text(c, locales.PrsDraftComments(n)).FontSize(11.5).FontWeight(600).FontFeatures("tnum").SingleLine().Ellipsis("…").MinWidth(0)
 	})
 }
 
@@ -513,6 +604,9 @@ func (a *App) startReview(w *prReview) {
 	setup := a.reviewSetup(w.slug)
 	p := proto.CreateParams{Project: s.Project, After: s.ID, Dir: pane.Git.Root, Cols: s.Cols, Rows: s.Rows,
 		Name: "#" + strconv.Itoa(w.pr.Number), Command: commitmsg.Words(setup.Command)}
+	// The new session works in the background, the user where they were:
+	// the list marks the pull request while its draft review is written,
+	// and once it is ready.
 	then := func(ns proto.Session) {
 		if len(ns.Panes) == 0 {
 			return
@@ -520,12 +614,10 @@ func (a *App) startReview(w *prReview) {
 		agent := ns.Panes[0].ID
 		draft(agent, nil)
 		a.watchLaunch(h, agent, prompt)
-		// The new session's Review view shows the pull request, where the
-		// agent's comments come as it writes them.
-		a.openPRPageOf(agent, "", w.remote, w.slug, w.pr)
+		a.toast(locales.PrsReviewStarted(w.pr.Number))
 	}
 	if w.mode == reviewSession {
-		a.createThen(h, p, s.Project, then)
+		a.createThen(h, p, s.Project, false, then)
 		return
 	}
 	cl := h.cl
@@ -543,7 +635,7 @@ func (a *App) startReview(w *prReview) {
 				return
 			}
 			p.Worktree, p.Base = got.Branch, got.Base
-			a.createThen(h, p, s.Project, then)
+			a.createThen(h, p, s.Project, false, then)
 		})
 	}()
 }
@@ -619,16 +711,56 @@ func (a *App) sendPrompt(pane, prompt string) {
 		return
 	}
 	go func() {
-		err := cl.Call("send", proto.SendParams{ID: pane, Data: prompt, Paste: true}, nil)
-		if err == nil {
-			// Apart from the paste, which the program takes in whole first.
-			time.Sleep(120 * time.Millisecond)
-			err = cl.Call("send", proto.SendParams{ID: pane, Data: "\r"}, nil)
-		}
-		if err != nil {
+		if err := a.submit(cl, pane, prompt); err != nil {
 			a.update(func() { a.toast(locales.ReviewSendFailed(err.Error())) })
 		}
 	}()
+}
+
+// How long submit leaves a program to take a paste before Enter, and to
+// start working on it before Enter again. Claude Code takes what comes
+// soon after a paste for more of it: an Enter too soon is a new line, and
+// the prompt stays unsent.
+const (
+	pasteSettle = 500 * time.Millisecond
+	enterWait   = 2 * time.Second
+)
+
+// submit pastes text in a pane, then Enter, apart from the paste, and
+// returns, its caller waiting on a goroutine of its own. To an agent Kero
+// knows that stays idle after, it sends Enter again, twice at most, as an
+// Enter it took into the paste leaves the prompt unsent. It pastes rather
+// than types the text, whose newlines would send it line by line.
+func (a *App) submit(cl *client.Client, pane, text string) error {
+	if err := cl.Call("send", proto.SendParams{ID: pane, Data: text, Paste: true}, nil); err != nil {
+		return err
+	}
+	time.Sleep(pasteSettle)
+	if err := cl.Call("send", proto.SendParams{ID: pane, Data: "\r"}, nil); err != nil {
+		return err
+	}
+	go func() {
+		for range 2 {
+			time.Sleep(enterWait)
+			idle := make(chan bool, 1)
+			a.update(func() {
+				p := a.paneByID(pane)
+				idle <- p != nil && p.Agent != "" && p.Status == proto.Idle
+			})
+			select {
+			case still := <-idle:
+				if !still {
+					return
+				}
+			case <-time.After(5 * time.Second):
+				return
+			}
+			if cl.Call("send", proto.SendParams{ID: pane, Data: "\r"}, nil) != nil {
+				return
+			}
+		}
+	}()
+	return nil
 }
 
 // prSetup is a repository's review setup being edited.
