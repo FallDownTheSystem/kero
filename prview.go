@@ -168,7 +168,7 @@ func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *pr
 			})
 		})
 	}
-	a.prDraftBar(c, pal, g)
+	a.prDraftBar(c, pal, g, width)
 }
 
 // reviewButton is Review, which has an agent review the pull request in a
@@ -491,13 +491,14 @@ func (a *App) prChecks(c *ui.Context, pal *palette, g *prPage) {
 // comment on lines that changed since (place says which).
 type prEntry struct {
 	key, author, state, body, url string
-	place                         string
 	at                            int64
+	thread                        *prThread
 }
 
-// prTimeline is the conversation, the oldest first: comments, and reviews
-// that say something, or decide; then how many comments on lines the
-// changes have, which show on them.
+// prTimeline is the conversation, the oldest first: comments, reviews
+// that say something, or decide, and the threads of comments on lines and
+// files, with their replies, each where it was written, which a click
+// goes to.
 func (a *App) prTimeline(c *ui.Context, pal *palette, g *prPage) {
 	v := g.res
 	var es []prEntry
@@ -510,19 +511,9 @@ func (a *App) prTimeline(c *ui.Context, pal *palette, g *prPage) {
 		}
 		es = append(es, prEntry{key: "r" + itoa(i), author: r.Author, state: r.State, body: r.Body, at: r.Submitted})
 	}
-	// The diffs show the others under their lines.
-	outdated := map[int64]bool{}
-	for _, lc := range v.LineComments {
-		old := lc.ReplyTo == 0 && lc.Line == 0 || outdated[lc.ReplyTo]
-		if !old {
-			continue
-		}
-		outdated[lc.ID] = true
-		if lc.ReplyTo != 0 {
-			outdated[lc.ReplyTo] = true
-		}
-		es = append(es, prEntry{key: "l" + strconv.FormatInt(lc.ID, 10), author: lc.Author, body: lc.Body, url: lc.URL, at: lc.Created,
-			place: locales.PrsOutdated(lc.Path + ":" + itoa(max(lc.OriginalLine, 1)))})
+	for _, t := range prThreads(v, "") {
+		first := t.comments[0]
+		es = append(es, prEntry{key: "l" + strconv.FormatInt(first.ID, 10), at: first.Created, thread: t})
 	}
 	slices.SortStableFunc(es, func(x, y prEntry) int { return int(x.at - y.at) })
 	added, removed, _ := a.diffColors(c, pal)
@@ -533,6 +524,10 @@ func (a *App) prTimeline(c *ui.Context, pal *palette, g *prPage) {
 			ui.Text(c, locales.PrsNoComments()).FontSize(12.5).TextColor(pal.textFaint)
 		}
 		for _, e := range es {
+			if e.thread != nil {
+				ui.Column(c.Key(e.key)).AlignItems(ui.Stretch).Children(func() { a.threadCard(c, pal, g, e.thread, true) })
+				continue
+			}
 			ui.Column(c.Key(e.key)).Padding(8, 10).Gap(6).Radius(8).Background(pal.chip).AlignItems(ui.Stretch).Children(func() {
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					ui.Text(c, e.author).FontSize(12.5).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
@@ -546,9 +541,6 @@ func (a *App) prTimeline(c *ui.Context, pal *palette, g *prPage) {
 					case "DISMISSED":
 						ui.Text(c, locales.PrsDismissed()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
 					}
-					if e.place != "" {
-						ui.Text(c, e.place).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
-					}
 					ui.Spacer(c)
 					ui.Text(c, ago(e.at*1000, now)).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
 				})
@@ -556,12 +548,6 @@ func (a *App) prTimeline(c *ui.Context, pal *palette, g *prPage) {
 					a.prMarkdown(c, g, e.key, e.body)
 				}
 			})
-		}
-		if on := len(v.LineComments) - len(outdated); on > 0 {
-			l := ui.Link(c, locales.PrsLineComments(on), "")
-			if l.Clicked() {
-				g.tab = prFiles
-			}
 		}
 	})
 }
@@ -574,11 +560,19 @@ func prSpots(g *prPage) []prSpot {
 		return nil
 	}
 	var spots []prSpot
+	// A file's own comments, above its diff, before those on its lines.
 	for _, cm := range g.rv.comments {
-		spots = append(spots, prSpot{path: cm.path, line: cm.end, draft: cm.id})
+		line := cm.end
+		if cm.file {
+			line = -1
+		}
+		spots = append(spots, prSpot{path: cm.path, line: line, draft: cm.id})
 	}
 	for _, lc := range g.res.LineComments {
-		if lc.ReplyTo == 0 && lc.Line > 0 {
+		switch {
+		case lc.ReplyTo == 0 && lc.File:
+			spots = append(spots, prSpot{path: lc.Path, line: -1, thread: lc.ID})
+		case lc.ReplyTo == 0 && lc.Line > 0:
 			spots = append(spots, prSpot{path: lc.Path, line: lc.Line - 1, thread: lc.ID})
 		}
 	}
@@ -618,13 +612,19 @@ func (a *App) jumpComment(g *prPage, by int) {
 	default:
 		i = len(spots) - 1
 	}
-	g.at, g.reveal, g.rv.at = spots[i], revealFrames, spots[i].draft
+	a.goToSpot(g, spots[i])
+}
+
+// goToSpot shows a comment of the page's diffs on the Files tab, its file
+// unfolded, in view, marked.
+func (a *App) goToSpot(g *prPage, at prSpot) {
+	g.at, g.reveal, g.rv.at = at, revealFrames, at.draft
 	g.tab = prFiles
 	ch := &a.side.changes
 	if ch.collapsed == nil {
 		ch.collapsed = map[string]bool{}
 	}
-	ch.collapsed[prFileKey(g.res, g.at.path)] = false
+	ch.collapsed[prFileKey(g.res, at.path)] = false
 }
 
 // prFileKey is what a file of the page's changes folds by.
@@ -719,10 +719,13 @@ func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *p
 								ui.Text(c, itoa(n)).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine()
 							})
 						}
+						path := fl.Path
+						iconButton(c, "comment-file", commentIcon, locales.PrsCommentOnFile(), pal, func() { a.startFileComment(g, path) })
 					}, nil)
 					if a.fileCollapsed(key) {
 						return
 					}
+					a.prFileNotes(c, pal, g, fl.Path)
 					sf := g.files[fl.Path]
 					if sf == nil {
 						sf = &sideFile{pane: pane.ID, base: baseRev, f: fl, pr: g}
@@ -748,7 +751,7 @@ func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *p
 func prThreadCount(v *proto.PRView, path string) int {
 	n := 0
 	for _, lc := range v.LineComments {
-		if lc.Path == path && lc.ReplyTo == 0 && lc.Line > 0 {
+		if lc.Path == path && lc.ReplyTo == 0 && (lc.Line > 0 || lc.File) {
 			n++
 		}
 	}
@@ -762,15 +765,20 @@ type prThread struct {
 	start      int // the first, from 0
 	comments   []proto.PRLineComment
 	outdated   bool
-	originally int // the line it was written on, from 1, when outdated
+	originally int  // the line it was written on, from 1, when outdated
+	file       bool // on the file, which shows it above its diff
+	// id resolves it on GitHub, "" when unknown; resolved, whether it is.
+	id       string
+	resolved bool
 }
 
-// prThreads are a file's threads, in the order they were started.
+// prThreads are a file's threads, of every file's for path "", in the
+// order they were started.
 func prThreads(v *proto.PRView, path string) []*prThread {
 	var ts []*prThread
 	by := map[int64]*prThread{}
 	for _, lc := range v.LineComments {
-		if lc.Path != path {
+		if path != "" && lc.Path != path {
 			continue
 		}
 		if lc.ReplyTo != 0 {
@@ -780,7 +788,8 @@ func prThreads(v *proto.PRView, path string) []*prThread {
 			}
 			continue
 		}
-		t := &prThread{side: editor.DiffNew, comments: []proto.PRLineComment{lc}, outdated: lc.Line == 0, originally: lc.OriginalLine}
+		t := &prThread{side: editor.DiffNew, comments: []proto.PRLineComment{lc}, outdated: lc.Line == 0 && !lc.File, originally: lc.OriginalLine, file: lc.File,
+			id: lc.Thread, resolved: lc.Resolved}
 		if lc.Side == "LEFT" {
 			t.side = editor.DiffOld
 		}
@@ -799,7 +808,36 @@ const (
 	threadChrome  = commentAbove + commentBelow + commentPadTop + commentPadBottom
 	threadHeadH   = 20 // a comment's author and time
 	threadBetween = 8  // between a thread's comments
+	replyPad      = 8  // above a reply, below the rule that sets it apart
+	replyIndent   = 12 // a reply's, from the card's edge
+	threadFootH   = 24 // Resolve Conversation
 )
+
+// threadFolded tells a resolved thread the user hasn't opened, which shows
+// as a line.
+func (g *prPage) threadFolded(t *prThread) bool { return t.resolved && !g.opened["t:"+t.id] }
+
+// threadHeight is how high threadCard is under its lines, its text
+// wrapping at textW.
+func threadHeight(c *ui.Context, g *prPage, t *prThread, textW float32) float32 {
+	h := float32(threadChrome + threadHeadH)
+	if g.threadFolded(t) {
+		return h
+	}
+	for i, cm := range t.comments {
+		w := textW
+		if i > 0 {
+			w -= replyIndent
+			h += threadBetween + replyPad + threadHeadH
+		}
+		_, th := c.MeasureText(w, ui.Span{Text: cm.Body, Size: 13})
+		h += th
+	}
+	if t.id != "" {
+		h += threadBetween + threadFootH
+	}
+	return h
+}
 
 // prNotes sets what a pull request's diff shows under its lines: its
 // threads of comments, those whose lines changed since on the
@@ -817,7 +855,7 @@ func (a *App) prNotes(c *ui.Context, pal *palette, sf *sideFile, width float32) 
 	threads := prThreads(v, sf.f.Path)
 	byKey := map[int64]*prThread{}
 	for _, t := range threads {
-		if t.outdated {
+		if t.outdated || t.file {
 			continue
 		}
 		buf := d.New
@@ -827,14 +865,7 @@ func (a *App) prNotes(c *ui.Context, pal *palette, sf *sideFile, width float32) 
 		if t.line < 0 || t.line >= buf.LineCount() {
 			continue
 		}
-		h := float32(threadChrome)
-		for i, cm := range t.comments {
-			_, th := c.MeasureText(textW, ui.Span{Text: cm.Body, Size: 13})
-			h += threadHeadH + th
-			if i > 0 {
-				h += threadBetween
-			}
-		}
+		h := threadHeight(c, sf.pr, t, textW)
 		key := t.comments[0].ID
 		byKey[key] = t
 		d.Annotations = append(d.Annotations, editor.DiffAnnotation{Side: t.side, Line: t.line, Height: h, Key: key})
@@ -845,44 +876,193 @@ func (a *App) prNotes(c *ui.Context, pal *palette, sf *sideFile, width float32) 
 		a.startComment(sf, line.Side, start, end)
 	}
 	drafts := a.commentNotes(c, pal, sf, sf.pr.rv, width)
-	now := time.Now()
 	d.RenderAnnotation = func(c *ui.Context, an editor.DiffAnnotation) {
 		if drafts(c, an) {
 			return
 		}
 		id, _ := an.Key.(int64)
-		t := byKey[id]
-		if t == nil {
+		if t := byKey[id]; t != nil {
+			a.threadCard(c, pal, sf.pr, t, false)
+		}
+	}
+}
+
+// prFileNotes are the comments on a file, above its diff: the threads
+// posted on it, the draft review's, and the one being written.
+func (a *App) prFileNotes(c *ui.Context, pal *palette, g *prPage, path string) {
+	rv := g.rv
+	var threads []*prThread
+	for _, t := range prThreads(g.res, path) {
+		if t.file {
+			threads = append(threads, t)
+		}
+	}
+	var drafts []*reviewComment
+	for _, cm := range rv.comments {
+		if cm.file && cm.path == path && cm != rv.edits {
+			drafts = append(drafts, cm)
+		}
+	}
+	writing := rv.draft != nil && rv.draft.file && rv.draft.path == path
+	if len(threads) == 0 && len(drafts) == 0 && !writing {
+		return
+	}
+	ui.Column(c.Key("file-notes")).Padding(4, 0, 2, 0).AlignItems(ui.Stretch).Children(func() {
+		for _, t := range threads {
+			ui.Column(c.Key(t.comments[0].ID)).AlignItems(ui.Stretch).Children(func() { a.threadCard(c, pal, g, t, false) })
+		}
+		for _, cm := range drafts {
+			ui.Column(c.Key(cm.id)).AlignItems(ui.Stretch).Children(func() { a.commentCard(c, pal, rv, cm) })
+		}
+		if writing {
+			ui.Column(c.Key("draft")).Height(draftH).AlignItems(ui.Stretch).Children(func() { a.commentDraft(c, pal, rv) })
+		}
+	})
+}
+
+// threadCard is a thread of comments posted: the first, then each reply
+// under a rule, in from the edge, each with its author and when; then
+// Resolve Conversation. A resolved one is a line, which a click opens. In
+// the conversation, at, it names where it is, which a click goes to. It is
+// marked, and brought into view, when the page jumped to it.
+func (a *App) threadCard(c *ui.Context, pal *palette, g *prPage, t *prThread, at bool) {
+	now := time.Now()
+	added, _, _ := a.diffColors(c, pal)
+	jumped := g.at.thread == t.comments[0].ID
+	ring := pal.text.Alpha(0.1)
+	if jumped && !at {
+		ring = pal.accent
+	}
+	card := ui.Column(c.Key("thread")).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
+		Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(threadBetween).Radius(8).
+		Background(pal.chip).InsetShadow(0, 0, 0, 1+b2f(jumped && !at), ring).AlignItems(ui.Stretch)
+	if at {
+		card.Margin(0)
+	}
+	card.Children(func() {
+		if jumped && !at {
+			revealSpot(c, g, card)
+		}
+		if at {
+			a.threadPlace(c, pal, g, t)
+		}
+		if g.threadFolded(t) {
+			first := t.comments[0]
+			row := ui.Row(c.Key("folded")).Height(threadHeadH).Gap(6).AlignItems(ui.Center).Cursor(ui.CursorPointer).Tooltip(locales.PrsShowResolved())
+			if row.Clicked() {
+				g.opened["t:"+t.id] = true
+			}
+			row.Children(func() {
+				ui.Text(c, "✓ "+locales.PrsResolved()).FontSize(11.5).FontWeight(600).TextColor(added).SingleLine().Shrink(0)
+				ui.Text(c, first.Author).FontSize(12).FontWeight(600).TextColor(pal.textMuted).SingleLine().Shrink(0)
+				ui.Text(c, firstLine(first.Body)).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0)
+				ui.Spacer(c)
+				ui.Icon(c, chevronDownIcon).Size(9, 9).TextColor(pal.textFaint).Shrink(0)
+			})
 			return
 		}
-		at := sf.pr.at.thread == id
-		ring := pal.text.Alpha(0.1)
-		if at {
-			ring = pal.accent
-		}
-		card := ui.Column(c.Key("thread")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
-			Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(threadBetween).Radius(8).
-			Background(pal.chip).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch)
-		card.Children(func() {
-			if at {
-				revealSpot(c, sf.pr, card)
-			}
-			for _, cm := range t.comments {
-				ui.Column(c.Key(cm.ID)).AlignItems(ui.Stretch).Children(func() {
-					ui.Row(c).Height(threadHeadH).Gap(6).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, cm.Author).FontSize(12).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
-						ui.Text(c, ago(cm.Created*1000, now)).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
-						ui.Spacer(c)
-						if cm.URL != "" {
-							url := cm.URL
-							iconButton(c, "open", linkIcon, locales.PrsOpen(), pal, func() { openURL(url) })
-						}
-					})
-					// Of the line height MeasureText measures it at, for the
-					// room prNotes leaves.
-					ui.Text(c, cm.Body).FontSize(13).TextColor(pal.text).Selectable()
+		for i, cm := range t.comments {
+			col := ui.Column(c.Key(cm.ID)).AlignItems(ui.Stretch)
+			if i > 0 {
+				// Apart from what it answers: a rule across, and in.
+				col.Padding(replyPad, 0, 0, replyIndent)
+				col.Draw(func(p *ui.Painter, r ui.Rect) {
+					p.Fill(ui.Rect{X: r.X, Y: r.Y, W: r.W, H: 1}, pal.text.Alpha(0.1), 0)
+					p.Fill(ui.Rect{X: r.X + 2, Y: r.Y + replyPad + 3, W: 2, H: r.H - replyPad - 6}, pal.text.Alpha(0.14), 1)
 				})
 			}
+			col.Children(func() {
+				ui.Row(c).Height(threadHeadH).Gap(6).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, cm.Author).FontSize(12).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
+					ui.Text(c, ago(cm.Created*1000, now)).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
+					ui.Spacer(c)
+					if cm.URL != "" {
+						url := cm.URL
+						iconButton(c, "open", linkIcon, locales.PrsOpen(), pal, func() { openURL(url) })
+					}
+				})
+				// Of the line height MeasureText measures it at, for the
+				// room threadHeight leaves.
+				ui.Text(c, cm.Body).FontSize(13).TextColor(pal.text).Selectable()
+			})
+		}
+		if t.id == "" {
+			return
+		}
+		ui.Row(c.Key("foot")).Height(threadFootH).Gap(6).AlignItems(ui.Center).Children(func() {
+			label := locales.PrsResolve()
+			if t.resolved {
+				label = locales.PrsUnresolve()
+			}
+			b := ui.ButtonBase(c.Key("resolve")).Height(threadFootH).Padding(0, 8).Radius(6).AlignItems(ui.Center).
+				TextColor(pal.textMuted).Label(label).InsetShadow(0, 0, 0, 1, pal.text.Alpha(0.12))
+			if b.Hovered() || b.Pressed() {
+				b.Background(pal.rowHover).TextColor(pal.text)
+			}
+			b.Children(func() { ui.Text(c, label).FontSize(12).FontWeight(550).SingleLine() })
+			if b.Clicked() {
+				a.resolveThread(g, t.id, !t.resolved)
+			}
+			if t.resolved {
+				iconButton(c, "fold", chevronUpIcon, locales.PrsHideResolved(), pal, func() { delete(g.opened, "t:"+t.id) })
+			}
 		})
+	})
+}
+
+// threadPlace is where a thread of the conversation is: its file and
+// lines, or its file, which a click goes to on the Files tab; or, of lines
+// that changed since, where it was, outdated.
+func (a *App) threadPlace(c *ui.Context, pal *palette, g *prPage, t *prThread) {
+	first := t.comments[0]
+	spot := prSpot{path: first.Path, line: t.line, thread: first.ID}
+	place := first.Path + ":" + itoa(t.start+1)
+	if t.line > t.start {
+		place += "–" + itoa(t.line+1)
 	}
+	switch {
+	case t.file:
+		place, spot.line = locales.ReviewOnFile(first.Path), -1
+	case t.outdated:
+		ui.Text(c, locales.PrsOutdated(first.Path+":"+itoa(max(t.originally, 1)))).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…")
+		return
+	}
+	row := ui.Row(c.Key("place")).Gap(5).AlignItems(ui.Center).Cursor(ui.CursorPointer).Tooltip(locales.PrsShowInFiles())
+	if row.Clicked() {
+		a.goToSpot(g, spot)
+	}
+	row.Children(func() {
+		ui.Icon(c, docIcon).Size(11, 11).TextColor(pal.accent).Shrink(0)
+		ui.Text(c, place).FontSize(11.5).FontWeight(550).TextColor(pal.accent).SingleLine().Ellipsis("…").MinWidth(0)
+	})
+}
+
+// resolveThread resolves a thread on GitHub, or makes it unresolved again,
+// showing it so at once, and as it was when that fails.
+func (a *App) resolveThread(g *prPage, id string, resolve bool) {
+	cl := a.hostOf(g.pane).cl
+	if cl == nil || g.res == nil {
+		return
+	}
+	v := g.res
+	set := func(to bool) {
+		for i := range v.LineComments {
+			if v.LineComments[i].Thread == id {
+				v.LineComments[i].Resolved = to
+			}
+		}
+	}
+	set(resolve)
+	// Resolved, it folds.
+	delete(g.opened, "t:"+id)
+	p := proto.PRThreadParams{Pane: g.pane, Remote: g.remote, Number: g.pr.Number, Thread: id, Resolve: resolve}
+	go func() {
+		err := cl.Call("pr.thread", p, nil)
+		a.update(func() {
+			if err != nil {
+				set(!resolve)
+				a.toast(locales.PrsResolveFailed(err.Error()))
+			}
+		})
+	}()
 }

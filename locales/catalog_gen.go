@@ -9832,6 +9832,16 @@ func (msgs Messages) ReviewRemovedLines(path string, lines string) string {
 	return Catalog.Format(msgs.locale, "reviewRemovedLines", map[string]any{"path": path, "lines": lines})
 }
 
+// ReviewOnFile says "{path}, the whole file"
+// in the language the app shows.
+func ReviewOnFile(path string) string { return In(i18n.Locale()).ReviewOnFile(path) }
+
+// ReviewOnFile says "{path}, the whole file"
+// in the language of msgs.
+func (msgs Messages) ReviewOnFile(path string) string {
+	return Catalog.Format(msgs.locale, "reviewOnFile", map[string]any{"path": path})
+}
+
 // ReviewTitle says "{count, plural, one {# review comment} other {# review comments}}"
 // in the language the app shows.
 func ReviewTitle(count int) string { return In(i18n.Locale()).ReviewTitle(count) }
@@ -10432,6 +10442,86 @@ func (msgs Messages) PrsDraftComments(count int) string {
 	return Catalog.Format(msgs.locale, "prsDraftComments", map[string]any{"count": count})
 }
 
+// PrsResolve says "Resolve Conversation"
+// in the language the app shows.
+func PrsResolve() string { return In(i18n.Locale()).PrsResolve() }
+
+// PrsResolve says "Resolve Conversation"
+// in the language of msgs.
+func (msgs Messages) PrsResolve() string {
+	return Catalog.Format(msgs.locale, "prsResolve", nil)
+}
+
+// PrsUnresolve says "Unresolve"
+// in the language the app shows.
+func PrsUnresolve() string { return In(i18n.Locale()).PrsUnresolve() }
+
+// PrsUnresolve says "Unresolve"
+// in the language of msgs.
+func (msgs Messages) PrsUnresolve() string {
+	return Catalog.Format(msgs.locale, "prsUnresolve", nil)
+}
+
+// PrsResolved says "Resolved"
+// in the language the app shows.
+func PrsResolved() string { return In(i18n.Locale()).PrsResolved() }
+
+// PrsResolved says "Resolved"
+// in the language of msgs.
+func (msgs Messages) PrsResolved() string {
+	return Catalog.Format(msgs.locale, "prsResolved", nil)
+}
+
+// PrsShowResolved says "Show the resolved conversation"
+// in the language the app shows.
+func PrsShowResolved() string { return In(i18n.Locale()).PrsShowResolved() }
+
+// PrsShowResolved says "Show the resolved conversation"
+// in the language of msgs.
+func (msgs Messages) PrsShowResolved() string {
+	return Catalog.Format(msgs.locale, "prsShowResolved", nil)
+}
+
+// PrsHideResolved says "Fold the resolved conversation"
+// in the language the app shows.
+func PrsHideResolved() string { return In(i18n.Locale()).PrsHideResolved() }
+
+// PrsHideResolved says "Fold the resolved conversation"
+// in the language of msgs.
+func (msgs Messages) PrsHideResolved() string {
+	return Catalog.Format(msgs.locale, "prsHideResolved", nil)
+}
+
+// PrsShowInFiles says "Show in Files"
+// in the language the app shows.
+func PrsShowInFiles() string { return In(i18n.Locale()).PrsShowInFiles() }
+
+// PrsShowInFiles says "Show in Files"
+// in the language of msgs.
+func (msgs Messages) PrsShowInFiles() string {
+	return Catalog.Format(msgs.locale, "prsShowInFiles", nil)
+}
+
+// PrsResolveFailed says "Couldn't update the conversation: {error}"
+// in the language the app shows.
+func PrsResolveFailed(error string) string { return In(i18n.Locale()).PrsResolveFailed(error) }
+
+// PrsResolveFailed says "Couldn't update the conversation: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsResolveFailed(error string) string {
+	return Catalog.Format(msgs.locale, "prsResolveFailed", map[string]any{"error": error})
+}
+
+// PrsCommentOnFile says "Comment on File"
+// in the language the app shows.
+func PrsCommentOnFile() string { return In(i18n.Locale()).PrsCommentOnFile() }
+
+// PrsCommentOnFile says "Comment on File"
+// in the language of msgs.
+func (msgs Messages) PrsCommentOnFile() string {
+	return Catalog.Format(msgs.locale, "prsCommentOnFile", nil)
+}
+
 // PrsNextComment says "Next Comment"
 // in the language the app shows.
 func PrsNextComment() string { return In(i18n.Locale()).PrsNextComment() }
@@ -10916,16 +11006,6 @@ func PrsNoComments() string { return In(i18n.Locale()).PrsNoComments() }
 // in the language of msgs.
 func (msgs Messages) PrsNoComments() string {
 	return Catalog.Format(msgs.locale, "prsNoComments", nil)
-}
-
-// PrsLineComments says "{count, plural, one {# comment on lines: see Files} other {# comments on lines: see Files}}"
-// in the language the app shows.
-func PrsLineComments(count int) string { return In(i18n.Locale()).PrsLineComments(count) }
-
-// PrsLineComments says "{count, plural, one {# comment on lines: see Files} other {# comments on lines: see Files}}"
-// in the language of msgs.
-func (msgs Messages) PrsLineComments(count int) string {
-	return Catalog.Format(msgs.locale, "prsLineComments", map[string]any{"count": count})
 }
 
 // PrsCantFetch says "Couldn't fetch the changes"

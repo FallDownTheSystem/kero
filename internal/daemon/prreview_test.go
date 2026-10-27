@@ -67,6 +67,24 @@ func TestPRReviewDraft(t *testing.T) {
 	if _, err := op(proto.PRReviewParams{Op: "comment", Comment: proto.PRDraftComment{Path: "big.txt", Side: "LEFT", Line: 20, Body: "was"}}); err != nil {
 		t.Errorf("the base's line: %v", err)
 	}
+	// On a file the pull request changes, with no lines, whatever it was
+	// given; not on another.
+	dr, err = op(proto.PRReviewParams{Op: "comment", Comment: proto.PRDraftComment{Path: "big.txt", File: true, Side: "LEFT", Line: 7, Body: "All of it."}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := dr.Comments[len(dr.Comments)-1]; !c.File || c.Line != 0 || c.Side != "" || c.Body != "All of it." {
+		t.Errorf("on the file %+v", c)
+	}
+	if _, err := op(proto.PRReviewParams{Op: "comment", Comment: proto.PRDraftComment{Path: "a.txt", File: true, Body: "x"}}); err == nil || !strings.Contains(err.Error(), "big.txt") {
+		t.Errorf("a file not changed: %v", err)
+	}
+	if v := postOf(dr, ""); !v.Comments[len(v.Comments)-1].File {
+		t.Errorf("posts %+v", v.Comments)
+	}
+	if dr, err = op(proto.PRReviewParams{Op: "delete", ID: dr.Comments[len(dr.Comments)-1].ID}); err != nil || len(dr.Comments) != 2 {
+		t.Fatalf("deleted %+v, %v", dr, err)
+	}
 	dr, err = op(proto.PRReviewParams{Op: "comment", Comment: proto.PRDraftComment{ID: 1, Body: "Why this?"}})
 	if err != nil || dr.Comments[0].Body != "Why this?" || dr.Comments[0].Line != 20 {
 		t.Errorf("edited: %+v, %v", dr, err)

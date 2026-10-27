@@ -127,10 +127,11 @@ Usage:
   kero restart <target>         start an exited pane's shell again
   kero notify [target] <message>
                                 flag the pane as needing you
-  kero pr comment <path>:<line>[-<end>] <text…|->
+  kero pr comment <path>[:<line>[-<end>]] <text…|->
                                 draft a review comment on lines of the
-                                pull request's diff (- reads the text from
-                                stdin); --base: on the base's lines
+                                pull request's diff, or on the file with
+                                no lines (- reads the text from stdin);
+                                --base: on the base's lines
   kero pr edit <id> <text…|->   change a draft comment's text
   kero pr delete <id>           delete a draft comment
   kero pr summary <text…|->     the review's summary, its body on GitHub

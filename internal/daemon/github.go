@@ -322,11 +322,14 @@ func (d *Daemon) prView(p proto.PRViewParams) (proto.PRView, error) {
 	// The rest at once: its comments on lines, who gh is signed in as, and
 	// its changes, which git fetches.
 	var lines []github.LineComment
+	var threads map[int64]github.Thread
 	var linesErr, fetchErr error
 	done := make(chan struct{}, 2)
 	go func() {
 		lines, linesErr = github.LineComments(ctx, r.Root, repo, p.Number)
 		res.Viewer, _ = github.Viewer(ctx, r.Root, repo)
+		// Without them, the threads show with no Resolve.
+		threads, _ = github.Threads(ctx, r.Root, repo, p.Number)
 		done <- struct{}{}
 	}()
 	go func() {
@@ -340,7 +343,8 @@ func (d *Daemon) prView(p proto.PRViewParams) (proto.PRView, error) {
 	}
 	for _, c := range lines {
 		res.LineComments = append(res.LineComments, proto.PRLineComment{ID: c.ID, ReplyTo: c.ReplyTo, Path: c.Path, Body: c.Body, Author: c.Author,
-			Created: c.Created.Unix(), URL: c.URL, Side: c.Side, Line: c.Line, StartLine: c.StartLine, OriginalLine: c.OriginalLine})
+			Created: c.Created.Unix(), URL: c.URL, Side: c.Side, Line: c.Line, StartLine: c.StartLine, OriginalLine: c.OriginalLine, File: c.File,
+			Thread: threads[c.ID].ID, Resolved: threads[c.ID].Resolved})
 	}
 	if fetchErr != nil {
 		res.FetchError = fetchErr.Error()

@@ -248,6 +248,21 @@ func (d *Daemon) prReview(p proto.PRReviewParams) (*proto.PRReviewDraft, error) 
 	return dr, nil
 }
 
+// prThread resolves a thread of a pull request's comments on GitHub, or
+// makes it unresolved again.
+func (d *Daemon) prThread(p proto.PRThreadParams) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	t, err := d.reviewTargetOf(ctx, proto.PRReviewParams{Pane: p.Pane, Remote: p.Remote, Number: p.Number})
+	if err != nil {
+		return err
+	}
+	if p.Thread == "" {
+		return errors.New("which thread? give its id")
+	}
+	return github.ResolveThread(ctx, t.r.Root, t.repo, p.Thread, p.Resolve)
+}
+
 // reviewChanged tells the apps a draft changed.
 func (d *Daemon) reviewChanged(t reviewTarget) {
 	d.mu.Lock()
@@ -277,7 +292,8 @@ func (d *Daemon) startReview(ctx context.Context, t reviewTarget, dr *proto.PRRe
 }
 
 // addComment adds c to the draft, or edits the comment of its ID: on lines
-// of the pull request's diff, which GitHub takes comments on, alone.
+// of the pull request's diff, which GitHub takes comments on, alone; or,
+// with File, on a file the pull request changes.
 func addComment(ctx context.Context, r git.Repo, dr *proto.PRReviewDraft, c proto.PRDraftComment) error {
 	c.Body = strings.TrimSpace(c.Body)
 	if c.Body == "" {
@@ -295,6 +311,14 @@ func addComment(ctx context.Context, r git.Repo, dr *proto.PRReviewDraft, c prot
 		}
 	}
 	c.Path = strings.TrimPrefix(filepath.ToSlash(strings.TrimSpace(c.Path)), "./")
+	if c.File {
+		c.Side, c.Start, c.Line = "", 0, 0
+		// That the pull request changes it.
+		if _, err := fileHunks(ctx, r, dr.MergeBase, dr.Head, c.Path); err != nil {
+			return err
+		}
+		return keepComment(dr, c)
+	}
 	switch strings.ToUpper(c.Side) {
 	case "", "RIGHT":
 		c.Side = "RIGHT"
@@ -316,6 +340,12 @@ func addComment(ctx context.Context, r git.Repo, dr *proto.PRReviewDraft, c prot
 	if err := inHunks(hunks, c); err != nil {
 		return err
 	}
+	return keepComment(dr, c)
+}
+
+// keepComment puts c, checked, in the draft: in the place of the comment
+// of its ID, else after the others.
+func keepComment(dr *proto.PRReviewDraft, c proto.PRDraftComment) error {
 	if c.By == "" {
 		c.By = "agent"
 	}
@@ -416,7 +446,7 @@ func postOf(dr *proto.PRReviewDraft, event string) github.NewReview {
 	}
 	v := github.NewReview{Commit: dr.Head, Body: dr.Summary, Event: event}
 	for _, c := range dr.Comments {
-		v.Comments = append(v.Comments, github.NewLineComment{Path: c.Path, Side: c.Side, Start: c.Start, Line: c.Line, Body: c.Body})
+		v.Comments = append(v.Comments, github.NewLineComment{Path: c.Path, Side: c.Side, Start: c.Start, Line: c.Line, File: c.File, Body: c.Body})
 	}
 	return v
 }

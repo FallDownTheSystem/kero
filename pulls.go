@@ -2,6 +2,7 @@ package main
 
 import (
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -260,14 +261,26 @@ func (a *App) fetchDrafts(h *host, slug string) {
 }
 
 // listDraft returns the draft review of a pull request of the list, which
-// h shows; false for none.
+// h shows, and whether the list marks it: while it has comments or a
+// summary, or its agent reviews; false for none. A draft whose comments
+// were all deleted marks nothing.
 func (a *App) listDraft(h *host, res *proto.PRList, number int) (proto.PRReviewDraft, bool) {
 	ps := &a.side.pulls
 	if ps.draftsKey != h.name+"\x00"+strings.ToLower(pullsSlug(res)) {
 		return proto.PRReviewDraft{}, false
 	}
 	dr, ok := ps.drafts[number]
-	return dr, ok
+	return dr, ok && (len(dr.Comments) > 0 || strings.TrimSpace(dr.Summary) != "" || a.reviewing(dr))
+}
+
+// reviewing tells a draft whose agent works on it: busy, or not yet sent
+// its prompt.
+func (a *App) reviewing(dr proto.PRReviewDraft) bool {
+	p := a.paneByID(dr.Agent)
+	if p == nil {
+		return false
+	}
+	return p.Status == proto.Working || slices.ContainsFunc(a.launches, func(l *agentLaunch) bool { return l.pane == dr.Agent })
 }
 
 // pullRow is an open pull request: its number and title, its author, its
@@ -341,8 +354,7 @@ func (a *App) pullRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto
 // own; and how many comments it has so far. A click on it goes to the row,
 // which opens the pull request.
 func (a *App) draftPill(c *ui.Context, pal *palette, dr proto.PRReviewDraft) {
-	p := a.paneByID(dr.Agent)
-	working := p != nil && p.Status == proto.Working
+	working := a.reviewing(dr)
 	n := len(dr.Comments)
 	pill := ui.Row(c.Key("draft")).Height(22).Padding(0, 9, 0, 8).Gap(6).Radius(11).AlignItems(ui.Center).MinWidth(0)
 	label, fg := locales.PrsReviewReady(), ui.Hex("#ffffff")

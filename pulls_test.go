@@ -210,6 +210,16 @@ func TestPullsReview(t *testing.T) {
 	// The agent idle, the review is ready.
 	frameUntil(t, tt, "Review Ready", func() bool { _, ok := tt.Find("Review Ready"); return ok })
 	shot(t, tt, "pulls-ready")
+
+	// Its comments all deleted, the pull request is in review no more.
+	mu.Lock()
+	drafts[0].Comments = nil
+	mu.Unlock()
+	a.event(a.local(), a.local().cl, proto.Message{Event: "review", Review: &proto.PRReviewRef{Slug: "me/demo", Number: 7}})
+	frameUntil(t, tt, "Review back", func() bool { _, ok := tt.Find("Review Ready"); return !ok })
+	if _, ok := tt.Find("Review"); !ok {
+		t.Errorf("no Review; texts %q", tt.Texts())
+	}
 }
 
 // The review setup keeps a repository's command and prompt by its slug,
@@ -379,11 +389,13 @@ func TestPRPage(t *testing.T) {
 			return view, nil
 		case "git.file":
 			return proto.GitText{Old: "package parse\n\nfunc a() {}\n", New: "package parse\n\nfunc b() {}\nfunc c() {}\n", Hash: "h"}, nil
+		case "pr.review":
+			return json.RawMessage("null"), nil
 		}
 		return nil, nil
 	})
 	a.prefs.Side = sideReview
-	tt := ui.NewTester(a.view, 1280, 720)
+	tt := ui.NewTester(a.view, 1280, 1200)
 	frameUntil(t, tt, "list", func() bool { return tt.HasText("Fix the parser") })
 	if err := tt.Click("Fix the parser"); err != nil {
 		t.Fatal(err)
@@ -395,7 +407,7 @@ func TestPRPage(t *testing.T) {
 	frameUntil(t, tt, "page", func() bool { return g.res != nil })
 	tt.Frame()
 	shot(t, tt, "pr-page")
-	for _, want := range []string{"ann wants to merge fix into main", "bug", "Reviewers", "Awaiting review", "Changes requested", "Approved", "Needs a test.", "eve", "Bot notes", "Old note", "outdated · parse.go:9", "2 comments on lines: see Files"} {
+	for _, want := range []string{"ann wants to merge fix into main", "bug", "Reviewers", "Awaiting review", "Changes requested", "Approved", "Needs a test.", "eve", "Bot notes", "Old note", "outdated · parse.go:9", "parse.go:2", "Off by one?", "Fixed."} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q; texts %q", want, tt.Texts())
 		}
@@ -557,8 +569,9 @@ func TestPRDraftReview(t *testing.T) {
 		t.Fatal("not posted")
 	}
 	frameUntil(t, tt, "posted", func() bool { return !g.review.posting && g.review.draft == nil })
-	if tt.HasText("Your review") {
-		t.Error("the draft's bar stays")
+	// The bar stays, for another review, with nothing of the one posted.
+	if !tt.HasText("Your review, no comments yet") || g.review.summary != "" {
+		t.Errorf("summary %q; texts %q", g.review.summary, tt.Texts())
 	}
 }
 
@@ -844,4 +857,248 @@ func TestPRBasePicker(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("no draft of the base chosen")
 	}
+}
+
+// draftServer answers pr.review as kerod would, roughly: the draft that
+// start makes, and comments and a summary kept in it; it reports each op
+// but get.
+func draftServer(ops chan<- proto.PRReviewParams) func(raw json.RawMessage) (any, error) {
+	var mu sync.Mutex
+	var dr *proto.PRReviewDraft
+	return func(raw json.RawMessage) (any, error) {
+		var p proto.PRReviewParams
+		json.Unmarshal(raw, &p)
+		mu.Lock()
+		defer mu.Unlock()
+		if p.Op != "get" {
+			ops <- p
+		}
+		switch p.Op {
+		case "start":
+			if dr == nil {
+				dr = &proto.PRReviewDraft{Repo: "me/demo", Remote: "origin", Number: 7, Head: "h1", MergeBase: "mb", Comments: []proto.PRDraftComment{}}
+			}
+		case "summary":
+			dr.Summary = p.Summary
+		case "comment":
+			c := p.Comment
+			c.ID = len(dr.Comments) + 1
+			dr.Comments = append(dr.Comments, c)
+		case "post":
+			d := *dr
+			dr = nil
+			d.Posted = "https://github.com/me/demo/pull/7#review"
+			return d, nil
+		}
+		if dr == nil {
+			return json.RawMessage("null"), nil
+		}
+		return *dr, nil
+	}
+}
+
+// A pull request is approved with no comment on its lines: the summary
+// and the verdict alone, the draft they post from started as it posts.
+func TestPRReviewWithoutComments(t *testing.T) {
+	a := testApp(t)
+	gitDemo(a)
+	noBrowser(t)
+	view := proto.PRView{PullRequest: demoPulls().PRs[0], Repo: demoPulls().Repos[0], State: "OPEN", HeadOID: "h1", MergeBase: "mb", Viewer: "me",
+		Files: []proto.GitFile{{Path: "parse.go", Status: "modified", Added: 2, Removed: 1, From: "mb", To: "h1"}}}
+	ops := make(chan proto.PRReviewParams, 8)
+	review := draftServer(ops)
+	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "pr.view":
+			return view, nil
+		case "pr.review":
+			return review(raw)
+		}
+		return nil, nil
+	})
+	a.prefs.Side = sideReview
+	tt := ui.NewTester(a.view, 1280, 720)
+	frameUntil(t, tt, "list", func() bool { return tt.HasText("Fix the parser") })
+	if err := tt.Click("Fix the parser"); err != nil {
+		t.Fatal(err)
+	}
+	g := a.side.pulls.page
+	frameUntil(t, tt, "the review's bar", func() bool { return g.res != nil && tt.HasText("Your review, no comments yet") })
+	if g.review.draft != nil {
+		t.Fatal("a draft before any was written")
+	}
+	shot(t, tt, "pr-review-bar")
+	if err := tt.Click("Approve"); err != nil {
+		t.Fatal(err)
+	}
+	// Typed, then posted while the field has it.
+	g.review.summary = "LGTM, thanks."
+	tt.Frame()
+	if err := tt.Click("Post Review"); err != nil {
+		t.Fatal(err)
+	}
+	if a.confirm == nil {
+		t.Fatalf("no confirmation; texts %q", tt.Texts())
+	}
+	a.confirm.run()
+	var got []string
+	for len(got) < 3 {
+		select {
+		case p := <-ops:
+			got = append(got, p.Op+":"+p.Summary+p.Event)
+		case <-time.After(3 * time.Second):
+			t.Fatalf("ops %q", got)
+		}
+		tt.Frame()
+	}
+	if want := []string{"start:", "summary:LGTM, thanks.", "post:APPROVE"}; !slices.Equal(got, want) {
+		t.Errorf("ops %q, want %q", got, want)
+	}
+	frameUntil(t, tt, "posted", func() bool { return !g.review.posting })
+}
+
+// A comment on a file, from its header, shows above its diff, and goes to
+// the draft as the file's; one posted on a file shows there too, not as
+// outdated; the jump goes to them before the file's lines.
+func TestPRFileComments(t *testing.T) {
+	a := testApp(t)
+	gitDemo(a)
+	noBrowser(t)
+	view := proto.PRView{PullRequest: demoPulls().PRs[0], Repo: demoPulls().Repos[0], State: "OPEN", HeadOID: "h1", MergeBase: "mb", Viewer: "me",
+		Files: []proto.GitFile{{Path: "parse.go", Status: "modified", Added: 2, Removed: 1, From: "mb", To: "h1"}},
+		LineComments: []proto.PRLineComment{
+			{ID: 4, Path: "parse.go", Body: "On a line.", Author: "cid", Side: "RIGHT", Line: 3},
+			{ID: 5, Path: "parse.go", Body: "Rename this file?", Author: "dee", File: true},
+		}}
+	ops := make(chan proto.PRReviewParams, 8)
+	review := draftServer(ops)
+	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "pr.view":
+			return view, nil
+		case "git.file":
+			return proto.GitText{Old: "package parse\n\nfunc a() {}\n", New: "package parse\n\nfunc b() {}\nfunc c() {}\n", Hash: "h"}, nil
+		case "pr.review":
+			return review(raw)
+		}
+		return nil, nil
+	})
+	a.prefs.Side = sideReview
+	tt := ui.NewTester(a.view, 1280, 720)
+	frameUntil(t, tt, "list", func() bool { return tt.HasText("Fix the parser") })
+	if err := tt.Click("Fix the parser"); err != nil {
+		t.Fatal(err)
+	}
+	g := a.side.pulls.page
+	frameUntil(t, tt, "page", func() bool { return g.res != nil })
+	tt.Frame()
+	// The conversation shows it as the file's, not as outdated.
+	if !tt.HasText("Rename this file?") || !tt.HasText("parse.go, the whole file") || tt.HasText("outdated") {
+		t.Errorf("the file's thread in the conversation; texts %q", tt.Texts())
+	}
+	g.tab = prFiles
+	tt.Frame()
+	if err := tt.Click("Comment on File"); err != nil {
+		t.Fatal(err)
+	}
+	frameUntil(t, tt, "the diff", func() bool { sf := g.files["parse.go"]; return sf != nil && sf.d != nil })
+	tt.Frame()
+	tt.Type("Split the parser out.")
+	tt.Frame()
+	tt.Key(ui.Cmd, ui.KeyEnter)
+	var cm proto.PRDraftComment
+	for cm.Path == "" {
+		select {
+		case p := <-ops:
+			if p.Op == "comment" {
+				cm = p.Comment
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatalf("not kept; texts %q", tt.Texts())
+		}
+		tt.Frame()
+	}
+	if !cm.File || cm.Path != "parse.go" || cm.Line != 0 || cm.Body != "Split the parser out." {
+		t.Errorf("kept %+v", cm)
+	}
+	frameUntil(t, tt, "the comment from kerod", func() bool { return g.review.draft != nil && len(g.review.draft.Comments) == 1 })
+	tt.Frame()
+	shot(t, tt, "pr-file-comments")
+	// Above the diff: the file's comments, then its lines'.
+	posted, _ := tt.Find("Rename this file?")
+	mine, ok := tt.Find("Split the parser out.")
+	line, _ := tt.Find("On a line.")
+	if !ok || !tt.HasText("parse.go, the whole file") || posted.Y > line.Y || mine.Y > line.Y {
+		t.Errorf("posted %v, mine %v, on a line %v; texts %q", posted, mine, line, tt.Texts())
+	}
+	if spots := prSpots(g); len(spots) != 3 || spots[2].thread != 4 {
+		t.Errorf("spots %+v", spots)
+	}
+}
+
+// Resolve Conversation resolves the thread on GitHub and folds it at once;
+// when GitHub refuses, it shows as it was.
+func TestPRResolveThread(t *testing.T) {
+	a := testApp(t)
+	gitDemo(a)
+	noBrowser(t)
+	view := proto.PRView{PullRequest: demoPulls().PRs[0], Repo: demoPulls().Repos[0], State: "OPEN", HeadOID: "h1", MergeBase: "mb",
+		LineComments: []proto.PRLineComment{
+			{ID: 1, Path: "parse.go", Body: "Off by one?", Author: "cid", Side: "RIGHT", Line: 2, Thread: "T1"},
+			{ID: 2, ReplyTo: 1, Path: "parse.go", Body: "Fixed.", Author: "ann", Side: "RIGHT", Line: 2},
+		}}
+	calls := make(chan proto.PRThreadParams, 4)
+	var mu sync.Mutex
+	refuse := false
+	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "pr.view":
+			return view, nil
+		case "pr.review":
+			return json.RawMessage("null"), nil
+		case "pr.thread":
+			var p proto.PRThreadParams
+			json.Unmarshal(raw, &p)
+			calls <- p
+			mu.Lock()
+			defer mu.Unlock()
+			if refuse {
+				return nil, errors.New("not allowed")
+			}
+			return true, nil
+		}
+		return nil, nil
+	})
+	a.prefs.Side = sideReview
+	tt := ui.NewTester(a.view, 1280, 900)
+	frameUntil(t, tt, "list", func() bool { return tt.HasText("Fix the parser") })
+	tt.Click("Fix the parser")
+	g := a.side.pulls.page
+	frameUntil(t, tt, "thread", func() bool { return g.res != nil && tt.HasText("Resolve Conversation") })
+	if err := tt.Click("Resolve Conversation"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case p := <-calls:
+		if p.Thread != "T1" || !p.Resolve || p.Number != 7 {
+			t.Errorf("resolved %+v", p)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("not resolved on GitHub")
+	}
+	tt.Frame()
+	if tt.HasText("Fixed.") || !tt.HasText("Resolved") {
+		t.Errorf("not folded; texts %q", tt.Texts())
+	}
+	// Opened, then made unresolved, which GitHub refuses.
+	tt.Click("Off by one?")
+	tt.Frame()
+	mu.Lock()
+	refuse = true
+	mu.Unlock()
+	if err := tt.Click("Unresolve"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	<-calls
+	frameUntil(t, tt, "resolved again", func() bool { return g.res.LineComments[0].Resolved })
 }

@@ -56,8 +56,10 @@ type reviewComment struct {
 	code       string // their text, as they were
 	text       string
 	focus      bool // the draft's field takes the keyboard, as it shows
-	// agent tells a pull request's draft comment the agent wrote.
+	// agent tells a pull request's draft comment the agent wrote, file one
+	// on the file, which has no lines.
 	agent bool
+	file  bool
 }
 
 // reviewKey is what a.review keeps a worktree's review by.
@@ -242,13 +244,13 @@ func (a *App) commentNotes(c *ui.Context, pal *palette, sf *sideFile, rv *review
 	}
 	textW = max(textW, 120)
 	for _, cm := range rv.comments {
-		if cm.diff != id || cm == rv.edits {
+		if cm.diff != id || cm == rv.edits || cm.file {
 			continue
 		}
 		_, h := c.MeasureText(textW, ui.Span{Text: cm.text, Size: 13})
 		d.Annotations = append(d.Annotations, editor.DiffAnnotation{Side: cm.side, Line: cm.end, Height: float32(commentChrome) + h, Key: cm.id})
 	}
-	if dr := rv.draft; dr != nil && dr.diff == id {
+	if dr := rv.draft; dr != nil && dr.diff == id && !dr.file {
 		d.Annotations = append(d.Annotations, editor.DiffAnnotation{Side: dr.side, Line: dr.end, Height: draftH, Key: dr.id})
 	}
 	return func(c *ui.Context, an editor.DiffAnnotation) bool {
@@ -273,7 +275,9 @@ func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewCom
 	if at {
 		ring = pal.accent
 	}
-	card := ui.Column(c.Key("comment")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
+	// As high as its text, which the room left for it, measured, may
+	// overshoot: what's left shows as the diff, not as an empty card.
+	card := ui.Column(c.Key("comment")).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
 		Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(commentGap).Radius(8).
 		Background(pal.accent.Alpha(0.08)).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch)
 	card.Children(func() {
@@ -385,6 +389,9 @@ func (a *App) cancelDraft() bool {
 // commentPlace is where a comment is: its file and lines, from 1, as
 // "src/a.go:12–14", the old side's lines as removed.
 func commentPlace(cm *reviewComment) string {
+	if cm.file {
+		return locales.ReviewOnFile(cm.path)
+	}
 	lines := itoa(cm.start + 1)
 	if cm.end > cm.start {
 		lines += "–" + itoa(cm.end+1)
