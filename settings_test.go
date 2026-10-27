@@ -72,7 +72,7 @@ func TestReviewPlaceholders(t *testing.T) {
 // Default goes back to the default, kept as none.
 func TestCommitPromptSetting(t *testing.T) {
 	a := testApp(t)
-	a.ss.page = "general"
+	a.ss.page = "git"
 	tt := ui.NewTester(a.settingsView, 820, 1600)
 	tt.Frame()
 	shot(t, tt, "settings-prompts")

@@ -1788,6 +1788,26 @@ func (msgs Messages) PageGeneral() string {
 	return Catalog.Format(msgs.locale, "pageGeneral", nil)
 }
 
+// PageFiles says "Files"
+// in the language the app shows.
+func PageFiles() string { return In(i18n.Locale()).PageFiles() }
+
+// PageFiles says "Files"
+// in the language of msgs.
+func (msgs Messages) PageFiles() string {
+	return Catalog.Format(msgs.locale, "pageFiles", nil)
+}
+
+// PageGit says "Git"
+// in the language the app shows.
+func PageGit() string { return In(i18n.Locale()).PageGit() }
+
+// PageGit says "Git"
+// in the language of msgs.
+func (msgs Messages) PageGit() string {
+	return Catalog.Format(msgs.locale, "pageGit", nil)
+}
+
 // PageAppearance says "Appearance"
 // in the language the app shows.
 func PageAppearance() string { return In(i18n.Locale()).PageAppearance() }
@@ -2040,11 +2060,11 @@ func (msgs Messages) SetSessionName() string {
 	return Catalog.Format(msgs.locale, "setSessionName", nil)
 }
 
-// SetSessionNameDetail says "Until you or an agent name one. With Pane You’re In, a pane running only its shell defers to the pane that needs yo…"
+// SetSessionNameDetail says "Until you or an agent names the session."
 // in the language the app shows.
 func SetSessionNameDetail() string { return In(i18n.Locale()).SetSessionNameDetail() }
 
-// SetSessionNameDetail says "Until you or an agent name one. With Pane You’re In, a pane running only its shell defers to the pane that needs yo…"
+// SetSessionNameDetail says "Until you or an agent names the session."
 // in the language of msgs.
 func (msgs Messages) SetSessionNameDetail() string {
 	return Catalog.Format(msgs.locale, "setSessionNameDetail", nil)
@@ -2150,11 +2170,11 @@ func (msgs Messages) SetResumeAgents() string {
 	return Catalog.Format(msgs.locale, "setResumeAgents", nil)
 }
 
-// SetResumeAgentsDetail says "Claude Code, Codex, Pi and OpenCode pick up their conversation where it was, once Kero’s skill is set up for them i…"
+// SetResumeAgentsDetail says "Claude Code, Codex, Pi and OpenCode continue their conversations, once set up in Agents."
 // in the language the app shows.
 func SetResumeAgentsDetail() string { return In(i18n.Locale()).SetResumeAgentsDetail() }
 
-// SetResumeAgentsDetail says "Claude Code, Codex, Pi and OpenCode pick up their conversation where it was, once Kero’s skill is set up for them i…"
+// SetResumeAgentsDetail says "Claude Code, Codex, Pi and OpenCode continue their conversations, once set up in Agents."
 // in the language of msgs.
 func (msgs Messages) SetResumeAgentsDetail() string {
 	return Catalog.Format(msgs.locale, "setResumeAgentsDetail", nil)
@@ -2572,11 +2592,11 @@ func (msgs Messages) SetFont() string {
 	return Catalog.Format(msgs.locale, "setFont", nil)
 }
 
-// SetFontDetail says "JetBrains Mono with Nerd Fonts’ icons comes with Kero. Any installed monospaced font works; names separated by comm…"
+// SetFontDetail says "Any monospaced font; names separated by commas are tried in order."
 // in the language the app shows.
 func SetFontDetail() string { return In(i18n.Locale()).SetFontDetail() }
 
-// SetFontDetail says "JetBrains Mono with Nerd Fonts’ icons comes with Kero. Any installed monospaced font works; names separated by comm…"
+// SetFontDetail says "Any monospaced font; names separated by commas are tried in order."
 // in the language of msgs.
 func (msgs Messages) SetFontDetail() string {
 	return Catalog.Format(msgs.locale, "setFontDetail", nil)
@@ -2602,11 +2622,11 @@ func (msgs Messages) SetAppFont() string {
 	return Catalog.Format(msgs.locale, "setAppFont", nil)
 }
 
-// SetAppFontDetail says "The font of Kero’s own text: its sidebar, Explorer, menus and settings. Kero comes with Inter, Geist, Mona Sans and…"
+// SetAppFontDetail says "The font of the sidebar, Explorer, menus and settings."
 // in the language the app shows.
 func SetAppFontDetail() string { return In(i18n.Locale()).SetAppFontDetail() }
 
-// SetAppFontDetail says "The font of Kero’s own text: its sidebar, Explorer, menus and settings. Kero comes with Inter, Geist, Mona Sans and…"
+// SetAppFontDetail says "The font of the sidebar, Explorer, menus and settings."
 // in the language of msgs.
 func (msgs Messages) SetAppFontDetail() string {
 	return Catalog.Format(msgs.locale, "setAppFontDetail", nil)
@@ -3634,11 +3654,11 @@ func (msgs Messages) SetRemoteControlRow() string {
 	return Catalog.Format(msgs.locale, "setRemoteControlRow", nil)
 }
 
-// SetRemoteControlDetail says "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette. …"
+// SetRemoteControlDetail says "Lets agents run the app's actions with kero do and kero focus, and drive browser panes with kero browser."
 // in the language the app shows.
 func SetRemoteControlDetail() string { return In(i18n.Locale()).SetRemoteControlDetail() }
 
-// SetRemoteControlDetail says "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette. …"
+// SetRemoteControlDetail says "Lets agents run the app's actions with kero do and kero focus, and drive browser panes with kero browser."
 // in the language of msgs.
 func (msgs Messages) SetRemoteControlDetail() string {
 	return Catalog.Format(msgs.locale, "setRemoteControlDetail", nil)
@@ -3694,11 +3714,11 @@ func (msgs Messages) SetSkills() string {
 	return Catalog.Format(msgs.locale, "setSkills", nil)
 }
 
-// SetSkillsDetail says "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells them, as the…"
+// SetSkillsDetail says "Teaches agents to start and drive sessions and panes, and to report their status."
 // in the language the app shows.
 func SetSkillsDetail() string { return In(i18n.Locale()).SetSkillsDetail() }
 
-// SetSkillsDetail says "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells them, as the…"
+// SetSkillsDetail says "Teaches agents to start and drive sessions and panes, and to report their status."
 // in the language of msgs.
 func (msgs Messages) SetSkillsDetail() string {
 	return Catalog.Format(msgs.locale, "setSkillsDetail", nil)
@@ -3764,11 +3784,11 @@ func (msgs Messages) SetConfiguration() string {
 	return Catalog.Format(msgs.locale, "setConfiguration", nil)
 }
 
-// SetConfigurationDetail says "Every setting here is a line of this file, as Ghostty’s: edit it in any editor, and what you save applies at once. …"
+// SetConfigurationDetail says "Every setting here is a line of this file, and what you save there applies at once. kero config show lists every key."
 // in the language the app shows.
 func SetConfigurationDetail() string { return In(i18n.Locale()).SetConfigurationDetail() }
 
-// SetConfigurationDetail says "Every setting here is a line of this file, as Ghostty’s: edit it in any editor, and what you save applies at once. …"
+// SetConfigurationDetail says "Every setting here is a line of this file, and what you save there applies at once. kero config show lists every key."
 // in the language of msgs.
 func (msgs Messages) SetConfigurationDetail() string {
 	return Catalog.Format(msgs.locale, "setConfigurationDetail", nil)
@@ -4218,11 +4238,11 @@ func (msgs Messages) SetSessionsSide() string {
 	return Catalog.Format(msgs.locale, "setSessionsSide", nil)
 }
 
-// SetSessionsSideDetail says "The side of the window the sessions take. The Explorer, with Changes and Files, takes the other."
+// SetSessionsSideDetail says "The Explorer takes the other side."
 // in the language the app shows.
 func SetSessionsSideDetail() string { return In(i18n.Locale()).SetSessionsSideDetail() }
 
-// SetSessionsSideDetail says "The side of the window the sessions take. The Explorer, with Changes and Files, takes the other."
+// SetSessionsSideDetail says "The Explorer takes the other side."
 // in the language of msgs.
 func (msgs Messages) SetSessionsSideDetail() string {
 	return Catalog.Format(msgs.locale, "setSessionsSideDetail", nil)
@@ -4378,11 +4398,11 @@ func (msgs Messages) SetFilePane() string {
 	return Catalog.Format(msgs.locale, "setFilePane", nil)
 }
 
-// SetFilePaneDetail says "A file opened in a pane goes to a new pane, or replaces the file of the file pane you were in last, unless it has uns…"
+// SetFilePaneDetail says "Open a file in a new pane, or in the file pane you used last, unless it has unsaved edits."
 // in the language the app shows.
 func SetFilePaneDetail() string { return In(i18n.Locale()).SetFilePaneDetail() }
 
-// SetFilePaneDetail says "A file opened in a pane goes to a new pane, or replaces the file of the file pane you were in last, unless it has uns…"
+// SetFilePaneDetail says "Open a file in a new pane, or in the file pane you used last, unless it has unsaved edits."
 // in the language of msgs.
 func (msgs Messages) SetFilePaneDetail() string {
 	return Catalog.Format(msgs.locale, "setFilePaneDetail", nil)
@@ -4428,11 +4448,11 @@ func (msgs Messages) SetFilePreview() string {
 	return Catalog.Format(msgs.locale, "setFilePreview", nil)
 }
 
-// SetFilePreviewDetail says "Open the file you choose in the Files view below the tree. Off, a file's menu still has Preview."
+// SetFilePreviewDetail says "Show the file you choose below the tree."
 // in the language the app shows.
 func SetFilePreviewDetail() string { return In(i18n.Locale()).SetFilePreviewDetail() }
 
-// SetFilePreviewDetail says "Open the file you choose in the Files view below the tree. Off, a file's menu still has Preview."
+// SetFilePreviewDetail says "Show the file you choose below the tree."
 // in the language of msgs.
 func (msgs Messages) SetFilePreviewDetail() string {
 	return Catalog.Format(msgs.locale, "setFilePreviewDetail", nil)
@@ -4858,24 +4878,14 @@ func (msgs Messages) GitReverting() string {
 	return Catalog.Format(msgs.locale, "gitReverting", nil)
 }
 
-// SetGit says "Git"
+// SetPullRequests says "Pull Requests"
 // in the language the app shows.
-func SetGit() string { return In(i18n.Locale()).SetGit() }
+func SetPullRequests() string { return In(i18n.Locale()).SetPullRequests() }
 
-// SetGit says "Git"
+// SetPullRequests says "Pull Requests"
 // in the language of msgs.
-func (msgs Messages) SetGit() string {
-	return Catalog.Format(msgs.locale, "setGit", nil)
-}
-
-// SetGitDetail says "Branches and changes of the repositories sessions work in."
-// in the language the app shows.
-func SetGitDetail() string { return In(i18n.Locale()).SetGitDetail() }
-
-// SetGitDetail says "Branches and changes of the repositories sessions work in."
-// in the language of msgs.
-func (msgs Messages) SetGitDetail() string {
-	return Catalog.Format(msgs.locale, "setGitDetail", nil)
+func (msgs Messages) SetPullRequests() string {
+	return Catalog.Format(msgs.locale, "setPullRequests", nil)
 }
 
 // SetGitStatus says "Show git status"
@@ -4928,16 +4938,6 @@ func (msgs Messages) SetDiffAuto() string {
 	return Catalog.Format(msgs.locale, "setDiffAuto", nil)
 }
 
-// SetFiles says "Files"
-// in the language the app shows.
-func SetFiles() string { return In(i18n.Locale()).SetFiles() }
-
-// SetFiles says "Files"
-// in the language of msgs.
-func (msgs Messages) SetFiles() string {
-	return Catalog.Format(msgs.locale, "setFiles", nil)
-}
-
 // SetEditor says "Editor"
 // in the language the app shows.
 func SetEditor() string { return In(i18n.Locale()).SetEditor() }
@@ -4948,11 +4948,11 @@ func (msgs Messages) SetEditor() string {
 	return Catalog.Format(msgs.locale, "setEditor", nil)
 }
 
-// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens a file with the app the system opens it wi…"
+// SetEditorDetail says "What Open in Editor runs, as code or zed. Empty uses the system's app."
 // in the language the app shows.
 func SetEditorDetail() string { return In(i18n.Locale()).SetEditorDetail() }
 
-// SetEditorDetail says "What Open in Editor runs with the file's path, as code or zed. Empty opens a file with the app the system opens it wi…"
+// SetEditorDetail says "What Open in Editor runs, as code or zed. Empty uses the system's app."
 // in the language of msgs.
 func (msgs Messages) SetEditorDetail() string {
 	return Catalog.Format(msgs.locale, "setEditorDetail", nil)
@@ -5078,11 +5078,11 @@ func (msgs Messages) SetAdListFanboyAnnoyance() string {
 	return Catalog.Format(msgs.locale, "setAdListFanboyAnnoyance", nil)
 }
 
-// SetAdListsNote says "Lists hide more as they add up, and may break a page now and then. Lists of other URLs go in the configuration, as br…"
+// SetAdListsNote says "More lists hide more, and may break a page now and then. Add other lists as browser-filter-list in the configuration."
 // in the language the app shows.
 func SetAdListsNote() string { return In(i18n.Locale()).SetAdListsNote() }
 
-// SetAdListsNote says "Lists hide more as they add up, and may break a page now and then. Lists of other URLs go in the configuration, as br…"
+// SetAdListsNote says "More lists hide more, and may break a page now and then. Add other lists as browser-filter-list in the configuration."
 // in the language of msgs.
 func (msgs Messages) SetAdListsNote() string {
 	return Catalog.Format(msgs.locale, "setAdListsNote", nil)
@@ -6228,11 +6228,11 @@ func (msgs Messages) SetHosts() string {
 	return Catalog.Format(msgs.locale, "setHosts", nil)
 }
 
-// SetHostsDetail says "Other machines whose sessions show in the sidebar after this computer's. Kero reaches them over SSH with your keys an…"
+// SetHostsDetail says "Other machines whose sessions show in the sidebar, over SSH, WSL or your tailnet."
 // in the language the app shows.
 func SetHostsDetail() string { return In(i18n.Locale()).SetHostsDetail() }
 
-// SetHostsDetail says "Other machines whose sessions show in the sidebar after this computer's. Kero reaches them over SSH with your keys an…"
+// SetHostsDetail says "Other machines whose sessions show in the sidebar, over SSH, WSL or your tailnet."
 // in the language of msgs.
 func (msgs Messages) SetHostsDetail() string {
 	return Catalog.Format(msgs.locale, "setHostsDetail", nil)
@@ -6278,11 +6278,11 @@ func (msgs Messages) SetHostAdd() string {
 	return Catalog.Format(msgs.locale, "setHostAdd", nil)
 }
 
-// SetHostAddDetail says "me@devbox or ssh://me@devbox:2222 over SSH, as ssh takes it with your ~/.ssh/config; wsl://Ubuntu for a WSL distribut…"
+// SetHostAddDetail says "me@devbox over SSH, wsl://Ubuntu for WSL, or https://devbox.tail1234.ts.net for kerod's tailnet listener."
 // in the language the app shows.
 func SetHostAddDetail() string { return In(i18n.Locale()).SetHostAddDetail() }
 
-// SetHostAddDetail says "me@devbox or ssh://me@devbox:2222 over SSH, as ssh takes it with your ~/.ssh/config; wsl://Ubuntu for a WSL distribut…"
+// SetHostAddDetail says "me@devbox over SSH, wsl://Ubuntu for WSL, or https://devbox.tail1234.ts.net for kerod's tailnet listener."
 // in the language of msgs.
 func (msgs Messages) SetHostAddDetail() string {
 	return Catalog.Format(msgs.locale, "setHostAddDetail", nil)
@@ -6432,11 +6432,11 @@ func (msgs Messages) SetHostSettingsSplit() string {
 	return Catalog.Format(msgs.locale, "setHostSettingsSplit", nil)
 }
 
-// SetHostSettingsSplitDetail says "The shell, environment, scrollback and session restore of a host's sessions come from its own configuration: run kero…"
+// SetHostSettingsSplitDetail says "A host's shell, environment, scrollback and session restore come from its own configuration: run kero config edit there."
 // in the language the app shows.
 func SetHostSettingsSplitDetail() string { return In(i18n.Locale()).SetHostSettingsSplitDetail() }
 
-// SetHostSettingsSplitDetail says "The shell, environment, scrollback and session restore of a host's sessions come from its own configuration: run kero…"
+// SetHostSettingsSplitDetail says "A host's shell, environment, scrollback and session restore come from its own configuration: run kero config edit there."
 // in the language of msgs.
 func (msgs Messages) SetHostSettingsSplitDetail() string {
 	return Catalog.Format(msgs.locale, "setHostSettingsSplitDetail", nil)
@@ -6946,11 +6946,11 @@ func (msgs Messages) SetCommitMessage() string {
 	return Catalog.Format(msgs.locale, "setCommitMessage", nil)
 }
 
-// SetCommitMessageDetail says "The command that writes a commit message of what's staged. It runs in your shell and gets the prompt on its standard …"
+// SetCommitMessageDetail says "Runs in your shell, with the prompt on its standard input; '{session}' becomes the pane agent's conversation ID, to f…"
 // in the language the app shows.
 func SetCommitMessageDetail() string { return In(i18n.Locale()).SetCommitMessageDetail() }
 
-// SetCommitMessageDetail says "The command that writes a commit message of what's staged. It runs in your shell and gets the prompt on its standard …"
+// SetCommitMessageDetail says "Runs in your shell, with the prompt on its standard input; '{session}' becomes the pane agent's conversation ID, to f…"
 // in the language of msgs.
 func (msgs Messages) SetCommitMessageDetail() string {
 	return Catalog.Format(msgs.locale, "setCommitMessageDetail", nil)
@@ -9518,11 +9518,11 @@ func (msgs Messages) SetResumeCommands() string {
 	return Catalog.Format(msgs.locale, "setResumeCommands", nil)
 }
 
-// SetResumeCommandsDetail says "The command that resumes each agent's conversations, as Resume, the search and restoring sessions start them. It runs…"
+// SetResumeCommandsDetail says "Runs in your shell, as cc --resume '{session}', where '{session}' becomes the conversation's ID. Empty uses the agent…"
 // in the language the app shows.
 func SetResumeCommandsDetail() string { return In(i18n.Locale()).SetResumeCommandsDetail() }
 
-// SetResumeCommandsDetail says "The command that resumes each agent's conversations, as Resume, the search and restoring sessions start them. It runs…"
+// SetResumeCommandsDetail says "Runs in your shell, as cc --resume '{session}', where '{session}' becomes the conversation's ID. Empty uses the agent…"
 // in the language of msgs.
 func (msgs Messages) SetResumeCommandsDetail() string {
 	return Catalog.Format(msgs.locale, "setResumeCommandsDetail", nil)
@@ -11268,11 +11268,11 @@ func (msgs Messages) SetPRNotify() string {
 	return Catalog.Format(msgs.locale, "setPRNotify", nil)
 }
 
-// SetPRNotifyDetail says "Kero checks the GitHub repositories of your projects with the GitHub CLI, and notifies you of each new pull request t…"
+// SetPRNotifyDetail says "New pull requests that ask for your review, or every new one someone else opens. Uses the GitHub CLI."
 // in the language the app shows.
 func SetPRNotifyDetail() string { return In(i18n.Locale()).SetPRNotifyDetail() }
 
-// SetPRNotifyDetail says "Kero checks the GitHub repositories of your projects with the GitHub CLI, and notifies you of each new pull request t…"
+// SetPRNotifyDetail says "New pull requests that ask for your review, or every new one someone else opens. Uses the GitHub CLI."
 // in the language of msgs.
 func (msgs Messages) SetPRNotifyDetail() string {
 	return Catalog.Format(msgs.locale, "setPRNotifyDetail", nil)
