@@ -156,10 +156,12 @@ endings only (`git diff` shows nothing): `git checkout -- locales/catalog_gen.go
 
 ## Building and installing by hand
 
-A release's installer is `Kero Setup X.Y.Z-fork.N amd64.exe` on its
-release page. To build one here instead, Go is needed (`winget install
-GoLang.Go`; an older Go than `go.mod`'s downloads the newer one itself),
-and `jq`, and nothing else: the build downloads NSIS and `ghostty-vt.dll`.
+A release's installer is `kero-setup-X.Y.Z-fork.N-amd64.exe` on its
+release page (`Kero.Setup.X.Y.Z-fork.N.amd64.exe` before 2.1.24, whose
+MyGo names installers after the app's slug). To build one here instead,
+Go is needed (`winget install GoLang.Go`; an older Go than `go.mod`'s
+downloads the newer one itself), and `jq`, and nothing else: the build
+downloads NSIS and `ghostty-vt.dll`.
 
 Build from the release's tag, with `mygo.json` set as the Fork release
 workflow sets it, so that the install reports the fork's version and
@@ -179,7 +181,7 @@ git checkout -- mygo.json locales/catalog_gen.go
 git switch main
 ```
 
-leaves `build/windows-amd64/Kero Setup X.Y.Z-fork.N amd64.exe`.
+leaves `build/windows-amd64/kero-setup-X.Y.Z-fork.N-amd64.exe`.
 
 - `git switch --detach` builds the tag's code, so that the version agrees
   with what is built: on a commit after the tag, `git describe --tags
