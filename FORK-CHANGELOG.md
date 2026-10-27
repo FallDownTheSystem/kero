@@ -5,6 +5,22 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.1
+
+The fork on Kero 2.1.24, and on a fork of MyGo 0.7.1:
+
+- Images a program like Pi showed no longer stay over the screen once it
+  clears it, as with Pi's `/new`
+- After Kero relaunches to use a newer kerod, quitting it quits it
+  instead of leaving it stuck open
+- A mouse wheel's notch scrolls a terminal three rows, not seven
+- Shift-click extends a terminal's selection
+- With **Show accent color on title bars and window borders** on in
+  Windows, the accent no longer shows as a strip over the top of Kero's
+  window
+- The installer is now named `kero-setup-2.1.24-fork.1-amd64.exe`, not
+  `Kero.Setup.2.1.24-fork.1.amd64.exe`
+
 ## 2.1.21-fork.10
 
 - The Explorer has a **Review** tab: your GitHub repository's pull
