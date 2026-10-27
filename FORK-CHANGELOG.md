@@ -5,6 +5,10 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.8
+
+- Settings' pages go General, Appearance, Terminal, Files, Git
+
 ## 2.1.24-fork.7
 
 - Reviewing a pull request in a worktree works while your checkout or
