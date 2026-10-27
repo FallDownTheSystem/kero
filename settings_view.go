@@ -41,10 +41,10 @@ type settingsPage struct {
 
 var settingsPages = []settingsPage{
 	{"general", locales.PageGeneral, glyph("f7-gear-alt"), false},
-	{"files", locales.PageFiles, folderIcon, false},
-	{"git", locales.PageGit, branchIcon, false},
 	{"appearance", locales.PageAppearance, glyph("f7-paintbrush"), false},
 	{"terminal", locales.PageTerminal, terminalIcon, false},
+	{"files", locales.PageFiles, folderIcon, false},
+	{"git", locales.PageGit, branchIcon, false},
 	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right"), false},
 	{"browser", locales.PageBrowser, globeIcon, false},
 	{"notifications", locales.PageNotifications, glyph("f7-bell"), false},
