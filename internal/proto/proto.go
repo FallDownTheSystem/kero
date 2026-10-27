@@ -745,6 +745,11 @@ type (
 		// existing branch no worktree has is checked out as it is.
 		Worktree string `json:"worktree,omitempty"`
 		Base     string `json:"base,omitempty"`
+		// PushRemote and PushBranch are where the worktree's new branch
+		// pushes, as a review's to its pull request's branch: none for a
+		// branch of its own name.
+		PushRemote string `json:"pushRemote,omitempty"`
+		PushBranch string `json:"pushBranch,omitempty"`
 	}
 	IDParams struct {
 		ID string `json:"id"`

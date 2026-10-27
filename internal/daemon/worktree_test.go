@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"kero/internal/git"
 	"kero/internal/proto"
 )
 
@@ -163,5 +165,82 @@ func TestWorktreeInclude(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(filepath.Join(wt, "b.txt")); string(b) != "main's\n" {
 		t.Errorf("b.txt, tracked, became %q", b)
+	}
+}
+
+// Each review of a pull request checks it out on a branch of its own, as
+// git checks a branch out in one worktree alone: a second review, or the
+// main checkout on the pull request's branch, doesn't keep it from
+// starting. Its commits push to the pull request's branch, and closing it
+// deletes its branch once they're there.
+func TestReviewWorktrees(t *testing.T) {
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	bare := filepath.Join(t.TempDir(), "remote.git")
+	runGit(t, repo, "init", "-q", "--bare", bare)
+	runGit(t, repo, "remote", "add", "origin", bare)
+	runGit(t, repo, "push", "-q", "origin", "main")
+	runGit(t, repo, "switch", "-q", "-c", "fix")
+	os.WriteFile(filepath.Join(repo, "fix.txt"), []byte("fix\n"), 0o644)
+	runGit(t, repo, "add", "-A")
+	runGit(t, repo, "commit", "-q", "-m", "fix")
+	runGit(t, repo, "push", "-q", "-u", "origin", "fix")
+
+	here, err := d.create(proto.CreateParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := func() proto.Session {
+		t.Helper()
+		got, err := d.prFetch(proto.PRFetchParams{Pane: here.Panes[0].ID, Remote: "origin", Number: 7, Head: "fix"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := d.create(proto.CreateParams{Dir: repo, Worktree: got.Branch, Base: got.Base, PushRemote: got.PushRemote, PushBranch: got.PushBranch})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	one, two := review(), review()
+	if one.Worktree.Branch != "review/pr-7" || two.Worktree.Branch != "review/pr-7-2" || one.Worktree.Base != "origin/fix" {
+		t.Fatalf("worktrees %+v and %+v", one.Worktree, two.Worktree)
+	}
+	if _, err := os.Stat(filepath.Join(two.Worktree.Path, "fix.txt")); err != nil {
+		t.Errorf("the review hasn't the pull request's files: %v", err)
+	}
+
+	r, err := git.Open(context.Background(), one.Worktree.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if remote, name, err := r.PushRemote(context.Background(), "review/pr-7"); remote != "origin" || name != "fix" || err != nil {
+		t.Errorf("the review pushes to %s/%s, %v", remote, name, err)
+	}
+	os.WriteFile(filepath.Join(one.Worktree.Path, "review.txt"), []byte("r\n"), 0o644)
+	runGit(t, one.Worktree.Path, "add", "-A")
+	runGit(t, one.Worktree.Path, "commit", "-q", "-m", "review fix")
+	if wc, _ := d.checkWorktree(one.ID); wc.Unpushed != 1 {
+		t.Errorf("%d commits unpushed, not the review's 1", wc.Unpushed)
+	}
+	args, err := r.PushArgs(context.Background(), "review/pr-7", git.PushOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Push(context.Background(), args, nil); err != nil {
+		t.Fatalf("%q: %v", args, err)
+	}
+	runGit(t, repo, "fetch", "-q", "origin")
+	if err := d.closeSession(proto.CloseParams{ID: one.ID, RemoveWorktree: true}); err != nil {
+		t.Fatal(err)
+	}
+	if out, _ := exec.Command("git", "-C", repo, "branch", "--list", "--format=%(refname:short)", "review/*").Output(); strings.TrimSpace(string(out)) != "review/pr-7-2" {
+		t.Errorf("branches left: %q", out)
+	}
+
+	// A session asking for a branch another worktree has gets kero's word
+	// for it, not git's.
+	if _, err := d.create(proto.CreateParams{Dir: repo, Worktree: "fix"}); err == nil || !strings.Contains(err.Error(), "fix is checked out in") {
+		t.Errorf("a worktree of the main checkout's branch: %v", err)
 	}
 }

@@ -528,6 +528,31 @@ func TestPushBranchTrackingAnother(t *testing.T) {
 	if st, _ := r.Status(ctx); st.Upstream != "origin/feature" {
 		t.Errorf("upstream %q after the push", st.Upstream)
 	}
+
+	// A branch given a push target, as a review's of a pull request on
+	// feature, pushes to it, though its name is another.
+	gitIn(t, r.Root, "switch", "-q", "-c", "review/pr-1", "origin/feature")
+	if err := r.SetPushTarget(ctx, "review/pr-1", "origin", "feature"); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(r.Root, "r.txt"), "r\n")
+	r.Stage(ctx, nil)
+	r.Commit(ctx, CommitOptions{Message: "review fix"})
+	if args, err = r.PushArgs(ctx, "review/pr-1", PushOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Push(ctx, args, nil); err != nil {
+		t.Fatalf("%q: %v", args, err)
+	}
+	if got := strings.TrimSpace(gitIn(t, bare, "rev-parse", "feature")); got != strings.TrimSpace(gitIn(t, r.Root, "rev-parse", "HEAD")) {
+		t.Errorf("%q didn't push the review to feature", args)
+	}
+	if got := strings.TrimSpace(gitIn(t, bare, "rev-parse", "main")); got != main {
+		t.Errorf("%q pushed over main", args)
+	}
+	if out := gitIn(t, bare, "branch", "--list", "review/*"); out != "" {
+		t.Errorf("pushed a branch of the review's name: %q", out)
+	}
 }
 
 func TestRemote(t *testing.T) {

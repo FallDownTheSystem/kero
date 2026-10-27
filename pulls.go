@@ -646,7 +646,7 @@ func (a *App) startReview(w *prReview) {
 				a.toast(locales.PrsFetchFailed(err.Error()))
 				return
 			}
-			p.Worktree, p.Base = got.Branch, got.Base
+			p.Worktree, p.Base, p.PushRemote, p.PushBranch = got.Branch, got.Base, got.PushRemote, got.PushBranch
 			a.createThen(h, p, s.Project, false, then)
 		})
 	}()

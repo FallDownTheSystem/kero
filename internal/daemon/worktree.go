@@ -25,7 +25,8 @@ const worktreeDir = ".kero/worktrees"
 
 // addWorktree makes a session's own worktree, of the repository holding
 // dir, on branch from base ("" the default branch, "HEAD" dir's).
-func (d *Daemon) addWorktree(dir, branch, base string) (*proto.Worktree, error) {
+func (d *Daemon) addWorktree(dir string, p proto.CreateParams) (*proto.Worktree, error) {
+	branch, base := p.Worktree, p.Base
 	if dir == "" {
 		return nil, errors.New("a worktree needs a directory in a git repository")
 	}
@@ -48,7 +49,18 @@ func (d *Daemon) addWorktree(dir, branch, base string) (*proto.Worktree, error) 
 		return nil, fmt.Errorf("%s is there already", proto.ShortDir(path))
 	}
 	from := ""
-	if !r.HasBranch(branch) {
+	if r.HasBranch(branch) {
+		// Git checks a branch out in one worktree alone.
+		cos, err := r.Checkouts(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, co := range cos {
+			if co.Branch == branch {
+				return nil, fmt.Errorf("%s is checked out in %s", branch, proto.ShortDir(co.Path))
+			}
+		}
+	} else {
 		switch base {
 		case "":
 			def := r.DefaultBranch()
@@ -81,6 +93,11 @@ func (d *Daemon) addWorktree(dir, branch, base string) (*proto.Worktree, error) 
 		return nil, err
 	}
 	d.log.Printf("worktree %s added on %s from %q", path, branch, from)
+	if from != "" && p.PushBranch != "" {
+		if err := r.SetPushTarget(ctx, branch, p.PushRemote, p.PushBranch); err != nil {
+			d.log.Printf("pushing %s to %s/%s: %v", branch, p.PushRemote, p.PushBranch, err)
+		}
+	}
 	// Other worktrees in the repository are no source of its files.
 	n, err := r.CopyIncluded(ctx, path, worktreeDir, ".claude/worktrees")
 	if err != nil {
@@ -191,4 +208,26 @@ func (d *Daemon) closeSession(p proto.CloseParams) error {
 	}
 	d.log.Printf("worktree %s removed", wc.Path)
 	return nil
+}
+
+// reviewBranch is a branch for a review of pull request number of its
+// own, review/pr-<number>, or -2, -3, ... after it, of a name no branch
+// or worktree folder has yet: a pull request may have several reviews.
+func reviewBranch(r git.Repo, number int) string {
+	base := fmt.Sprintf("review/pr-%d", number)
+	for i := 1; ; i++ {
+		name := base
+		if i > 1 {
+			name = fmt.Sprintf("%s-%d", base, i)
+		}
+		if r.HasBranch(name) {
+			continue
+		}
+		if main := r.Main(); main != "" {
+			if _, err := os.Lstat(worktreePath(main, name, settings.Load().WorktreeDir)); err == nil {
+				continue
+			}
+		}
+		return name
+	}
 }

@@ -246,7 +246,9 @@ func (d *Daemon) prCreate(p proto.PRCreateParams) (proto.PRCreated, error) {
 
 // prFetch fetches a pull request's branch: of the repository's own, by
 // its name, which a review's fixes push back to; of a fork's, as GitHub
-// keeps every pull request's (refs/pull/N/head), on a branch pr-N.
+// keeps every pull request's (refs/pull/N/head), as pr-N. The review
+// checks it out on a branch of its own, as git checks a branch out in one
+// worktree alone: the main checkout or another review may have it.
 func (d *Daemon) prFetch(p proto.PRFetchParams) (proto.PRFetched, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -258,7 +260,12 @@ func (d *Daemon) prFetch(p proto.PRFetchParams) (proto.PRFetched, error) {
 	if err != nil {
 		return proto.PRFetched{}, err
 	}
-	return proto.PRFetched{Branch: branch, Base: p.Remote + "/" + branch}, nil
+	got := proto.PRFetched{Branch: reviewBranch(r, p.Number), Base: p.Remote + "/" + branch}
+	// A fork's branch isn't the remote's to push to.
+	if branch == p.Head && !p.CrossRepo {
+		got.PushRemote, got.PushBranch = p.Remote, branch
+	}
+	return got, nil
 }
 
 // fetchPR fetches pull request number's branch, head, from remote, to

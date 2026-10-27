@@ -118,11 +118,13 @@ type (
 		Head      string `json:"head"`
 		CrossRepo bool   `json:"crossRepo,omitempty"`
 	}
-	// PRFetched is the branch to check the pull request out on, made from
-	// Base when the repository has none of its name (CreateParams).
+	// PRFetched is the review's own branch to check the pull request out
+	// on, made from Base, and where it pushes (CreateParams).
 	PRFetched struct {
-		Branch string `json:"branch"`
-		Base   string `json:"base"`
+		Branch     string `json:"branch"`
+		Base       string `json:"base"`
+		PushRemote string `json:"pushRemote,omitempty"`
+		PushBranch string `json:"pushBranch,omitempty"`
 	}
 
 	// PRMessageParams ask for a pull request's title and description of

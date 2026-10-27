@@ -94,7 +94,7 @@ func TestPullsReview(t *testing.T) {
 			var p proto.PRFetchParams
 			json.Unmarshal(raw, &p)
 			fetches <- p
-			return proto.PRFetched{Branch: "fix", Base: "origin/fix"}, nil
+			return proto.PRFetched{Branch: "review/pr-7", Base: "origin/fix", PushRemote: "origin", PushBranch: "fix"}, nil
 		case "create":
 			var p proto.CreateParams
 			json.Unmarshal(raw, &p)
@@ -157,7 +157,7 @@ func TestPullsReview(t *testing.T) {
 		}
 		break
 	}
-	if cp.Worktree != "fix" || cp.Base != "origin/fix" || cp.Dir != "/tmp/demo" || len(cp.Command) != 2 || cp.Command[0] != "codex" {
+	if cp.Worktree != "review/pr-7" || cp.Base != "origin/fix" || cp.PushRemote != "origin" || cp.PushBranch != "fix" || cp.Dir != "/tmp/demo" || len(cp.Command) != 2 || cp.Command[0] != "codex" {
 		t.Fatalf("created %+v", cp)
 	}
 	frameUntil(t, tt, "launch", func() bool { return len(a.launches) == 1 })
