@@ -111,6 +111,7 @@ Agents working side by side in one checkout trip over each other's changes. **Se
 
 - The worktree goes in `.kero/worktrees/<branch>` inside the repository, which Kero ignores through `.git/info/exclude`, not your `.gitignore`. Set `worktree-dir` to put worktrees elsewhere.
 - Set `worktree-base = current` to branch from the session you're in instead of the default branch.
+- A new worktree has only the files git tracks. To bring along ignored ones, such as `.claude/settings.local.json`, `CLAUDE.local.md` or `.env`, list them in a `.worktreeinclude` at the top of the repository, in `.gitignore`'s syntax, as Claude Code's worktrees read it. Kero copies each ignored file that matches, unless the worktree has it already. It skips `node_modules` and other worktrees, and goes into a wholly ignored folder only for a pattern that names a path in it, such as `cache/keep.txt`.
 - The session joins the repository's project, and the sidebar shows its branch.
 
 Closing the session asks whether its worktree goes too:

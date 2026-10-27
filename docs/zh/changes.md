@@ -109,6 +109,7 @@ description: 在窗格旁查看会话的 git 分支，以及它的智能体逐�
 
 - 工作树位于仓库内的 `.kero/worktrees/<branch>`，Kero 通过 `.git/info/exclude`（而不是你的 `.gitignore`）忽略它。设置 `worktree-dir` 可以把工作树放到别处。
 - 设置 `worktree-base = current`，可以从你所在的会话而不是默认分支创建分支。
+- 新工作树只有 git 跟踪的文件。要带上被忽略的文件，如 `.claude/settings.local.json`、`CLAUDE.local.md` 或 `.env`，就像 Claude Code 的工作树那样，在仓库顶层的 `.worktreeinclude` 里按 `.gitignore` 的语法列出它们。Kero 会复制每个匹配的被忽略文件，工作树里已有的文件保持不变。它跳过 `node_modules` 和其他工作树，只有当某个模式指向整个被忽略的文件夹内的路径（如 `cache/keep.txt`）时才进入该文件夹。
 - 会话会加入仓库所在的项目，边栏中会显示它的分支。
 
 关闭会话时，Kero 会询问是否一并删除它的工作树：
