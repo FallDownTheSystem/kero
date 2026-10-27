@@ -5,6 +5,11 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.3
+
+- A pull request's page scrolls to the next comment in the same file too,
+  not only to the first
+
 ## 2.1.24-fork.2
 
 - The Review tab's list marks each pull request with a draft review:
