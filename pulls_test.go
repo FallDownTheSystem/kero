@@ -574,19 +574,25 @@ func TestPRCommentJump(t *testing.T) {
 		long = append(long, "line "+strconv.Itoa(i))
 	}
 	oldLong := strings.Join(long, "\n") + "\n"
-	long[100] = "line 100 changed"
+	// Every line changed: nothing folds, the comments far apart.
+	for i := range long {
+		long[i] += " changed"
+	}
 	newLong := strings.Join(long, "\n") + "\n"
 	view := proto.PRView{PullRequest: demoPulls().PRs[0], Repo: demoPulls().Repos[0], State: "OPEN", HeadOID: "h1", MergeBase: "mb", Viewer: "me",
 		Files: []proto.GitFile{
 			{Path: "a.go", Status: "modified", Added: 2, Removed: 1, From: "mb", To: "h1"},
-			{Path: "b.go", Status: "modified", Added: 1, Removed: 1, From: "mb", To: "h1"},
+			{Path: "b.go", Status: "modified", Added: 120, Removed: 120, From: "mb", To: "h1"},
 		},
 		LineComments: []proto.PRLineComment{{ID: 5, Path: "a.go", Body: "Posted thread.", Author: "cid", Side: "RIGHT", Line: 3}},
 	}
-	// The draft's comment comes first in the draft, but is on the second
-	// file, far down.
+	// The draft's comments come first in the draft, but are on the second
+	// file, the one far down first: near its top, then far down.
 	draft := proto.PRReviewDraft{Repo: "me/demo", Remote: "origin", Number: 7, Head: "h1", MergeBase: "mb", Agent: "zz",
-		Comments: []proto.PRDraftComment{{ID: 1, Path: "b.go", Side: "RIGHT", Line: 101, Body: "Agent's note far down.", By: "agent"}}}
+		Comments: []proto.PRDraftComment{
+			{ID: 1, Path: "b.go", Side: "RIGHT", Line: 101, Body: "Agent's note far down.", By: "agent"},
+			{ID: 2, Path: "b.go", Side: "RIGHT", Line: 11, Body: "Agent's note near the top.", By: "agent"},
+		}}
 	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
 		switch method {
 		case "pr.view":
@@ -612,7 +618,7 @@ func TestPRCommentJump(t *testing.T) {
 	g := a.side.pulls.page
 	frameUntil(t, tt, "draft", func() bool { return g.res != nil && g.review.draft != nil })
 	tt.Frame()
-	if _, ok := tt.Find("2"); !ok || g.tab != prConversation {
+	if _, ok := tt.Find("3"); !ok || g.tab != prConversation {
 		t.Errorf("tab %q; texts %q", g.tab, tt.Texts())
 	}
 	inView := func(text string) bool {
@@ -624,13 +630,24 @@ func TestPRCommentJump(t *testing.T) {
 		t.Fatal(err)
 	}
 	frameUntil(t, tt, "the thread on a.go", func() bool { return inView("Posted thread.") })
-	if _, ok := tt.Find("1/2"); g.tab != prFiles || !ok || g.at.thread != 5 {
+	if _, ok := tt.Find("1/3"); g.tab != prFiles || !ok || g.at.thread != 5 {
 		t.Errorf("tab %q, at %+v; texts %q", g.tab, g.at, tt.Texts())
 	}
 	if !a.fileCollapsed(prFileKey(g.res, "b.go")) {
 		t.Error("b.go unfolded before its comment was jumped to")
 	}
 
+	if err := tt.Click("Next Comment"); err != nil {
+		t.Fatal(err)
+	}
+	frameUntil(t, tt, "the draft's first comment on b.go, in view", func() bool { return inView("Agent's note near the top.") })
+	for range 3 {
+		tt.Frame()
+	}
+	if g.at.draft != 2 || inView("Agent's note far down.") {
+		t.Errorf("at %+v, the next comment in view already", g.at)
+	}
+	// The next in the same file, its diff shown already.
 	if err := tt.Click("Next Comment"); err != nil {
 		t.Fatal(err)
 	}
@@ -641,7 +658,20 @@ func TestPRCommentJump(t *testing.T) {
 	if !inView("Agent's note far down.") || g.at.draft != 1 || g.rv.at != 1 {
 		t.Errorf("at %+v, rv.at %d", g.at, g.rv.at)
 	}
+	// It is there: the user scrolls freely again.
+	if g.reveal != 0 {
+		t.Errorf("still revealing, %d frames left", g.reveal)
+	}
 	shot(t, tt, "pr-jump")
+	// And back up, in the same file.
+	if err := tt.Click("Previous Comment"); err != nil {
+		t.Fatal(err)
+	}
+	frameUntil(t, tt, "the comment above, in view", func() bool { return inView("Agent's note near the top.") })
+	if err := tt.Click("Next Comment"); err != nil {
+		t.Fatal(err)
+	}
+	frameUntil(t, tt, "the comment below again", func() bool { return inView("Agent's note far down.") })
 
 	// Round, both ways.
 	if err := tt.Click("Next Comment"); err != nil {

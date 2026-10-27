@@ -41,12 +41,12 @@ type prPage struct {
 	// rv shows the draft review's comments on the diffs (prdraft.go).
 	rv     *review
 	review prDraftState
-	// at is the comment jumped to last (jumpComment), which reveal brings
-	// into view as it shows, viewH high with the lines above it; viewH is
-	// the files' height, as last laid out.
+	// at is the comment jumped to last (jumpComment), which revealSpot
+	// brings into view in the frames reveal counts down, until it is; view
+	// is the files' box, as last laid out.
 	at     prSpot
-	reveal bool
-	viewH  float32
+	reveal int
+	view   ui.Rect
 }
 
 // prSpot is a comment on the page's diffs, which jumpComment goes to: of
@@ -77,7 +77,7 @@ func (a *App) openPRPage(pane *proto.Pane, remote, slug string, pr proto.PullReq
 	g := &prPage{pane: pane.ID, root: pane.Git.Root, remote: remote, slug: slug, pr: pr, tab: prConversation,
 		files: map[string]*sideFile{}, md: map[string]*markdown.Options{}, parts: map[string]prText{}, opened: map[string]bool{}}
 	g.rv = a.newPageReview(g)
-	g.rv.reveal = func(c *ui.Context) { revealSpot(c, g) }
+	g.rv.reveal = func(c *ui.Context, card ui.Element) { revealSpot(c, g, card) }
 	a.side.pulls.page = g
 	a.fetchPRPage(g)
 }
@@ -618,7 +618,7 @@ func (a *App) jumpComment(g *prPage, by int) {
 	default:
 		i = len(spots) - 1
 	}
-	g.at, g.reveal, g.rv.at = spots[i], true, spots[i].draft
+	g.at, g.reveal, g.rv.at = spots[i], revealFrames, spots[i].draft
 	g.tab = prFiles
 	ch := &a.side.changes
 	if ch.collapsed == nil {
@@ -649,14 +649,21 @@ func (a *App) commentJump(c *ui.Context, pal *palette, g *prPage) {
 	})
 }
 
-// revealSpot, in the card of the comment jumped to, brings it into view
-// once: near the top of the files, the lines it is on above it.
-func revealSpot(c *ui.Context, g *prPage) {
-	if !g.reveal {
+// revealSpot, in the card of the comment jumped to, brings it into view,
+// near the top of the files, the lines it is on above it: in each frame
+// until the card, as last laid out, is in the files' upper half, as the
+// diff places its cards only once it is laid out, which may move them.
+func revealSpot(c *ui.Context, g *prPage, card ui.Element) {
+	if g.reveal <= 0 {
 		return
 	}
-	g.reveal = false
-	h := g.viewH
+	g.reveal--
+	r, v := card.Bounds(), g.view
+	if r.H > 0 && v.H > 0 && r.Y >= v.Y && r.Y <= v.Y+v.H/2 {
+		g.reveal = 0
+		return
+	}
+	h := v.H
 	if h <= 0 {
 		h = 400
 	}
@@ -665,8 +672,13 @@ func revealSpot(c *ui.Context, g *prPage) {
 	ui.Box(c.Key("reveal")).Absolute().Top(-revealAbove).Left(0).Width(1).Height(max(h-8, revealAbove+40)).ScrollIntoView()
 }
 
-// revealAbove is how much of the diff above a comment jumped to shows.
-const revealAbove = 64
+const (
+	// revealAbove is how much of the diff above a comment jumped to shows.
+	revealAbove = 64
+	// revealFrames is how many frames revealSpot tries for at most, which
+	// leaves the user to scroll a card that never gets there.
+	revealFrames = 30
+)
 
 // prPageFiles are the files the pull request changes, each of whose
 // headers unfolds its diff, with the comments on its lines. A worktree
@@ -689,7 +701,7 @@ func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *p
 		}
 	}
 	files := ui.Scroll(c.Key("files")).Grow(1).MinHeight(0)
-	g.viewH = files.Bounds().H
+	g.view = files.Bounds()
 	files.Children(func() {
 		ui.Column(c).Padding(0, 6, 16, 0).AlignItems(ui.Stretch).Children(func() {
 			if v.Checkout != "" {
@@ -723,7 +735,7 @@ func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *p
 					a.fileDiff(c, pal, s, sf, width-6)
 					// The file comes into view while the diff with the
 					// comment jumped to comes.
-					if g.reveal && g.at.path == fl.Path && sf.d == nil {
+					if g.reveal > 0 && g.at.path == fl.Path && sf.d == nil {
 						col.ScrollIntoView()
 					}
 				})
@@ -848,11 +860,12 @@ func (a *App) prNotes(c *ui.Context, pal *palette, sf *sideFile, width float32) 
 		if at {
 			ring = pal.accent
 		}
-		ui.Column(c.Key("thread")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
+		card := ui.Column(c.Key("thread")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
 			Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(threadBetween).Radius(8).
-			Background(pal.chip).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch).Children(func() {
+			Background(pal.chip).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch)
+		card.Children(func() {
 			if at {
-				revealSpot(c, sf.pr)
+				revealSpot(c, sf.pr, card)
 			}
 			for _, cm := range t.comments {
 				ui.Column(c.Key(cm.ID)).AlignItems(ui.Stretch).Children(func() {
