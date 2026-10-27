@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.5
+
+- Settings has a **Git** page and a **Files** page of their own, out of
+  General
+- Settings' descriptions are shorter
+
 ## 2.1.24-fork.4
 
 - Approve a pull request, or post a summary alone, with no comments: the
