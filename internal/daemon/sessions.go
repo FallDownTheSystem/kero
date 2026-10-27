@@ -315,7 +315,7 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 	if p.Worktree != "" {
 		// In the project of the repository, where the sidebar shows it
 		// under its branch's name.
-		if wt, err = d.addWorktree(dir, p.Worktree, p.Base); err != nil {
+		if wt, err = d.addWorktree(dir, p); err != nil {
 			return proto.Session{}, err
 		}
 		dir = wt.Path

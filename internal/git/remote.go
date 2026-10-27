@@ -215,6 +215,11 @@ func (r Repo) pushTarget(ctx context.Context, branch string) (remote, ref string
 	if f := strings.Split(strings.TrimSpace(string(out)), "\x00"); len(f) == 4 {
 		pushRemote, pushRef, upstream = f[0], f[1], f[2]
 	}
+	// A branch SetPushTarget gave a target, as a review's of a pull
+	// request, pushes there, to its upstream of another name.
+	if to, err := run(ctx, r.Root, nil, "config", "--get", "branch."+branch+"."+pushKey); err == nil && upstream != "" {
+		return upstream, "refs/heads/" + strings.TrimSpace(string(to)), false, nil
+	}
 	if strings.HasPrefix(pushRemote, "-") {
 		pushRemote = ""
 	}
@@ -236,4 +241,21 @@ func (r Repo) pushTarget(ctx context.Context, branch string) (remote, ref string
 		}
 	}
 	return remote, "refs/heads/" + branch, true, nil
+}
+
+// pushKey is a branch's git config of the branch on its upstream's remote
+// that it pushes to. Git has no such setting: push.default=simple pushes a
+// branch to its own name, and =upstream pushes every branch to its
+// upstream, so a branch made from origin/main over main as well.
+const pushKey = "keroPush"
+
+// SetPushTarget makes branch track name of remote, and push to it, where
+// pushTarget would push it to a branch of its own name.
+func (r Repo) SetPushTarget(ctx context.Context, branch, remote, name string) error {
+	for _, kv := range [][2]string{{"remote", remote}, {"merge", "refs/heads/" + name}, {pushKey, name}} {
+		if _, err := run(ctx, r.Root, nil, "config", "branch."+branch+"."+kv[0], kv[1]); err != nil {
+			return err
+		}
+	}
+	return nil
 }

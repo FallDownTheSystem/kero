@@ -33,11 +33,12 @@ func CheckBranch(ctx context.Context, dir, name string) error {
 	return nil
 }
 
-// Checkout is a worktree of the repository: where it is, and the commit
-// it has checked out.
+// Checkout is a worktree of the repository: where it is, the commit it
+// has checked out, and its branch, "" when detached.
 type Checkout struct {
-	Path string
-	Head string
+	Path   string
+	Head   string
+	Branch string
 }
 
 // Checkouts returns the repository's worktrees, the main one first, but
@@ -64,6 +65,8 @@ func (r Repo) Checkouts(ctx context.Context) ([]Checkout, error) {
 			cur.Path = filepath.FromSlash(strings.TrimPrefix(line, "worktree "))
 		case strings.HasPrefix(line, "HEAD "):
 			cur.Head = strings.TrimPrefix(line, "HEAD ")
+		case strings.HasPrefix(line, "branch "):
+			cur.Branch = strings.TrimPrefix(line, "branch refs/heads/")
 		case line == "bare":
 			bare = true
 		}
