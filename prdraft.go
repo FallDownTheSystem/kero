@@ -209,7 +209,7 @@ func (a *App) prDraftBar(c *ui.Context, pal *palette, g *prPage) {
 		frame := ui.Row(c.Key("summary")).AlignItems(ui.Start).Cursor(ui.CursorText)
 		var in ui.Element
 		frame.Children(func() {
-			in = ui.TextAreaBase(c.Key("in"), &st.summary).Grow(1).MinWidth(0).MinHeight(44).MaxHeight(140).Padding(6, 8).FontSize(13).
+			in = ui.TextAreaBase(c.Key("in"), &st.summary).Grow(1).MinWidth(0).MinHeight(100).MaxHeight(240).Padding(6, 8).FontSize(13).
 				Placeholder(locales.PrsSummary()).Label(locales.PrsSummary())
 		})
 		fieldLook(c, frame, in.Focused(), pal).Padding(0)

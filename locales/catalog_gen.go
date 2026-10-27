@@ -10382,6 +10382,76 @@ func (msgs Messages) PrsAgentLate() string {
 	return Catalog.Format(msgs.locale, "prsAgentLate", nil)
 }
 
+// PrsReviewStarted says "Reviewing #{number} in the background. The list shows when the review is ready."
+// in the language the app shows.
+func PrsReviewStarted(number int) string { return In(i18n.Locale()).PrsReviewStarted(number) }
+
+// PrsReviewStarted says "Reviewing #{number} in the background. The list shows when the review is ready."
+// in the language of msgs.
+func (msgs Messages) PrsReviewStarted(number int) string {
+	return Catalog.Format(msgs.locale, "prsReviewStarted", map[string]any{"number": number})
+}
+
+// PrsReviewing says "Reviewing"
+// in the language the app shows.
+func PrsReviewing() string { return In(i18n.Locale()).PrsReviewing() }
+
+// PrsReviewing says "Reviewing"
+// in the language of msgs.
+func (msgs Messages) PrsReviewing() string {
+	return Catalog.Format(msgs.locale, "prsReviewing", nil)
+}
+
+// PrsReviewReady says "Review Ready"
+// in the language the app shows.
+func PrsReviewReady() string { return In(i18n.Locale()).PrsReviewReady() }
+
+// PrsReviewReady says "Review Ready"
+// in the language of msgs.
+func (msgs Messages) PrsReviewReady() string {
+	return Catalog.Format(msgs.locale, "prsReviewReady", nil)
+}
+
+// PrsInReview says "In Review"
+// in the language the app shows.
+func PrsInReview() string { return In(i18n.Locale()).PrsInReview() }
+
+// PrsInReview says "In Review"
+// in the language of msgs.
+func (msgs Messages) PrsInReview() string {
+	return Catalog.Format(msgs.locale, "prsInReview", nil)
+}
+
+// PrsDraftComments says "{count, plural, =0 {no comments yet} one {# comment} other {# comments}}"
+// in the language the app shows.
+func PrsDraftComments(count int) string { return In(i18n.Locale()).PrsDraftComments(count) }
+
+// PrsDraftComments says "{count, plural, =0 {no comments yet} one {# comment} other {# comments}}"
+// in the language of msgs.
+func (msgs Messages) PrsDraftComments(count int) string {
+	return Catalog.Format(msgs.locale, "prsDraftComments", map[string]any{"count": count})
+}
+
+// PrsNextComment says "Next Comment"
+// in the language the app shows.
+func PrsNextComment() string { return In(i18n.Locale()).PrsNextComment() }
+
+// PrsNextComment says "Next Comment"
+// in the language of msgs.
+func (msgs Messages) PrsNextComment() string {
+	return Catalog.Format(msgs.locale, "prsNextComment", nil)
+}
+
+// PrsPreviousComment says "Previous Comment"
+// in the language the app shows.
+func PrsPreviousComment() string { return In(i18n.Locale()).PrsPreviousComment() }
+
+// PrsPreviousComment says "Previous Comment"
+// in the language of msgs.
+func (msgs Messages) PrsPreviousComment() string {
+	return Catalog.Format(msgs.locale, "prsPreviousComment", nil)
+}
+
 // PrsSetupTitle says "Review Setup for {repo}"
 // in the language the app shows.
 func PrsSetupTitle(repo string) string { return In(i18n.Locale()).PrsSetupTitle(repo) }

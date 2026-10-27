@@ -75,8 +75,14 @@ func TestPullsReview(t *testing.T) {
 	creates := make(chan proto.CreateParams, 2)
 	sends := make(chan proto.SendParams, 4)
 	starts := make(chan proto.PRReviewParams, 2)
+	var mu sync.Mutex
+	var drafts []proto.PRReviewDraft
 	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
 		switch method {
+		case "pr.drafts":
+			mu.Lock()
+			defer mu.Unlock()
+			return append([]proto.PRReviewDraft{}, drafts...), nil
 		case "pr.review":
 			var p proto.PRReviewParams
 			json.Unmarshal(raw, &p)
@@ -163,9 +169,22 @@ func TestPullsReview(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("no draft review started for the agent")
 	}
-	if g := a.side.pulls.page; g == nil || g.pane != "r1" || g.pr.Number != 7 {
-		t.Errorf("the new session's Review view shows %+v", g)
+	// The review works in the background: the user stays on the list.
+	if a.selected != "s1" || a.side.pulls.page != nil {
+		t.Errorf("went to session %q, page %+v", a.selected, a.side.pulls.page)
 	}
+	if _, ok := tt.Find("Reviewing"); ok {
+		t.Errorf("a pull request with no draft shows a draft; texts %q", tt.Texts())
+	}
+	// As the agent writes its draft, kerod says so, and the list marks the
+	// pull request: Reviewing while the agent works, with its comments.
+	mu.Lock()
+	drafts = []proto.PRReviewDraft{{Repo: "me/demo", Remote: "origin", Number: 7, Agent: "r1",
+		Comments: []proto.PRDraftComment{{ID: 1, Path: "a.go", Line: 1, Body: "x", By: "agent"}, {ID: 2, Path: "a.go", Line: 2, Body: "y", By: "agent"}}}}
+	mu.Unlock()
+	a.event(a.local(), a.local().cl, proto.Message{Event: "review", Review: &proto.PRReviewRef{Slug: "Me/Demo", Number: 7}})
+	frameUntil(t, tt, "the draft's pill", func() bool { _, ok := tt.Find("Reviewing"); return ok })
+	shot(t, tt, "pulls-reviewing")
 
 	// Not while the agent works.
 	tt.Advance(3 * time.Second)
@@ -188,6 +207,9 @@ func TestPullsReview(t *testing.T) {
 	if len(a.launches) != 0 {
 		t.Error("the launch stays")
 	}
+	// The agent idle, the review is ready.
+	frameUntil(t, tt, "Review Ready", func() bool { _, ok := tt.Find("Review Ready"); return ok })
+	shot(t, tt, "pulls-ready")
 }
 
 // The review setup keeps a repository's command and prompt by its slug,
@@ -537,6 +559,104 @@ func TestPRDraftReview(t *testing.T) {
 	frameUntil(t, tt, "posted", func() bool { return !g.review.posting && g.review.draft == nil })
 	if tt.HasText("Your review") {
 		t.Error("the draft's bar stays")
+	}
+}
+
+// Next Comment goes through the comments on a pull request's diffs, the
+// draft review's and the threads posted, in the order of the files, then
+// of the lines: each on the Files tab, its file unfolded, in view.
+func TestPRCommentJump(t *testing.T) {
+	a := testApp(t)
+	gitDemo(a)
+	noBrowser(t)
+	var long []string
+	for i := range 120 {
+		long = append(long, "line "+strconv.Itoa(i))
+	}
+	oldLong := strings.Join(long, "\n") + "\n"
+	long[100] = "line 100 changed"
+	newLong := strings.Join(long, "\n") + "\n"
+	view := proto.PRView{PullRequest: demoPulls().PRs[0], Repo: demoPulls().Repos[0], State: "OPEN", HeadOID: "h1", MergeBase: "mb", Viewer: "me",
+		Files: []proto.GitFile{
+			{Path: "a.go", Status: "modified", Added: 2, Removed: 1, From: "mb", To: "h1"},
+			{Path: "b.go", Status: "modified", Added: 1, Removed: 1, From: "mb", To: "h1"},
+		},
+		LineComments: []proto.PRLineComment{{ID: 5, Path: "a.go", Body: "Posted thread.", Author: "cid", Side: "RIGHT", Line: 3}},
+	}
+	// The draft's comment comes first in the draft, but is on the second
+	// file, far down.
+	draft := proto.PRReviewDraft{Repo: "me/demo", Remote: "origin", Number: 7, Head: "h1", MergeBase: "mb", Agent: "zz",
+		Comments: []proto.PRDraftComment{{ID: 1, Path: "b.go", Side: "RIGHT", Line: 101, Body: "Agent's note far down.", By: "agent"}}}
+	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "pr.view":
+			return view, nil
+		case "git.file":
+			var p proto.GitParams
+			json.Unmarshal(raw, &p)
+			if p.Path == "b.go" {
+				return proto.GitText{Old: oldLong, New: newLong, Hash: "hb"}, nil
+			}
+			return proto.GitText{Old: "package a\n\nfunc a() {}\n", New: "package a\n\nfunc b() {}\nfunc c() {}\n", Hash: "ha"}, nil
+		case "pr.review":
+			return draft, nil
+		}
+		return nil, nil
+	})
+	a.prefs.Side = sideReview
+	tt := ui.NewTester(a.view, 1280, 720)
+	frameUntil(t, tt, "list", func() bool { return tt.HasText("Fix the parser") })
+	if err := tt.Click("Fix the parser"); err != nil {
+		t.Fatal(err)
+	}
+	g := a.side.pulls.page
+	frameUntil(t, tt, "draft", func() bool { return g.res != nil && g.review.draft != nil })
+	tt.Frame()
+	if _, ok := tt.Find("2"); !ok || g.tab != prConversation {
+		t.Errorf("tab %q; texts %q", g.tab, tt.Texts())
+	}
+	inView := func(text string) bool {
+		r, ok := tt.Find(text)
+		return ok && r.Y >= 0 && r.Y+r.H <= 720
+	}
+
+	if err := tt.Click("Next Comment"); err != nil {
+		t.Fatal(err)
+	}
+	frameUntil(t, tt, "the thread on a.go", func() bool { return inView("Posted thread.") })
+	if _, ok := tt.Find("1/2"); g.tab != prFiles || !ok || g.at.thread != 5 {
+		t.Errorf("tab %q, at %+v; texts %q", g.tab, g.at, tt.Texts())
+	}
+	if !a.fileCollapsed(prFileKey(g.res, "b.go")) {
+		t.Error("b.go unfolded before its comment was jumped to")
+	}
+
+	if err := tt.Click("Next Comment"); err != nil {
+		t.Fatal(err)
+	}
+	frameUntil(t, tt, "the draft's comment on b.go, in view", func() bool { return inView("Agent's note far down.") })
+	for range 3 {
+		tt.Frame()
+	}
+	if !inView("Agent's note far down.") || g.at.draft != 1 || g.rv.at != 1 {
+		t.Errorf("at %+v, rv.at %d", g.at, g.rv.at)
+	}
+	shot(t, tt, "pr-jump")
+
+	// Round, both ways.
+	if err := tt.Click("Next Comment"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if g.at.thread != 5 {
+		t.Errorf("after the last, at %+v", g.at)
+	}
+	if err := tt.Click("Previous Comment"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if g.at.draft != 1 {
+		t.Errorf("before the first, at %+v", g.at)
 	}
 }
 

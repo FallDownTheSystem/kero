@@ -1700,6 +1700,27 @@
   },
   "prsFetchFailed": "Couldn't fetch the pull request: {error}",
   "prsAgentLate": "The agent isn't ready. Kero copied the prompt: paste it to the agent.",
+  "prsReviewStarted": "Reviewing #{number} in the background. The list shows when the review is ready.",
+  "@prsReviewStarted": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsReviewing": "Reviewing",
+  "prsReviewReady": "Review Ready",
+  "prsInReview": "In Review",
+  "prsDraftComments": "{count, plural, =0 {no comments yet} one {# comment} other {# comments}}",
+  "@prsDraftComments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsNextComment": "Next Comment",
+  "prsPreviousComment": "Previous Comment",
   "prsSetupTitle": "Review Setup for {repo}",
   "prsSetupDetail": "How an agent reviews this repository's pull requests. Kero saves this setup for this repository only.",
   "prsSetupCommand": "Agent command",

@@ -655,6 +655,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.prReview(p)
 
+	case "pr.drafts":
+		var p proto.PRDraftsParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return repoReviews(p.Slug)
+
 	case "pr.draft":
 		var p proto.PRDraftParams
 		if err := decode(&p); err != nil {

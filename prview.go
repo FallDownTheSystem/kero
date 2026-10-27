@@ -41,6 +41,21 @@ type prPage struct {
 	// rv shows the draft review's comments on the diffs (prdraft.go).
 	rv     *review
 	review prDraftState
+	// at is the comment jumped to last (jumpComment), which reveal brings
+	// into view as it shows, viewH high with the lines above it; viewH is
+	// the files' height, as last laid out.
+	at     prSpot
+	reveal bool
+	viewH  float32
+}
+
+// prSpot is a comment on the page's diffs, which jumpComment goes to: of
+// the draft review, by its id, or a thread, by its first comment's.
+type prSpot struct {
+	path   string
+	line   int // its last line, from 0
+	draft  int
+	thread int64
 }
 
 // The page's tabs.
@@ -59,15 +74,10 @@ func (g *prPage) repoSlug() string {
 
 // openPRPage shows a pull request of the list's remote.
 func (a *App) openPRPage(pane *proto.Pane, remote, slug string, pr proto.PullRequest) {
-	a.openPRPageOf(pane.ID, pane.Git.Root, remote, slug, pr)
-}
-
-// openPRPageOf shows a pull request in the Review view of pane, whose
-// worktree's root is root, "" for the one it comes to have.
-func (a *App) openPRPageOf(pane, root, remote, slug string, pr proto.PullRequest) {
-	g := &prPage{pane: pane, root: root, remote: remote, slug: slug, pr: pr, tab: prConversation,
+	g := &prPage{pane: pane.ID, root: pane.Git.Root, remote: remote, slug: slug, pr: pr, tab: prConversation,
 		files: map[string]*sideFile{}, md: map[string]*markdown.Options{}, parts: map[string]prText{}, opened: map[string]bool{}}
 	g.rv = a.newPageReview(g)
+	g.rv.reveal = func(c *ui.Context) { revealSpot(c, g) }
 	a.side.pulls.page = g
 	a.fetchPRPage(g)
 }
@@ -128,8 +138,10 @@ func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *pr
 		if g.res != nil {
 			files = locales.PrsFilesTabCount(len(g.res.Files))
 		}
-		ui.Row(c).Margin(4, 0, 0, 0).Children(func() {
+		ui.Row(c).Margin(4, 0, 0, 0).Gap(8).AlignItems(ui.Center).Children(func() {
 			segmented(c, "tab", &g.tab, []string{prConversation, prFiles}, []string{locales.PrsConversation(), files})
+			ui.Spacer(c)
+			a.commentJump(c, pal, g)
 		})
 	})
 	switch {
@@ -554,6 +566,108 @@ func (a *App) prTimeline(c *ui.Context, pal *palette, g *prPage) {
 	})
 }
 
+// prSpots are the comments on the page's diffs, in the order of their
+// files, then of their lines: the draft review's, and the threads that
+// aren't outdated.
+func prSpots(g *prPage) []prSpot {
+	if g.res == nil {
+		return nil
+	}
+	var spots []prSpot
+	for _, cm := range g.rv.comments {
+		spots = append(spots, prSpot{path: cm.path, line: cm.end, draft: cm.id})
+	}
+	for _, lc := range g.res.LineComments {
+		if lc.ReplyTo == 0 && lc.Line > 0 {
+			spots = append(spots, prSpot{path: lc.Path, line: lc.Line - 1, thread: lc.ID})
+		}
+	}
+	order := map[string]int{}
+	for i, f := range g.res.Files {
+		order[f.Path] = i
+	}
+	rank := func(path string) int {
+		if i, ok := order[path]; ok {
+			return i
+		}
+		return len(order)
+	}
+	slices.SortStableFunc(spots, func(x, y prSpot) int {
+		if d := rank(x.path) - rank(y.path); d != 0 {
+			return d
+		}
+		return x.line - y.line
+	})
+	return spots
+}
+
+// jumpComment goes to the next comment on the page's diffs, by (+1 or
+// -1) of the one jumped to last, round: on the Files tab, its file
+// unfolded, it comes into view, marked.
+func (a *App) jumpComment(g *prPage, by int) {
+	spots := prSpots(g)
+	if len(spots) == 0 {
+		return
+	}
+	i := slices.Index(spots, g.at)
+	switch {
+	case i >= 0:
+		i = (i + by + len(spots)) % len(spots)
+	case by > 0:
+		i = 0
+	default:
+		i = len(spots) - 1
+	}
+	g.at, g.reveal, g.rv.at = spots[i], true, spots[i].draft
+	g.tab = prFiles
+	ch := &a.side.changes
+	if ch.collapsed == nil {
+		ch.collapsed = map[string]bool{}
+	}
+	ch.collapsed[prFileKey(g.res, g.at.path)] = false
+}
+
+// prFileKey is what a file of the page's changes folds by.
+func prFileKey(v *proto.PRView, path string) string { return "prv|" + v.HeadOID + "|" + path }
+
+// commentJump is how many comments the diffs have, and which was jumped
+// to, with Previous Comment and Next Comment.
+func (a *App) commentJump(c *ui.Context, pal *palette, g *prPage) {
+	spots := prSpots(g)
+	if len(spots) == 0 {
+		return
+	}
+	count := itoa(len(spots))
+	if i := slices.Index(spots, g.at); i >= 0 {
+		count = itoa(i+1) + "/" + count
+	}
+	ui.Row(c.Key("jump")).Gap(2).AlignItems(ui.Center).Shrink(0).Children(func() {
+		ui.Icon(c, commentIcon).Size(12, 12).TextColor(pal.accent).Margin(0, 4, 0, 0)
+		ui.Text(c, count).FontSize(12).FontWeight(600).FontFeatures("tnum").TextColor(pal.textMuted).SingleLine().Margin(0, 2, 0, 0)
+		iconButton(c, "previous", chevronUpIcon, locales.PrsPreviousComment(), pal, func() { a.jumpComment(g, -1) })
+		iconButton(c, "next", chevronDownIcon, locales.PrsNextComment(), pal, func() { a.jumpComment(g, 1) })
+	})
+}
+
+// revealSpot, in the card of the comment jumped to, brings it into view
+// once: near the top of the files, the lines it is on above it.
+func revealSpot(c *ui.Context, g *prPage) {
+	if !g.reveal {
+		return
+	}
+	g.reveal = false
+	h := g.viewH
+	if h <= 0 {
+		h = 400
+	}
+	// Scrolled as little as shows it, a box the files' height from above
+	// the card shows the card at its top, whichever way it comes from.
+	ui.Box(c.Key("reveal")).Absolute().Top(-revealAbove).Left(0).Width(1).Height(max(h-8, revealAbove+40)).ScrollIntoView()
+}
+
+// revealAbove is how much of the diff above a comment jumped to shows.
+const revealAbove = 64
+
 // prPageFiles are the files the pull request changes, each of whose
 // headers unfolds its diff, with the comments on its lines. A worktree
 // that has the pull request checked out opens them, or drags them onto a
@@ -574,15 +688,18 @@ func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *p
 			asking++
 		}
 	}
-	ui.Scroll(c.Key("files")).Grow(1).MinHeight(0).Children(func() {
+	files := ui.Scroll(c.Key("files")).Grow(1).MinHeight(0)
+	g.viewH = files.Bounds().H
+	files.Children(func() {
 		ui.Column(c).Padding(0, 6, 16, 0).AlignItems(ui.Stretch).Children(func() {
 			if v.Checkout != "" {
 				ui.Text(c, locales.PrsCheckedOut(a.hostOf(pane.ID).shortDir(v.Checkout))).FontSize(11.5).TextColor(pal.textFaint).
 					SingleLine().Ellipsis("…").Padding(0, 6, 6, 12)
 			}
 			for _, fl := range v.Files {
-				key := "prv|" + v.HeadOID + "|" + fl.Path
-				ui.Column(c.Key(key)).AlignItems(ui.Stretch).Padding(0, 0, 2, 0).Children(func() {
+				key := prFileKey(v, fl.Path)
+				col := ui.Column(c.Key(key)).AlignItems(ui.Stretch).Padding(0, 0, 2, 0)
+				col.Children(func() {
 					a.fileHeader(c, pal, key, pane.ID, v.Checkout, fl, flatList, nil, func() {
 						if n := prThreadCount(v, fl.Path); n > 0 {
 							ui.Row(c).Gap(3).AlignItems(ui.Center).Shrink(0).Children(func() {
@@ -604,6 +721,11 @@ func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *p
 						a.fetchFile(sf, "")
 					}
 					a.fileDiff(c, pal, s, sf, width-6)
+					// The file comes into view while the diff with the
+					// comment jumped to comes.
+					if g.reveal && g.at.path == fl.Path && sf.d == nil {
+						col.ScrollIntoView()
+					}
 				})
 			}
 		})
@@ -721,9 +843,17 @@ func (a *App) prNotes(c *ui.Context, pal *palette, sf *sideFile, width float32) 
 		if t == nil {
 			return
 		}
+		at := sf.pr.at.thread == id
+		ring := pal.text.Alpha(0.1)
+		if at {
+			ring = pal.accent
+		}
 		ui.Column(c.Key("thread")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
 			Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(threadBetween).Radius(8).
-			Background(pal.chip).InsetShadow(0, 0, 0, 1, pal.text.Alpha(0.1)).AlignItems(ui.Stretch).Children(func() {
+			Background(pal.chip).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch).Children(func() {
+			if at {
+				revealSpot(c, sf.pr)
+			}
 			for _, cm := range t.comments {
 				ui.Column(c.Key(cm.ID)).AlignItems(ui.Stretch).Children(func() {
 					ui.Row(c).Height(threadHeadH).Gap(6).AlignItems(ui.Center).Children(func() {

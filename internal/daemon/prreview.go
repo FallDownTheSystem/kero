@@ -68,8 +68,8 @@ func saveReview(dr *proto.PRReviewDraft) error {
 	return os.Rename(tmp, path)
 }
 
-// agentReview returns the draft the agent in pane writes, nil for none.
-func agentReview(pane string) (*proto.PRReviewDraft, error) {
+// allReviews returns every draft, but those it can't read.
+func allReviews() ([]proto.PRReviewDraft, error) {
 	entries, err := os.ReadDir(reviewDir())
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -77,7 +77,7 @@ func agentReview(pane string) (*proto.PRReviewDraft, error) {
 	if err != nil {
 		return nil, err
 	}
-	var found *proto.PRReviewDraft
+	var all []proto.PRReviewDraft
 	for _, e := range entries {
 		if !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -87,15 +87,44 @@ func agentReview(pane string) (*proto.PRReviewDraft, error) {
 			continue
 		}
 		var dr proto.PRReviewDraft
-		if json.Unmarshal(b, &dr) != nil || dr.Agent != pane {
-			continue
+		if json.Unmarshal(b, &dr) == nil {
+			all = append(all, dr)
 		}
+	}
+	return all, nil
+}
+
+// agentReview returns the draft the agent in pane writes, nil for none.
+func agentReview(pane string) (*proto.PRReviewDraft, error) {
+	all, err := allReviews()
+	if err != nil {
+		return nil, err
+	}
+	var found *proto.PRReviewDraft
+	for i, dr := range all {
 		// The latest, should the pane have reviewed several.
-		if found == nil || dr.Updated > found.Updated {
-			found = &dr
+		if dr.Agent == pane && (found == nil || dr.Updated > found.Updated) {
+			found = &all[i]
 		}
 	}
 	return found, nil
+}
+
+// repoReviews returns the drafts of a repository's pull requests, which
+// the Review view's list marks. It reads without reviewMu, which a start
+// holds while it fetches: a draft is saved whole, by a rename.
+func repoReviews(slug string) ([]proto.PRReviewDraft, error) {
+	all, err := allReviews()
+	if err != nil {
+		return nil, err
+	}
+	out := []proto.PRReviewDraft{}
+	for _, dr := range all {
+		if strings.EqualFold(dr.Repo, slug) {
+			out = append(out, dr)
+		}
+	}
+	return out, nil
 }
 
 // reviewTarget is the pull request a draft is of, and the repository it
