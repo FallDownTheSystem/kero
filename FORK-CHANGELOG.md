@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.6
+
+- New worktrees, for sessions and for reviews, get the ignored files a
+  `.worktreeinclude` at the top of the repository lists, such as
+  `.claude/settings.local.json` or `.env`, as Claude Code's worktrees do
+
 ## 2.1.24-fork.5
 
 - Settings has a **Git** page and a **Files** page of their own, out of
