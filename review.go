@@ -38,7 +38,7 @@ type review struct {
 	// shows marked, 0 for none; reveal, when set, brings it into view as it
 	// shows (prPage.reveal).
 	at     int
-	reveal func(c *ui.Context)
+	reveal func(c *ui.Context, card ui.Element)
 }
 
 // reviewComment is a comment on lines of a diff's side.
@@ -273,11 +273,12 @@ func (a *App) commentCard(c *ui.Context, pal *palette, rv *review, cm *reviewCom
 	if at {
 		ring = pal.accent
 	}
-	ui.Column(c.Key("comment")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
+	card := ui.Column(c.Key("comment")).Grow(1).Margin(commentAbove, commentMargin, commentBelow, commentMargin).
 		Padding(commentPadTop, commentPadRight, commentPadBottom, commentPadLeft).Gap(commentGap).Radius(8).
-		Background(pal.accent.Alpha(0.08)).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch).Children(func() {
+		Background(pal.accent.Alpha(0.08)).InsetShadow(0, 0, 0, 1+b2f(at), ring).AlignItems(ui.Stretch)
+	card.Children(func() {
 		if at && rv.reveal != nil {
-			rv.reveal(c)
+			rv.reveal(c, card)
 		}
 		ui.Row(c).Height(commentTitleH).Gap(6).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, commentIcon).Size(12, 12).TextColor(pal.accent).Shrink(0)
