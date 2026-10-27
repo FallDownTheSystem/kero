@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -176,7 +177,7 @@ func parseDetail(out []byte) (Detail, error) {
 }
 
 // LineComment is a comment of a review on lines of a file of the pull
-// request's diff. Line and StartLine are the file's lines, from 1, on
+// request's diff, or on the file (File), which has no lines. Line and StartLine are the file's lines, from 1, on
 // Side's file (LEFT the base's, RIGHT the head's), as of the pull
 // request's head; 0 for Line when the lines changed since, which leaves
 // it outdated, at OriginalLine of the commit it was written on. ReplyTo
@@ -193,6 +194,7 @@ type LineComment struct {
 	Line         int
 	StartLine    int
 	OriginalLine int
+	File         bool // on the file, not on lines
 }
 
 type ghLineComment struct {
@@ -206,6 +208,7 @@ type ghLineComment struct {
 	Line         int       `json:"line"`
 	StartLine    int       `json:"start_line"`
 	OriginalLine int       `json:"original_line"`
+	SubjectType  string    `json:"subject_type"`
 	User         struct {
 		Login string `json:"login"`
 	} `json:"user"`
@@ -234,10 +237,72 @@ func parseLineComments(out []byte) ([]LineComment, error) {
 		}
 		for _, g := range page {
 			cs = append(cs, LineComment{ID: g.ID, ReplyTo: g.ReplyTo, Path: g.Path, Body: g.Body, Author: g.User.Login, Created: g.Created, URL: g.URL,
-				Side: g.Side, Line: g.Line, StartLine: g.StartLine, OriginalLine: g.OriginalLine})
+				Side: g.Side, Line: g.Line, StartLine: g.StartLine, OriginalLine: g.OriginalLine, File: g.SubjectType == "file"})
 		}
 	}
 	return cs, nil
+}
+
+// Thread is a thread of comments on a pull request's lines or files, as
+// GitHub's GraphQL API names it, which resolves it.
+type Thread struct {
+	ID       string
+	Resolved bool
+}
+
+// Threads returns the threads of pull request number of r, the first 100,
+// by the REST id of the comment that starts each.
+func Threads(ctx context.Context, dir string, r Repo, number int) (map[int64]Thread, error) {
+	const query = `query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { ` +
+		`reviewThreads(first: 100) { nodes { id isResolved comments(first: 1) { nodes { databaseId } } } } } } }`
+	out, err := api(ctx, dir, r, "", "graphql", "-f", "query="+query, "-f", "owner="+r.Owner, "-f", "name="+r.Name, "-F", "number="+strconv.Itoa(number))
+	if err != nil {
+		return nil, err
+	}
+	return parseThreads(out)
+}
+
+func parseThreads(out []byte) (map[int64]Thread, error) {
+	var res struct {
+		Data struct {
+			Repository struct {
+				PullRequest struct {
+					ReviewThreads struct {
+						Nodes []struct {
+							ID         string `json:"id"`
+							IsResolved bool   `json:"isResolved"`
+							Comments   struct {
+								Nodes []struct {
+									DatabaseID int64 `json:"databaseId"`
+								} `json:"nodes"`
+							} `json:"comments"`
+						} `json:"nodes"`
+					} `json:"reviewThreads"`
+				} `json:"pullRequest"`
+			} `json:"repository"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(out, &res); err != nil {
+		return nil, fmt.Errorf("gh api graphql: %w", err)
+	}
+	ts := map[int64]Thread{}
+	for _, n := range res.Data.Repository.PullRequest.ReviewThreads.Nodes {
+		if len(n.Comments.Nodes) > 0 {
+			ts[n.Comments.Nodes[0].DatabaseID] = Thread{ID: n.ID, Resolved: n.IsResolved}
+		}
+	}
+	return ts, nil
+}
+
+// ResolveThread resolves a thread of r's, by its GraphQL id, or, unless
+// resolve, makes it unresolved again.
+func ResolveThread(ctx context.Context, dir string, r Repo, id string, resolve bool) error {
+	op := "resolveReviewThread"
+	if !resolve {
+		op = "unresolveReviewThread"
+	}
+	_, err := api(ctx, dir, r, "", "graphql", "-f", "query=mutation($id: ID!) { "+op+"(input: {threadId: $id}) { thread { id } } }", "-f", "id="+id)
+	return err
 }
 
 // Viewer returns the login of the user gh is signed in as on r's host.
@@ -257,17 +322,19 @@ const (
 )
 
 // NewLineComment is a comment of a review to post, on lines Start to Line,
-// from 1, of Side's file (LEFT or RIGHT); Start 0 for Line alone.
+// from 1, of Side's file (LEFT or RIGHT); Start 0 for Line alone. File
+// makes it a comment on the file, with no lines.
 type NewLineComment struct {
 	Path  string
 	Side  string
 	Start int
 	Line  int
+	File  bool
 	Body  string
 }
 
 // NewReview is a review to post on the pull request's Commit: its body,
-// its event, and its comments on lines.
+// its event, and its comments on lines and files.
 type NewReview struct {
 	Commit   string
 	Body     string
@@ -275,8 +342,11 @@ type NewReview struct {
 	Comments []NewLineComment
 }
 
-// PostReview posts a review on pull request number of r, at once, and
-// returns its URL.
+// PostReview posts a review on pull request number of r, as one, and
+// returns its URL. GitHub's call that posts a review takes comments on
+// lines alone: with comments on files, the review is made pending, the
+// file's comments added to it, then it is submitted; the pending review
+// deleted when that fails.
 func PostReview(ctx context.Context, dir string, r Repo, number int, v NewReview) (string, error) {
 	switch v.Event {
 	case EventComment, EventApprove, EventRequestChanges:
@@ -297,32 +367,77 @@ func PostReview(ctx context.Context, dir string, r Repo, number int, v NewReview
 	body := struct {
 		Commit   string    `json:"commit_id,omitempty"`
 		Body     string    `json:"body,omitempty"`
-		Event    string    `json:"event"`
+		Event    string    `json:"event,omitempty"`
 		Comments []comment `json:"comments"`
 	}{Commit: v.Commit, Body: v.Body, Event: v.Event, Comments: []comment{}}
+	var files []NewLineComment
 	for _, c := range v.Comments {
+		if c.File {
+			files = append(files, c)
+			continue
+		}
 		nc := comment{Path: c.Path, Body: c.Body, Side: c.Side, Line: c.Line}
 		if c.Start > 0 && c.Start < c.Line {
 			nc.StartLine, nc.StartSide = c.Start, c.Side
 		}
 		body.Comments = append(body.Comments, nc)
 	}
+	reviews := fmt.Sprintf("repos/%s/%s/pulls/%d/reviews", r.Owner, r.Name, number)
+	if len(files) > 0 {
+		// Pending, with no event: its body goes as it is submitted.
+		body.Event, body.Body = "", ""
+	}
 	in, err := json.Marshal(body)
 	if err != nil {
 		return "", err
 	}
-	out, err := api(ctx, dir, r, string(in), "--method", "POST", fmt.Sprintf("repos/%s/%s/pulls/%d/reviews", r.Owner, r.Name, number), "--input", "-")
+	out, err := api(ctx, dir, r, string(in), "--method", "POST", reviews, "--input", "-")
 	if err != nil {
 		return "", err
 	}
 	var res struct {
-		URL string `json:"html_url"`
+		ID     int64  `json:"id"`
+		NodeID string `json:"node_id"`
+		URL    string `json:"html_url"`
+	}
+	if err := json.Unmarshal(out, &res); err != nil {
+		return "", fmt.Errorf("gh api: %w", err)
+	}
+	if len(files) == 0 {
+		return res.URL, nil
+	}
+	pending := reviews + "/" + strconv.FormatInt(res.ID, 10)
+	fail := func(err error) (string, error) {
+		// Not left pending, which would keep the user from starting another.
+		api(context.WithoutCancel(ctx), dir, r, "", "--method", "DELETE", pending)
+		return "", err
+	}
+	for _, c := range files {
+		_, err := api(ctx, dir, r, "", "graphql", "-f", "query="+addFileThread, "-f", "review="+res.NodeID, "-f", "path="+c.Path, "-f", "body="+c.Body)
+		if err != nil {
+			return fail(fmt.Errorf("the comment on %s: %w", c.Path, err))
+		}
+	}
+	submit, err := json.Marshal(struct {
+		Body  string `json:"body,omitempty"`
+		Event string `json:"event"`
+	}{v.Body, v.Event})
+	if err != nil {
+		return fail(err)
+	}
+	out, err = api(ctx, dir, r, string(submit), "--method", "POST", pending+"/events", "--input", "-")
+	if err != nil {
+		return fail(err)
 	}
 	if err := json.Unmarshal(out, &res); err != nil {
 		return "", fmt.Errorf("gh api: %w", err)
 	}
 	return res.URL, nil
 }
+
+// addFileThread adds a comment on a file to a pending review.
+const addFileThread = `mutation($review: ID!, $path: String!, $body: String!) { ` +
+	`addPullRequestReviewThread(input: {pullRequestReviewId: $review, path: $path, body: $body, subjectType: FILE}) { thread { id } } }`
 
 // api runs gh api on r's host with args.
 func api(ctx context.Context, dir string, r Repo, stdin string, args ...string) ([]byte, error) {

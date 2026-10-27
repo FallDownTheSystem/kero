@@ -230,13 +230,15 @@ type (
 	}
 	// PRDraftComment is a comment of a draft review on lines Start to Line,
 	// from 1, of Side's file: RIGHT the pull request's, LEFT the base's;
-	// Start 0 for Line alone. By is "agent" or "user".
+	// Start 0 for Line alone. File makes it a comment on the file, with no
+	// lines, Side "". By is "agent" or "user".
 	PRDraftComment struct {
 		ID      int    `json:"id,omitempty"`
 		Path    string `json:"path"`
 		Side    string `json:"side"`
 		Start   int    `json:"start,omitempty"`
 		Line    int    `json:"line"`
+		File    bool   `json:"file,omitempty"`
 		Body    string `json:"body"`
 		By      string `json:"by,omitempty"`
 		Created int64  `json:"created,omitempty"`
@@ -284,5 +286,21 @@ type (
 		Line         int    `json:"line,omitempty"`
 		StartLine    int    `json:"startLine,omitempty"`
 		OriginalLine int    `json:"originalLine,omitempty"`
+		// File is a comment on the file, not on lines, which has none.
+		File bool `json:"file,omitempty"`
+		// Thread is the GraphQL id of the thread a comment starts, which
+		// pr.thread resolves, "" when unknown; Resolved, whether it is.
+		Thread   string `json:"thread,omitempty"`
+		Resolved bool   `json:"resolved,omitempty"`
+	}
+	// PRThreadParams resolve a thread of comments of pull request Number
+	// of Remote's repository of Pane's, by its id (PRLineComment.Thread),
+	// or, unless Resolve, make it unresolved again.
+	PRThreadParams struct {
+		Pane    string `json:"pane"`
+		Remote  string `json:"remote,omitempty"`
+		Number  int    `json:"number"`
+		Thread  string `json:"thread"`
+		Resolve bool   `json:"resolve,omitempty"`
 	}
 )

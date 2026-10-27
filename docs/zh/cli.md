@@ -198,6 +198,7 @@ kero diff review --branch                 # 自默认分支以来的改动
 ```sh
 kero pr comment src/parse.go:42 "This drops the last token."
 kero pr comment src/parse.go:40-44 -      # 正文从标准输入读取
+kero pr comment src/api.go "Split this file?"   # 整个文件
 kero pr summary "Two bugs in the parser."
 kero pr show                              # 草稿，以及每条评论的 id
 kero pr edit 3 "Clearer text"

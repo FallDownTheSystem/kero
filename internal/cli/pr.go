@@ -59,13 +59,18 @@ func prCommand(c *client.Client, args []string) error {
 	switch sub {
 	case "comment":
 		if len(words) == 0 {
-			return usageErr("kero pr comment <path>:<line>[-<end>] <text…|->")
+			return usageErr("kero pr comment <path>[:<line>[-<end>]] <text…|->")
 		}
-		path, start, line, err := linesOf(words[0])
+		body, err := text(1)
 		if err != nil {
 			return err
 		}
-		body, err := text(1)
+		// A path alone is the file's.
+		if !strings.Contains(words[0], ":") {
+			p.Op, p.Comment = "comment", proto.PRDraftComment{Path: words[0], File: true, Body: body}
+			break
+		}
+		path, start, line, err := linesOf(words[0])
 		if err != nil {
 			return err
 		}
@@ -143,8 +148,11 @@ func linesOf(s string) (path string, start, line int, err error) {
 }
 
 // placeOf is where a comment is, as path:12 or path:10-12, the base's
-// lines said so.
+// lines said so, or path (file).
 func placeOf(c proto.PRDraftComment) string {
+	if c.File {
+		return c.Path + " (file)"
+	}
 	s := c.Path + ":" + strconv.Itoa(c.Line)
 	if c.Start > 0 && c.Start < c.Line {
 		s = c.Path + ":" + strconv.Itoa(c.Start) + "-" + strconv.Itoa(c.Line)

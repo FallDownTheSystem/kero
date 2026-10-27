@@ -673,6 +673,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.prReview(p)
 
+	case "pr.thread":
+		var p proto.PRThreadParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return true, d.prThread(p)
+
 	case "pr.drafts":
 		var p proto.PRDraftsParams
 		if err := decode(&p); err != nil {

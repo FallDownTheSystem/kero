@@ -98,6 +98,7 @@ Kero. Never post them yourself, with gh or otherwise:
     read from stdin.
     EOF
     kero pr comment src/old.go:10 --base "Why remove this?"   # the base's lines
+    kero pr comment src/api.go "Split this file?"   # the whole file, no lines
     kero pr summary "Two bugs in the parser; the rest looks good."
     kero pr show                               # the draft so far, with ids
     kero pr edit 3 "Clearer text"              # or delete 3
@@ -105,7 +106,8 @@ Kero. Never post them yourself, with gh or otherwise:
 Lines are the file's line numbers at the pull request's head (of the base
 with --base), which is checked out where you review it. GitHub takes
 comments only on lines of the diff, a change and the three lines around
-it: kero pr comment says which lines a file has when it refuses one. The
+it: kero pr comment says which lines a file has when it refuses one. A
+path with no lines comments on the whole file. The
 user's own comments show in kero pr show too; don't remove them. Outside a
 review the user started in your pane, name the pull request: --pr 123.
 

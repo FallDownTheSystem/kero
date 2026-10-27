@@ -204,6 +204,7 @@ An agent that reviews a pull request writes its comments to a [draft review](./c
 ```sh
 kero pr comment src/parse.go:42 "This drops the last token."
 kero pr comment src/parse.go:40-44 -      # the text from stdin
+kero pr comment src/api.go "Split this file?"   # the whole file
 kero pr summary "Two bugs in the parser."
 kero pr show                              # the draft, each comment with its id
 kero pr edit 3 "Clearer text"

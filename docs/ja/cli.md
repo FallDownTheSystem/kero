@@ -199,6 +199,7 @@ kero diff review --branch                 # デフォルトブランチ以降
 ```sh
 kero pr comment src/parse.go:42 "This drops the last token."
 kero pr comment src/parse.go:40-44 -      # 本文は標準入力から
+kero pr comment src/api.go "Split this file?"   # ファイル全体
 kero pr summary "Two bugs in the parser."
 kero pr show                              # 下書きと、各コメントの id
 kero pr edit 3 "Clearer text"

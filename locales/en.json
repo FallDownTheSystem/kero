@@ -1654,6 +1654,7 @@
   "reviewAdd": "Comment",
   "reviewSave": "Save",
   "reviewRemovedLines": "{path}, removed lines {lines}",
+  "reviewOnFile": "{path}, the whole file",
   "reviewTitle": "{count, plural, one {# review comment} other {# review comments}}",
   "reviewDiscard": "Discard Comments",
   "reviewDiscardTitle": "{count, plural, one {Discard the review comment?} other {Discard # review comments?}}",
@@ -1742,6 +1743,14 @@
       }
     }
   },
+  "prsResolve": "Resolve Conversation",
+  "prsUnresolve": "Unresolve",
+  "prsResolved": "Resolved",
+  "prsShowResolved": "Show the resolved conversation",
+  "prsHideResolved": "Fold the resolved conversation",
+  "prsShowInFiles": "Show in Files",
+  "prsResolveFailed": "Couldn't update the conversation: {error}",
+  "prsCommentOnFile": "Comment on File",
   "prsNextComment": "Next Comment",
   "prsPreviousComment": "Previous Comment",
   "prsSetupTitle": "Review Setup for {repo}",
@@ -1832,14 +1841,6 @@
   "prsReviewed": "reviewed",
   "prsChecks": "Checks",
   "prsNoComments": "No comments yet.",
-  "prsLineComments": "{count, plural, one {# comment on lines: see Files} other {# comments on lines: see Files}}",
-  "@prsLineComments": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "prsCantFetch": "Couldn't fetch the changes",
   "prsNoFiles": "The pull request changes no files",
   "prsCheckedOut": "Checked out in {dir}: right-click a file to open it",
