@@ -5,6 +5,14 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.7
+
+- Reviewing a pull request in a worktree works while your checkout or
+  another worktree is on its branch: each review gets a branch of its own,
+  `review/pr-<number>`, which pushes to the pull request's branch
+- Git's error messages show the line that says what went wrong, not
+  git's progress
+
 ## 2.1.24-fork.6
 
 - New worktrees, for sessions and for reviews, get the ignored files a
