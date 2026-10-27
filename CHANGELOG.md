@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.23
+
+- On macOS, Kero keeps its place in the Dock after it updates itself.
+
 ## 2.1.22
 
 - With no session open, Split Right (⌘D) starts one. Thanks @iamvicliu
