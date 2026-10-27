@@ -5,6 +5,22 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.4
+
+- Approve a pull request, or post a summary alone, with no comments: the
+  review's bar is on every pull request's page
+- Comment on a whole file, with the comment button in its header; agents
+  can too (run `kero skill setup` again)
+- **Resolve Conversation** on a thread of comments resolves it on GitHub,
+  and folds it to a line
+- The **Conversation** tab shows the threads of comments on lines and
+  files, with their replies; click a thread's file to see it in **Files**
+- Replies are set apart from the comment they answer
+- A pull request whose draft comments were all deleted no longer shows as
+  in review
+- On a narrow panel, **Post Review** moves to a line of its own, and the
+  verdict becomes a menu, so nothing is cut off
+
 ## 2.1.24-fork.3
 
 - A pull request's page scrolls to the next comment in the same file too,
