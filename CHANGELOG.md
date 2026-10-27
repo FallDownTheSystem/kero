@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.24
+
+- On macOS, dragging Kero's window by its top no longer makes it
+  shake.
+
 ## 2.1.23
 
 - On macOS, Kero keeps its place in the Dock after it updates itself.
