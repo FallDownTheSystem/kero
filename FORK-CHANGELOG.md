@@ -5,6 +5,18 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.2
+
+- The Review tab's list marks each pull request with a draft review:
+  **Reviewing** while its agent works, **Review Ready** once it's done,
+  and how many comments the agent has added so far
+- **Review** starts the agent in the background: Kero stays where you
+  were, and the list shows when the review is ready
+- A pull request's page jumps from comment to comment (▲ ▼ beside its
+  tabs), through your draft review's comments and those already posted,
+  opening each file and scrolling to the comment
+- The review's summary box shows more lines
+
 ## 2.1.24-fork.1
 
 The fork on Kero 2.1.24, and on a fork of MyGo 0.7.1:
