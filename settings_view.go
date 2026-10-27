@@ -41,6 +41,8 @@ type settingsPage struct {
 
 var settingsPages = []settingsPage{
 	{"general", locales.PageGeneral, glyph("f7-gear-alt"), false},
+	{"files", locales.PageFiles, folderIcon, false},
+	{"git", locales.PageGit, branchIcon, false},
 	{"appearance", locales.PageAppearance, glyph("f7-paintbrush"), false},
 	{"terminal", locales.PageTerminal, terminalIcon, false},
 	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right"), false},
@@ -275,6 +277,10 @@ func (a *App) settingsView(c *ui.Context) {
 							switch page.id {
 							case "general":
 								a.generalPage(c, pal)
+							case "files":
+								a.filesPage(c, pal)
+							case "git":
+								a.gitPage(c, pal)
 							case "appearance":
 								a.appearancePage(c, pal)
 							case "terminal":
@@ -619,7 +625,36 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 			toggle(c.Key("session-history"), &s.SessionHistory, pal)
 		})
 	})
-	settingsGroup(c, pal, locales.SetGit(), locales.SetGitDetail(), func() {
+	// Windows and Linux always show the icon, in the notification area.
+	if runtime.GOOS == "darwin" {
+		detail := ""
+		if s.AppIcon != "dock" {
+			detail = locales.SetAppIconDetail()
+		}
+		settingsGroup(c, pal, "", "", func() {
+			settingRow(c, pal, locales.SetAppIcon(), detail, func() {
+				popup(c, "app-icon", &s.AppIcon, settings.AppIcons, appIconName, 180, pal)
+			})
+		})
+	}
+	settingsGroup(c, pal, locales.SetStartup(), "", func() {
+		settingRow(c, pal, locales.SetOpenAtLogin(), "", func() {
+			toggle(c.Key("login"), &a.ss.loginOpen, pal).OnChange(func() {
+				if err := mygo.App.SetOpenAtLogin(a.ss.loginOpen); err != nil {
+					a.ss.loginOpen = !a.ss.loginOpen
+					a.ss.toast = locales.SetLoginFailed(err.Error())
+				}
+			})
+		})
+	})
+	a.updatesGroup(c, pal)
+}
+
+// gitPage is Settings › Git: the repositories' status and diffs, how
+// agents write commit messages, and pull requests.
+func (a *App) gitPage(c *ui.Context, pal *palette) {
+	s := &a.set
+	settingsGroup(c, pal, "", "", func() {
 		settingRow(c, pal, locales.SetGitStatus(), locales.SetGitStatusDetail(), func() {
 			toggle(c.Key("git-status"), &s.GitStatus, pal)
 		})
@@ -639,6 +674,9 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				a.set.CommitMessageCommand = strings.TrimSpace(a.ss.messageDraft)
 			}
 		})
+		promptSetting(c, pal, "commit-prompt", locales.SetCommitPrompt(), locales.SetCommitPromptDetail(), &s.CommitMessagePrompt, commitmsg.DefaultCommitPrompt, &a.ss.prompts[0])
+	})
+	settingsGroup(c, pal, locales.SetPullRequests(), "", func() {
 		settingRow(c, pal, locales.SetPRNotify(), locales.SetPRNotifyDetail(), func() {
 			segmented(c, "pr-notify", &s.PRNotify, []string{"review", "all", "off"},
 				[]string{locales.SetPRNotifyReview(), locales.SetPRNotifyAll(), locales.SetPRNotifyOff()})
@@ -659,10 +697,15 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 				}
 			})
 		}
-		promptSetting(c, pal, "commit-prompt", locales.SetCommitPrompt(), locales.SetCommitPromptDetail(), &s.CommitMessagePrompt, commitmsg.DefaultCommitPrompt, &a.ss.prompts[0])
 		promptSetting(c, pal, "pr-prompt", locales.SetPRPrompt(), locales.SetPRPromptDetail(), &s.PRMessagePrompt, commitmsg.DefaultPRPrompt, &a.ss.prompts[1])
 	})
-	settingsGroup(c, pal, locales.SetFiles(), "", func() {
+}
+
+// filesPage is Settings › Files: the editor files open in, and the Files
+// view.
+func (a *App) filesPage(c *ui.Context, pal *palette) {
+	s := &a.set
+	settingsGroup(c, pal, "", "", func() {
 		settingRow(c, pal, locales.SetEditor(), locales.SetEditorDetail(), func() {
 			if !a.ss.editorEdit {
 				a.ss.editorDraft = s.Editor
@@ -688,29 +731,6 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 			toggle(c.Key("hidden-files"), &s.HiddenFiles, pal)
 		})
 	})
-	// Windows and Linux always show the icon, in the notification area.
-	if runtime.GOOS == "darwin" {
-		detail := ""
-		if s.AppIcon != "dock" {
-			detail = locales.SetAppIconDetail()
-		}
-		settingsGroup(c, pal, "", "", func() {
-			settingRow(c, pal, locales.SetAppIcon(), detail, func() {
-				popup(c, "app-icon", &s.AppIcon, settings.AppIcons, appIconName, 180, pal)
-			})
-		})
-	}
-	settingsGroup(c, pal, locales.SetStartup(), "", func() {
-		settingRow(c, pal, locales.SetOpenAtLogin(), "", func() {
-			toggle(c.Key("login"), &a.ss.loginOpen, pal).OnChange(func() {
-				if err := mygo.App.SetOpenAtLogin(a.ss.loginOpen); err != nil {
-					a.ss.loginOpen = !a.ss.loginOpen
-					a.ss.toast = locales.SetLoginFailed(err.Error())
-				}
-			})
-		})
-	})
-	a.updatesGroup(c, pal)
 }
 
 // browserPage is Settings › Browser: what browser panes block.

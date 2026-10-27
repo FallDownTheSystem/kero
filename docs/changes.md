@@ -176,7 +176,7 @@ The comments show on the pull request's **Files** as the agent adds them, marked
 
 ### Notifications
 
-Kero checks the GitHub repositories of your projects every 5 minutes, and notifies you of each new pull request that asks for your review. Settings › General › Git sets which pull requests notify you, `pr-notify`: those that ask for your review, every new one someone else opens, or none, which stops checking; and how often Kero checks, `pr-poll-interval`. Click the notification to see the pull request in a session of its project. Kero remembers what it has seen, so a restart doesn't notify you again; the first check of a repository only learns what is open.
+Kero checks the GitHub repositories of your projects every 5 minutes, and notifies you of each new pull request that asks for your review. Settings › Git sets which pull requests notify you, `pr-notify`: those that ask for your review, every new one someone else opens, or none, which stops checking; and how often Kero checks, `pr-poll-interval`. Click the notification to see the pull request in a session of its project. Kero remembers what it has seen, so a restart doesn't notify you again; the first check of a repository only learns what is open.
 
 <a id="new-pull-request"></a>
 
@@ -186,7 +186,7 @@ Kero checks the GitHub repositories of your projects every 5 minutes, and notifi
 
 **Create Pull Request** pushes the commits the push remote doesn't have, then creates the pull request with `gh` and opens it. The arrow beside it has **Create as Draft**, and **Show on GitHub**, which opens GitHub's page that creates the pull request, with the title and the description filled in, for you to finish there. If the branch already has an open pull request, the form links to it instead.
 
-Settings › General › Git has the prompts that tell the agent how to write a commit message and a pull request, `commit-message-prompt` and `pr-message-prompt`. They show Kero's own until you change them, and **Reset to Default** brings those back.
+Settings › Git has the prompts that tell the agent how to write a commit message and a pull request, `commit-message-prompt` and `pr-message-prompt`. They show Kero's own until you change them, and **Reset to Default** brings those back.
 
 ## From the command line
 
