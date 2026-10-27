@@ -81,6 +81,14 @@ func (d *Daemon) addWorktree(dir, branch, base string) (*proto.Worktree, error) 
 		return nil, err
 	}
 	d.log.Printf("worktree %s added on %s from %q", path, branch, from)
+	// Other worktrees in the repository are no source of its files.
+	n, err := r.CopyIncluded(ctx, path, worktreeDir, ".claude/worktrees")
+	if err != nil {
+		d.log.Printf("copying .worktreeinclude's files to %s: %v", path, err)
+	}
+	if n > 0 {
+		d.log.Printf("copied %d files of .worktreeinclude to %s", n, path)
+	}
 	return &proto.Worktree{Path: path, Branch: branch, Base: from, Main: main}, nil
 }
 

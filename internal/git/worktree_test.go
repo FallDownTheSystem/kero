@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -97,5 +99,66 @@ func TestWorktree(t *testing.T) {
 	}
 	if r.HasBranch("fix/login") {
 		t.Error("kept a merged branch")
+	}
+}
+
+// A new worktree gets the ignored files .worktreeinclude lists, as
+// .gitignore would match them: never a tracked one, nor one git doesn't
+// ignore, nor one in node_modules or in another worktree, nor one in a
+// wholly ignored folder that no pattern names a path in.
+func TestIncluded(t *testing.T) {
+	ctx := context.Background()
+	r := repo(t, map[string]string{
+		".gitignore":       ".env\n.claude/settings.local.json\nnode_modules/\nsecrets/\ncache/\nother/\n*.log\nnotes.txt\n",
+		".worktreeinclude": "# local setup\n.env\n.claude/settings.local.json\n/secrets/\ncache/keep.txt\n/other/**\n*.log\n!debug.log\nplain.txt\n/.kero/**\n",
+		".claude/agent.md": "tracked\n",
+		"src/main.go":      "package main\n",
+	})
+	write(t, filepath.Join(r.Root, "tracked.log"), "tracked\n")
+	gitIn(t, r.Root, "add", "-f", "tracked.log")
+	gitIn(t, r.Root, "commit", "-q", "-m", "log")
+	for _, f := range []string{
+		".env", "src/.env", "node_modules/pkg/.env", ".claude/settings.local.json",
+		"secrets/a/key", "cache/keep.txt", "cache/big.bin", "other/top.txt",
+		"app.log", "debug.log", "notes.txt", "plain.txt",
+	} {
+		write(t, filepath.Join(r.Root, f), f+"\n")
+	}
+	if err := r.AddWorktree(ctx, filepath.Join(r.Root, "other", "wt"), "other", "main"); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(r.Root, "other", "wt", "x.log"), "x\n")
+	if err := r.AddWorktree(ctx, filepath.Join(r.Root, ".kero", "worktrees", "w"), "w", "main"); err != nil {
+		t.Fatal(err)
+	}
+	r.Exclude("/.kero/")
+	write(t, filepath.Join(r.Root, ".kero", "worktrees", "w", ".env"), "w\n")
+	write(t, filepath.Join(r.Root, ".kero", "worktrees", "stale", "a.log"), "w\n")
+
+	got, err := r.Included(ctx, ".kero/worktrees")
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(got)
+	want := []string{".claude/settings.local.json", ".env", "app.log", "cache/keep.txt", "other/top.txt", "secrets/a/key", "src/.env"}
+	if !slices.Equal(got, want) {
+		t.Errorf("included %q, want %q", got, want)
+	}
+
+	// The copy keeps paths and modes, and a file the worktree has.
+	os.Chmod(filepath.Join(r.Root, "secrets", "a", "key"), 0o600)
+	dst := filepath.Join(r.Root, ".kero", "worktrees", "w")
+	n, err := r.CopyIncluded(ctx, dst, ".kero/worktrees")
+	if err != nil || n != len(want)-1 {
+		t.Fatalf("copied %d, %v", n, err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dst, ".env")); string(b) != "w\n" {
+		t.Errorf("the worktree's .env became %q", b)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dst, "secrets", "a", "key")); string(b) != "secrets/a/key\n" {
+		t.Errorf("secrets/a/key: %q", b)
+	}
+	if fi, err := os.Stat(filepath.Join(dst, "secrets", "a", "key")); err != nil || runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600 {
+		t.Errorf("key's mode: %v, %v", fi, err)
 	}
 }

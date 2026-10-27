@@ -123,3 +123,45 @@ func TestWorktreePath(t *testing.T) {
 		t.Error(got)
 	}
 }
+
+// A session's worktree gets the main checkout's ignored files that
+// .worktreeinclude lists, but none from another worktree, and keeps a
+// file it checks out.
+func TestWorktreeInclude(t *testing.T) {
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	os.WriteFile(filepath.Join(repo, ".gitignore"), []byte(".claude/settings.local.json\n.env\nCLAUDE.md\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, ".worktreeinclude"), []byte(".claude/settings.local.json\nCLAUDE.md\nb.txt\n"), 0o644)
+	runGit(t, repo, "add", "-A")
+	runGit(t, repo, "commit", "-q", "-m", "include")
+	os.MkdirAll(filepath.Join(repo, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(repo, ".claude", "settings.local.json"), []byte(`{"dev":"on"}`), 0o644)
+	os.WriteFile(filepath.Join(repo, ".env"), []byte("SECRET=1\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "b.txt"), []byte("main's\n"), 0o644)
+	runGit(t, repo, "add", "b.txt")
+	runGit(t, repo, "commit", "-q", "-m", "b")
+	os.WriteFile(filepath.Join(repo, "b.txt"), []byte("changed\n"), 0o644)
+
+	first, err := d.create(proto.CreateParams{Dir: repo, Worktree: "one"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(first.Worktree.Path, "CLAUDE.md"), []byte("one's\n"), 0o644)
+	s, err := d.create(proto.CreateParams{Dir: repo, Worktree: "two"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt := s.Worktree.Path
+	if b, err := os.ReadFile(filepath.Join(wt, ".claude", "settings.local.json")); string(b) != `{"dev":"on"}` {
+		t.Errorf("settings.local.json: %q, %v", b, err)
+	}
+	if _, err := os.Stat(filepath.Join(wt, ".env")); !os.IsNotExist(err) {
+		t.Errorf("copied .env, which .worktreeinclude doesn't list: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wt, "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Errorf("copied another worktree's CLAUDE.md: %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(wt, "b.txt")); string(b) != "main's\n" {
+		t.Errorf("b.txt, tracked, became %q", b)
+	}
+}

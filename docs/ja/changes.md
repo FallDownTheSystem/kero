@@ -109,6 +109,7 @@ description: セッションの git ブランチと、エージェントが変�
 
 - ワークツリーはリポジトリ内の `.kero/worktrees/<branch>` に置かれます。Kero はそれを `.gitignore` ではなく `.git/info/exclude` で無視します。ほかの場所に置くには `worktree-dir` を設定します。
 - デフォルトブランチではなく、今いるセッションから分岐するには `worktree-base = current` を設定します。
+- 新しいワークツリーには git が追跡するファイルしかありません。`.claude/settings.local.json`、`CLAUDE.local.md`、`.env` のような無視されたファイルも持っていくには、Claude Code のワークツリーと同じく、リポジトリの最上位の `.worktreeinclude` に `.gitignore` の書式で並べます。Kero は一致する無視されたファイルをコピーします。ワークツリーにすでにあるファイルはそのままです。`node_modules` とほかのワークツリーは飛ばし、丸ごと無視されたフォルダには、`cache/keep.txt` のようにその中のパスを指すパターンがあるときだけ入ります。
 - セッションはリポジトリのプロジェクトに入り、サイドバーにはそのブランチが表示されます。
 
 セッションを閉じると、ワークツリーも削除するか尋ねます:
