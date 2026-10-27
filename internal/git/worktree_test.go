@@ -31,6 +31,10 @@ func TestWorktree(t *testing.T) {
 	if err := r.AddWorktree(ctx, path, "fix/login", "main"); err != nil {
 		t.Fatal(err)
 	}
+	// Git prints "Preparing worktree" before the line that says why.
+	if err := r.AddWorktree(ctx, filepath.Join(r.Root, ".kero", "worktrees", "main"), "main", ""); err == nil || !strings.Contains(err.Error(), "fatal:") || strings.Contains(err.Error(), "Preparing") {
+		t.Errorf("a second worktree of main: %v", err)
+	}
 	if err := r.Exclude("/.kero/"); err != nil {
 		t.Fatal(err)
 	}

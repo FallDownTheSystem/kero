@@ -65,10 +65,9 @@ func run(ctx context.Context, dir string, env []string, args ...string) ([]byte,
 		if ctx.Err() != nil {
 			return out, fmt.Errorf("git %s: %w", args[0], ctx.Err())
 		}
-		msg := strings.TrimSpace(stderr.String())
-		if i := strings.IndexByte(msg, '\n'); i >= 0 {
-			msg = msg[:i]
-		}
+		// Git prints its progress first, as "Preparing worktree ...", and
+		// the line that says what went wrong after it.
+		msg := (&Error{Output: stderr.String()}).Summary()
 		return out, fmt.Errorf("git %s: %w: %s", args[0], err, msg)
 	}
 	return out, nil

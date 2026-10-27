@@ -37,12 +37,12 @@ func (e *Error) Error() string {
 func (e *Error) Unwrap() error { return e.Err }
 
 // Summary is the line of git's output that says what went wrong: its first
-// error, fatal or rejection, else its last line.
+// error, fatal or rejection, else its last line but a hint.
 func (e *Error) Summary() string {
 	var last string
 	for _, l := range strings.Split(e.Output, "\n") {
 		l = strings.TrimSpace(l)
-		if l == "" {
+		if l == "" || strings.HasPrefix(l, "hint:") {
 			continue
 		}
 		low := strings.ToLower(l)
