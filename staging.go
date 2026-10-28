@@ -4,6 +4,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
@@ -37,10 +38,10 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 	}
 	col := a.sectionColor(c, pal, section)
 	top := float32(4)
-	if section == baseUnstaged && len(ix.Staged) > 0 {
-		top = 14 // apart from the staged files above it
+	if section == baseStaged && len(ix.Unstaged) > 0 {
+		top = 14 // apart from the files above it, not staged
 	}
-	band := ui.Row(c.Key("title")).Height(34).Margin(top, 0, 4, 0).Padding(0, 6, 0, 12).Gap(7).AlignItems(ui.Center).Background(col.Alpha(0.1))
+	band := ui.Row(c.Key("title")).Height(30).Margin(top, 0, 4, 0).Padding(0, 6, 0, 12).Gap(7).AlignItems(ui.Center).Background(col.Alpha(0.1))
 	band.Draw(func(p *ui.Painter, r ui.Rect) { p.Fill(ui.Rect{X: r.X, Y: r.Y, W: 3, H: r.H}, col, 0) })
 	band.Children(func() {
 		scope := changesScope(pane, git.BaseHead)
@@ -96,8 +97,7 @@ func (a *App) indexListTools(c *ui.Context, pal *palette, pane *proto.Pane, sect
 	}
 	if section == baseStaged {
 		iconButton(c, "unstage-all", minusIcon, unstage, pal, func() {
-			a.moveFiles(pane, section, list)
-			a.runGit(id, root, proto.GitOpParams{Op: "unstage", Paths: paths(list)}, locales.GitUnstage(), nil)
+			a.moveFiles(pane, section, list, proto.GitOpParams{Op: "unstage", Paths: paths(list)}, locales.GitUnstage())
 		})
 		return
 	}
@@ -125,15 +125,16 @@ func (a *App) indexListTools(c *ui.Context, pal *palette, pane *proto.Pane, sect
 				p.Paths = append(p.Paths, f.Path)
 			}
 		}
-		a.moveFiles(pane, section, files)
-		a.runGit(id, root, p, locales.GitStage(), nil)
+		a.moveFiles(pane, section, files, p, locales.GitStage())
 	})
 }
 
-// moveFiles is what of files the Changes view keeps as they move from a
-// section to the other, staged or unstaged: each folded or not, as it was,
-// rather than as a file first shown is.
-func (a *App) moveFiles(pane *proto.Pane, from string, files []proto.GitFile) {
+// moveFiles stages or unstages files of section from, p doing it, and
+// shows them moved at once, as git and the index fetched after it take a
+// moment, the more so on Windows: until an index fetched after p ended
+// has them. Each keeps its diff folded or not, as it was, rather than as
+// a file first shown is.
+func (a *App) moveFiles(pane *proto.Pane, from string, files []proto.GitFile, p proto.GitOpParams, label string) {
 	ch := &a.side.changes
 	scope := changesScope(pane, git.BaseHead)
 	to := baseStaged
@@ -146,6 +147,69 @@ func (a *App) moveFiles(pane *proto.Pane, from string, files []proto.GitFile) {
 	for _, f := range files {
 		ch.collapsed[fileKey(scope, to, f.Path)] = a.fileCollapsed(fileKey(scope, from, f.Path))
 	}
+	m := &indexMove{scope: scope, to: to, files: files, started: time.Now()}
+	drop := func() { ch.moves = slices.DeleteFunc(ch.moves, func(x *indexMove) bool { return x == m }) }
+	if a.runGitFor(pane.ID, pane.Git.Root, p, label, func(string) { m.done = time.Now() }, func(string) bool { drop(); return false }) {
+		ch.moves = append(ch.moves, m)
+	}
+}
+
+// indexMove is files moved to section to, staged or unstaged, by an
+// operation that ended at done, zero while it runs.
+type indexMove struct {
+	scope, to     string
+	files         []proto.GitFile
+	started, done time.Time
+}
+
+// movedIndex is ix with the moves of scope made: each file out of the
+// section it left and into the other, as git lists it there, unless it
+// is there already.
+func movedIndex(ix *proto.GitIndex, moves []*indexMove, scope string) *proto.GitIndex {
+	if ix == nil {
+		return nil
+	}
+	out := ix
+	for _, m := range moves {
+		if m.scope != scope {
+			continue
+		}
+		if out == ix {
+			cp := *ix
+			cp.Staged, cp.Unstaged = slices.Clone(ix.Staged), slices.Clone(ix.Unstaged)
+			out = &cp
+		}
+		from, to := &out.Unstaged, &out.Staged
+		if m.to == baseUnstaged {
+			from, to = &out.Staged, &out.Unstaged
+		}
+		for _, f := range m.files {
+			*from = slices.DeleteFunc(*from, func(g proto.GitFile) bool { return g.Path == f.Path })
+			if slices.ContainsFunc(*to, func(g proto.GitFile) bool { return g.Path == f.Path }) {
+				continue
+			}
+			switch {
+			case m.to == baseStaged && f.Status == "untracked":
+				f.Status = "added"
+			case m.to == baseStaged && f.Status == "conflict":
+				f.Status = "modified"
+			case m.to == baseUnstaged && f.Status == "added":
+				f.Status = "untracked"
+			}
+			*to = append(*to, f)
+		}
+		// As git lists them: by path, untracked files after the others.
+		slices.SortStableFunc(*to, func(a, b proto.GitFile) int {
+			if ua, ub := a.Status == "untracked", b.Status == "untracked"; ua != ub {
+				if ua {
+					return 1
+				}
+				return -1
+			}
+			return strings.Compare(a.Path, b.Path)
+		})
+	}
+	return out
 }
 
 // indexTools are a file's buttons in its section's list: a conflict's,
@@ -161,8 +225,7 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 	switch {
 	case section == baseStaged:
 		iconButton(c, "unstage", minusIcon, locales.GitUnstage(), pal, func() {
-			a.moveFiles(pane, section, []proto.GitFile{f})
-			a.runGit(id, root, proto.GitOpParams{Op: "unstage", Paths: paths}, locales.GitUnstage(), nil)
+			a.moveFiles(pane, section, []proto.GitFile{f}, proto.GitOpParams{Op: "unstage", Paths: paths}, locales.GitUnstage())
 		})
 	case f.Status == "conflict":
 		ours, theirs := sideNames(ix)
@@ -188,8 +251,7 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			}
 		})
 		iconButton(c, "resolved", checkIcon, locales.GitMarkResolved(), pal, func() {
-			a.moveFiles(pane, section, []proto.GitFile{f})
-			a.runGit(id, root, proto.GitOpParams{Op: "stage", Paths: paths}, locales.GitStage(), nil)
+			a.moveFiles(pane, section, []proto.GitFile{f}, proto.GitOpParams{Op: "stage", Paths: paths}, locales.GitStage())
 		})
 	default:
 		title, detail, action := locales.GitDiscardTitle(name), locales.GitDiscardDetail(), locales.GitDiscardChanges()
@@ -203,8 +265,7 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			a.discard(id, root, []proto.GitFile{f}, title, detail, action)
 		})
 		iconButton(c, "stage", plusIcon, locales.GitStage(), pal, func() {
-			a.moveFiles(pane, section, []proto.GitFile{f})
-			a.runGit(id, root, proto.GitOpParams{Op: "stage", Paths: paths}, locales.GitStage(), nil)
+			a.moveFiles(pane, section, []proto.GitFile{f}, proto.GitOpParams{Op: "stage", Paths: paths}, locales.GitStage())
 		})
 	}
 }

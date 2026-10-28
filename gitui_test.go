@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"sync"
 	"strings"
 	"testing"
 	"time"
@@ -279,12 +280,12 @@ func TestUncommittedStaging(t *testing.T) {
 	shot(t, tt, "git-uncommitted")
 	staged, _ := tt.Find("Staged Changes")
 	b, _ := tt.Find("b.go")
-	if b.Y < staged.Y {
-		t.Error("b.go, not staged, lists above the staged section")
+	if b.Y > staged.Y {
+		t.Error("b.go, not staged, lists below the staged section")
 	}
 
 	// Each section unfolds and folds its own files, all at once: the
-	// staged one's first.
+	// one not staged first.
 	unfolded := func(sec string) (n int) {
 		for _, f := range ch.res.Files {
 			if !a.fileCollapsed(fileKey(scope, sec, f.Path)) {
@@ -297,15 +298,15 @@ func TestUncommittedStaging(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if unfolded(baseStaged) != len(ix.Staged) || unfolded(baseUnstaged) != 0 || !tt.HasText("Collapse All Files") {
-		t.Errorf("Expand All Files unfolded %d staged, %d not", unfolded(baseStaged), unfolded(baseUnstaged))
+	if unfolded(baseUnstaged) != len(ix.Unstaged) || unfolded(baseStaged) != 0 || !tt.HasText("Collapse All Files") {
+		t.Errorf("Expand All Files unfolded %d not staged, %d staged", unfolded(baseUnstaged), unfolded(baseStaged))
 	}
 	if err := tt.Click("Collapse All Files"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if unfolded(baseStaged) != 0 || tt.HasText("Collapse All Files") {
-		t.Errorf("Collapse All Files left %d staged unfolded", unfolded(baseStaged))
+	if unfolded(baseUnstaged) != 0 || tt.HasText("Collapse All Files") {
+		t.Errorf("Collapse All Files left %d unfolded", unfolded(baseUnstaged))
 	}
 
 	// A file's own button stages it alone.
@@ -320,6 +321,12 @@ func TestUncommittedStaging(t *testing.T) {
 		t.Error("b.go, folded, unfolds as it's staged")
 	}
 	a.side.git.op = nil
+	// This kerod's index stays as it was: b.go comes back.
+	for range 5 {
+		tt.Frame()
+		time.Sleep(10 * time.Millisecond)
+	}
+	ch.moves = nil
 
 	// Discarding asks first, by what it does to the file: an untracked one
 	// goes.
@@ -979,5 +986,108 @@ func TestChangesTreeFolderTools(t *testing.T) {
 	a.confirm.run()
 	if p := nextOp(t, ops); p.Op != "discard" || !slices.Equal(p.Paths, []string{"src/b.go"}) || !slices.Equal(p.Untracked, []string{"src/gen/new.txt"}) {
 		t.Errorf("src discarded %+v", p)
+	}
+}
+
+// A file staged moves at once, before git and the index fetched after it
+// say so: the row under the pointer is the next file's, the rows above it
+// staying. A click while a staging runs waits for it, not refused as busy.
+func TestStageMovesAtOnce(t *testing.T) {
+	a := testApp(t)
+	g, ix := gitDemo(a)
+	var mu sync.Mutex
+	ops, release := make(chan proto.GitOpParams, 8), make(chan struct{})
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.index":
+			mu.Lock()
+			defer mu.Unlock()
+			cp := *ix
+			cp.Staged, cp.Unstaged = slices.Clone(ix.Staged), slices.Clone(ix.Unstaged)
+			return &cp, nil
+		case "git.op":
+			var p proto.GitOpParams
+			json.Unmarshal(raw, &p)
+			ops <- p
+			<-release
+			// As git stages them.
+			mu.Lock()
+			for _, path := range p.Paths {
+				if i := slices.IndexFunc(ix.Unstaged, func(f proto.GitFile) bool { return f.Path == path }); i >= 0 {
+					f := ix.Unstaged[i]
+					if f.Status == "untracked" {
+						f.Status = "added"
+					}
+					ix.Unstaged = slices.Delete(ix.Unstaged, i, i+1)
+					ix.Staged = append(ix.Staged, f)
+				}
+			}
+			mu.Unlock()
+			return proto.GitOpResult{}, nil
+		}
+		return nil, errors.New("no git in a test")
+	})
+	a.local().cl = cl
+	s := &a.st.Sessions[0]
+	a.prefs.Side = sideChanges
+	ch := &a.side.changes
+	scope := changesScope(&s.Panes[0], git.BaseHead)
+	ch.base, ch.scope, ch.stamp, ch.fetched = git.BaseHead, scope, gitStamp(g)+"|0", time.Now()
+	ch.res = &proto.GitChanges{Root: g.Root, Files: unionFiles(ix.Staged, ix.Unstaged)}
+	ch.indexes = map[string]*proto.GitIndex{scope: ix}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	b, _ := tt.Find("b.go")
+	if err := tt.Click("Stage"); err != nil {
+		t.Fatal(err)
+	}
+	if p := nextOp(t, ops); !slices.Equal(p.Paths, []string{"b.go"}) {
+		t.Fatalf("staged %+v", p)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+	staged, _ := tt.Find("Staged Changes")
+	if r, _ := tt.Find("b.go"); r.Y < staged.Y {
+		t.Errorf("b.go waits for git to move")
+	}
+	if r, _ := tt.Find("new.txt"); r.Y != b.Y {
+		t.Errorf("new.txt at %v, not where b.go was, %v", r.Y, b.Y)
+	}
+	if err := tt.Click("Stage"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if len(a.side.git.next) != 1 || a.pendingToast != "" {
+		t.Errorf("a staging during another: %d waiting, toast %q", len(a.side.git.next), a.pendingToast)
+	}
+	shot(t, tt, "git-stage-at-once")
+	release <- struct{}{}
+	done := false
+	for range 300 {
+		tt.Frame()
+		select {
+		case p := <-ops:
+			if !slices.Equal(p.Paths, []string{"new.txt"}) {
+				t.Errorf("then staged %+v", p)
+			}
+			release <- struct{}{}
+			done = true
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+		if done && a.side.git.op == nil && len(ch.moves) == 0 && !ch.busy {
+			break
+		}
+	}
+	tt.Frame()
+	if !done || len(ch.moves) != 0 {
+		t.Fatalf("the second staging ran %v; moves left %d", done, len(ch.moves))
+	}
+	staged, _ = tt.Find("Staged Changes")
+	for _, f := range []string{"b.go", "new.txt"} {
+		if r, ok := tt.Find(f); !ok || r.Y < staged.Y {
+			t.Errorf("%s isn't staged once git says so", f)
+		}
 	}
 }

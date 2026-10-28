@@ -112,6 +112,9 @@ type changesState struct {
 	folded map[string]bool
 	// places are the lists' places, by scope.
 	places map[string]*ui.ListState
+	// moves are the files staged or unstaged that the index fetched last
+	// may not show moved yet, which the list shows moved at once.
+	moves []*indexMove
 }
 
 // sideFile is a changed file's diff since a base, or between two sides:
@@ -558,7 +561,7 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 	if here.Git != nil {
 		a.gitBar(c, pal, s, here)
 	}
-	ix := ch.indexes[scope]
+	ix := movedIndex(ch.indexes[scope], ch.moves, scope)
 	if ch.base != git.BaseHead {
 		ix = nil
 	}
@@ -639,8 +642,11 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 		}
 		a.sideMessage(c, pal, locales.ChangesNone(), detail)
 	default:
-		// Uncommitted lists what is staged, then what isn't, each file
+		// Uncommitted lists what isn't staged, then what is, each file
 		// under its section's title; the other bases their files alone.
+		// What isn't staged comes first: staging a file takes its row out
+		// from under the pointer, the rows above it staying, and the next
+		// file comes where it was; what is staged grows below.
 		var rows []changeRow
 		files := func(section, base string, list []proto.GitFile) {
 			if !held {
@@ -672,7 +678,7 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 			for _, sec := range []struct {
 				name string
 				list []proto.GitFile
-			}{{baseStaged, ix.Staged}, {baseUnstaged, ix.Unstaged}} {
+			}{{baseUnstaged, ix.Unstaged}, {baseStaged, ix.Staged}} {
 				if len(sec.list) > 0 {
 					rows = append(rows, changeRow{section: sec.name, title: true})
 					files(sec.name, sec.name, sec.list)
@@ -752,6 +758,9 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 				// Opaque, over the diff scrolling under it; a folded file's
 				// with the room below its section.
 				gap, depth := float32(sectionGap), flatList
+				if r.section != "" {
+					gap = treeGap // Uncommitted's rows close together too
+				}
 				if r.tree != nil {
 					// A tree's rows close together, its folders' among them.
 					gap, depth = treeGap, r.tree.depth
@@ -771,13 +780,13 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 							}
 						}
 					}
-					a.fileHeader(c, pal, key, here.ID, res.Root, r.f, depth, func() {
+					a.fileHeader(c, pal, key, here.ID, res.Root, r.f, depth, changeRowH, func() {
 						// Folding it as the list pins it brings it back where
 						// it stays: at the top.
 						ls.ScrollIntoView(i)
 					}, tools, menu)
 				})
-			}).Grow(1).MinHeight(0).Padding(0, 6, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
+			}).Grow(1).MinHeight(0).Padding(0, 6, 16, 0).ScrollbarInsets(changeRowH, 0, 0, 0)
 		})
 	}
 
@@ -823,6 +832,10 @@ const (
 	sectionGap = 6
 	treeGap    = 2
 )
+
+// changeRowH is the height of a row of the Changes view's list, a file's
+// or a folder's: shorter than a header elsewhere, for more files at once.
+const changeRowH = 26
 
 // flatList is the depth of a file's header in a list, not a tree, which
 // shows its folder beside its name; treeIndent the room each of a tree's
@@ -950,12 +963,13 @@ func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, sf *sideFi
 // folding first when set; in a tree, indented by its depth. tools, when
 // set, draws its buttons at its end. Its context menu opens the file, of
 // pane's host in its worktree's root, and drags it onto a pane, unless it
-// was deleted, or root is ""; then come menu's items, when set.
-func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f proto.GitFile, depth int, folding, tools func(), menu func(*ui.Menu)) {
+// was deleted, or root is ""; then come menu's items, when set. height is
+// the row's: stickyH, but in the Changes view's list.
+func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f proto.GitFile, depth int, height float32, folding, tools func(), menu func(*ui.Menu)) {
 	ch := &a.side.changes
 	collapsed := a.fileCollapsed(key)
 	// Across the panel, edge to edge, its content in line with the bases'.
-	hdr := ui.Row(c.Key("hdr")).Height(stickyH).Padding(0, 10, 0, 12+treeIndent*float32(max(depth, 0))).Gap(8).AlignItems(ui.Center).Background(pal.chip)
+	hdr := ui.Row(c.Key("hdr")).Height(height).Padding(0, 10, 0, 12+treeIndent*float32(max(depth, 0))).Gap(8).AlignItems(ui.Center).Background(pal.chip)
 	if hdr.Hovered() {
 		hdr.Background(pal.rowHover.Mix(pal.chip, 0.5))
 	}
@@ -1027,7 +1041,7 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f 
 func (a *App) folderRow(c *ui.Context, pal *palette, key string, e treeEntry, tools func(), menu func(*ui.Menu)) {
 	ch := &a.side.changes
 	folded := ch.folded[key]
-	row := ui.Row(c.Key("folder")).Height(28).Margin(0, 0, treeGap, 0).Padding(0, 10, 0, 12+treeIndent*float32(e.depth)).Gap(8).AlignItems(ui.Center)
+	row := ui.Row(c.Key("folder")).Height(changeRowH).Margin(0, 0, treeGap, 0).Padding(0, 10, 0, 12+treeIndent*float32(e.depth)).Gap(8).AlignItems(ui.Center)
 	if row.Hovered() {
 		row.Background(pal.rowHover.Alpha(0.5))
 	}
@@ -1087,6 +1101,7 @@ func (a *App) fetchChanges(scope, stamp, pane, base string) {
 		ch.busy = false
 		return
 	}
+	asked := time.Now()
 	go func() {
 		var res proto.GitChanges
 		var ix *proto.GitIndex
@@ -1104,6 +1119,11 @@ func (a *App) fetchChanges(scope, stamp, pane, base string) {
 		a.update(func() {
 			ch.busy, ch.fetched = false, time.Now()
 			ch.scope, ch.stamp = scope, stamp
+			// A move shows in an index asked for after its operation ended;
+			// one whose end never came goes after a while.
+			ch.moves = slices.DeleteFunc(ch.moves, func(m *indexMove) bool {
+				return m.scope == scope && !m.done.IsZero() && m.done.Before(asked) || time.Since(m.started) > time.Minute
+			})
 			if err != nil {
 				ch.res, ch.err = nil, err.Error()
 				delete(ch.lists, scope)

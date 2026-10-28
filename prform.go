@@ -433,7 +433,7 @@ func (a *App) prFiles(c *ui.Context, pal *palette, s *proto.Session, pane *proto
 		for _, fl := range d.Files {
 			key := "pr|" + d.MergeBase + "|" + fl.Path
 			ui.Column(c.Key(key)).AlignItems(ui.Stretch).Padding(0, 0, 2, 0).Children(func() {
-				a.fileHeader(c, pal, key, pane.ID, pane.Git.Root, fl, flatList, nil, nil, nil)
+				a.fileHeader(c, pal, key, pane.ID, pane.Git.Root, fl, flatList, stickyH, nil, nil, nil)
 				if a.fileCollapsed(key) {
 					return
 				}
