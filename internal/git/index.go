@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 )
 
 // The index, what the next commit takes, as the Changes view's
@@ -30,12 +31,24 @@ const (
 // them, "untracked", and conflicts, "conflict", which are no change of
 // the index's.
 func (r Repo) Index(ctx context.Context) (staged, unstaged []File, err error) {
-	staged, err = r.diffFiles(ctx, "--cached", "-M")
-	if err != nil {
-		return nil, nil, err
-	}
-	if unstaged, err = r.diffFiles(ctx); err != nil {
-		return nil, nil, err
+	// At once, the list as soon as the slowest of git's runs: as the
+	// Changes view waits for it after each file staged, and git starts
+	// slowly on Windows.
+	var untracked []byte
+	var errs [3]error
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() { defer wg.Done(); staged, errs[0] = r.diffFiles(ctx, "--cached", "-M") }()
+	go func() { defer wg.Done(); unstaged, errs[1] = r.diffFiles(ctx) }()
+	go func() {
+		defer wg.Done()
+		untracked, errs[2] = run(ctx, r.Root, nil, "ls-files", "-z", "--others", "--exclude-standard")
+	}()
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	var conflicts []string
 	for _, f := range unstaged {
@@ -44,11 +57,7 @@ func (r Repo) Index(ctx context.Context) (staged, unstaged []File, err error) {
 		}
 	}
 	staged = slices.DeleteFunc(staged, func(f File) bool { return f.Status == "conflict" || slices.Contains(conflicts, f.Path) })
-	out, err := run(ctx, r.Root, nil, "ls-files", "-z", "--others", "--exclude-standard")
-	if err != nil {
-		return nil, nil, err
-	}
-	for i, p := range strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00") {
+	for i, p := range strings.Split(strings.TrimSuffix(string(untracked), "\x00"), "\x00") {
 		if p == "" {
 			continue
 		}
@@ -90,15 +99,22 @@ func (r Repo) Staged(ctx context.Context, max int) (stat, patch string, err erro
 // each adds and removes; a file unmerged is a "conflict", listed once.
 func (r Repo) diffFiles(ctx context.Context, args ...string) ([]File, error) {
 	base := []string{"diff", "--no-ext-diff", "--no-textconv", "-z"}
-	out, err := run(ctx, r.Root, nil, append(append(slices.Clone(base), args...), "--name-status")...)
-	if err != nil {
-		return nil, err
-	}
-	files := parseNameStatus(out)
+	var names, out []byte
+	var nameErr, err error
+	done := make(chan struct{})
+	go func() {
+		names, nameErr = run(ctx, r.Root, nil, append(append(slices.Clone(base), args...), "--name-status")...)
+		close(done)
+	}()
 	out, err = run(ctx, r.Root, nil, append(append(slices.Clone(base), args...), "--numstat")...)
+	<-done
+	if nameErr != nil {
+		return nil, nameErr
+	}
 	if err != nil {
 		return nil, err
 	}
+	files := parseNameStatus(names)
 	byPath := map[string]int{}
 	for i, f := range files {
 		byPath[f.Path] = i
