@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/egoist/mygo/ui/markdown/parser"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -423,4 +424,109 @@ func attr(n *html.Node, key string) string {
 		}
 	}
 	return ""
+}
+
+var htmlTagName = regexp.MustCompile(`^<(/?)([a-zA-Z][a-zA-Z0-9-]*)`)
+
+// viewTags are the inline tags the markdown view applies, as <b> or <br>,
+// and those the page reads itself (mdParts).
+var viewTags = map[string]bool{"b": true, "strong": true, "i": true, "em": true, "u": true, "ins": true, "s": true, "del": true,
+	"strike": true, "code": true, "kbd": true, "samp": true, "mark": true, "sub": true, "sup": true, "small": true, "br": true,
+	"details": true, "summary": true}
+
+// inlineHTML rewrites the HTML within the text of markdown src, which
+// the markdown view shows as its source, as GitHub's bots write it: an
+// image, as a <picture> of a severity's badge, as its description in
+// brackets, as the view shows an image within text; a link as markdown's;
+// other tags of HTML's gone, their text kept. Code stays as it is. With plain, for
+// text shown as it is, links and the view's tags go too, <br> a line.
+func inlineHTML(src string, plain bool) string {
+	if !strings.Contains(src, "<") {
+		return src
+	}
+	type edit struct {
+		start, end int
+		text       string
+	}
+	var edits []edit
+	d := parser.Parse(src)
+	for i := range d.Len() {
+		in := d.Inlines(i)
+		var links []int // the edits of the <a> open
+		var hrefs []string
+		for _, n := range in {
+			if n.Kind != parser.HTML {
+				continue
+			}
+			e := edit{start: n.Start, end: n.End}
+			m := htmlTagName.FindStringSubmatch(n.Text)
+			name := ""
+			if m != nil {
+				name = strings.ToLower(m[2])
+			}
+			closing := m != nil && m[1] == "/"
+			switch {
+			case m != nil && atom.Lookup([]byte(name)) == 0:
+				continue // no HTML's, as Vec<String> in prose
+			case plain && name == "br":
+				e.text = "\n"
+			case !plain && viewTags[name]:
+				continue
+			case name == "img" && !closing:
+				if alt := strings.TrimSpace(attr(htmlElement(n.Text), "alt")); alt != "" {
+					if plain {
+						e.text = "[" + alt + "]"
+					} else {
+						// Not \[ \], which is math.
+						e.text = "&#91;" + mdSpecial.Replace(alt) + "&#93;"
+					}
+				}
+			case name == "a" && !plain:
+				if !closing {
+					if href := attr(htmlElement(n.Text), "href"); href != "" {
+						links, hrefs = append(links, len(edits)), append(hrefs, href)
+						e.text = "["
+					}
+				} else if len(links) > 0 {
+					href := hrefs[len(hrefs)-1]
+					if strings.ContainsAny(href, " ()<>") {
+						href = "<" + strings.NewReplacer("<", "%3C", ">", "%3E").Replace(href) + ">"
+					}
+					e.text = "](" + href + ")"
+					links, hrefs = links[:len(links)-1], hrefs[:len(hrefs)-1]
+				}
+			}
+			edits = append(edits, e)
+		}
+		// A link not closed in its block is no link.
+		for _, j := range links {
+			edits[j].text = ""
+		}
+	}
+	if len(edits) == 0 {
+		return src
+	}
+	slices.SortFunc(edits, func(a, b edit) int { return a.start - b.start })
+	var b strings.Builder
+	at := 0
+	for _, e := range edits {
+		if e.start < at {
+			continue
+		}
+		b.WriteString(src[at:e.start])
+		b.WriteString(e.text)
+		at = e.end
+	}
+	b.WriteString(src[at:])
+	return b.String()
+}
+
+// htmlElement is the element of a tag, as <img alt="…">, for its
+// attributes, decoded.
+func htmlElement(tag string) *html.Node {
+	nodes, err := html.ParseFragment(strings.NewReader(tag), &html.Node{Type: html.ElementNode, Data: "body", DataAtom: atom.Body})
+	if err != nil || len(nodes) == 0 {
+		return &html.Node{}
+	}
+	return nodes[0]
 }

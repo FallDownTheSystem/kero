@@ -96,6 +96,10 @@ func (a *App) fetchPRPage(g *prPage) {
 	go func() {
 		var res proto.PRView
 		err := cl.Call("pr.view", p, &res)
+		// Threads' comments show as their text, but for the HTML in it.
+		for i := range res.LineComments {
+			res.LineComments[i].Body = inlineHTML(res.LineComments[i].Body, true)
+		}
 		a.update(func() {
 			if g.gen != gen {
 				return
@@ -238,7 +242,7 @@ type prText struct {
 func (a *App) prMarkdown(c *ui.Context, g *prPage, key, text string) {
 	t, ok := g.parts[key]
 	if !ok || t.src != text {
-		t = prText{src: text, parts: mdParts(text)}
+		t = prText{src: text, parts: mdParts(inlineHTML(text, false))}
 		g.parts[key] = t
 	}
 	ui.Column(c.Key("md-" + key)).Gap(10).AlignItems(ui.Stretch).Children(func() { a.prParts(c, g, key, t.parts) })

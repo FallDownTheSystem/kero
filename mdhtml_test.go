@@ -51,3 +51,28 @@ func TestHTMLMarkdown(t *testing.T) {
 		}
 	}
 }
+
+// HTML within text, as Copilot's badges of severity, shows as what it
+// means, not its source; code keeps its tags.
+func TestInlineHTML(t *testing.T) {
+	badge := `<picture><source media="(prefers-color-scheme: dark)" srcset="https://x/high-dark.svg"><img src="https://x/high.png" alt="High &amp; severe" width="62" align="texttop"></picture>`
+	src := badge + " Return no fallback · New\n" +
+		"See <a href=\"https://example.com/a b\">the <b>docs</b></a>, <span>kept</span>, a <a href=\"x\">dangling link, and `<picture>` in code.\n\n" +
+		"```html\n<img alt=\"in a block\">\n```\n\n" +
+		"Vec<String> stays<br>here"
+	got := inlineHTML(src, false)
+	want := `&#91;High \& severe&#93; Return no fallback · New` + "\n" +
+		"See [the <b>docs</b>](<https://example.com/a b>), kept, a dangling link, and `<picture>` in code.\n\n" +
+		"```html\n<img alt=\"in a block\">\n```\n\n" +
+		"Vec<String> stays<br>here"
+	if got != want {
+		t.Errorf("markdown:\n%s\nwant:\n%s", got, want)
+	}
+	got = inlineHTML(badge+" Return no fallback\nSee <a href=\"x\">the <b>docs</b></a>.<br>Next", true)
+	if want := "[High & severe] Return no fallback\nSee the docs.\nNext"; got != want {
+		t.Errorf("plain %q, want %q", got, want)
+	}
+	if s := "a < b > c"; inlineHTML(s, true) != s {
+		t.Errorf("rewrote %q", s)
+	}
+}
