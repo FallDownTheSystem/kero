@@ -325,3 +325,44 @@ func TestAgentPane(t *testing.T) {
 	a.shellPID = os.Getpid()
 	check("under the app server a's Codex started", server.Process.Pid, "", "b", true)
 }
+
+// A prompt sent to be submitted gets Enter after its paste, and again
+// while the agent stays idle, as Claude Code takes an Enter too soon for
+// more of the paste; an agent that went to work gets no more.
+func TestSubmit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sh")
+	}
+	enterWait = 100 * time.Millisecond
+	t.Cleanup(func() { enterWait = 2 * time.Second })
+	d := testDaemon(t)
+	out := filepath.Join(t.TempDir(), "in")
+	s, err := d.create(proto.CreateParams{Command: []string{"sh", "-c", "stty raw -echo; exec cat > " + out}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	pn := d.findPane(s.Panes[0].ID)
+	enters := func(status proto.Status) int {
+		t.Helper()
+		os.Truncate(out, 0)
+		pn.mu.Lock()
+		pn.info.Agent, pn.info.Status = "claude", status
+		pn.mu.Unlock()
+		pn.paste("review it")
+		pn.submit(time.Now())
+		time.Sleep(200 * time.Millisecond)
+		b, _ := os.ReadFile(out)
+		if !strings.Contains(string(b), "review it") {
+			t.Errorf("the paste didn't come: %q", b)
+		}
+		return strings.Count(string(b), "\r")
+	}
+	time.Sleep(500 * time.Millisecond) // stty
+	if n := enters(proto.Idle); n != 1+enterTries {
+		t.Errorf("an idle agent got %d Enters", n)
+	}
+	if n := enters(proto.Working); n != 1 {
+		t.Errorf("a working agent got %d Enters", n)
+	}
+}

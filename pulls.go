@@ -668,6 +668,7 @@ type agentLaunch struct {
 	prompt   string
 	started  time.Time
 	deadline time.Time
+	late     bool // past its deadline, its prompt for the clipboard
 }
 
 // launchWait is how long a launch waits for its agent before it gives up,
@@ -677,17 +678,57 @@ const launchWait = 90 * time.Second
 func (a *App) watchLaunch(h *host, pane, prompt string) {
 	now := time.Now()
 	a.launches = append(a.launches, &agentLaunch{host: h, pane: pane, prompt: prompt, started: now, deadline: now.Add(launchWait)})
+	if a.launchStop == nil {
+		stop := make(chan struct{})
+		a.launchStop = stop
+		go func() {
+			for {
+				select {
+				case <-stop:
+					return
+				case <-time.After(time.Second):
+				}
+				a.update(func() {
+					a.checkLaunches(time.Now())
+					if len(a.launches) == 0 && a.launchStop == stop {
+						close(stop)
+						a.launchStop = nil
+					}
+				})
+			}
+		}()
+	}
 }
 
-// pollLaunches pastes each launch's prompt once its agent is ready: the
-// pane runs an agent Kero knows, which is idle and has drawn nothing for
-// a moment; else, of an agent Kero doesn't know, once the program it runs
-// has drawn and gone quiet a while.
+// pollLaunches checks the launches as the view draws, and gives a late
+// one's prompt to the clipboard. A ticker of watchLaunch's checks them
+// too, while the window draws nothing, hidden or minimized: the review
+// goes on in the background.
 func (a *App) pollLaunches(c *ui.Context) {
 	if len(a.launches) == 0 {
 		return
 	}
-	now := c.Now()
+	a.checkLaunches(c.Now())
+	keep := a.launches[:0]
+	for _, l := range a.launches {
+		if !l.late {
+			keep = append(keep, l)
+			continue
+		}
+		c.WriteClipboard(l.prompt)
+		a.toast(locales.PrsAgentLate())
+	}
+	a.launches = keep
+	if len(keep) > 0 {
+		c.After(300 * time.Millisecond)
+	}
+}
+
+// checkLaunches pastes each launch's prompt once its agent is ready: the
+// pane runs an agent Kero knows, which is idle and has drawn nothing for
+// a moment; else, of an agent Kero doesn't know, once the program it runs
+// has drawn and gone quiet a while. One past its deadline is late.
+func (a *App) checkLaunches(now time.Time) {
 	keep := a.launches[:0]
 	for _, l := range a.launches {
 		p := a.paneByID(l.pane)
@@ -698,21 +739,20 @@ func (a *App) pollLaunches(c *ui.Context) {
 			quiet, drew = now.Sub(last), last.After(l.started)
 		}
 		switch {
+		case l.late:
+			keep = append(keep, l)
 		case p == nil && now.After(l.deadline):
 		case p != nil && p.Agent != "" && p.Status == proto.Idle && drew && quiet > 1200*time.Millisecond,
 			p != nil && p.Agent == "" && now.Sub(l.started) > 8*time.Second && drew && quiet > 2*time.Second:
 			a.sendPrompt(l.pane, l.prompt)
 		case now.After(l.deadline):
-			c.WriteClipboard(l.prompt)
-			a.toast(locales.PrsAgentLate())
+			l.late = true
+			keep = append(keep, l)
 		default:
 			keep = append(keep, l)
 		}
 	}
 	a.launches = keep
-	if len(keep) > 0 {
-		c.After(300 * time.Millisecond)
-	}
 }
 
 // sendPrompt pastes a prompt in an agent's pane, then Enter, as Send to
@@ -744,9 +784,14 @@ const (
 // Enter it took into the paste leaves the prompt unsent. It pastes rather
 // than types the text, whose newlines would send it line by line.
 func (a *App) submit(cl *client.Client, pane, text string) error {
-	if err := cl.Call("send", proto.SendParams{ID: pane, Data: text, Paste: true}, nil); err != nil {
+	var res any
+	if err := cl.Call("send", proto.SendParams{ID: pane, Data: text, Paste: true, Submit: true}, &res); err != nil {
 		return err
 	}
+	if res == proto.Submitted {
+		return nil // kerod presses Enter, the window shown or not
+	}
+	// An older kerod's, which pastes alone.
 	time.Sleep(pasteSettle)
 	if err := cl.Call("send", proto.SendParams{ID: pane, Data: "\r"}, nil); err != nil {
 		return err

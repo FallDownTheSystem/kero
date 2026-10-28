@@ -158,7 +158,9 @@ type App struct {
 	prReview *prReview
 	prSetup  *prSetup
 	launches []*agentLaunch
-	poll     prPoll
+	// launchStop stops the ticker that checks launches, while some wait.
+	launchStop chan struct{}
+	poll       prPoll
 	// endedAll shows all of the sidebar's Ended; skillMissing tells, as
 	// of skillsAt, that no kind of agent has Kero's skill (ended.go).
 	endedAll     bool
