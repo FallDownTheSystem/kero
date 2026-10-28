@@ -931,3 +931,53 @@ func TestHistoryOpenSubjectWraps(t *testing.T) {
 		t.Errorf("the open subject is %v high, %v closed", open.H, closed.H)
 	}
 }
+
+// A folder of the tree stages, unstages and discards the files in it
+// alone, a renamed file's old path with it.
+func TestChangesTreeFolderTools(t *testing.T) {
+	a := testApp(t)
+	g, ix := gitDemo(a)
+	ix.Staged = []proto.GitFile{{Path: "lib/r.go", OldPath: "old/r.go", Status: "renamed"}, {Path: "top.go", Status: "modified"}}
+	ix.Unstaged = []proto.GitFile{{Path: "src/b.go", Status: "modified", Added: 3}, {Path: "src/gen/new.txt", Status: "untracked", Added: 1},
+		{Path: "src/gen/c.go", Status: "conflict"}, {Path: "other.go", Status: "modified"}}
+	ops, _ := gitCalls(t, a, ix)
+	s := &a.st.Sessions[0]
+	a.prefs.Side, a.prefs.ChangesTree = sideChanges, true
+	ch := &a.side.changes
+	scope := changesScope(&s.Panes[0], git.BaseHead)
+	ch.base, ch.scope, ch.stamp, ch.fetched = git.BaseHead, scope, gitStamp(g)+"|0", time.Now()
+	ch.res = &proto.GitChanges{Root: g.Root, Files: unionFiles(ix.Staged, ix.Unstaged)}
+	ch.indexes = map[string]*proto.GitIndex{scope: ix}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	shot(t, tt, "git-tree-folder-tools")
+	// A folder's buttons are in line with its section title's.
+	at := func(button, row string) {
+		t.Helper()
+		b, ok := tt.Find(button)
+		r, ok2 := tt.Find(row)
+		if !ok || !ok2 {
+			t.Fatalf("no %q or %q; texts %q", button, row, tt.Texts())
+		}
+		tt.ClickAt(b.X+b.W/2, r.Y+r.H/2)
+		tt.Frame()
+	}
+
+	at("Unstage All Changes", "lib")
+	if p := nextOp(t, ops); p.Op != "unstage" || !slices.Equal(p.Paths, []string{"lib/r.go", "old/r.go"}) {
+		t.Errorf("lib unstaged %+v", p)
+	}
+	// Staging leaves the conflict to its own button, as Stage All does.
+	at("Stage All Changes", "gen")
+	if p := nextOp(t, ops); p.Op != "stage" || !slices.Equal(p.Paths, []string{"src/gen/new.txt"}) {
+		t.Errorf("gen staged %+v", p)
+	}
+	at("Discard All Changes", "src")
+	if a.confirm == nil || a.confirm.title != "Discard changes to src/?" {
+		t.Fatalf("no question before discarding src: %+v", a.confirm)
+	}
+	a.confirm.run()
+	if p := nextOp(t, ops); p.Op != "discard" || !slices.Equal(p.Paths, []string{"src/b.go"}) || !slices.Equal(p.Untracked, []string{"src/gen/new.txt"}) {
+		t.Errorf("src discarded %+v", p)
+	}
+}

@@ -35,7 +35,6 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 	if section == baseStaged {
 		list, title, icon = ix.Staged, locales.GitStagedChanges(), checkIcon
 	}
-	id, root := pane.ID, pane.Git.Root
 	col := a.sectionColor(c, pal, section)
 	top := float32(4)
 	if section == baseUnstaged && len(ix.Staged) > 0 {
@@ -56,37 +55,78 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			ui.Text(c, itoa(len(list))).FontSize(11).FontFeatures("tnum").TextColor(pal.textMuted).SingleLine()
 		})
 		ui.Spacer(c)
-		if section == baseStaged {
-			iconButton(c, "unstage-all", minusIcon, locales.GitUnstageAll(), pal, func() {
-				a.moveFiles(pane, section, list)
-				a.runGit(id, root, proto.GitOpParams{Op: "unstage"}, locales.GitUnstage(), nil)
-			})
-			return
-		}
-		iconButton(c, "discard-all", revertIcon, locales.GitDiscardAll(), pal, func() {
-			a.discard(id, root, list, locales.GitDiscardAllTitle(), locales.GitDiscardAllDetail(len(list)), locales.GitDiscardAll())
-		})
-		iconButton(c, "stage-all", plusIcon, locales.GitStageAll(), pal, func() {
-			// Staging a conflict marks it resolved, its markers and all: with
-			// conflicts, all stages the other files shown, each marked
-			// resolved by its own button.
-			p := proto.GitOpParams{Op: "stage"}
-			files := list
-			if slices.ContainsFunc(list, func(f proto.GitFile) bool { return f.Status == "conflict" }) {
-				files = nil
-				for _, f := range list {
-					if f.Status != "conflict" {
-						files = append(files, f)
-						p.Paths = append(p.Paths, f.Path)
-					}
-				}
-				if len(files) == 0 {
-					return
-				}
+		a.indexListTools(c, pal, pane, section, list, "")
+	})
+}
+
+// indexListTools are the buttons of a section's files: all of them, in
+// its title's, or those in folder dir of the tree, in its row's.
+func (a *App) indexListTools(c *ui.Context, pal *palette, pane *proto.Pane, section string, list []proto.GitFile, dir string) {
+	id, root := pane.ID, pane.Git.Root
+	if dir != "" {
+		var in []proto.GitFile
+		for _, f := range list {
+			if strings.HasPrefix(f.Path, dir+"/") {
+				in = append(in, f)
 			}
-			a.moveFiles(pane, section, files)
-			a.runGit(id, root, p, locales.GitStage(), nil)
+		}
+		list = in
+	}
+	if len(list) == 0 {
+		return
+	}
+	// A folder's name its files' paths, a renamed file's old one too, as
+	// its own button does; the title's none, which is all of them.
+	paths := func(files []proto.GitFile) []string {
+		if dir == "" {
+			return nil
+		}
+		var out []string
+		for _, f := range files {
+			out = append(out, f.Path)
+			if f.OldPath != "" {
+				out = append(out, f.OldPath)
+			}
+		}
+		return out
+	}
+	unstage, discard, stage := locales.GitUnstageAll(), locales.GitDiscardAll(), locales.GitStageAll()
+	if dir != "" {
+		unstage, discard, stage = locales.GitUnstage(), locales.GitDiscard(), locales.GitStage()
+	}
+	if section == baseStaged {
+		iconButton(c, "unstage-all", minusIcon, unstage, pal, func() {
+			a.moveFiles(pane, section, list)
+			a.runGit(id, root, proto.GitOpParams{Op: "unstage", Paths: paths(list)}, locales.GitUnstage(), nil)
 		})
+		return
+	}
+	iconButton(c, "discard-all", revertIcon, discard, pal, func() {
+		title, action := locales.GitDiscardAllTitle(), locales.GitDiscardAll()
+		if dir != "" {
+			title, action = locales.GitDiscardTitle(dir+"/"), locales.GitDiscardChanges()
+		}
+		a.discard(id, root, list, title, locales.GitDiscardAllDetail(len(list)), action)
+	})
+	iconButton(c, "stage-all", plusIcon, stage, pal, func() {
+		// Staging a conflict marks it resolved, its markers and all: with
+		// conflicts, all stages the other files shown, each marked
+		// resolved by its own button.
+		files := list
+		if slices.ContainsFunc(list, func(f proto.GitFile) bool { return f.Status == "conflict" }) {
+			files = slices.DeleteFunc(slices.Clone(list), func(f proto.GitFile) bool { return f.Status == "conflict" })
+			if len(files) == 0 {
+				return
+			}
+		}
+		p := proto.GitOpParams{Op: "stage", Paths: paths(files)}
+		if dir == "" && len(files) < len(list) {
+			for _, f := range files {
+				p.Paths = append(p.Paths, f.Path)
+			}
+		}
+		a.moveFiles(pane, section, files)
+		a.runGit(id, root, p, locales.GitStage(), nil)
 	})
 }
 
