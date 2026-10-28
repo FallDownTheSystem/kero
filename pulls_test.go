@@ -361,6 +361,9 @@ func TestPRForm(t *testing.T) {
 // how each reviewer's review stands, its checks and its conversation; its
 // Files tab, its diffs with their threads of comments under their lines.
 // Its files open from the worktree that has it checked out, and only then.
+// copilotBadge is the badge of severity Copilot starts its comments with.
+const copilotBadge = `<picture><source media="(prefers-color-scheme: dark)" srcset="https://github.githubassets.com/static/images/icons/copilot-code-review/high-v2-dark.svg"><img src="https://github.githubassets.com/static/images/icons/copilot-code-review/high-v2-light.png" alt="High severity" width="62" height="18" align="texttop"></picture>`
+
 func TestPRPage(t *testing.T) {
 	a := testApp(t)
 	gitDemo(a)
@@ -373,12 +376,14 @@ func TestPRPage(t *testing.T) {
 			{Author: "cid", State: "COMMENTED", Body: "", Submitted: 200},
 			{Author: "dee", State: "APPROVED", Submitted: 300},
 		},
-		Comments:  []proto.PRComment{{Author: "eve", Body: "Looks **good**.\n\n<!-- bot -->\n<details><summary>Bot notes</summary>\n<ul><li>hidden &amp; shown</li></ul></details>", Created: 150}},
+		Comments:  []proto.PRComment{{Author: "eve", Body: "Looks **good**.\n\n<!-- bot -->\n<details><summary>Bot notes</summary>\n<ul><li>hidden &amp; shown</li></ul></details>", Created: 150},
+			{Author: "copilot", Body: copilotBadge + " Return no fallback · New", Created: 160}},
 		CheckRuns: []proto.PRCheck{{Name: "build", Workflow: "CI", State: "success"}, {Name: "lint", State: "failure", URL: "https://ci/lint"}},
 		LineComments: []proto.PRLineComment{
 			{ID: 1, Path: "parse.go", Body: "Off by one?", Author: "cid", Side: "RIGHT", Line: 2},
 			{ID: 2, ReplyTo: 1, Path: "parse.go", Body: "Fixed.", Author: "ann", Side: "RIGHT", Line: 2},
 			{ID: 3, Path: "parse.go", Body: "Old note", Author: "cid", Side: "RIGHT", OriginalLine: 9},
+			{ID: 4, Path: "parse.go", Body: copilotBadge + " Guard the index", Author: "copilot", Side: "RIGHT", OriginalLine: 7},
 		},
 		MergeBase: "mb",
 		Files:     []proto.GitFile{{Path: "parse.go", Status: "modified", Added: 2, Removed: 1, From: "mb", To: "h1"}},
@@ -407,6 +412,10 @@ func TestPRPage(t *testing.T) {
 	frameUntil(t, tt, "page", func() bool { return g.res != nil })
 	tt.Frame()
 	shot(t, tt, "pr-page")
+	// Copilot's badges of severity show as their description, not HTML.
+	if texts := strings.Join(tt.Texts(), "\n"); strings.Contains(texts, "<picture") || !strings.Contains(texts, "[High severity] Guard the index") || !strings.Contains(texts, "[High severity] Return no fallback · New") {
+		t.Errorf("Copilot's badges: %q", tt.Texts())
+	}
 	for _, want := range []string{"ann wants to merge fix into main", "bug", "Reviewers", "Awaiting review", "Changes requested", "Approved", "Needs a test.", "eve", "Bot notes", "Old note", "outdated · parse.go:9", "parse.go:2", "Off by one?", "Fixed."} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q; texts %q", want, tt.Texts())
