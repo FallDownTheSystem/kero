@@ -5,6 +5,14 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.11
+
+- Uncommitted lists the changes not staged first and the staged ones
+  below, so the rows under the pointer stay put as you stage
+- Staging and unstaging show at once, and clicks in quick succession all
+  go through; the list behind it refreshes faster
+- The Changes view's rows are shorter, for more files at once
+
 ## 2.1.24-fork.10
 
 - In the Changes view's tree, a folder's buttons stage, unstage or
