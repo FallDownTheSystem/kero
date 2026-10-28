@@ -788,10 +788,14 @@ type (
 	// SendParams type Data into a pane; Paste pastes it, bracketed when the
 	// program asks, so that its newlines do not run it line by line, as
 	// they would an agent's prompt.
+	// SendParams send Data to a pane, as typed or, with Paste, pasted;
+	// with Submit, kerod presses Enter after the paste, as an agent takes
+	// it, and answers Submitted.
 	SendParams struct {
-		ID    string `json:"id"`
-		Data  string `json:"data"`
-		Paste bool   `json:"paste,omitempty"`
+		ID     string `json:"id"`
+		Data   string `json:"data"`
+		Paste  bool   `json:"paste,omitempty"`
+		Submit bool   `json:"submit,omitempty"`
 	}
 	ReadParams struct {
 		ID         string `json:"id"`
@@ -1048,3 +1052,7 @@ type (
 		Anyway bool   `json:"anyway,omitempty"`
 	}
 )
+
+// Submitted is kerod's answer to a send with Submit, which an older one,
+// pasting alone, answers true to.
+const Submitted = "submitted"

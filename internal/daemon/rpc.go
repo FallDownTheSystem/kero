@@ -204,6 +204,10 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		} else {
 			pn.input([]byte(p.Data))
 		}
+		if p.Submit {
+			go pn.submit(time.Now())
+			return proto.Submitted, nil
+		}
 		return true, nil
 
 	case "pane.page":

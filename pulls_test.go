@@ -198,7 +198,7 @@ func TestPullsReview(t *testing.T) {
 	tt.Frame()
 	select {
 	case s := <-sends:
-		if s.ID != "r1" || !s.Paste || s.Data != "/code-review KERO-12 #7 of fix by ann" {
+		if s.ID != "r1" || !s.Paste || !s.Submit || s.Data != "/code-review KERO-12 #7 of fix by ann" {
 			t.Errorf("sent %+v", s)
 		}
 	case <-time.After(3 * time.Second):

@@ -462,6 +462,51 @@ func (s *pane) paste(text string) {
 	}
 }
 
+// How submit waits for a paste: as long as the program draws it, until
+// the screen is quiet submitQuiet, from submitSettle to submitWait after
+// it; and for an agent to start on its prompt before Enter again.
+const (
+	submitSettle = 500 * time.Millisecond
+	submitQuiet  = 300 * time.Millisecond
+	submitWait   = 3 * time.Second
+	enterTries   = 3
+)
+
+var enterWait = 2 * time.Second // a test's shorter
+
+// submit presses Enter after a paste at from, once the program has drawn
+// it, and again while an agent Kero knows stays idle. Claude Code takes
+// what comes soon after a paste for more of it, an Enter a new line that
+// leaves the prompt unsent, and takes longer to draw a long paste on a
+// busy machine. kerod, not the app, does it: the app's window may be
+// hidden, and its pane's status is kerod's own.
+func (s *pane) submit(from time.Time) {
+	for {
+		time.Sleep(50 * time.Millisecond)
+		s.mu.Lock()
+		last, closed := time.UnixMilli(s.info.Activity), s.closed
+		s.mu.Unlock()
+		now := time.Now()
+		if closed {
+			return
+		}
+		if now.Sub(from) >= submitWait || now.Sub(from) >= submitSettle && now.Sub(last) >= submitQuiet {
+			break
+		}
+	}
+	s.input([]byte("\r"))
+	for range enterTries {
+		time.Sleep(enterWait)
+		s.mu.Lock()
+		idle := !s.closed && s.info.Agent != "" && s.info.Status == proto.Idle
+		s.mu.Unlock()
+		if !idle {
+			return
+		}
+		s.input([]byte("\r"))
+	}
+}
+
 // acted is the user acting in the pane, which ends what waited for them,
 // and returns its process, nil for none.
 func (s *pane) acted() *ptyProc {
