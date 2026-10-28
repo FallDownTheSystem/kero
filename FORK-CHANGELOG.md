@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.9
+
+- HTML within a pull request's text, as the badges of severity Copilot's
+  comments start with, shows as what it means, `[High severity]`, not as
+  its source
+
 ## 2.1.24-fork.8
 
 - Settings' pages go General, Appearance, Terminal, Files, Git
