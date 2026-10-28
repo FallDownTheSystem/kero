@@ -23,7 +23,7 @@ Click a pane's branch, or the Explorer button at the window's top right, or pres
 
 Each file shows with its diff right below it, one after another, and the diffs follow the files while the agent keeps editing them. Scrolled into a long diff, its file's name stays at the top. Files start folded, as a list of what changed: click a file's name to unfold its diff, or to fold it away. The button beside the list's summary unfolds all the files, or folds them all while one is unfolded; in **Uncommitted**, each section's title has its own. Right-click a file to open it in your editor or in an editor pane, or drag it onto a pane to open it there. Drag the panel's edge to resize it.
 
-Diffs show unified while the panel is narrow and side by side once it's wide. The button at the right of the list's summary switches between the two, which the `diff-layout` setting keeps. The wrap button beside it wraps long lines at the panel's width, as it does in the Files view and editor panes. **Tree View** beside that shows the files in their folders: click a folder to fold it. A folder that holds only another folder shares its row, as `src/app`.
+Diffs show unified while the panel is narrow and side by side once it's wide. The button at the right of the list's summary switches between the two, which the `diff-layout` setting keeps. The wrap button beside it wraps long lines at the panel's width, as it does in the Files view and editor panes. **Tree View** beside that shows the files in their folders: click a folder to fold it. A folder that holds only another folder shares its row, as `src/app`. In Uncommitted, a folder's buttons stage, unstage or discard the files in it, as a section's do all of its files.
 
 ### Reviewing a turn
 

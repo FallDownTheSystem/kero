@@ -729,9 +729,15 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 					stripe(ui.Column(c).FillWidth().AlignItems(ui.Stretch)).Children(func() { a.fileDiff(c, pal, s, ch.files[key], width) })
 					return
 				case r.tree != nil && r.tree.folder:
+					var tools func()
 					var menu func(*ui.Menu)
 					if r.section != "" {
 						dir := r.tree.dir
+						list := ix.Unstaged
+						if r.section == baseStaged {
+							list = ix.Staged
+						}
+						tools = func() { a.indexListTools(c, pal, here, r.section, list, dir) }
 						menu = func(m *ui.Menu) {
 							if m.Item(locales.GitIgnoreFolder()).Chosen() {
 								a.ignore(here, dir+"/")
@@ -739,7 +745,7 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 						}
 					}
 					stripe(ui.Column(c).FillWidth().AlignItems(ui.Stretch).Background(pal.card)).Children(func() {
-						a.folderRow(c, pal, fileKey(scope, r.section, r.tree.dir), *r.tree, menu)
+						a.folderRow(c, pal, fileKey(scope, r.section, r.tree.dir), *r.tree, tools, menu)
 					})
 					return
 				}
@@ -1016,8 +1022,9 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f 
 }
 
 // folderRow is a folder of the tree of changes, by its key (fileKey),
-// which a click folds or unfolds; menu, when set, is its context menu.
-func (a *App) folderRow(c *ui.Context, pal *palette, key string, e treeEntry, menu func(*ui.Menu)) {
+// which a click folds or unfolds; tools, when set, draws its buttons at
+// its end, as a file's header does, and menu is its context menu.
+func (a *App) folderRow(c *ui.Context, pal *palette, key string, e treeEntry, tools func(), menu func(*ui.Menu)) {
 	ch := &a.side.changes
 	folded := ch.folded[key]
 	row := ui.Row(c.Key("folder")).Height(28).Margin(0, 0, treeGap, 0).Padding(0, 10, 0, 12+treeIndent*float32(e.depth)).Gap(8).AlignItems(ui.Center)
@@ -1040,6 +1047,10 @@ func (a *App) folderRow(c *ui.Context, pal *palette, key string, e treeEntry, me
 		ui.Icon(c, folderIcon).Size(14, 14).TextColor(pal.textMuted).Shrink(0)
 		ui.Text(c, e.label).FontSize(12.5).FontWeight(550).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
 		ui.Text(c, itoa(e.count)).FontSize(11).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
+		if tools != nil {
+			ui.Spacer(c)
+			tools()
+		}
 	})
 }
 
