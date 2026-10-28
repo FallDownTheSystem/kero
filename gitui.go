@@ -25,6 +25,9 @@ type gitUI struct {
 	op     *gitRun
 	failed *gitFailure
 	queued []*gitQueued
+	// next are the stagings and unstagings clicked while one ran, each
+	// run as the one before it ends, rather than refused as busy.
+	next []func()
 	// done counts the operations ended, each of which the views' lists
 	// are fetched again after, as their stamps can stay the same.
 	done   int
@@ -81,20 +84,28 @@ func (a *App) runGit(pane, root string, p proto.GitOpParams, label string, then 
 	a.runGitFor(pane, root, p, label, then, nil)
 }
 
+// quickOp tells an operation of the index alone, which a click of the
+// same kind waits for (gitUI.next) rather than be refused.
+func quickOp(op string) bool { return op == "stage" || op == "unstage" }
+
 // runGitFor runs an operation as runGit does; fail, when set, gets what
 // went wrong first, and tells that it took care of it, which the banner
-// then doesn't show.
-func (a *App) runGitFor(pane, root string, p proto.GitOpParams, label string, then func(out string), fail func(summary string) bool) {
+// then doesn't show. It reports whether the operation runs, or waits to.
+func (a *App) runGitFor(pane, root string, p proto.GitOpParams, label string, then func(out string), fail func(summary string) bool) bool {
 	g := &a.side.git
 	h := a.hostOf(pane)
 	cl := h.cl
 	if cl == nil {
 		a.toast(locales.HostNotConnected(h.label()))
-		return
+		return false
 	}
 	if g.op != nil {
+		if quickOp(p.Op) && quickOp(g.op.op) {
+			g.next = append(g.next, func() { a.runGitFor(pane, root, p, label, then, fail) })
+			return true
+		}
 		a.toast(locales.GitBusy(g.op.label))
-		return
+		return false
 	}
 	p.Pane, p.ID, p.Root = pane, opID(), root
 	run := &gitRun{id: p.ID, pane: pane, root: root, op: p.Op, label: label, started: time.Now()}
@@ -121,8 +132,14 @@ func (a *App) runGitFor(pane, root string, p proto.GitOpParams, label string, th
 			case then != nil:
 				then(res.Output)
 			}
+			if len(g.next) > 0 && g.op == nil {
+				next := g.next[0]
+				g.next = g.next[1:]
+				next()
+			}
 		})
 	}()
+	return true
 }
 
 // paneGit returns a pane's worktree's status, nil for none.

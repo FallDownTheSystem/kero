@@ -376,7 +376,7 @@ func TestPRPage(t *testing.T) {
 			{Author: "cid", State: "COMMENTED", Body: "", Submitted: 200},
 			{Author: "dee", State: "APPROVED", Submitted: 300},
 		},
-		Comments:  []proto.PRComment{{Author: "eve", Body: "Looks **good**.\n\n<!-- bot -->\n<details><summary>Bot notes</summary>\n<ul><li>hidden &amp; shown</li></ul></details>", Created: 150},
+		Comments: []proto.PRComment{{Author: "eve", Body: "Looks **good**.\n\n<!-- bot -->\n<details><summary>Bot notes</summary>\n<ul><li>hidden &amp; shown</li></ul></details>", Created: 150},
 			{Author: "copilot", Body: copilotBadge + " Return no fallback · New", Created: 160}},
 		CheckRuns: []proto.PRCheck{{Name: "build", Workflow: "CI", State: "success"}, {Name: "lint", State: "failure", URL: "https://ci/lint"}},
 		LineComments: []proto.PRLineComment{

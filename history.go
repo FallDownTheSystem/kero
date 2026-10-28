@@ -761,7 +761,7 @@ func (a *App) histFile(c *ui.Context, pal *palette, pane *proto.Pane, r histRow,
 					hs.path, hs.query, hs.asked = f.Path, "", ""
 				}
 			}
-			a.fileHeader(c, pal, histKey(r.hash, f.Path), pane.ID, pane.Git.Root, f, flatList, nil, nil, menu)
+			a.fileHeader(c, pal, histKey(r.hash, f.Path), pane.ID, pane.Git.Root, f, flatList, stickyH, nil, nil, menu)
 		})
 	})
 }

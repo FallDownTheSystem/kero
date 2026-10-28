@@ -51,7 +51,7 @@ A band above the files counts the worktree's comments and lists them: click one 
 
 ## Staging and committing
 
-In **Uncommitted**, the files list in two sections: **Staged Changes**, what the next commit takes, and **Changes**, what it doesn't yet. Each file's buttons stage or unstage it, or discard its changes, which asks first: an untracked file is deleted, a deleted one comes back. The buttons on a section's title do the same for all of its files. **Stage All Changes** leaves conflicts out, as staging one marks it resolved.
+In **Uncommitted**, the files list in two sections: **Changes**, what the next commit doesn't take yet, and below it **Staged Changes**, what it takes. A file you stage moves at once, and the next file comes up where it was. Each file's buttons stage or unstage it, or discard its changes, which asks first: an untracked file is deleted, a deleted one comes back. The buttons on a section's title do the same for all of its files. **Stage All Changes** leaves conflicts out, as staging one marks it resolved.
 
 Right-click a file and choose **Add to .gitignore**, or a folder of the tree and **Add Folder to .gitignore**, to add it to the `.gitignore` at the top of the worktree. Git goes on tracking a file it tracks already, however `.gitignore` lists it: for a tracked file, or a folder with tracked files, Kero asks whether to stop tracking them too. They then leave the repository at the next commit, and stay on disk.
 

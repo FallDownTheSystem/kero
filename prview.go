@@ -716,7 +716,7 @@ func (a *App) prPageFiles(c *ui.Context, pal *palette, s *proto.Session, pane *p
 				key := prFileKey(v, fl.Path)
 				col := ui.Column(c.Key(key)).AlignItems(ui.Stretch).Padding(0, 0, 2, 0)
 				col.Children(func() {
-					a.fileHeader(c, pal, key, pane.ID, v.Checkout, fl, flatList, nil, func() {
+					a.fileHeader(c, pal, key, pane.ID, v.Checkout, fl, flatList, stickyH, nil, func() {
 						if n := prThreadCount(v, fl.Path); n > 0 {
 							ui.Row(c).Gap(3).AlignItems(ui.Center).Shrink(0).Children(func() {
 								ui.Icon(c, commentIcon).Size(11, 11).TextColor(pal.textFaint)
