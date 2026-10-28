@@ -5,6 +5,14 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.10
+
+- In the Changes view's tree, a folder's buttons stage, unstage or
+  discard the files in it
+- A review's prompt is sent more reliably: Kero presses Enter once the
+  agent has taken the paste, and again while it hasn't started, also
+  while Kero's window is hidden
+
 ## 2.1.24-fork.9
 
 - HTML within a pull request's text, as the badges of severity Copilot's
