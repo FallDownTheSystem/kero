@@ -1043,15 +1043,36 @@ func (a *App) fileHeader(c *ui.Context, pal *palette, key, pane, root string, f 
 		if f.OldPath != "" {
 			tip = f.OldPath + " → " + f.Path
 		}
-		ui.Text(c, name).FontSize(13).FontWeight(600).TextColor(fg).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(260).Tooltip(tip)
-		ui.Text(c, strings.TrimSuffix(dir, "/")).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Grow(1).MinWidth(0)
+		fileName(c, name, fg).Tooltip(tip)
+		// The folder gives way first: the name is what the row is for.
+		ui.Text(c, strings.TrimSuffix(dir, "/")).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Grow(1).Shrink(1000).MinWidth(0)
 		if f.Binary {
-			ui.Text(c, locales.ChangesBinary()).FontSize(11.5).TextColor(pal.textFaint).SingleLine()
+			ui.Text(c, locales.ChangesBinary()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
 		} else {
 			a.lineCounts(c, pal, f.Added, f.Removed, 12)
 		}
 		if tools != nil {
 			tools()
+		}
+	})
+}
+
+// fileName is a file's name in a row, whole while the row has room, else
+// cut before its extension, which stays: "report_FI….pdf", not
+// "report_FI…".
+func fileName(c *ui.Context, name string, fg ui.Color) ui.Element {
+	stem, ext := name, path.Ext(name)
+	if ext == name || len(ext) > 8 {
+		ext = ""
+	}
+	stem = strings.TrimSuffix(name, ext)
+	// One name to read, as a screen reader and a search for it read it.
+	return ui.Row(c.Key("name")).AlignItems(ui.Center).Shrink(1).MinWidth(40).Label(name).Children(func() {
+		// Cut, its ellipsis against the extension, not the room a
+		// glyph too wide to fit leaves.
+		ui.Text(c, stem).FontSize(13).FontWeight(600).TextColor(fg).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0).TextAlign(ui.End)
+		if ext != "" {
+			ui.Text(c, ext).FontSize(13).FontWeight(600).TextColor(fg).SingleLine().Shrink(0)
 		}
 	})
 }

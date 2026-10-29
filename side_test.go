@@ -435,3 +435,34 @@ func TestStickyHeaderAsFoldShortensList(t *testing.T) {
 		t.Errorf("folded, %q pinned at the top, want b.go", f)
 	}
 }
+
+// A changed file's name shows whole while the row has room for it, as in
+// a zoomed Explorer, and cut before its extension in a narrow one.
+func TestChangesFileNameWide(t *testing.T) {
+	const name = "Trade_Reporting_views_documentation_FI.pdf"
+	for _, wide := range []bool{true, false} {
+		a := testApp(t)
+		g, ix := gitDemo(a)
+		ix.Unstaged = append(ix.Unstaged, proto.GitFile{Path: "docs/" + name, Status: "untracked", Binary: true})
+		gitCalls(t, a, ix)
+		s := &a.st.Sessions[0]
+		a.prefs.Side, a.side.wide = sideChanges, wide
+		ch := &a.side.changes
+		scope := changesScope(&s.Panes[0], git.BaseHead)
+		ch.base, ch.scope, ch.stamp, ch.fetched = git.BaseHead, scope, gitStamp(g)+"|0", time.Now()
+		ch.res = &proto.GitChanges{Root: g.Root, Files: unionFiles(ix.Staged, ix.Unstaged)}
+		ch.indexes = map[string]*proto.GitIndex{scope: ix}
+		tt := ui.NewTester(a.view, 1280, 500)
+		tt.Frame()
+		stem, ok := tt.Find(strings.TrimSuffix(name, ".pdf"))
+		ext, _ := tt.Find(".pdf")
+		switch {
+		case !ok || !tt.HasText(".pdf"):
+			t.Fatalf("no name; texts %q", tt.Texts())
+		case wide && stem.W < 300:
+			t.Errorf("zoomed, the name is cut to %v", stem.W)
+		case !wide && ext.X < stem.X+stem.W-1:
+			t.Errorf("narrow, the extension at %v, over the name ending at %v", ext.X, stem.X+stem.W)
+		}
+	}
+}
