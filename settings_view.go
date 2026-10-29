@@ -735,11 +735,6 @@ func (a *App) backgroundTile(c *ui.Context, pal *palette, id, name string) {
 		th := l.term
 		sw := raised(ui.Box(c).Size(124, 80).Radius(12), pal).Clip()
 		sw.LinearGradient(l.base)
-		if sel {
-			// Over the dark's lit edge, which is a gradient.
-			ring := l.pal.accent
-			sw.Border(2, ring).BorderLinearGradient(ui.LinearGradient{Angle: 180, From: ring, To: ring})
-		}
 		sw.Children(func() {
 			ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).LinearGradient(l.glow)
 			ui.Column(c).Absolute().Top(8).Left(8).Right(8).Bottom(8).Radius(8).Background(th.Background).
@@ -757,6 +752,10 @@ func (a *App) backgroundTile(c *ui.Context, pal *palette, id, name string) {
 					}
 				})
 			})
+			if sel {
+				// Over the tile, so that the card in it stays put.
+				ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(12).Border(2, l.pal.accent)
+			}
 		})
 		lbl := ui.Text(c, name).FontSize(12.5).TextColor(pal.textMuted).TextAlign(ui.Center)
 		if sel {

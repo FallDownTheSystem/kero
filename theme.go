@@ -351,8 +351,9 @@ func tinted(th *terminal.Theme, accent ui.Color) *palette {
 	return &p
 }
 
-// tone is the hue of a kero theme, and how much of it its colors take.
-type tone struct{ hue, tint float32 }
+// tone is the hue of a kero theme, how much of it its cards and text
+// take, and how vivid the programs' colors are, which lean to its hue.
+type tone struct{ hue, tint, vivid float32 }
 
 // toneTheme is a kero theme's terminal colors, and its accent: its cards
 // and text tinted with its hue, and the programs' colors muted to sit
@@ -381,8 +382,14 @@ func toneTheme(t tone, dark bool) (*terminal.Theme, ui.Color) {
 		accent = ui.Oklch(0.55, 0.13, t.hue)
 	}
 	for i := range 6 {
-		th.Palette[1+i] = ui.Oklch(ls[i], cs[i], hues[i])
-		th.Palette[9+i] = ui.Oklch(ls[i]+bright, cs[i]+0.01, hues[i])
+		// Toward the theme's hue, the less the farther it is, as a far
+		// color turned is a muddy one, and more vivid the nearer to it: a
+		// theme's own color stands out of its palette.
+		d := float32(math.Remainder(float64(t.hue-hues[i]), 360))
+		h := hues[i] + d*0.35*(1-abs(d)/180)
+		c := cs[i] * t.vivid * (1 + 0.45*max(0, 1-abs(d)/60))
+		th.Palette[1+i] = ui.Oklch(ls[i], c, h)
+		th.Palette[9+i] = ui.Oklch(ls[i]+bright, c+0.01, h)
 	}
 	th.Cursor, th.CursorText, th.SelectionText = accent, th.Background, th.Foreground
 	return th, accent
@@ -419,44 +426,44 @@ var washTable = map[string]wash{
 	"rex": {
 		light: []string{"#ebe0f3", "#f3e7f1", "#f7eee4", "#f6efcf"}, lightGlow: ui.RGBA(247, 220, 241, 0.75),
 		dark: []string{"#240f1d", "#26111a", "#271610"}, darkGlow: ui.RGBA(142, 58, 110, 0.3),
-		tone: tone{350, 1},
+		tone: tone{350, 1, 0.95},
 	},
 	"mist": {
 		light: []string{"#e3e9f4", "#ebeff6", "#f1f2f3", "#f2f1ec"}, lightGlow: ui.RGBA(210, 225, 248, 0.75),
 		dark: []string{"#0c1628", "#0d1827", "#111b23"}, darkGlow: ui.RGBA(46, 91, 166, 0.3),
-		tone: tone{255, 1},
+		tone: tone{255, 1, 0.8},
 	},
 	"meadow": {
 		light: []string{"#e2eee5", "#ebf2e7", "#f3f2e2", "#f5f0d6"}, lightGlow: ui.RGBA(214, 240, 222, 0.75),
 		dark: []string{"#081c0d", "#101d0c", "#1b1c0b"}, darkGlow: ui.RGBA(6, 113, 50, 0.3),
-		tone: tone{140, 1},
+		tone: tone{140, 1, 0.9},
 	},
 	"dusk": {
 		light: []string{"#e4dbf3", "#efdeee", "#f6e3dc", "#f7e6cf"}, lightGlow: ui.RGBA(246, 206, 222, 0.8),
 		dark: []string{"#190f2e", "#260f24", "#2d140b"}, darkGlow: ui.RGBA(125, 65, 138, 0.3),
-		tone: tone{315, 1},
+		tone: tone{315, 1, 1.1},
 	},
 	// Sea glass: aqua above, a pale tide line below.
 	"tide": {
 		light: []string{"#dbebef", "#e3eff1", "#ecf3f0", "#f2f2e8"}, lightGlow: ui.RGBA(194, 232, 238, 0.75),
 		dark: []string{"#001b22", "#001e1f", "#0b1e1b"}, darkGlow: ui.RGBA(0, 112, 128, 0.3),
-		tone: tone{205, 1},
+		tone: tone{205, 1, 0.85},
 	},
 	"apricot": {
 		light: []string{"#f5e1d6", "#f8e7dc", "#f8eedf", "#f6f0da"}, lightGlow: ui.RGBA(252, 212, 194, 0.78),
 		dark: []string{"#2a1207", "#291507", "#25190a"}, darkGlow: ui.RGBA(151, 62, 22, 0.3),
-		tone: tone{50, 1},
+		tone: tone{50, 1, 1.05},
 	},
 	// Mint at the top, fading through blue to violet.
 	"aurora": {
 		light: []string{"#dbefe8", "#e1ebf2", "#e8e4f4", "#f0e6f1"}, lightGlow: ui.RGBA(198, 238, 224, 0.75),
 		dark: []string{"#001f13", "#06192b", "#1e122a"}, darkGlow: ui.RGBA(0, 115, 75, 0.3),
-		tone: tone{170, 1},
+		tone: tone{170, 1, 1.15},
 	},
 	"dune": {
 		light: []string{"#ede4d8", "#f1e9de", "#f4eee4", "#f3efe8"}, lightGlow: ui.RGBA(242, 222, 194, 0.7),
 		dark: []string{"#22190b", "#211a0e", "#201b12"}, darkGlow: ui.RGBA(135, 79, 0, 0.3),
-		tone: tone{80, 0.7},
+		tone: tone{80, 0.7, 0.55},
 	},
 	"plain": {
 		light: []string{"#eceef4", "#eceef4"}, lightGlow: ui.RGBA(0, 0, 0, 0),
