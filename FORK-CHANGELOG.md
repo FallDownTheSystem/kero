@@ -5,6 +5,11 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.24-fork.12
+
+- The pull requests list shows checks and review as separate pills, so
+  ✓ Checks and Approved no longer read as one
+
 ## 2.1.24-fork.11
 
 - Uncommitted lists the changes not staged first and the staged ones
