@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.11
+
+- Search results and the Files view's header show a file's whole name
+  when there's room, as the Changes view does, and keep its extension
+  when they cut it
+
 ## 2.1.27-fork.10
 
 - The Changes view shows a file's whole name when the row has room for
