@@ -382,11 +382,14 @@ func (a *App) draftPill(c *ui.Context, pal *palette, dr proto.PRReviewDraft) {
 	})
 }
 
-// prBadges are a pull request's draft, checks and review, as words.
+// prBadges are a pull request's draft, checks and review, each a pill of
+// its own: as words side by side, ✓ Checks and Approved read as one.
 func (a *App) prBadges(c *ui.Context, pal *palette, pr proto.PullRequest) {
 	added, removed, _ := a.diffColors(c, pal)
 	badge := func(text string, col ui.Color) {
-		ui.Text(c, text).FontSize(11).FontWeight(550).TextColor(col).SingleLine().Shrink(0)
+		ui.Box(c).Height(17).Padding(0, 6).Radius(5).Center().Shrink(0).Background(col.Alpha(0.13)).Children(func() {
+			ui.Text(c, text).FontSize(11).FontWeight(550).TextColor(col).SingleLine()
+		})
 	}
 	if pr.Draft {
 		badge(locales.PrsDraft(), pal.textFaint)
