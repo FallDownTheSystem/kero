@@ -849,21 +849,21 @@ func TestPanelButtons(t *testing.T) {
 	a.toggleSide(a.sideView())
 	tt.Frame()
 	before, _ := tt.Find("Files")
-	if err := tt.Click("Widen Explorer"); err != nil {
+	if err := tt.Click("Zoom Explorer"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
 	tt.Frame()
 	wide, _ := tt.Find("Files")
-	if wide.X >= before.X-100 {
-		t.Errorf("the widened panel's tab is at %v, from %v", wide.X, before.X)
+	if wide.X >= before.X-100 || tt.HasText("zsh") {
+		t.Errorf("zoomed, the panel's tab is at %v, from %v, or the panes show", wide.X, before.X)
 	}
-	if err := tt.Click("Restore Explorer Width"); err != nil {
+	if err := tt.Click("Show All Panes"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
 	tt.Frame()
-	if back, _ := tt.Find("Files"); back.X != before.X || a.prefs.SideWidth != 0 {
+	if back, _ := tt.Find("Files"); back.X != before.X || a.prefs.SideWidth != 0 || !tt.HasText("zsh") {
 		t.Errorf("restored, the tab is at %v, from %v; width %v", back.X, before.X, a.prefs.SideWidth)
 	}
 }

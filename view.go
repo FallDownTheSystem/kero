@@ -1031,6 +1031,12 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 		row := ui.Row(c.Key("with-side")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Bind(a.paneRef("with-side"))
 		w := a.paneRef("with-side").Bounds(c).W
 		row.Children(func() {
+			if a.side.wide {
+				// Zoomed, the panel takes the panes' room, and their
+				// header's buttons at both of its edges.
+				a.sidePanel(c, pal, bar, shown, s, max(w, minSide), true, right)
+				return
+			}
 			if left {
 				a.sidePanel(c, pal, bar, shown, s, a.sideWidth(w), true, false)
 				a.sideEdge(c, pal, w, true)

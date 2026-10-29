@@ -64,9 +64,8 @@ type sideState struct {
 	// drafting is the review whose draft comment has the keyboard, as the
 	// panel last built it, which the panel's Escape drops.
 	drafting *review
-	// wide widens the panel to all the room the panes leave, until the user
-	// turns it off, hides the panel or drags its edge: prefs' SideWidth
-	// stays, which it comes back to.
+	// wide zooms the panel: it takes the panes' room, hiding them, as Zoom
+	// Pane does a pane, until the user turns it off or hides the panel.
 	wide    bool
 	changes changesState
 	files   filesState
@@ -220,7 +219,7 @@ func sideAction(view string) string {
 func (a *App) sideLeft() bool { return a.set.SessionsSide == "right" }
 
 // sideWidth is the panel's width in a row of width w, leaving the panes
-// their room: all the room they leave while widened (sideState.wide).
+// their room.
 func (a *App) sideWidth(w float32) float32 {
 	sw := a.prefs.SideWidth
 	if sw == 0 {
@@ -228,16 +227,12 @@ func (a *App) sideWidth(w float32) float32 {
 	}
 	if w > 0 {
 		sw = min(sw, w-minPanes)
-		if a.side.wide {
-			sw = w - minPanes
-		}
 	}
 	return max(sw, minSide)
 }
 
 // sideEdge is the gap between the panes and the panel, which a drag moves;
-// left tells that the panel is at the left of it. A drag of a widened
-// panel takes its width from where it is.
+// left tells that the panel is at the left of it.
 func (a *App) sideEdge(c *ui.Context, pal *palette, row float32, left bool) {
 	d := ui.Box(c.Key("side-edge")).Width(paneGap).Shrink(0).Cursor(ui.CursorResizeColumn)
 	if d.Hovered() || d.Pressed() {
@@ -247,7 +242,7 @@ func (a *App) sideEdge(c *ui.Context, pal *palette, row float32, left bool) {
 	}
 	if dx, _, ok := d.Dragged(); ok {
 		if a.side.drag == 0 {
-			a.side.drag, a.side.wide = a.sideWidth(row), false
+			a.side.drag = a.sideWidth(row)
 		}
 		if left {
 			a.side.drag += dx
@@ -260,7 +255,7 @@ func (a *App) sideEdge(c *ui.Context, pal *palette, row float32, left bool) {
 		a.savePrefs()
 	}
 	if d.DoubleClicked() {
-		a.prefs.SideWidth, a.side.wide = defaultSide, false
+		a.prefs.SideWidth = defaultSide
 		a.savePrefs()
 	}
 }
@@ -366,9 +361,13 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 			}
 			ui.Box(c.Key("drag")).Grow(1).AlignSelf(ui.Stretch).DragWindow().Bind(a.paneRef("side-gap"))
 			if a.side.wide {
-				iconButton(c, "wide", unzoomIcon, locales.SideRestore(), pal, func() { a.side.wide = false })
+				iconButton(c, "wide", unzoomIcon, locales.PaneShowAll(), pal, func() { a.side.wide = false })
 			} else {
-				iconButton(c, "wide", zoomIcon, locales.SideWiden(), pal, func() { a.side.wide = true })
+				iconButton(c, "wide", zoomIcon, locales.SideZoom(), pal, func() {
+					a.side.wide = true
+					// The panes it hides can't keep the keyboard.
+					a.paneRef("side-card").Focus()
+				})
 			}
 			// The panel's own button, which hides it, is at the window's
 			// edge it stands at: the left's with the sidebar's buttons,

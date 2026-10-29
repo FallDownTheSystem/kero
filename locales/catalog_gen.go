@@ -4308,24 +4308,14 @@ func (msgs Messages) SideHide() string {
 	return Catalog.Format(msgs.locale, "sideHide", nil)
 }
 
-// SideWiden says "Widen Explorer"
+// SideZoom says "Zoom Explorer"
 // in the language the app shows.
-func SideWiden() string { return In(i18n.Locale()).SideWiden() }
+func SideZoom() string { return In(i18n.Locale()).SideZoom() }
 
-// SideWiden says "Widen Explorer"
+// SideZoom says "Zoom Explorer"
 // in the language of msgs.
-func (msgs Messages) SideWiden() string {
-	return Catalog.Format(msgs.locale, "sideWiden", nil)
-}
-
-// SideRestore says "Restore Explorer Width"
-// in the language the app shows.
-func SideRestore() string { return In(i18n.Locale()).SideRestore() }
-
-// SideRestore says "Restore Explorer Width"
-// in the language of msgs.
-func (msgs Messages) SideRestore() string {
-	return Catalog.Format(msgs.locale, "sideRestore", nil)
+func (msgs Messages) SideZoom() string {
+	return Catalog.Format(msgs.locale, "sideZoom", nil)
 }
 
 // SplitTerminal says "Terminal"
