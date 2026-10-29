@@ -40,6 +40,9 @@ const (
 type historyState struct {
 	// laneStep is the distance between the graph's lanes (graphWidth).
 	laneStep float32
+	// chipMax is the widest a commit's refs get: a share of the view, so
+	// that a wide view shows whole names (commitRow).
+	chipMax float32
 	// key is what the list is of: the worktree, its scope and the filter;
 	// stamp the worktree's status it was fetched at.
 	key, stamp string
@@ -191,6 +194,8 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 		}
 		gw, hs.laneStep = graphWidth(lanes, width)
 	}
+	// What the graph, the subject's least, the time and the gaps leave.
+	hs.chipMax = max(130, min(width*0.75, width-gw-140))
 	// The list leaves room at its right, past the rows' times, for the
 	// scroll bar.
 	ls := &hs.list
@@ -506,15 +511,22 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 				}
 			}
 		} else {
-			// Kept wide enough to read, the refs giving way instead: shrunk
-			// below its ellipsis, it drew it over them.
-			subject.SingleLine().Ellipsis("…").MinWidth(80)
+			// The refs are what one looks for in the graph: the subject
+			// gives way to them first, down to a few words (below its
+			// ellipsis, it drew it over them).
+			subject.SingleLine().Ellipsis("…").MinWidth(60)
 		}
-		ui.Row(c).Height(commitRowH).Gap(7).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		ui.Row(c).Height(commitRowH).Gap(7).AlignItems(ui.Center).Shrink(0).MaxWidth(hs.chipMax).Children(func() {
 			// Clipped, so that refs too many to fit are cut, not drawn
 			// over the subject.
-			ui.Row(c).Gap(7).AlignItems(ui.Center).MinWidth(0).ClipX().Children(func() {
-				a.refChips(c, pal, refs)
+			ui.Row(c).Gap(7).AlignItems(ui.Center).MinWidth(0).Shrink(1).ClipX().Children(func() {
+				// Colored as the commit's lane, to match a branch to its line.
+				var lane *ui.Color
+				if !filtered {
+					lc := colors[hs.graph[i].Color%len(colors)]
+					lane = &lc
+				}
+				a.refChips(c, pal, refs, lane)
 			})
 			ui.Text(c, ago(cm.Time*1000, time.Now())).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
 		})
@@ -608,8 +620,10 @@ func chipRefs(refs []gitRef) []gitRef {
 // refChips shows a commit's refs, three at most, then how many more: a
 // local branch filled, with the branch's icon, and a remote's outlined,
 // with a globe; a local branch with its remote's at the same commit shows
-// both icons in its chip.
-func (a *App) refChips(c *ui.Context, pal *palette, refs []gitRef) {
+// both icons in its chip. With a lane's color, the chips take it. The
+// branch checked out has a check, bold text and a border of its color,
+// not a color of its own, which would read as another lane's.
+func (a *App) refChips(c *ui.Context, pal *palette, refs []gitRef, lane *ui.Color) {
 	const shown = 3
 	refs = chipRefs(refs)
 	for i, r := range refs {
@@ -631,21 +645,35 @@ func (a *App) refChips(c *ui.Context, pal *palette, refs []gitRef) {
 		case r.name == "HEAD":
 			icon = nil
 		}
-		if r.head {
+		border := pal.text.Alpha(0.14)
+		switch {
+		case lane != nil:
+			fg, border = *lane, lane.Alpha(0.45)
+			if !r.remote {
+				bg = lane.Alpha(0.14)
+			}
+		case r.head:
 			bg, fg = pal.accent.Alpha(0.16), pal.accent
 		}
-		chip := ui.Row(c.Key("ref-"+r.name)).Height(18).Padding(0, 6, 0, 5).Gap(3).Radius(5).AlignItems(ui.Center).Background(bg).Shrink(1).MinWidth(0).MaxWidth(130)
-		if r.remote {
-			chip.Border(1, pal.text.Alpha(0.14))
+		weight := 550
+		if r.head {
+			border, weight = fg, 750
+		}
+		chip := ui.Row(c.Key("ref-"+r.name)).Height(18).Padding(0, 6, 0, 5).Gap(3).Radius(5).AlignItems(ui.Center).Background(bg).Shrink(1).MinWidth(0)
+		if r.remote || r.head {
+			chip.Border(1, border)
 		}
 		chip.Tooltip(strings.Join(append([]string{r.name}, r.tracked...), "\n")).Children(func() {
+			if r.head {
+				ui.Icon(c, checkIcon).Size(10, 10).TextColor(fg).Shrink(0)
+			}
 			if icon != nil {
 				ui.Icon(c, icon).Size(9, 9).TextColor(fg).Shrink(0)
 			}
 			if len(r.tracked) > 0 {
 				ui.Icon(c, globeIcon).Size(9, 9).TextColor(fg).Shrink(0)
 			}
-			ui.Text(c, r.name).FontSize(11).FontWeight(550).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0)
+			ui.Text(c, r.name).FontSize(11).FontWeight(weight).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0)
 		})
 	}
 }

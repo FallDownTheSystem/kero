@@ -827,6 +827,40 @@ func TestGraphLanesApart(t *testing.T) {
 	}
 }
 
+// A commit's refs show whole names when the view has room for them, and
+// in a narrow view keep more of theirs than the subject does: they are
+// what one looks for in the graph.
+func TestHistoryRefsWide(t *testing.T) {
+	const branch = "feature/SQTDEV-12465-product-synchronization"
+	const subject = "Ignore price row if hours are missing and goohedges are present"
+	for _, wide := range []bool{true, false} {
+		a := testApp(t)
+		gitCalls(t, a, nil)
+		g, _ := gitDemo(a)
+		a.prefs.Side = sideHistory
+		a.side.wide = wide
+		hs := &a.side.git.hist
+		hs.key = g.Root + "|0|0||"
+		hs.stamp = gitStamp(g) + "|0"
+		hs.stashAt = hs.stamp
+		hs.remotes = []string{"origin"}
+		hs.commits = []proto.GitCommit{{Hash: "c1", Time: time.Now().Unix(), Refs: "HEAD -> " + branch, Subject: subject}}
+		hs.graph = []gitgraph.Row{hs.layout.Add(gitgraph.Commit{Hash: "c1"})}
+		tt := ui.NewTester(a.view, 1600, 720)
+		tt.Frame()
+		ref, ok := tt.Find(branch)
+		sub, _ := tt.Find(subject)
+		switch {
+		case !ok:
+			t.Fatalf("no ref chip; texts %q", tt.Texts())
+		case wide && ref.W < 300:
+			t.Errorf("widened, the ref is cut to %v", ref.W)
+		case !wide && ref.W <= sub.W:
+			t.Errorf("narrow, the ref (%v) gave way to the subject (%v)", ref.W, sub.W)
+		}
+	}
+}
+
 // History draws the worktree's commits as a graph, under the changes not
 // committed, and opens a commit below its row.
 func TestHistoryGraph(t *testing.T) {
