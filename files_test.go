@@ -989,3 +989,30 @@ func TestIsBinary(t *testing.T) {
 		}
 	}
 }
+
+// An open file's name in its header shows whole while the view has room,
+// as in a zoomed Explorer, not cut at a width of its own.
+func TestFilesHeaderNameWide(t *testing.T) {
+	const name = "Trade_Reporting_views_documentation_FI_final.md"
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	a.prefs.Side, a.side.wide = sideFiles, true
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tr := a.side.files.shown
+	tr.listed("/tmp/demo", tr.stamp, proto.FSList{Entries: []proto.FSEntry{{Name: name}}}, nil)
+	tt.Frame()
+	if err := tt.Click(name); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tr.files["/tmp/demo/"+name].read(tr.stamp, false, false, nil, []byte("text\n"), nil)
+	tt.Frame()
+	// The tree's row shows the name whole; the header's shows it as its
+	// stem and extension (fileName).
+	if r, ok := tt.Find(name[:len(name)-len(".md")]); !ok || r.W < 300 {
+		t.Errorf("zoomed, the header's name is cut to %v; texts %q", r.W, tt.Texts())
+	}
+	shot(t, tt, "files-header-wide")
+}

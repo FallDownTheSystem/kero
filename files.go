@@ -1264,10 +1264,10 @@ func (a *App) fileView(c *ui.Context, pal *palette, t *fileTree, f *openFile, wo
 			ui.Icon(c, docIcon).Size(13, 13).TextColor(pal.textFaint).Shrink(0)
 			// The path shows over the name and its folder, not over the
 			// buttons, nor the room between them.
-			ui.Text(c, proto.DirName(f.path)).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(220).Tooltip(f.path)
+			fileName(c, proto.DirName(f.path), pal.text).Tooltip(f.path)
 			rel := t.rel(f.path)
 			ui.Text(c, strings.TrimSuffix(strings.TrimSuffix(rel, proto.DirName(f.path)), "/")).FontSize(12).TextColor(pal.textFaint).
-				SingleLine().Ellipsis("…").MinWidth(0).Shrink(1).Tooltip(f.path)
+				SingleLine().Ellipsis("…").MinWidth(0).Shrink(1000).Tooltip(f.path)
 			ui.Spacer(c)
 			// The buttons side by side, as the panes' controls are.
 			ui.Row(c.Key("buttons")).Gap(0).AlignItems(ui.Center).Shrink(0).Children(func() {

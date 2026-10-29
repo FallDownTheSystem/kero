@@ -295,9 +295,10 @@ func (a *App) searchFileRow(c *ui.Context, pal *palette, h *host, pane string, f
 		chev := ui.Icon(c, chevronIcon).Size(10, 10).TextColor(pal.textFaint).Shrink(0)
 		chev.Rotate(chev.AnimateTo("turn", 90*(1-b2f(folded)), chevronTurn))
 		ui.Icon(c, docIcon).Size(13, 13).TextColor(pal.textFaint).Shrink(0)
-		ui.Text(c, path.Base(f.Path)).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine().Ellipsis("…").Shrink(0).MaxWidth(220)
+		fileName(c, path.Base(f.Path), pal.text)
 		if dir := path.Dir(f.Path); dir != "." {
-			ui.Text(c, strings.ReplaceAll(dir, "/", " / ")).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+			// The folder gives way first, as in the Changes view.
+			ui.Text(c, strings.ReplaceAll(dir, "/", " / ")).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1000)
 		}
 		ui.Spacer(c)
 		ui.Box(c).Height(16).Padding(0, 6).Radius(8).Center().Background(pal.rowHover).Shrink(0).Children(func() {
