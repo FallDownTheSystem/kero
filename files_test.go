@@ -198,6 +198,29 @@ func TestEditorPane(t *testing.T) {
 	}
 	shot(t, tt, "editor-pane")
 
+	// The text size keys zoom the file while its pane has the keyboard,
+	// and the terminals' text while a terminal has it; the bar's buttons
+	// zoom the file too.
+	term, size := a.set.FontSize, f.st.Font.Size
+	a.setFocus(s, "b")
+	a.run("text.bigger", nil)
+	tt.Frame()
+	if a.prefs.FileZoom != 1 || f.st.Font.Size != size+1 || a.set.FontSize != term {
+		t.Errorf("in the file, Bigger made it %v (zoom %d) and the terminals %v", f.st.Font.Size, a.prefs.FileZoom, a.set.FontSize)
+	}
+	if err := tt.Click("Smaller Text (" + a.keys("text.smaller") + ")"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.prefs.FileZoom != 0 || f.st.Font.Size != size {
+		t.Errorf("Smaller Text left the file at %v", f.st.Font.Size)
+	}
+	a.setFocus(s, "a")
+	a.run("text.bigger", nil)
+	if a.prefs.FileZoom != 0 || a.set.FontSize != term+1 {
+		t.Errorf("in a terminal, Bigger zoomed the file (%d), the terminals to %v", a.prefs.FileZoom, a.set.FontSize)
+	}
+
 	f.st.Buffer.Edit(editor.Edit{Start: 0, End: 0, Text: "// x\n"})
 	a.closePane(s, "b", true)
 	if a.confirm == nil || s.PaneByID("b") == nil {

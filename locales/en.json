@@ -721,6 +721,8 @@
   "filesMoreMatches": "More match than show. Type more of the name.",
   "filesWrap": "Wrap Lines",
   "filesPreviewMarkdown": "Preview Markdown",
+  "filesSmaller": "Smaller Text",
+  "filesBigger": "Bigger Text",
   "filesConfirmCloseTitle": "Close without saving?",
   "filesConfirmCloseDetail": "Your edits to {file} aren't saved, and go with the pane.",
   "filesDiscard": "Close Without Saving",

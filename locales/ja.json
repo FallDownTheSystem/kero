@@ -552,6 +552,8 @@
   "filesMoreMatches": "一致が多すぎて全部は表示できません。名前をもっと入力してください。",
   "filesWrap": "行を折り返す",
   "filesPreviewMarkdown": "Markdown をプレビュー",
+  "filesSmaller": "文字を小さく",
+  "filesBigger": "文字を大きく",
   "filesConfirmCloseTitle": "保存せずに閉じますか？",
   "filesConfirmCloseDetail": "{file} への編集は保存されておらず、ペインとともに失われます。",
   "filesDiscard": "保存せずに閉じる",

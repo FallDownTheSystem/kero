@@ -1318,6 +1318,10 @@ func (a *App) fileActions(c *ui.Context, pal *palette, pane string, f *openFile)
 			f.preview = !f.preview
 		}
 	}
+	if f.st != nil {
+		iconButton(c, "smaller", smallerIcon, a.tip(locales.FilesSmaller(), "text.smaller"), pal, func() { a.zoomFiles(-1, false) })
+		iconButton(c, "bigger", biggerIcon, a.tip(locales.FilesBigger(), "text.bigger"), pal, func() { a.zoomFiles(1, false) })
+	}
 	if f.st != nil && !f.preview {
 		a.wrapButton(c, pal)
 	}
@@ -1377,12 +1381,14 @@ func (a *App) fileBody(c *ui.Context, pal *palette, pane string, f *openFile, re
 					f.md.LoadImage = markdown.FileImages(filepath.Dir(f.path))
 				}
 			}
+			// Zoomed as the file's text is, from the window's size.
+			f.md.Theme = &markdown.Theme{FontSize: max(c.Theme().FontSize+float32(a.prefs.FileZoom), 6)}
 			ui.Scroll(c.Key("preview")).Grow(1).MinHeight(0).Padding(12, 16, 24, 16).Children(func() {
 				markdown.View(c, f.st.Buffer.String(), f.md)
 			})
 		default:
 			st := f.st
-			st.Font = ui.Font{Family: a.termFamily(), Size: max(a.set.FontSize-1, 10)}
+			st.Font = ui.Font{Family: a.termFamily(), Size: a.fileFontSize()}
 			st.Theme = a.codeTheme(c, pal)
 			st.Label = proto.DirName(f.path)
 			st.SoftWrap = a.prefs.Wrap

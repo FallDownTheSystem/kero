@@ -5588,6 +5588,26 @@ func (msgs Messages) FilesPreviewMarkdown() string {
 	return Catalog.Format(msgs.locale, "filesPreviewMarkdown", nil)
 }
 
+// FilesSmaller says "Smaller Text"
+// in the language the app shows.
+func FilesSmaller() string { return In(i18n.Locale()).FilesSmaller() }
+
+// FilesSmaller says "Smaller Text"
+// in the language of msgs.
+func (msgs Messages) FilesSmaller() string {
+	return Catalog.Format(msgs.locale, "filesSmaller", nil)
+}
+
+// FilesBigger says "Bigger Text"
+// in the language the app shows.
+func FilesBigger() string { return In(i18n.Locale()).FilesBigger() }
+
+// FilesBigger says "Bigger Text"
+// in the language of msgs.
+func (msgs Messages) FilesBigger() string {
+	return Catalog.Format(msgs.locale, "filesBigger", nil)
+}
+
 // FilesConfirmCloseTitle says "Close without saving?"
 // in the language the app shows.
 func FilesConfirmCloseTitle() string { return In(i18n.Locale()).FilesConfirmCloseTitle() }

@@ -138,12 +138,14 @@ func (a *App) run(id string, args map[string]string) {
 		} else {
 			a.showSide(sideHistory)
 		}
-	case "text.bigger":
-		a.zoom(1, false)
-	case "text.smaller":
-		a.zoom(-1, false)
-	case "text.reset":
-		a.zoom(0, true)
+	// In a file, its text; else the terminals'.
+	case "text.bigger", "text.smaller", "text.reset":
+		steps := map[string]int{"text.bigger": 1, "text.smaller": -1}[id]
+		if a.filesFocused() {
+			a.zoomFiles(steps, id == "text.reset")
+		} else {
+			a.zoom(steps, id == "text.reset")
+		}
 	case quickAction:
 		a.toggleQuick()
 	}

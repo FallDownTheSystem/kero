@@ -42,6 +42,8 @@ var (
 	newFolderIcon   = glyph("lucide-folder-plus")
 	collapseIcon    = glyph("lucide-chevrons-down-up")
 	unfoldAllIcon   = glyph("lucide-list-chevrons-up-down")
+	biggerIcon      = glyph("lucide-a-arrow-up")
+	smallerIcon     = glyph("lucide-a-arrow-down")
 	foldAllIcon     = glyph("lucide-list-chevrons-down-up")
 	treeIcon        = glyph("lucide-list-tree")
 	previewIcon     = glyph("f7-eye")

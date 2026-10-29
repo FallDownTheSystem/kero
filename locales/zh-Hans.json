@@ -552,6 +552,8 @@
   "filesMoreMatches": "匹配项太多，无法全部显示。请输入更多名称。",
   "filesWrap": "自动换行",
   "filesPreviewMarkdown": "预览 Markdown",
+  "filesSmaller": "缩小文字",
+  "filesBigger": "放大文字",
   "filesConfirmCloseTitle": "不保存就关闭？",
   "filesConfirmCloseDetail": "你对 {file} 的编辑尚未保存，会随窗格一起丢失。",
   "filesDiscard": "不保存并关闭",

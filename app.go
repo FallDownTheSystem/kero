@@ -66,6 +66,10 @@ type prefs struct {
 	Wrap bool `json:"wrap,omitempty"`
 	// ChangesTree shows the Changes view's files in their folders.
 	ChangesTree bool `json:"changesTree,omitempty"`
+	// FileZoom is how many steps bigger, or smaller, the files the Files
+	// view and editor panes show are than the terminals' text, their
+	// Markdown previews with them (zoomFiles).
+	FileZoom int `json:"fileZoom,omitempty"`
 	// PRSeen are the open pull requests seen last, by host and repository,
 	// of which those not there before notify (prpoll.go).
 	PRSeen map[string][]int `json:"prSeen,omitempty"`
@@ -922,6 +926,39 @@ func (a *App) zoom(steps int, reset bool) {
 	if s.FontSize != a.set.FontSize {
 		a.applySettings(s)
 	}
+}
+
+// zoomFiles makes the files' text bigger or smaller, as zoom does the
+// terminals': all of them together, remembered.
+func (a *App) zoomFiles(steps int, reset bool) {
+	z := min(max(a.prefs.FileZoom+steps, -6), 24)
+	if reset {
+		z = 0
+	}
+	if z != a.prefs.FileZoom {
+		a.prefs.FileZoom = z
+		a.savePrefs()
+	}
+}
+
+// fileFontSize is the size of a file's text: a step under the terminals',
+// zoomed as the user asks.
+func (a *App) fileFontSize() float32 {
+	return min(max(max(a.set.FontSize-1, 10)+float32(a.prefs.FileZoom), 6), 40)
+}
+
+// filesFocused tells that the keyboard is in a file: an editor pane's, or
+// the Explorer's Files view, whose text the text size keys zoom then.
+func (a *App) filesFocused() bool {
+	s := a.session(a.selected)
+	if s == nil {
+		return false
+	}
+	if a.side.focused {
+		return knownView(a.prefs.Side) == sideFiles
+	}
+	p := s.PaneByID(a.focusOf(s))
+	return p != nil && p.Editor()
 }
 
 // applySettings makes settings the app's, saving them: the terminals take
