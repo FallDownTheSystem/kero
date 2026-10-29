@@ -153,25 +153,50 @@ func TestRebaseAutostash(t *testing.T) {
 	}
 }
 
-// A remote's branch checked out at a commit is its local branch there: one
-// of its name elsewhere isn't it.
+// A remote's branch checked out is its local branch: brought up to the
+// remote's when behind it, as it is when ahead, and refused when each has
+// commits of its own, rather than reset.
 func TestSwitchAt(t *testing.T) {
 	ctx := context.Background()
 	r := opsRepo(t, map[string]string{"a.txt": "a\n"})
-	first := strings.TrimSpace(gitIn(t, r.Root, "rev-parse", "HEAD"))
-	gitIn(t, r.Root, "update-ref", "refs/remotes/origin/x", first)
-	gitIn(t, r.Root, "branch", "x")
+	rev := func(ref string) string { return strings.TrimSpace(gitIn(t, r.Root, "rev-parse", ref)) }
+	gitIn(t, r.Root, "remote", "add", "origin", t.TempDir())
+	first := rev("HEAD")
 	write(t, filepath.Join(r.Root, "a.txt"), "b\n")
 	gitIn(t, r.Root, "commit", "-q", "-am", "b")
-	gitIn(t, r.Root, "branch", "-f", "x", "HEAD")
-	if _, err := r.Switch(ctx, "origin/x", true, first); err == nil {
-		t.Error("switched to x, which is at another commit than origin/x's")
+	second := rev("HEAD")
+
+	// Behind: x comes up to origin/x, following it.
+	gitIn(t, r.Root, "update-ref", "refs/remotes/origin/x", second)
+	gitIn(t, r.Root, "branch", "--no-track", "x", first)
+	if _, err := r.Switch(ctx, "origin/x", true, second); err != nil {
+		t.Fatal(err)
 	}
-	gitIn(t, r.Root, "branch", "-f", "x", first)
+	if st, _ := r.Status(ctx); st.Branch != "x" || rev("x") != second || st.Upstream != "origin/x" {
+		t.Errorf("behind: on %q at %s, following %q", st.Branch, rev("x"), st.Upstream)
+	}
+
+	// Ahead: x as it is.
+	gitIn(t, r.Root, "switch", "-q", "main")
+	gitIn(t, r.Root, "update-ref", "refs/remotes/origin/x", first)
 	if _, err := r.Switch(ctx, "origin/x", true, first); err != nil {
 		t.Fatal(err)
 	}
-	if st, _ := r.Status(ctx); st.Branch != "x" {
-		t.Errorf("on %q", st.Branch)
+	if st, _ := r.Status(ctx); st.Branch != "x" || rev("x") != second {
+		t.Errorf("ahead: on %q at %s", st.Branch, rev("x"))
+	}
+
+	// Each its own: refused, x kept.
+	gitIn(t, r.Root, "switch", "-q", "main")
+	gitIn(t, r.Root, "switch", "-q", "--detach", first)
+	write(t, filepath.Join(r.Root, "a.txt"), "c\n")
+	gitIn(t, r.Root, "commit", "-q", "-am", "c")
+	gitIn(t, r.Root, "update-ref", "refs/remotes/origin/x", rev("HEAD"))
+	gitIn(t, r.Root, "switch", "-q", "main")
+	if _, err := r.Switch(ctx, "origin/x", true, rev("origin/x")); err == nil {
+		t.Error("switched to x, which has commits origin/x lacks and lacks some of its")
+	}
+	if rev("x") != second {
+		t.Error("the refused switch moved x")
 	}
 }

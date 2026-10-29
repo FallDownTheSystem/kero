@@ -84,7 +84,7 @@ The Explorer's **History** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Y</kbd> (<
 A commit's branches, tags and stashes show beside it, in its line's color, each kind with its icon: a branch, a remote's branch (a globe), a branch checked out in another worktree (a folder), a tag, a stash. The branch you're on is bold, with an outline. A stash's menu applies, pops or drops it; a commit whose branch is checked out in another worktree offers **Open Worktree** rather than checking it out. Click a commit to see its files, and a file to see its diff. A file's menu opens it, as the changes panel's does, or shows its history with **Show File History**. The changes not committed show on top, and the stash under them, to apply, pop or drop. A commit's menu:
 
 - **Copy Hash** and **Copy Branch Name**.
-- **Check Out**: the branch at the commit, or the commit itself, detached, when no branch is there.
+- **Check Out**: the branch at the commit, or the commit itself, detached, when no branch is there. A remote's branch checks out as your branch of its name, brought up to the remote's first when it is behind; when each has commits the other lacks, switch to yours and pull.
 - **New Branch Here…** and **New Session in Worktree Here…**.
 - **Merge … into …**, with a merge commit too, **Rebase … onto …**, and **Interactively Rebase … onto …**.
 - **Cherry-Pick**, **Revert Commit**, and **Reset to This Commit**: soft, keeping the changes since staged, mixed, keeping them unstaged, or hard, discarding them.

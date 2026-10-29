@@ -93,10 +93,12 @@ func checkName(ctx context.Context, dir, name string) error {
 }
 
 // Switch checks out a branch: a remote's as a new local branch that
-// follows it, unless one of its name is there, which it checks out. at,
-// when set, is the commit the branch is to be at, as the commit chosen in
-// the history: a local branch of the remote's name elsewhere is refused,
-// rather than checked out at another commit.
+// follows it, unless one of its name is there, which it checks out,
+// brought up to the remote's first when it is behind it, as that loses
+// nothing. at, when set, is the commit the branch is to be at, as the
+// commit chosen in the history: a local branch of the remote's name that
+// has commits of its own besides is refused, rather than checked out
+// elsewhere or reset.
 func (r Repo) Switch(ctx context.Context, name string, remote bool, at string) (string, error) {
 	if strings.HasPrefix(name, "-") {
 		return "", errors.New("no branch " + name)
@@ -104,13 +106,20 @@ func (r Repo) Switch(ctx context.Context, name string, remote bool, at string) (
 	if remote {
 		_, local, ok := strings.Cut(name, "/")
 		if ok && r.HasBranch(local) {
-			if at != "" {
-				out, err := run(ctx, r.Root, nil, "rev-parse", "--verify", "--quiet", "refs/heads/"+local)
-				if err != nil || strings.TrimSpace(string(out)) != at {
-					return "", errors.New("the branch " + local + " is at another commit than " + name + ": switch to it from the branches, or check out the commit")
-				}
+			ancestor := func(a, b string) bool {
+				_, err := run(ctx, r.Root, nil, "merge-base", "--is-ancestor", a, b)
+				return err == nil
 			}
-			return r.write(ctx, "", nil, "switch", local)
+			mine, theirs := "refs/heads/"+local, "refs/remotes/"+name
+			switch {
+			case ancestor(mine, theirs):
+				// Behind, or at it: the remote's commits on top of its.
+				return r.write(ctx, "", nil, "switch", "-C", local, "--track", name)
+			case at == "" || ancestor(theirs, mine):
+				return r.write(ctx, "", nil, "switch", local)
+			default:
+				return "", errors.New("the branch " + local + " and " + name + " have each commits the other lacks: switch to " + local + " and pull, or check out the commit")
+			}
 		}
 		return r.write(ctx, "", nil, "switch", "--track", name)
 	}
