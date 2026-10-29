@@ -28,15 +28,18 @@ const sideHistory = "history"
 // histPage is how many commits a page of the log has.
 const histPage = 200
 
-// The graph's lanes: their width, and how many show before the rest go
-// into the last.
+// The graph's lanes: their width, and the narrowest they get when there
+// are too many for graphShare of the view.
 const (
-	laneW    = 12
-	maxLanes = 6
+	laneW      = 12
+	minLaneW   = 7
+	graphShare = 0.35
 )
 
 // historyState is the History view's.
 type historyState struct {
+	// laneStep is the distance between the graph's lanes (graphWidth).
+	laneStep float32
 	// key is what the list is of: the worktree, its scope and the filter;
 	// stamp the worktree's status it was fetched at.
 	key, stamp string
@@ -182,9 +185,11 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 	}
 	gw := float32(0)
 	if !filtered {
+		lanes := 0
 		for _, r := range hs.graph {
-			gw = max(gw, float32(min(r.Width, maxLanes))*laneW)
+			lanes = max(lanes, r.Width)
 		}
+		gw, hs.laneStep = graphWidth(lanes, width)
 	}
 	// The list leaves room at its right, past the rows' times, for the
 	// scroll bar.
@@ -358,32 +363,46 @@ func (a *App) laneColors(c *ui.Context, pal *palette) []ui.Color {
 	return []ui.Color{pal.accent, t.Palette[2], t.Palette[5], t.Palette[3], t.Palette[6], t.Palette[1], t.Palette[4], t.Palette[10]}
 }
 
-// laneX is where a lane's line runs in a graph's box.
-func laneX(r ui.Rect, lane int) float32 {
-	return r.X + laneW/2 + float32(min(lane, maxLanes-1))*laneW
+// graphWidth returns the width of a graph of lanes in a view width wide,
+// and the step between its lanes: each lane has a line of its own, closer
+// together when they would take more than graphShare of the view.
+func graphWidth(lanes int, width float32) (gw, step float32) {
+	if lanes == 0 {
+		return 0, laneW
+	}
+	step = laneW
+	if n := float32(lanes); n*laneW > max(6*laneW, width*graphShare) {
+		step = max(minLaneW, width*graphShare/n)
+	}
+	return float32(lanes) * step, step
+}
+
+// laneX is where a lane's line runs in a graph's box, lanes step apart.
+func laneX(r ui.Rect, lane int, step float32) float32 {
+	return r.X + step/2 + float32(lane)*step
 }
 
 // drawGraph draws a commit's row of the graph; node is how its dot shows:
 // filled for a commit not pushed, a ring for one pushed, HEAD's ringed
 // besides.
-func drawGraph(p *ui.Painter, r ui.Rect, row gitgraph.Row, colors []ui.Color, bg ui.Color, unpushed, head bool) {
+func drawGraph(p *ui.Painter, r ui.Rect, step float32, row gitgraph.Row, colors []ui.Color, bg ui.Color, unpushed, head bool) {
 	top, mid, bot := r.Y, r.Y+r.H/2, r.Y+r.H
 	col := func(i int) ui.Color { return colors[i%len(colors)] }
 	for _, l := range row.Pass {
 		var path ui.Path
-		path.MoveTo(laneX(r, l.From), top).LineTo(laneX(r, l.To), bot)
+		path.MoveTo(laneX(r, l.From, step), top).LineTo(laneX(r, l.To, step), bot)
 		p.StrokePath(&path, 1.5, col(l.Color))
 	}
-	nx := laneX(r, row.Node)
+	nx := laneX(r, row.Node, step)
 	for _, l := range row.In {
 		var path ui.Path
-		x := laneX(r, l.From)
+		x := laneX(r, l.From, step)
 		path.MoveTo(x, top).CubeTo(x, (top+mid)/2, nx, (top+mid)/2, nx, mid)
 		p.StrokePath(&path, 1.5, col(l.Color))
 	}
 	for _, l := range row.Out {
 		var path ui.Path
-		x := laneX(r, l.To)
+		x := laneX(r, l.To, step)
 		path.MoveTo(nx, mid).CubeTo(nx, (mid+bot)/2, x, (mid+bot)/2, x, bot)
 		p.StrokePath(&path, 1.5, col(l.Color))
 	}
@@ -404,11 +423,11 @@ func drawGraph(p *ui.Painter, r ui.Rect, row gitgraph.Row, colors []ui.Color, bg
 
 // drawLanes draws the lanes that go on past an open commit's row, by the
 // rows it opens below it.
-func drawLanes(p *ui.Painter, r ui.Rect, row gitgraph.Row, colors []ui.Color) {
+func drawLanes(p *ui.Painter, r ui.Rect, step float32, row gitgraph.Row, colors []ui.Color) {
 	for _, ls := range [][]gitgraph.Line{row.Pass, row.Out} {
 		for _, l := range ls {
 			var path ui.Path
-			x := laneX(r, l.To)
+			x := laneX(r, l.To, step)
 			path.MoveTo(x, r.Y).LineTo(x, r.Y+r.H)
 			p.StrokePath(&path, 1.5, colors[l.Color%len(colors)])
 		}
@@ -465,9 +484,9 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 				// subject wraps, its lanes go on as the detail's.
 				top := r
 				top.H = min(r.H, commitRowH)
-				drawGraph(p, top, gr, colors, pal.card, hs.unpushed[cm.Hash], head)
+				drawGraph(p, top, hs.laneStep, gr, colors, pal.card, hs.unpushed[cm.Hash], head)
 				if rest := r.H - top.H; rest > 0 {
-					drawLanes(p, ui.Rect{X: r.X, Y: r.Y + top.H, W: r.W, H: rest}, gr, colors)
+					drawLanes(p, ui.Rect{X: r.X, Y: r.Y + top.H, W: r.W, H: rest}, hs.laneStep, gr, colors)
 				}
 			})
 		}
@@ -712,7 +731,7 @@ func (a *App) commitDetail(c *ui.Context, pal *palette, r histRow, gw float32, f
 	ui.Row(c.Key("detail")).Padding(0, 10, 0, 6).Gap(7).AlignItems(ui.Stretch).Children(func() {
 		if !filtered && r.commit >= 0 {
 			gr := hs.graph[r.commit]
-			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, gr, colors) })
+			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, hs.laneStep, gr, colors) })
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Padding(4, 0, 8, 0).Gap(4).Children(func() {
 			switch {
@@ -752,7 +771,7 @@ func (a *App) histFile(c *ui.Context, pal *palette, pane *proto.Pane, r histRow,
 	ui.Row(c.Key("file")).AlignItems(ui.Stretch).Padding(0, 0, 0, 6).Children(func() {
 		if !filtered && r.commit >= 0 {
 			gr := hs.graph[r.commit]
-			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, gr, colors) })
+			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, hs.laneStep, gr, colors) })
 		}
 		ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Children(func() {
 			f := r.f
@@ -775,7 +794,7 @@ func (a *App) histDiff(c *ui.Context, pal *palette, s *proto.Session, r histRow,
 	ui.Row(c.Key("diff")).AlignItems(ui.Stretch).Padding(0, 0, 0, 6).Children(func() {
 		if !filtered && r.commit >= 0 {
 			gr := hs.graph[r.commit]
-			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, gr, colors) })
+			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, hs.laneStep, gr, colors) })
 		}
 		ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Children(func() {
 			a.fileDiff(c, pal, s, sf, width-gw-6)
@@ -851,7 +870,7 @@ func (a *App) uncommittedRow(c *ui.Context, pal *palette, g *proto.GitInfo, gw f
 	row.Children(func() {
 		if gw > 0 {
 			graphBox(c, gw, func(p *ui.Painter, r ui.Rect) {
-				x, mid := laneX(r, 0), r.Y+r.H/2
+				x, mid := laneX(r, 0, a.side.git.hist.laneStep), r.Y+r.H/2
 				var path ui.Path
 				path.MoveTo(x, mid).LineTo(x, r.Y+r.H)
 				p.StrokePath(&path, 1.5, pal.textFaint.Alpha(0.6))

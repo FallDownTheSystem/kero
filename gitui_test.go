@@ -794,6 +794,39 @@ func TestGitGuard(t *testing.T) {
 	}
 }
 
+// Each of a graph's lanes has a line of its own, however many there are:
+// in a wide view at the full width, in a narrow one closer together, but
+// within the share of the view the graph takes as long as they fit.
+func TestGraphLanesApart(t *testing.T) {
+	for _, c := range []struct {
+		lanes    int
+		width    float32
+		fullStep bool
+	}{
+		{9, 600, true},
+		{9, 280, false},
+		{14, 280, false},
+		{3, 200, true},
+	} {
+		gw, step := graphWidth(c.lanes, c.width)
+		if c.fullStep != (step == laneW) {
+			t.Errorf("%d lanes in %v: step %v", c.lanes, c.width, step)
+		}
+		if step < minLaneW || gw > max(6*laneW, c.width*graphShare, float32(c.lanes)*minLaneW)+0.01 {
+			t.Errorf("%d lanes in %v: %v wide, step %v", c.lanes, c.width, gw, step)
+		}
+		r := ui.Rect{W: gw}
+		prev := float32(-minLaneW)
+		for l := range c.lanes {
+			x := laneX(r, l, step)
+			if x-prev < minLaneW-0.01 || x > gw {
+				t.Errorf("%d lanes in %v: lane %d at %v after %v, the graph %v wide", c.lanes, c.width, l, x, prev, gw)
+			}
+			prev = x
+		}
+	}
+}
+
 // History draws the worktree's commits as a graph, under the changes not
 // committed, and opens a commit below its row.
 func TestHistoryGraph(t *testing.T) {
