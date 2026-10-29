@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.3
+
+- The History graph draws every branch in a lane of its own: past six,
+  lanes no longer pile onto the last one, and with many they draw closer
+  together in a narrow view
+
 ## 2.1.27-fork.2
 
 - The pull requests list shows checks and review as separate pills, so
