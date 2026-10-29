@@ -123,7 +123,8 @@ var keys = []key{
 	choiceKey("window-theme", "the app's appearance", func(s *Settings) *string { return &s.Appearance }, "system", "light", "dark"),
 	choiceKey("language", "the app's language; system follows the system's", func(s *Settings) *string { return &s.Language }, append([]string{"system"}, Languages...)...),
 	mapChoice("background", "the window's wash", func(s *Settings) *string { return &s.Background },
-		[]string{"petal", "mist", "meadow", "dusk", "plain"}, []string{"rex", "mist", "meadow", "dusk", "plain"}),
+		[]string{"petal", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "plain"},
+		[]string{"rex", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
 
 	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which Kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),

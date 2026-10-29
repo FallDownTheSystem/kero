@@ -2532,6 +2532,46 @@ func (msgs Messages) BgDusk() string {
 	return Catalog.Format(msgs.locale, "bgDusk", nil)
 }
 
+// BgTide says "Tide"
+// in the language the app shows.
+func BgTide() string { return In(i18n.Locale()).BgTide() }
+
+// BgTide says "Tide"
+// in the language of msgs.
+func (msgs Messages) BgTide() string {
+	return Catalog.Format(msgs.locale, "bgTide", nil)
+}
+
+// BgApricot says "Apricot"
+// in the language the app shows.
+func BgApricot() string { return In(i18n.Locale()).BgApricot() }
+
+// BgApricot says "Apricot"
+// in the language of msgs.
+func (msgs Messages) BgApricot() string {
+	return Catalog.Format(msgs.locale, "bgApricot", nil)
+}
+
+// BgAurora says "Aurora"
+// in the language the app shows.
+func BgAurora() string { return In(i18n.Locale()).BgAurora() }
+
+// BgAurora says "Aurora"
+// in the language of msgs.
+func (msgs Messages) BgAurora() string {
+	return Catalog.Format(msgs.locale, "bgAurora", nil)
+}
+
+// BgDune says "Dune"
+// in the language the app shows.
+func BgDune() string { return In(i18n.Locale()).BgDune() }
+
+// BgDune says "Dune"
+// in the language of msgs.
+func (msgs Messages) BgDune() string {
+	return Catalog.Format(msgs.locale, "bgDune", nil)
+}
+
 // BgPlain says "Plain"
 // in the language the app shows.
 func BgPlain() string { return In(i18n.Locale()).BgPlain() }

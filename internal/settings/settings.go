@@ -200,6 +200,10 @@ var Backgrounds = []struct{ ID, Name string }{
 	{"mist", "Mist"},
 	{"meadow", "Meadow"},
 	{"dusk", "Dusk"},
+	{"tide", "Tide"},
+	{"apricot", "Apricot"},
+	{"aurora", "Aurora"},
+	{"dune", "Dune"},
 	{"plain", "Plain"},
 }
 

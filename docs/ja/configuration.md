@@ -57,7 +57,7 @@ kero config check             # 不明なキーと不正な値を報告
 | -------------------- | ---------- | --------------------------------------------------------------- |
 | `window-theme`       | `system`   | アプリの外観: `system`、`light`、`dark`                         |
 | `language`           | `system`   | アプリの言語: `system`、`en`、`ja`、`zh-Hans`                   |
-| `background`         | `petal`    | ウインドウの背景: `petal`、`mist`、`meadow`、`dusk`、`plain`    |
+| `background`         | `petal`    | ウインドウの背景: `petal`、`mist`、`meadow`、`dusk`、`tide`、`apricot`、`aurora`、`dune`、`plain` |
 | `window-translucent` | `true`     | ウインドウからデスクトップを透けて見せる                        |
 
 ## ターミナル

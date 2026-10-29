@@ -57,7 +57,7 @@ kero config check             # report unknown keys and bad values
 | -------------------- | -------- | --------------------------------------------------------------- |
 | `window-theme`       | `system` | The app's appearance: `system`, `light` or `dark`               |
 | `language`           | `system` | The app's language: `system`, `en`, `ja` or `zh-Hans`           |
-| `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk` or `plain` |
+| `background`         | `petal`  | The window's wash: `petal`, `mist`, `meadow`, `dusk`, `tide`, `apricot`, `aurora`, `dune` or `plain` |
 | `window-translucent` | `true`   | Let the desktop show through the window                         |
 
 ## Terminal
