@@ -5,6 +5,16 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.6
+
+- History's pills share one filled style, told apart by bigger icons;
+  only the branch you're on has an outline
+- Stashes show as pills on the commit they were made on; right-click one
+  to apply, pop or drop it, as in the Stashes list
+- A branch checked out in another worktree shows a folder icon, and its
+  commit's menu has Open Worktree, which goes to that worktree's
+  session or opens one, and Copy Worktree Path
+
 ## 2.1.27-fork.5
 
 - Widen Explorer is now Zoom Explorer: like Zoom Pane, it hides the
