@@ -634,7 +634,7 @@ func chipRefs(refs []gitRef) []gitRef {
 // local branch filled, with the branch's icon, and a remote's outlined,
 // with a globe; a local branch with its remote's at the same commit shows
 // both icons in its chip. With a lane's color, the chips take it. The
-// branch checked out has a check, bold text and a border of its color,
+// branch checked out has bold text and a border of its color,
 // not a color of its own, which would read as another lane's.
 func (a *App) refChips(c *ui.Context, pal *palette, pane *proto.Pane, refs []gitRef, lane *ui.Color, hash string) {
 	const shown = 3
@@ -678,9 +678,9 @@ func (a *App) refChips(c *ui.Context, pal *palette, pane *proto.Pane, refs []git
 		case r.head:
 			bg, fg = pal.accent.Alpha(0.16), pal.accent
 		}
-		weight := 550
+		weight := 400
 		if r.head {
-			weight = 750
+			weight = 700
 		}
 		chip := ui.Row(c.Key("ref-"+r.name)).Height(18).Padding(0, 6, 0, 5).Gap(3).Radius(5).AlignItems(ui.Center).Background(bg).Shrink(1).MinWidth(0)
 		if r.head {
@@ -696,9 +696,6 @@ func (a *App) refChips(c *ui.Context, pal *palette, pane *proto.Pane, refs []git
 			tip += "\n" + r.worktree
 		}
 		chip.Tooltip(tip).Children(func() {
-			if r.head {
-				ui.Icon(c, checkIcon).Size(11, 11).TextColor(fg).Shrink(0)
-			}
 			if icon != nil {
 				ui.Icon(c, icon).Size(11, 11).TextColor(fg).Shrink(0)
 			}
