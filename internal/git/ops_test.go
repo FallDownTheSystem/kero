@@ -183,6 +183,29 @@ func TestIndex(t *testing.T) {
 // SetIndex writes as git does, holding the index's lock: it waits on
 // another's, leaves none, and is refused a file a filter changes, whose
 // text it can't know clean.
+// A file git status calls changed but git diff doesn't, as one committed
+// with LF and written anew with CRLF under core.autocrlf, is listed: a
+// checkout refuses to overwrite it.
+func TestIndexUnchangedChange(t *testing.T) {
+	ctx := context.Background()
+	r := opsRepo(t, map[string]string{"processed.css": "a {}\nb {}\n"})
+	gitIn(t, r.Root, "config", "core.autocrlf", "true")
+	p := filepath.Join(r.Root, "processed.css")
+	write(t, p, "a {}\r\nb {}\r\n")
+	later := time.Now().Add(time.Minute)
+	os.Chtimes(p, later, later)
+	if diff := gitIn(t, r.Root, "diff", "--name-status"); diff != "" {
+		t.Skipf("git diff shows the file: %q", diff)
+	}
+	_, unstaged, err := r.Index(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := paths(unstaged); got != "processed.css:modified" {
+		t.Errorf("unstaged %q", got)
+	}
+}
+
 func TestSetIndexLock(t *testing.T) {
 	ctx := context.Background()
 	r := opsRepo(t, map[string]string{"a.txt": "a\n", "b.txt": "b\n"})

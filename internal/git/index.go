@@ -34,15 +34,19 @@ func (r Repo) Index(ctx context.Context) (staged, unstaged []File, err error) {
 	// At once, the list as soon as the slowest of git's runs: as the
 	// Changes view waits for it after each file staged, and git starts
 	// slowly on Windows.
-	var untracked []byte
-	var errs [3]error
+	var untracked, status []byte
+	var errs [4]error
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 	go func() { defer wg.Done(); staged, errs[0] = r.diffFiles(ctx, "--cached", "-M") }()
 	go func() { defer wg.Done(); unstaged, errs[1] = r.diffFiles(ctx) }()
 	go func() {
 		defer wg.Done()
 		untracked, errs[2] = run(ctx, r.Root, nil, "ls-files", "-z", "--others", "--exclude-standard")
+	}()
+	go func() {
+		defer wg.Done()
+		status, errs[3] = run(ctx, r.Root, nil, "status", "--porcelain=v2", "-z", "--untracked-files=no")
 	}()
 	wg.Wait()
 	for _, err := range errs {
@@ -57,6 +61,13 @@ func (r Repo) Index(ctx context.Context) (staged, unstaged []File, err error) {
 		}
 	}
 	staged = slices.DeleteFunc(staged, func(f File) bool { return f.Status == "conflict" || slices.Contains(conflicts, f.Path) })
+	// A file git status calls changed that git diff shows no change of,
+	// as one committed with LF and written anew with CRLF under
+	// core.autocrlf, is listed still, as nothing: a checkout refuses to
+	// overwrite it, and staging it is how to be rid of it.
+	inStaged, inUnstaged := statusPaths(status)
+	staged = addUnchanged(staged, inStaged)
+	unstaged = addUnchanged(unstaged, inUnstaged)
 	for i, p := range strings.Split(strings.TrimSuffix(string(untracked), "\x00"), "\x00") {
 		if p == "" {
 			continue
@@ -300,4 +311,50 @@ func mixedEndings(b []byte) bool {
 		}
 	}
 	return false
+}
+
+// statusPaths reads git status --porcelain=v2 -z: the paths changed in
+// the index, and those changed in the worktree, of tracked files.
+func statusPaths(out []byte) (staged, unstaged []string) {
+	fields := strings.Split(string(out), "\x00")
+	for i := 0; i < len(fields); i++ {
+		f := fields[i]
+		n := 0
+		switch {
+		case strings.HasPrefix(f, "1 "):
+			n = 9
+		case strings.HasPrefix(f, "2 "):
+			n = 10
+			i++ // the path it was renamed from
+		default:
+			continue
+		}
+		parts := strings.SplitN(f, " ", n)
+		if len(parts) < n || len(parts[1]) != 2 {
+			continue
+		}
+		path := parts[n-1]
+		if parts[1][0] != '.' {
+			staged = append(staged, path)
+		}
+		if parts[1][1] != '.' {
+			unstaged = append(unstaged, path)
+		}
+	}
+	return staged, unstaged
+}
+
+// addUnchanged adds to files those of paths it misses, as modified by no
+// line.
+func addUnchanged(files []File, paths []string) []File {
+	have := make(map[string]bool, len(files))
+	for _, f := range files {
+		have[f.Path] = true
+	}
+	for _, p := range paths {
+		if !have[p] {
+			files = append(files, File{Path: p, Status: "modified"})
+		}
+	}
+	return files
 }
