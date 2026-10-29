@@ -37,6 +37,7 @@ func settingsIndex() []searchEntry {
 		{"git", locales.SetPRPoll(), "pr-poll-interval pull request pr github poll check interval minutes"},
 		{"git", locales.SetCommitPrompt(), "commit-message-prompt commit message prompt instructions agent write generate default"},
 		{"git", locales.SetPRPrompt(), "pr-message-prompt pull request pr title description prompt instructions agent github default"},
+		{"git", locales.SetReviewPrompt(), "pr-review-prompt review pull request pr prompt agent code review default"},
 		{"files", locales.SetEditor(), "editor open in editor code vscode zed files"},
 		{"files", locales.SetFileOpen(), "files-double-click double click enter open editor pane files"},
 		{"files", locales.SetFilePane(), "files-pane editor pane replace reuse new files"},

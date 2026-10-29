@@ -433,8 +433,8 @@ func reviewItems(m *ui.Menu, launch func(mode string)) {
 	}
 }
 
-// DefaultReviewPrompt is what a review agent is asked when its
-// repository's setup has no prompt.
+// DefaultReviewPrompt is what a review agent is asked when neither its
+// repository's setup nor the review-prompt setting has a prompt.
 const DefaultReviewPrompt = "Review pull request #{number}, \"{title}\" ({url}), of {branch} into {base}.\n\n" +
 	"First review it in full: read it with gh pr view {number} and gh pr diff {number}, and the code around what it changes. Look for bugs, risky changes and missing tests.\n\n" +
 	"Then write the comments you would leave for its author. Check each one against the code, and drop any that isn't true or that this change doesn't cause. " +
@@ -450,7 +450,7 @@ const defaultReviewCommand = "claude"
 func (a *App) reviewSetup(slug string) settings.ReviewSetup {
 	r := a.set.Reviews[strings.ToLower(slug)]
 	if strings.TrimSpace(r.Prompt) == "" {
-		r.Prompt = DefaultReviewPrompt
+		r.Prompt = a.globalPrompts()[0]
 	}
 	if strings.TrimSpace(r.Command) == "" {
 		r.Command = defaultReviewCommand
@@ -823,21 +823,73 @@ func (a *App) submit(cl *client.Client, pane, text string) error {
 	return nil
 }
 
-// prSetup is a repository's review setup being edited.
+// prSetup is a repository's setup being edited: its review's command,
+// and its prompts, of its review, commit messages and pull requests.
 type prSetup struct {
-	open            bool
-	slug            string
-	command, prompt string
+	open    bool
+	slug    string
+	command string
+	prompts [3]string
 }
 
-// openReviewSetup edits how an agent reviews a repository's pull requests.
+// globalPrompts are the prompts of all repositories, of a review, a commit
+// message and a pull request: the settings', else Kero's own.
+func (a *App) globalPrompts() [3]string {
+	out := [3]string{a.set.ReviewPrompt, a.set.CommitMessagePrompt, a.set.PRMessagePrompt}
+	for i, def := range [3]string{DefaultReviewPrompt, commitmsg.DefaultCommitPrompt, commitmsg.DefaultPRPrompt} {
+		if strings.TrimSpace(out[i]) == "" {
+			out[i] = def
+		}
+	}
+	return out
+}
+
+// repoPrompts are the repositories' own prompts of field, by slug, which
+// kerod takes over the setting's for the repository it writes of.
+func (a *App) repoPrompts(field func(settings.ReviewSetup) string) map[string]string {
+	var out map[string]string
+	for slug, r := range a.set.Reviews {
+		if v := strings.TrimSpace(field(r)); v != "" {
+			if out == nil {
+				out = map[string]string{}
+			}
+			out[slug] = v
+		}
+	}
+	return out
+}
+
+// openReviewSetup edits a repository's setup, its prompts the settings'
+// where it has none of its own.
 func (a *App) openReviewSetup(slug string) {
 	r := a.set.Reviews[strings.ToLower(slug)]
-	prompt := r.Prompt
-	if strings.TrimSpace(prompt) == "" {
-		prompt = DefaultReviewPrompt
+	w := &prSetup{open: true, slug: slug, command: r.Command, prompts: [3]string{r.Prompt, r.CommitPrompt, r.PRPrompt}}
+	for i, g := range a.globalPrompts() {
+		if strings.TrimSpace(w.prompts[i]) == "" {
+			w.prompts[i] = g
+		}
 	}
-	a.prSetup = &prSetup{open: true, slug: slug, command: r.Command, prompt: prompt}
+	a.prSetup = w
+}
+
+// setupPrompt is a prompt of a repository's setup, its label above it with
+// the button that sets it back to def, all repositories'; height is
+// its box's, whose text scrolls.
+func setupPrompt(c *ui.Context, pal *palette, key, label string, text *string, def string, height float32, save *bool) {
+	ui.Row(c.Key(key+"-head")).Gap(8).AlignItems(ui.Center).Margin(8, 0, 0, 0).Children(func() {
+		ui.Text(c, label).FontSize(12.5).FontWeight(600).TextColor(pal.text)
+		ui.Spacer(c)
+		if strings.TrimSpace(*text) != strings.TrimSpace(def) {
+			iconButton(c, key+"-default", returnIcon, locales.PrsUseDefault(), pal, func() { *text = def })
+		}
+	})
+	frame := ui.Row(c.Key(key)).Shrink(0).AlignItems(ui.Start).Cursor(ui.CursorText)
+	var in ui.Element
+	frame.Children(func() {
+		in = ui.TextAreaBase(c.Key("in"), text).Grow(1).MinWidth(0).Height(height).Padding(8).FontSize(13).Label(label)
+		in.OnShortcut(ui.Cmd, ui.KeyEnter, func() { *save = true })
+	})
+	fieldLook(c, frame, in.Focused(), pal).Padding(0)
 }
 
 func (a *App) prSetupView(c *ui.Context, pal *palette) {
@@ -849,29 +901,27 @@ func (a *App) prSetupView(c *ui.Context, pal *palette) {
 	ui.DialogBase(c.Key("pr-setup"), &w.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay)
 		title := locales.PrsSetupTitle(w.slug)
-		floating(panel.Width(560).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(title)
+		// No taller than the window, which the fields scroll in.
+		_, winH := c.Size()
+		floating(panel.Width(560).MaxHeight(winH-40).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(title)
 		ui.Text(c, title).FontSize(15).FontWeight(650).TextColor(pal.text)
 		ui.Text(c, locales.PrsSetupDetail()).FontSize(12.5).TextColor(pal.textMuted).LineHeight(1.4)
-		ui.Text(c, locales.PrsSetupCommand()).FontSize(12.5).FontWeight(600).TextColor(pal.text).Margin(8, 0, 0, 0)
-		ui.Row(c).Children(func() {
-			textField(c, "command", &w.command, defaultReviewCommand, 0, pal).Font("monospace").Grow(1)
+		// The fields scroll, between the title and the buttons, where the
+		// window is too short for the three prompts.
+		ui.Scroll(c.Key("fields")).Shrink(1).MinHeight(0).Margin(0, -6).Padding(0, 6, 2, 6).Children(func() {
+			ui.Column(c).Shrink(0).Gap(8).AlignItems(ui.Stretch).Children(func() {
+				ui.Text(c, locales.PrsSetupCommand()).FontSize(12.5).FontWeight(600).TextColor(pal.text).Margin(8, 0, 0, 0)
+				ui.Row(c).Children(func() {
+					textField(c, "command", &w.command, defaultReviewCommand, 0, pal).Font("monospace").Grow(1)
+				})
+				global := a.globalPrompts()
+				setupPrompt(c, pal, "prompt", locales.PrsSetupPrompt(), &w.prompts[0], global[0], 150, &save)
+				ui.Text(c, locales.PrsSetupPlaceholders()).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4)
+				setupPrompt(c, pal, "commit-prompt", locales.SetCommitPrompt(), &w.prompts[1], global[1], 90, &save)
+				setupPrompt(c, pal, "pr-prompt", locales.SetPRPrompt(), &w.prompts[2], global[2], 90, &save)
+				ui.Text(c, locales.PrsSetupGlobal()).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4)
+			})
 		})
-		ui.Row(c).Gap(8).AlignItems(ui.Center).Margin(8, 0, 0, 0).Children(func() {
-			ui.Text(c, locales.PrsSetupPrompt()).FontSize(12.5).FontWeight(600).TextColor(pal.text)
-			ui.Spacer(c)
-			if strings.TrimSpace(w.prompt) != DefaultReviewPrompt {
-				iconButton(c, "default", returnIcon, locales.PrsUseDefault(), pal, func() { w.prompt = DefaultReviewPrompt })
-			}
-		})
-		frame := ui.Row(c.Key("prompt")).AlignItems(ui.Start).Cursor(ui.CursorText)
-		var in ui.Element
-		frame.Children(func() {
-			in = ui.TextAreaBase(c.Key("in"), &w.prompt).Grow(1).MinWidth(0).MinHeight(140).MaxHeight(320).Padding(8).FontSize(13).
-				Label(locales.PrsSetupPrompt())
-			in.OnShortcut(ui.Cmd, ui.KeyEnter, func() { save = true })
-		})
-		fieldLook(c, frame, in.Focused(), pal).Padding(0)
-		ui.Text(c, locales.PrsSetupPlaceholders()).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4)
 		ui.Row(c).Gap(8).Justify(ui.End).Margin(14, 0, 0, 0).Children(func() {
 			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				w.open = false
@@ -887,11 +937,14 @@ func (a *App) prSetupView(c *ui.Context, pal *palette) {
 		if set.Reviews == nil {
 			set.Reviews = map[string]settings.ReviewSetup{}
 		}
-		r := settings.ReviewSetup{Command: strings.TrimSpace(w.command), Prompt: strings.TrimSpace(w.prompt)}
-		// The default's own words keep following Kero's default.
-		if r.Prompt == DefaultReviewPrompt {
-			r.Prompt = ""
+		// A prompt as all repositories' keeps following theirs.
+		var own [3]string
+		for k, g := range a.globalPrompts() {
+			if v := strings.TrimSpace(w.prompts[k]); v != strings.TrimSpace(g) {
+				own[k] = v
+			}
 		}
+		r := settings.ReviewSetup{Command: strings.TrimSpace(w.command), Prompt: own[0], CommitPrompt: own[1], PRPrompt: own[2]}
 		key := strings.ToLower(w.slug)
 		if r == (settings.ReviewSetup{}) {
 			delete(set.Reviews, key)

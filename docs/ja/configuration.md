@@ -144,6 +144,9 @@ kero config check             # 不明なキーと不正な値を報告
 | `pr-poll-interval` | `5` | 新しいプルリクエストを確認する間隔 (分) |
 | `review-command` |  | リポジトリのプルリクエストを[レビュー](./changes.md#review)するエージェントのコマンド（`owner/name=codex --full-auto` など）。空なら `claude`。リポジトリごとに繰り返します |
 | `review-prompt` |  | レビューするエージェントへの指示（`owner/name=/code-review {ticket} #{number}` など）。空なら Kero のもの。改行は `\n` と書きます。リポジトリごとに繰り返します |
+| `pr-review-prompt` |  | 自分の `review-prompt` がないリポジトリで、[レビュー](./changes.md#review)するエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
+| `repo-commit-message-prompt` |  | リポジトリ独自の `commit-message-prompt`（`owner/name=Write in Finnish` など）。リポジトリごとに繰り返します |
+| `repo-pr-message-prompt` |  | リポジトリ独自の `pr-message-prompt`。`repo-commit-message-prompt` と同様です |
 
 ## ファイル
 

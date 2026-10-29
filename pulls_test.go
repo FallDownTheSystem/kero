@@ -13,6 +13,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/commitmsg"
 	"kero/internal/proto"
 	"kero/internal/settings"
 )
@@ -222,26 +223,56 @@ func TestPullsReview(t *testing.T) {
 	}
 }
 
-// The review setup keeps a repository's command and prompt by its slug,
-// and the default's own words as none, which follows Kero's default.
+// A repository's setup keeps its command and prompts by its slug: a
+// prompt left as all repositories' as none, which follows the settings',
+// the settings' else Kero's own.
 func TestPullsReviewSetup(t *testing.T) {
 	a := testApp(t)
+	a.set.CommitMessagePrompt, a.set.ReviewPrompt = "All repos' commits.", "Review #{number}."
 	tt := ui.NewTester(a.view, 1280, 720)
 	a.openReviewSetup("Me/Demo")
 	tt.Frame()
-	if !tt.HasText("Review Setup for Me/Demo") {
+	if !tt.HasText("Repository Setup for Me/Demo") {
 		t.Fatalf("no setup; texts %q", tt.Texts())
 	}
+	shot(t, tt, "repo-setup")
+	// Kero's own prompts, the longest, keep the buttons in the window.
+	a.set.ReviewPrompt = ""
+	a.openReviewSetup("Me/Demo")
+	for range 5 {
+		tt.Frame()
+	}
+	if r, ok := tt.Find("Save"); !ok || r.Y+r.H > 720 {
+		t.Errorf("Save at %v, %v", r, ok)
+	}
+	shot(t, tt, "repo-setup-defaults")
+	a.set.ReviewPrompt = "Review #{number}."
+	a.openReviewSetup("Me/Demo")
+	tt.Frame()
+	if w := a.prSetup; w.prompts != [3]string{"Review #{number}.", "All repos' commits.", commitmsg.DefaultPRPrompt} {
+		t.Errorf("the setup starts from %q", w.prompts)
+	}
 	a.prSetup.command = "codex"
+	a.prSetup.prompts[2] = "Demo's pull requests."
 	if err := tt.Click("Save"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if r := a.set.Reviews["me/demo"]; r != (settings.ReviewSetup{Command: "codex"}) {
+	if r := a.set.Reviews["me/demo"]; r != (settings.ReviewSetup{Command: "codex", PRPrompt: "Demo's pull requests."}) {
 		t.Errorf("kept %+v", r)
 	}
+	if r := a.reviewSetup("me/demo"); r.Prompt != "Review #{number}." {
+		t.Errorf("the review asks %q, not the setting's prompt", r.Prompt)
+	}
+	if got := a.repoPrompts(func(r settings.ReviewSetup) string { return r.PRPrompt }); len(got) != 1 || got["me/demo"] != "Demo's pull requests." {
+		t.Errorf("pull requests' prompts sent %v", got)
+	}
+	if got := a.repoPrompts(func(r settings.ReviewSetup) string { return r.CommitPrompt }); got != nil {
+		t.Errorf("commits' prompts sent %v", got)
+	}
+
 	a.openReviewSetup("me/demo")
-	a.prSetup.command, a.prSetup.prompt = "", DefaultReviewPrompt
+	a.prSetup.command, a.prSetup.prompts[2] = "", commitmsg.DefaultPRPrompt
 	tt.Frame()
 	if err := tt.Click("Save"); err != nil {
 		t.Fatal(err)

@@ -107,10 +107,14 @@ type Settings struct {
 	// CommitMessagePrompt and PRMessagePrompt say how a commit message,
 	// and a pull request's title and description, are written; "" for
 	// kerod's own (commitmsg.DefaultCommitPrompt, DefaultPRPrompt).
+	// ReviewPrompt is what the agent reviewing a pull request is asked,
+	// "" for Kero's own. A repository's setup (Reviews) goes over each.
 	CommitMessagePrompt string `json:"commitMessagePrompt"`
 	PRMessagePrompt     string `json:"prMessagePrompt"`
-	// Reviews are how the Review view has an agent review a pull request,
-	// by its repository on GitHub (OWNER/NAME).
+	ReviewPrompt        string `json:"reviewPrompt"`
+	// Reviews are a repository's own setup, by its repository on GitHub
+	// (OWNER/NAME, in lower case): how the Review view has an agent
+	// review its pull requests, and how its messages are written.
 	Reviews map[string]ReviewSetup `json:"reviews,omitempty"`
 	// PRNotify is which new pull requests of the projects' repositories on
 	// GitHub notify: "review", those the user's review is asked of; "all",
@@ -383,13 +387,17 @@ func write(s Settings) error {
 	return os.Rename(tmp, Path())
 }
 
-// ReviewSetup is how an agent reviews a repository's pull requests:
-// Command starts the agent in a new session ("" for the shell alone), and
-// Prompt is what it is asked, its {placeholders} filled in for the pull
-// request.
+// ReviewSetup is a repository's own setup: how an agent reviews its pull
+// requests, Command starting the agent in a new session ("" for the shell
+// alone), and Prompt what it is asked, its {placeholders} filled in for
+// the pull request; and CommitPrompt and PRPrompt, how its commit
+// messages and pull requests are written. An empty one is the setting's
+// of all repositories.
 type ReviewSetup struct {
-	Command string `json:"command,omitempty"`
-	Prompt  string `json:"prompt,omitempty"`
+	Command      string `json:"command,omitempty"`
+	Prompt       string `json:"prompt,omitempty"`
+	CommitPrompt string `json:"commitPrompt,omitempty"`
+	PRPrompt     string `json:"prPrompt,omitempty"`
 }
 
 // Clone returns a copy that shares nothing with s.

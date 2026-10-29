@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
 
 	"kero/locales"
 )
@@ -372,7 +373,8 @@ func (a *App) prWriteButton(c *ui.Context, pal *palette, pane *proto.Pane, f *pr
 	}
 	id := opID()
 	f.writing, f.writeErr = id, ""
-	p := proto.PRMessageParams{Pane: f.pane, ID: id, Remote: d.Remote, Base: d.Base, Command: a.set.CommitMessageCommand, Prompt: a.set.PRMessagePrompt}
+	p := proto.PRMessageParams{Pane: f.pane, ID: id, Remote: d.Remote, Base: d.Base, Command: a.set.CommitMessageCommand, Prompt: a.set.PRMessagePrompt,
+		Repos: a.repoPrompts(func(r settings.ReviewSetup) string { return r.PRPrompt })}
 	go func() {
 		var res proto.PRMessage
 		err := cl.Call("pr.message", p, &res)

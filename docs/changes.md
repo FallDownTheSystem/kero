@@ -163,7 +163,7 @@ Click a pull request to see it in the Explorer; the arrow beside it opens it on 
 
 **Review** on a pull request has an agent review it. A click fetches the pull request's branch and starts the agent in a new session, in a [worktree of its own](#sessions-in-their-own-worktree) of that branch. Each review checks the pull request out on a branch of its own, `review/pr-<number>`, then `review/pr-<number>-2` and on, so you can review it more than once, and while your checkout or another worktree has its branch. Pushing that branch, from the Changes view, goes to the pull request's branch; with git, run `git push origin HEAD:<branch>`. Closing the review with its worktree deletes its branch once the pull request's has its commits. Right-click it, or the pull request, to send the review to the agent in the pane you're in, or to start the agent in a new session in the pane's folder. Before the review starts, its prompt shows for you to edit. Kero types it into the agent once the agent is ready, or copies it if the agent isn't ready after 90 seconds.
 
-**Review Setup…**, the gear, sets the agent command and the prompt for each repository, as your repositories have different skills and tools: `/code-review high {ticket}`, for one. In the prompt, `{number}`, `{url}`, `{title}`, `{branch}`, `{base}` and `{author}` become the pull request's, and `{ticket}` the first issue key, such as `PROJ-123`, in its title, its description or its branch; when none has one, the review asks you for it. The command is `claude` unless you set another.
+**Repository Setup…**, the gear, sets the agent command and the review prompt for each repository, as your repositories have different skills and tools: `/code-review high {ticket}`, for one. In the prompt, `{number}`, `{url}`, `{title}`, `{branch}`, `{base}` and `{author}` become the pull request's, and `{ticket}` the first issue key, such as `PROJ-123`, in its title, its description or its branch; when none has one, the review asks you for it. The command is `claude` unless you set another.
 
 <a id="draft-reviews"></a>
 
@@ -187,7 +187,7 @@ Kero checks the GitHub repositories of your projects every 5 minutes, and notifi
 
 **Create Pull Request** pushes the commits the push remote doesn't have, then creates the pull request with `gh` and opens it. The arrow beside it has **Create as Draft**, and **Show on GitHub**, which opens GitHub's page that creates the pull request, with the title and the description filled in, for you to finish there. If the branch already has an open pull request, the form links to it instead.
 
-Settings › Git has the prompts that tell the agent how to write a commit message and a pull request, `commit-message-prompt` and `pr-message-prompt`. They show Kero's own until you change them, and **Reset to Default** brings those back.
+Settings › Git has the prompts that tell the agent how to write a commit message and a pull request, `commit-message-prompt` and `pr-message-prompt`. They show Kero's own until you change them, and **Reset to Default** brings those back. The review prompt there, `pr-review-prompt`, is what a review agent is asked. A repository's **Repository Setup…** in the Review tab can replace all three for that repository; a prompt it leaves as it is follows the one in Settings.
 
 ## From the command line
 

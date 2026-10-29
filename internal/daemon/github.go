@@ -44,6 +44,15 @@ func gitHubRepos(ctx context.Context, r git.Repo) ([]proto.GitHubRepo, map[strin
 	return list, byName, nil
 }
 
+// repoPrompt is the prompt of repos for the repository slug, OWNER/NAME,
+// else prompt, of all of them.
+func repoPrompt(prompt string, repos map[string]string, slug string) string {
+	if v := repos[strings.ToLower(slug)]; strings.TrimSpace(v) != "" {
+		return v
+	}
+	return prompt
+}
+
 // pickRemote returns the remote asked for, else the one HEAD's branch
 // pushes to, else the first, of those on GitHub.
 func pickRemote(ctx context.Context, r git.Repo, byName map[string]github.Repo, repos []proto.GitHubRepo, asked string) (string, error) {
@@ -402,6 +411,7 @@ func (d *Daemon) prMessage(p proto.PRMessageParams) (proto.PRMessage, error) {
 	if err != nil {
 		return proto.PRMessage{}, err
 	}
+	p.Prompt = repoPrompt(p.Prompt, p.Repos, t.repo.Slug())
 	mb, err := t.mergeBase(ctx)
 	if err != nil {
 		return proto.PRMessage{}, err
