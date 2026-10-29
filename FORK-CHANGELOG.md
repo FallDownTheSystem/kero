@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.5
+
+- Widen Explorer is now Zoom Explorer: like Zoom Pane, it hides the
+  panes and gives the Explorer their room, rather than squeezing them;
+  Show All Panes brings them back
+
 ## 2.1.27-fork.4
 
 - History shows branch and tag names whole when the view has room, and in
