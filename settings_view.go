@@ -224,7 +224,7 @@ func (a *App) settingsView(c *ui.Context) {
 			}
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Padding(cardGap, cardGap, cardGap, 0).Children(func() {
-			card := raised(ui.Column(c).Grow(1).MinHeight(0).Radius(14).Background(pal.card), pal).Clip()
+			card := paned(ui.Column(c).Grow(1).MinHeight(0).Radius(14).Background(pal.card), pal).Clip()
 			card.Children(func() {
 				page := settingsPages[0]
 				for _, p := range settingsPages {
@@ -647,17 +647,25 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 	})
 	ui.Column(c).Gap(8).Children(func() {
 		groupTitle(c, pal, locales.SetBackground())
-		ui.Row(c).Gap(12).Wrap().Children(func() {
-			for _, b := range settings.Backgrounds {
-				a.backgroundTile(c, pal, b.ID, backgroundName(b.ID, b.Name))
+		// A theme for each appearance: the tiles of one show its colors.
+		for _, dark := range []bool{false, true} {
+			label := locales.SetLightWindows()
+			if dark {
+				label = locales.SetDarkWindows()
 			}
-		})
+			ui.Text(c, label).FontSize(12).TextColor(pal.textFaint).Padding(4, 4, 0, 4)
+			ui.Row(c).Gap(12).Wrap().Children(func() {
+				for _, b := range settings.Backgrounds {
+					a.backgroundTile(c, pal, b.ID, backgroundName(b.ID, b.Name), dark)
+				}
+			})
+		}
 	})
 	// A Ghostty theme in place of kero's: "kero" is none.
 	none := locales.SetThemeNone()
 	themes := append([]string{none}, terminal.GhosttyThemes()...)
 	ghostty := func(key, value string, choose func(string)) {
-		if value == "kero" {
+		if value == "kero" || keroID(value) != "" {
 			value = none
 		}
 		a.searchPopup(c, key, value, themes, 240, nil, pal, func(v string) {
@@ -709,52 +717,54 @@ func localeTag(language string) string {
 // backgroundName is a wash's name in the language the app shows.
 func backgroundName(id, name string) string {
 	if t, ok := map[string]func() string{"rex": locales.BgPetal, "mist": locales.BgMist, "meadow": locales.BgMeadow, "dusk": locales.BgDusk,
-		"tide": locales.BgTide, "apricot": locales.BgApricot, "aurora": locales.BgAurora, "dune": locales.BgDune, "plain": locales.BgPlain}[id]; ok {
+		"tide": locales.BgTide, "apricot": locales.BgApricot, "aurora": locales.BgAurora, "dune": locales.BgDune, "paper": locales.BgPaper, "plain": locales.BgPlain}[id]; ok {
 		return t()
 	}
 	return name
 }
 
-// backgroundTile previews one of kero's themes as the window shows it in
-// this appearance, choosing it on a click: a card of its colors on its
-// wash, with text, a prompt, the cursor and the programs' colors.
-func (a *App) backgroundTile(c *ui.Context, pal *palette, id, name string) {
-	dark := c.Theme().Dark
-	slot := a.set.LightTheme
+// backgroundTile previews one of kero's themes as windows of an
+// appearance show it, choosing it for them on a click: a card of its
+// colors on its wash, with text, a prompt, the cursor and the programs'
+// colors.
+func (a *App) backgroundTile(c *ui.Context, pal *palette, id, name string, dark bool) {
+	slot, key, windows := &a.set.LightTheme, "bg-light-", locales.SetLightWindows()
 	if dark {
-		slot = a.set.DarkTheme
+		slot, key, windows = &a.set.DarkTheme, "bg-dark-", locales.SetDarkWindows()
 	}
-	sel := a.set.Background == id && slot == "kero"
-	tile := ui.ButtonBase(c.Key("bg-" + id)).Column().Width(124).Gap(8).AlignItems(ui.Stretch).Label(name)
+	sel := keroID(*slot) == id || (*slot == "kero" || *slot == "") && a.set.Background == id
+	tile := ui.ButtonBase(c.Key(key + id)).Column().Width(124).Gap(8).AlignItems(ui.Stretch).Label(name + ", " + windows)
 	if tile.Clicked() {
-		a.set.Background = id
-		a.set.LightTheme, a.set.DarkTheme = "kero", "kero"
+		*slot = keroName(id)
 	}
 	tile.Children(func() {
 		l := keroLook(id, dark)
 		th := l.term
-		sw := raised(ui.Box(c).Size(124, 80).Radius(12), pal).Clip()
-		sw.LinearGradient(l.base)
-		sw.Children(func() {
-			ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).LinearGradient(l.glow)
-			ui.Column(c).Absolute().Top(8).Left(8).Right(8).Bottom(8).Radius(8).Background(th.Background).
-				Padding(8, 9).Justify(ui.SpaceBetween).Children(func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
-					ui.Text(c, "Aa").FontSize(17).TextColor(th.Foreground).Grow(1)
-					ui.Box(c).Radius(4).Padding(1, 4).Background(th.Selection).Children(func() {
-						ui.Text(c, "~/").Font(a.termFamily()).FontSize(10).TextColor(th.Foreground)
+		ui.Box(c).Children(func() {
+			sw := raised(ui.Box(c).Size(124, 80).Radius(12), pal).Clip()
+			sw.LinearGradient(l.base)
+			sw.Children(func() {
+				ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).LinearGradient(l.glow)
+				ui.Column(c).Absolute().Top(8).Left(8).Right(8).Bottom(8).Radius(8).Background(th.Background).
+					Padding(8, 9).Justify(ui.SpaceBetween).Children(func() {
+					ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+						ui.Text(c, "Aa").FontSize(17).TextColor(th.Foreground).Grow(1)
+						ui.Box(c).Radius(4).Padding(1, 4).Background(th.Selection).Children(func() {
+							ui.Text(c, "~/").Font(a.termFamily()).FontSize(10).TextColor(th.Foreground)
+						})
+						ui.Box(c).Size(6, 13).Radius(1.5).Background(th.Cursor)
 					})
-					ui.Box(c).Size(6, 13).Radius(1.5).Background(th.Cursor)
-				})
-				ui.Row(c).Gap(3).Children(func() {
-					for i := range 8 {
-						ui.Box(c).Size(8, 8).Radius(4).Background(th.Palette[i])
-					}
+					ui.Row(c).Gap(3).Children(func() {
+						for i := range 8 {
+							ui.Box(c).Size(8, 8).Radius(4).Background(th.Palette[i])
+						}
+					})
 				})
 			})
 			if sel {
-				// Over the tile, so that the card in it stays put.
-				ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(12).Border(2, l.pal.accent)
+				// The ring, a gap off the tile and around it, so that
+				// nothing in the tile moves for it.
+				ui.Box(c).Absolute().Top(-5).Left(-5).Right(-5).Bottom(-5).Radius(17).Border(2, l.pal.accent)
 			}
 		})
 		lbl := ui.Text(c, name).FontSize(12.5).TextColor(pal.textMuted).TextAlign(ui.Center)

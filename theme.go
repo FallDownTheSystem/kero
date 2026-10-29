@@ -246,15 +246,41 @@ func lookFor(c *ui.Context) *look {
 	return l.light
 }
 
-// lookNamed is the look of a theme: a Ghostty one by its name, else
-// kero's of the wash bg.
+// lookNamed is the look of a theme: one of kero's by its name, kero's
+// of the wash bg for "kero", else a Ghostty one by its name.
 func lookNamed(name, bg string, dark bool) *look {
-	if name != "" && name != "kero" {
-		if th, err := terminal.GhosttyTheme(name); err == nil {
-			return ghosttyLook(th)
-		}
+	if name == "" || name == "kero" {
+		return keroLook(bg, dark)
+	}
+	if id := keroID(name); id != "" {
+		return keroLook(id, dark)
+	}
+	if th, err := terminal.GhosttyTheme(name); err == nil {
+		return ghosttyLook(th)
 	}
 	return keroLook(bg, dark)
+}
+
+// keroID is the wash of one of kero's themes by its name in the
+// configuration, where Rex's is "petal"; "" for a name of none of
+// kero's. Only the lowercase names are kero's, as Ghostty's Aurora is
+// "Aurora".
+func keroID(name string) string {
+	if name == "petal" {
+		return "rex"
+	}
+	if _, ok := washTable[name]; ok && name != "rex" {
+		return name
+	}
+	return ""
+}
+
+// keroName is a kero theme's name in the configuration (keroID).
+func keroName(id string) string {
+	if id == "rex" {
+		return "petal"
+	}
+	return id
 }
 
 // keroLook is kero's theme of a wash.
@@ -352,8 +378,9 @@ func tinted(th *terminal.Theme, accent ui.Color) *palette {
 }
 
 // tone is the hue of a kero theme, how much of it its cards and text
-// take, and how vivid the programs' colors are, which lean to its hue.
-type tone struct{ hue, tint, vivid float32 }
+// take, how vivid the programs' colors are, which lean to its hue, and
+// the hue of its accent: the cursor, selection and controls.
+type tone struct{ hue, tint, vivid, accent float32 }
 
 // toneTheme is a kero theme's terminal colors, and its accent: its cards
 // and text tinted with its hue, and the programs' colors muted to sit
@@ -373,13 +400,16 @@ func toneTheme(t tone, dark bool) (*terminal.Theme, ui.Color) {
 		bright = 0.06
 		th.Background, th.Foreground = tint(0.255, 0.02), tint(0.92, 0.015)
 		th.Palette[0], th.Palette[7], th.Palette[8], th.Palette[15] = tint(0.36, 0.02), tint(0.82, 0.012), tint(0.5, 0.02), tint(0.96, 0.01)
-		th.Selection = ui.Oklch(0.38, 0.06, t.hue)
-		accent = ui.Oklch(0.74, 0.13, t.hue)
+		th.Selection = ui.Oklch(0.38, 0.06, t.accent)
+		accent = ui.Oklch(0.74, 0.13, t.accent)
 	} else {
-		th.Background, th.Foreground = tint(0.978, 0.012), tint(0.28, 0.03)
+		// The less tinted, the whiter the paper: an untinted theme's
+		// cards are white.
+		paper := 0.978 + 0.022*max(0, 1-t.tint/0.5)
+		th.Background, th.Foreground = tint(paper, 0.012), tint(0.28, 0.03)
 		th.Palette[0], th.Palette[7], th.Palette[8], th.Palette[15] = th.Foreground, tint(0.7, 0.02), tint(0.52, 0.02), tint(0.8, 0.015)
-		th.Selection = ui.Oklch(0.9, 0.045, t.hue)
-		accent = ui.Oklch(0.55, 0.13, t.hue)
+		th.Selection = ui.Oklch(0.9, 0.045, t.accent)
+		accent = ui.Oklch(0.55, 0.13, t.accent)
 	}
 	for i := range 6 {
 		// Toward the theme's hue, the less the farther it is, as a far
@@ -426,44 +456,50 @@ var washTable = map[string]wash{
 	"rex": {
 		light: []string{"#ebe0f3", "#f3e7f1", "#f7eee4", "#f6efcf"}, lightGlow: ui.RGBA(247, 220, 241, 0.75),
 		dark: []string{"#240f1d", "#26111a", "#271610"}, darkGlow: ui.RGBA(142, 58, 110, 0.3),
-		tone: tone{350, 1, 0.95},
+		tone: tone{350, 1, 0.95, 350},
 	},
 	"mist": {
 		light: []string{"#e3e9f4", "#ebeff6", "#f1f2f3", "#f2f1ec"}, lightGlow: ui.RGBA(210, 225, 248, 0.75),
 		dark: []string{"#0c1628", "#0d1827", "#111b23"}, darkGlow: ui.RGBA(46, 91, 166, 0.3),
-		tone: tone{255, 1, 0.8},
+		tone: tone{255, 1, 0.8, 255},
 	},
 	"meadow": {
 		light: []string{"#e2eee5", "#ebf2e7", "#f3f2e2", "#f5f0d6"}, lightGlow: ui.RGBA(214, 240, 222, 0.75),
 		dark: []string{"#081c0d", "#101d0c", "#1b1c0b"}, darkGlow: ui.RGBA(6, 113, 50, 0.3),
-		tone: tone{140, 1, 0.9},
+		tone: tone{140, 1, 0.9, 140},
 	},
 	"dusk": {
 		light: []string{"#e4dbf3", "#efdeee", "#f6e3dc", "#f7e6cf"}, lightGlow: ui.RGBA(246, 206, 222, 0.8),
 		dark: []string{"#190f2e", "#260f24", "#2d140b"}, darkGlow: ui.RGBA(125, 65, 138, 0.3),
-		tone: tone{315, 1, 1.1},
+		tone: tone{315, 1, 1.1, 315},
 	},
 	// Sea glass: aqua above, a pale tide line below.
 	"tide": {
 		light: []string{"#dbebef", "#e3eff1", "#ecf3f0", "#f2f2e8"}, lightGlow: ui.RGBA(194, 232, 238, 0.75),
 		dark: []string{"#001b22", "#001e1f", "#0b1e1b"}, darkGlow: ui.RGBA(0, 112, 128, 0.3),
-		tone: tone{205, 1, 0.85},
+		tone: tone{205, 1, 0.85, 205},
 	},
 	"apricot": {
 		light: []string{"#f5e1d6", "#f8e7dc", "#f8eedf", "#f6f0da"}, lightGlow: ui.RGBA(252, 212, 194, 0.78),
 		dark: []string{"#2a1207", "#291507", "#25190a"}, darkGlow: ui.RGBA(151, 62, 22, 0.3),
-		tone: tone{50, 1, 1.05},
+		tone: tone{50, 1, 1.05, 50},
 	},
 	// Mint at the top, fading through blue to violet.
 	"aurora": {
 		light: []string{"#dbefe8", "#e1ebf2", "#e8e4f4", "#f0e6f1"}, lightGlow: ui.RGBA(198, 238, 224, 0.75),
 		dark: []string{"#001f13", "#06192b", "#1e122a"}, darkGlow: ui.RGBA(0, 115, 75, 0.3),
-		tone: tone{170, 1, 1.15},
+		tone: tone{170, 1, 1.15, 170},
 	},
 	"dune": {
 		light: []string{"#ede4d8", "#f1e9de", "#f4eee4", "#f3efe8"}, lightGlow: ui.RGBA(242, 222, 194, 0.7),
 		dark: []string{"#22190b", "#211a0e", "#201b12"}, darkGlow: ui.RGBA(135, 79, 0, 0.3),
-		tone: tone{80, 0.7, 0.55},
+		tone: tone{80, 0.7, 0.55, 80},
+	},
+	// White paper on a desk of light gray, in ink, flat and quiet.
+	"paper": {
+		light: []string{"#f6f6f7", "#f7f7f8", "#f8f8f8"}, lightGlow: ui.RGBA(255, 255, 255, 0),
+		dark: []string{"#141416", "#151517", "#161618"}, darkGlow: ui.RGBA(90, 120, 200, 0.1),
+		tone: tone{260, 0, 0.9, 262},
 	},
 	"plain": {
 		light: []string{"#eceef4", "#eceef4"}, lightGlow: ui.RGBA(0, 0, 0, 0),

@@ -57,14 +57,14 @@ kero config check             # 不明なキーと不正な値を報告
 | -------------------- | ---------- | --------------------------------------------------------------- |
 | `window-theme`       | `system`   | アプリの外観: `system`、`light`、`dark`                         |
 | `language`           | `system`   | アプリの言語: `system`、`en`、`ja`、`zh-Hans`                   |
-| `background`         | `petal`    | ウインドウ、ペイン、ターミナルを彩る Kero のテーマ: `petal`、`mist`、`meadow`、`dusk`、`tide`、`apricot`、`aurora`、`dune`、`plain` |
+| `background`         | `petal`    | `theme` が `kero` のときの Kero のテーマ: `petal`、`mist`、`meadow`、`dusk`、`tide`、`apricot`、`aurora`、`dune`、`paper`、`plain` |
 | `window-translucent` | `true`     | ウインドウからデスクトップを透けて見せる                        |
 
 ## ターミナル
 
 | キー                  | デフォルト | 説明                                                                     |
 | --------------------- | ---------- | ------------------------------------------------------------------------ |
-| `theme`               | `kero`     | Kero のテーマの代わりにウインドウ、ペイン、ターミナルを彩る Ghostty のテーマ: `kero`（なし）、任意の Ghostty テーマ、または `light:<theme>,dark:<theme>` |
+| `theme`               | `kero`     | ウインドウ、ペイン、ターミナルのテーマ: `paper` などの Kero のテーマ、任意の Ghostty テーマ、`background` のテーマを使う `kero`、または `light:paper,dark:dusk` のように外観ごとに |
 | `font-family`         |            | 空欄なら Kero に付属の JetBrains Mono Nerd Font、`monospace` ならシステムのもの、またはインストール済みの任意のファミリー |
 | `font-size`           | `13`       | ポイント単位                                                             |
 | `font-weight`         | `400`      | `100` から `900`                                                         |

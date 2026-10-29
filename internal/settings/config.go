@@ -122,9 +122,9 @@ var keys = []key{
 
 	choiceKey("window-theme", "the app's appearance", func(s *Settings) *string { return &s.Appearance }, "system", "light", "dark"),
 	choiceKey("language", "the app's language; system follows the system's", func(s *Settings) *string { return &s.Language }, append([]string{"system"}, Languages...)...),
-	mapChoice("background", "kero's theme, which colors the window, its panes and terminals", func(s *Settings) *string { return &s.Background },
-		[]string{"petal", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "plain"},
-		[]string{"rex", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "plain"}),
+	mapChoice("background", "kero's theme where theme is kero", func(s *Settings) *string { return &s.Background },
+		[]string{"petal", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "paper", "plain"},
+		[]string{"rex", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "paper", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
 
 	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which Kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),
@@ -135,7 +135,7 @@ var keys = []key{
 	boolKey("font-thicken", "a heavier stroke, as Ghostty's", func(s *Settings) *bool { return &s.Thicken }),
 	numberKey("minimum-contrast", "the least contrast text keeps with its background, 1 (none) to 21, as Ghostty's", func(s *Settings) float64 { return float64(s.MinContrast) }, func(s *Settings, n float64) { s.MinContrast = float32(min(max(n, 1), 21)) }),
 	boolKey("dim-unfocused-terminals", "fade the terminals you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimUnfocused }),
-	{name: "theme", doc: "a Ghostty theme in place of kero's, for the window, its panes and terminals: kero (none), a Ghostty theme, or light:<theme>,dark:<theme>",
+	{name: "theme", doc: "the theme of the window, its panes and terminals: one of kero's, as paper, a Ghostty theme, kero for background's, or light:<theme>,dark:<theme>",
 		get: func(s *Settings) []string {
 			if s.LightTheme == s.DarkTheme {
 				return []string{s.LightTheme}

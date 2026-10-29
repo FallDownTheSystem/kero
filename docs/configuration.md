@@ -57,14 +57,14 @@ kero config check             # report unknown keys and bad values
 | -------------------- | -------- | --------------------------------------------------------------- |
 | `window-theme`       | `system` | The app's appearance: `system`, `light` or `dark`               |
 | `language`           | `system` | The app's language: `system`, `en`, `ja` or `zh-Hans`           |
-| `background`         | `petal`  | Kero's theme, which colors the window, its panes and terminals: `petal`, `mist`, `meadow`, `dusk`, `tide`, `apricot`, `aurora`, `dune` or `plain` |
+| `background`         | `petal`  | Kero's theme where `theme` is `kero`: `petal`, `mist`, `meadow`, `dusk`, `tide`, `apricot`, `aurora`, `dune`, `paper` or `plain` |
 | `window-translucent` | `true`   | Let the desktop show through the window                         |
 
 ## Terminal
 
 | Key                   | Default | Description                                                              |
 | --------------------- | ------- | ------------------------------------------------------------------------ |
-| `theme`               | `kero`  | A Ghostty theme in place of Kero's, for the window, its panes and terminals: `kero` (none), any Ghostty theme, or `light:<theme>,dark:<theme>` |
+| `theme`               | `kero`  | The theme of the window, its panes and terminals: one of Kero's, as `paper`, any Ghostty theme, `kero` for `background`'s, or one for each appearance, as `light:paper,dark:dusk` |
 | `font-family`         |         | Empty for JetBrains Mono Nerd Font, which Kero includes; `monospace` for the system's; or any installed family |
 | `font-size`           | `13`    | In points                                                                |
 | `font-weight`         | `400`   | `100` to `900`                                                           |

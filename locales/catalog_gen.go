@@ -2572,6 +2572,16 @@ func (msgs Messages) BgDune() string {
 	return Catalog.Format(msgs.locale, "bgDune", nil)
 }
 
+// BgPaper says "Paper"
+// in the language the app shows.
+func BgPaper() string { return In(i18n.Locale()).BgPaper() }
+
+// BgPaper says "Paper"
+// in the language of msgs.
+func (msgs Messages) BgPaper() string {
+	return Catalog.Format(msgs.locale, "bgPaper", nil)
+}
+
 // BgPlain says "Plain"
 // in the language the app shows.
 func BgPlain() string { return In(i18n.Locale()).BgPlain() }
