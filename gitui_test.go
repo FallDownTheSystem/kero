@@ -1044,7 +1044,7 @@ func TestHistoryOpenSubjectWraps(t *testing.T) {
 	hs.stamp = gitStamp(g) + "|0"
 	hs.stashAt = hs.stamp
 	subject := "Keep the focus in the Explorer as git actions and their confirmations close, not in the terminal"
-	hs.commits = []proto.GitCommit{{Hash: "c1", Author: "Ann", Time: time.Now().Unix(), Subject: subject}}
+	hs.commits = []proto.GitCommit{{Hash: "c1", Author: "Ann", Time: time.Now().Unix(), Subject: subject, Refs: "origin/feature/a-branch-of-a-long-name"}}
 	hs.graph = append(hs.graph, hs.layout.Add(gitgraph.Commit{Hash: "c1"}))
 
 	tt := ui.NewTester(a.view, 1280, 720)
@@ -1056,11 +1056,29 @@ func TestHistoryOpenSubjectWraps(t *testing.T) {
 	if err := tt.Click(subject); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
-	tt.Frame()
-	open, _ := tt.Find(subject)
-	if hs.opened["c1"] == nil || open.H < 2*closed.H {
-		t.Errorf("the open subject is %v high, %v closed", open.H, closed.H)
+	for range 3 {
+		tt.Advance(20 * time.Millisecond)
+		tt.Frame()
+	}
+	// Open, its first line beside the refs, the rest below them at the
+	// row's whole width, not in a column beside them.
+	ref, _ := tt.Find("origin/feature/a-branch-of-a-long-name")
+	var parts []string
+	var bottom, right float32
+	for _, txt := range tt.Texts() {
+		if txt != "" && strings.Contains(subject, txt) {
+			r, _ := tt.Find(txt)
+			parts = append(parts, txt)
+			bottom, right = max(bottom, r.Y+r.H), max(right, r.X+r.W)
+		}
+	}
+	switch {
+	case hs.opened["c1"] == nil || strings.Join(parts, " ") != subject:
+		t.Errorf("open, the subject shows as %q", parts)
+	case bottom-closed.Y < 2*closed.H:
+		t.Errorf("the open subject ends %v below its top, a line is %v", bottom-closed.Y, closed.H)
+	case right <= ref.X:
+		t.Errorf("the subject wraps beside the refs at %v, not under them, at %v", right, ref.X)
 	}
 }
 
@@ -1223,7 +1241,7 @@ func TestMenuName(t *testing.T) {
 	for in, want := range map[string]string{
 		"main": "main",
 		"feature/SQTDEV-12465-product-synchronization": "feature/SQTDEV-12465-p…chronization",
-		"hotfix/SQTUKI-12312_keoy-tvqp": "hotfix/SQTUKI-12312_keoy-tvqp",
+		"hotfix/SQTUKI-12312_keoy-tvqp":                "hotfix/SQTUKI-12312_keoy-tvqp",
 	} {
 		if got := menuName(in); got != want {
 			t.Errorf("menuName(%q) = %q, want %q", in, got, want)

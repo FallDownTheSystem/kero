@@ -507,38 +507,89 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 		if !hs.unpushed[cm.Hash] && !filtered {
 			fg = pal.text.Alpha(0.85)
 		}
-		subject := ui.Text(c, cm.Subject).FontSize(13).TextColor(fg).Grow(1).MinWidth(0)
-		if open {
-			// Its first line centered in the row's height, as when closed.
-			subject.LineHeight(1.3).Padding(4.5, 0, 4.5, 0).Selectable()
-			// Selectable, the subject takes the row's clicks: one that
-			// selects nothing closes the commit, as the row's would.
-			if subject.Clicked() {
-				if start, end := subject.TextSelection(); start == end {
-					a.toggleCommit(pane.ID, cm.Hash)
-				}
-			}
-		} else {
+		refsRow := func() ui.Element {
+			return ui.Row(c.Key("refs")).Height(commitRowH).Gap(7).AlignItems(ui.Center).Shrink(0).MaxWidth(hs.chipMax).Children(func() {
+				// Clipped, so that refs too many to fit are cut, not drawn
+				// over the subject.
+				ui.Row(c).Gap(7).AlignItems(ui.Center).MinWidth(0).Shrink(1).ClipX().Children(func() {
+					// Colored as the commit's lane, to match a branch to its line.
+					var lane *ui.Color
+					if !filtered {
+						lc := colors[hs.graph[i].Color%len(colors)]
+						lane = &lc
+					}
+					a.refChips(c, pal, pane, refs, lane, cm.Hash)
+				})
+				ui.Text(c, ago(cm.Time*1000, time.Now())).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
+			})
+		}
+		if !open {
 			// The refs are what one looks for in the graph: the subject
 			// gives way to them first, down to a few words (below its
 			// ellipsis, it drew it over them).
-			subject.SingleLine().Ellipsis("…").MinWidth(60)
+			ui.Text(c, cm.Subject).FontSize(13).TextColor(fg).Grow(1).SingleLine().Ellipsis("…").MinWidth(60)
+			refsRow()
+			return
 		}
-		ui.Row(c).Height(commitRowH).Gap(7).AlignItems(ui.Center).Shrink(0).MaxWidth(hs.chipMax).Children(func() {
-			// Clipped, so that refs too many to fit are cut, not drawn
-			// over the subject.
-			ui.Row(c).Gap(7).AlignItems(ui.Center).MinWidth(0).Shrink(1).ClipX().Children(func() {
-				// Colored as the commit's lane, to match a branch to its line.
-				var lane *ui.Color
-				if !filtered {
-					lc := colors[hs.graph[i].Color%len(colors)]
-					lane = &lc
-				}
-				a.refChips(c, pal, pane, refs, lane, cm.Hash)
+		// Open, the subject wraps: its first line beside the refs, as much
+		// of it as fits there, and the rest below at the row's whole
+		// width, not in a column the refs leave it.
+		text, refsAt := a.paneRef("hist-text-"+cm.Hash), a.paneRef("hist-refs-"+cm.Hash)
+		first, rest := cm.Subject, ""
+		if tw, rw := text.Bounds(c).W, refsAt.Bounds(c).W; tw > 0 && rw > 0 {
+			first, rest = splitLine(cm.Subject, tw-rw-7, func(s string) float32 {
+				w, _ := c.MeasureText(1e6, ui.Span{Text: s, Size: 13})
+				return w
 			})
-			ui.Text(c, ago(cm.Time*1000, time.Now())).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
+		} else {
+			c.After(16 * time.Millisecond) // laid out once, to measure
+		}
+		// Selectable, the subject takes the row's clicks: one that selects
+		// nothing closes the commit, as the row's would.
+		part := func(key, t string) ui.Element {
+			e := ui.Text(c.Key(key), t).FontSize(13).TextColor(fg).LineHeight(1.3).Selectable().MinWidth(0)
+			if e.Clicked() {
+				if start, end := e.TextSelection(); start == end {
+					a.toggleCommit(pane.ID, cm.Hash)
+				}
+			}
+			return e
+		}
+		ui.Column(c.Key("text")).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Bind(text).Children(func() {
+			ui.Row(c.Key("first")).Gap(7).AlignItems(ui.Start).Children(func() {
+				// Its first line centered in the row's height, as when closed.
+				part("subject", first).Grow(1).Padding(4.5, 0, 4.5, 0)
+				refsRow().Bind(refsAt)
+			})
+			if rest != "" {
+				// Right below the first line, as a line of the same text.
+				part("rest", rest).Margin(-4.5, 0, 0, 0).Padding(0, 0, 4.5, 0)
+			}
 		})
 	})
+}
+
+// splitLine splits text at a space into the most of its words that fit
+// in width, by measure, and the rest: none of them when even the first
+// doesn't fit.
+func splitLine(text string, width float32, measure func(string) float32) (first, rest string) {
+	if width <= 0 {
+		return "", text
+	}
+	if measure(text) <= width {
+		return text, ""
+	}
+	cut := 0
+	for i, r := range text {
+		if r != ' ' {
+			continue
+		}
+		if measure(text[:i]) > width {
+			break
+		}
+		cut = i
+	}
+	return text[:cut], strings.TrimLeft(text[cut:], " ")
 }
 
 // gitRef is a ref a commit's row shows: a local branch, a remote's, or a
