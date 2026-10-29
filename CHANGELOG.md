@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.1.26
+
+- A theme colors the whole window now, as it does in Ghostty: the panes,
+  their text, the accent and the terminals' colors, over its wash,
+  instead of only the wash under the cards. Settings › Appearance ›
+  **Theme** shows a row of light themes and a row of dark ones, each
+  drawn in its own colors: a click picks one for the windows of that
+  appearance, and `light:paper,dark:dusk` sets both in the
+  configuration.
+- New themes: **Paper**, white panes in ink on a flat gray, and
+  **Tide**, **Apricot**, **Aurora** and **Dune**. The dark themes no
+  longer look alike: each has a hue of its own.
+- Each theme tints the programs' colors to its hue, so that they sit
+  with the theme rather than look the same in every one.
+- In the light, a pane lies flat on the theme with a hairline instead of
+  a shadow.
+- A Ghostty theme, one of Kero's or your own in ~/.config/ghostty/themes,
+  still colors the window, its panes and terminals: Settings ›
+  Appearance › **Ghostty themes** picks one for light windows and one
+  for dark, in place of the theme above, and Terminal has no Colors
+  group anymore. `theme` in the configuration is the window's theme,
+  and `background` still picks Kero's theme where it is `kero`.
+
 ## 2.1.25
 
 - A session's row in the sidebar has a second line: the message its
