@@ -76,7 +76,9 @@ func (a *App) paneEditor(c *ui.Context, pal *palette, s *proto.Session, p *proto
 		}
 		a.lastEdit[s.ID] = p.ID
 	}
-	if ref.Focused(c) && a.focusOf(s) != p.ID {
+	// Focus within the pane, as on the preview's text, which a click
+	// selects in, takes the pane: the card sees no press of it.
+	if ref.FocusWithin(c) && a.focusOf(s) != p.ID {
 		a.setFocus(s, p.ID)
 	}
 }

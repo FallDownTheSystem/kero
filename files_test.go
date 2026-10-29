@@ -248,6 +248,25 @@ func TestMarkdownPreview(t *testing.T) {
 	}
 	a.set.FocusFollowsMouse = false
 
+	// Without it, a click in the preview focuses the pane.
+	tt.ClickAt(ar.X+40, 340)
+	tt.Frame()
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("focus %q before the click, want a", got)
+	}
+	tt.ClickAt(br.X+40, 500) // below the text, in the preview
+	tt.Frame()
+	if got := a.focusOf(s); got != "b" {
+		t.Errorf("clicked in the preview, focus %q, want b", got)
+	}
+	tt.ClickAt(ar.X+40, 340)
+	tt.Frame()
+	tt.Click("Title")
+	tt.Frame()
+	if got := a.focusOf(s); got != "b" {
+		t.Errorf("clicked on the preview's text, focus %q, want b", got)
+	}
+
 	if err := tt.Click("Preview Markdown"); err != nil {
 		t.Fatal(err)
 	}
