@@ -5,6 +5,27 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.1
+
+- Based on Kero 2.1.27, with 2.1.25 and 2.1.26 (see the
+  [changelog](CHANGELOG.md)): a theme now colors the whole window, its
+  panes, text, accent and terminals; Paper and four more themes; a
+  second line for each session in the sidebar (Settings › General ›
+  Sidebar rows); scrolling speed for the wheel and the trackpad
+  (Settings › Terminal › Scrolling); a symlinked configuration stays one
+- Built on MyGo 0.7.3: on Windows, a window that grows shows its
+  background rather than black, and a window no longer looks magnified
+  while it resizes
+- Theme colors moved with upstream's: Settings › Appearance › Ghostty
+  themes chooses a Ghostty theme or your own, with each theme's swatch,
+  a preview of the theme under the pointer, now in the whole window,
+  and Customize Theme beside it. Terminal has no Colors group anymore
+- File Colors (`file-theme`) offer Kero's themes by name; a file theme
+  of `kero` reads as `plain`, Kero's former colors. A card in a file
+  theme of its own takes that theme's text colors too
+- The Explorer lies flat on the theme with a hairline in the light, as
+  the panes do
+
 ## 2.1.24-fork.11
 
 - Uncommitted lists the changes not staged first and the staged ones
