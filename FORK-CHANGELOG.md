@@ -5,6 +5,16 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.10
+
+- The Changes view shows a file's whole name when the row has room for
+  it, and cut, keeps its extension: report_FI….pdf
+- Checking out a remote's branch, as origin/master, works when your
+  branch of its name is behind it: Kero brings it up to the remote's.
+  When each has commits the other lacks, it says to switch and pull
+- An open commit's subject in History wraps under its branch pills,
+  across the row, rather than in a narrow column beside them
+
 ## 2.1.27-fork.9
 
 - Files and their Markdown previews zoom on their own: Smaller Text and
