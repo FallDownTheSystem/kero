@@ -1216,3 +1216,17 @@ func TestStageMovesAtOnce(t *testing.T) {
 		}
 	}
 }
+
+// A long branch's name in a menu's item keeps its start and its end, and
+// a short one stays whole.
+func TestMenuName(t *testing.T) {
+	for in, want := range map[string]string{
+		"main": "main",
+		"feature/SQTDEV-12465-product-synchronization": "feature/SQTDEV-12465-p…chronization",
+		"hotfix/SQTUKI-12312_keoy-tvqp": "hotfix/SQTUKI-12312_keoy-tvqp",
+	} {
+		if got := menuName(in); got != want {
+			t.Errorf("menuName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

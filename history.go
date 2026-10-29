@@ -988,7 +988,7 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 	default:
 		m.Submenu(locales.HistoryCopyBranch(), func(sm *ui.Menu) {
 			for _, name := range names {
-				if sm.Item(name).Chosen() {
+				if sm.Item(menuName(name)).Chosen() {
 					c.WriteClipboard(name)
 				}
 			}
@@ -1020,10 +1020,10 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 	}
 	for _, name := range worktrees {
 		path := a.side.git.hist.worktrees[name]
-		if m.Item(locales.HistoryOpenWorktree(name)).Chosen() {
+		if m.Item(locales.HistoryOpenWorktree(menuName(name))).Chosen() {
 			a.openWorktree(id, path)
 		}
-		if m.Item(locales.HistoryCopyWorktreePath(name)).Chosen() {
+		if m.Item(locales.HistoryCopyWorktreePath(menuName(name))).Chosen() {
 			c.WriteClipboard(path)
 		}
 	}
@@ -1038,13 +1038,13 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 			})
 		}
 	case 1:
-		if b := targets[0]; m.Item(locales.HistoryCheckoutBranch(b.Name)).Disabled(b.Current).Chosen() {
+		if b := targets[0]; m.Item(locales.HistoryCheckoutBranch(menuName(b.Name))).Disabled(b.Current).Chosen() {
 			a.switchBranch(s, pane, b, cm.Hash)
 		}
 	default:
 		m.Submenu(locales.HistoryCheckout(), func(sm *ui.Menu) {
 			for _, b := range targets {
-				if sm.Item(b.Name).Disabled(b.Current).Chosen() {
+				if sm.Item(menuName(b.Name)).Disabled(b.Current).Chosen() {
 					a.switchBranch(s, pane, b, cm.Hash)
 				}
 			}

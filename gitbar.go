@@ -499,24 +499,37 @@ func (a *App) branchMenuItems(m *ui.Menu, s *proto.Session, pane *proto.Pane, b 
 // as a commit, or the branch rebased onto it. head: it is HEAD's own.
 func (a *App) mergeItems(m *ui.Menu, pane *proto.Pane, rev, name string, head bool) {
 	g := pane.Git
-	branch := branchName(g)
+	branch := menuName(branchName(g))
+	label := menuName(name)
 	off := head || !canMergeInto(g)
-	if m.Item(locales.GitMergeInto(name, branch)).Disabled(off).Chosen() {
+	if m.Item(locales.GitMergeInto(label, branch)).Disabled(off).Chosen() {
 		a.side.git.menu.open = false
 		a.mergeInto(pane, rev, name, false)
 	}
-	if m.Item(locales.GitMergeIntoNoFF(name, branch)).Disabled(off).Chosen() {
+	if m.Item(locales.GitMergeIntoNoFF(label, branch)).Disabled(off).Chosen() {
 		a.side.git.menu.open = false
 		a.mergeInto(pane, rev, name, true)
 	}
-	if m.Item(locales.GitRebaseOnto(branch, name)).Disabled(off || g.Branch == "").Chosen() {
+	if m.Item(locales.GitRebaseOnto(branch, label)).Disabled(off || g.Branch == "").Chosen() {
 		a.side.git.menu.open = false
 		a.rebaseOnto(pane, rev, name)
 	}
-	if m.Item(locales.GitRebaseInteractive(branch, name)).Disabled(off || g.Branch == "").Chosen() {
+	if m.Item(locales.GitRebaseInteractive(branch, label)).Disabled(off || g.Branch == "").Chosen() {
 		a.side.git.menu.open = false
 		a.openRebase(pane, rev)
 	}
+}
+
+// menuName is a branch's name as a menu's item says it: a long one cut in
+// its middle, keeping its start, as a ticket's key, and its end, so that
+// the menu doesn't grow across the window.
+func menuName(name string) string {
+	const head, tail = 22, 12
+	r := []rune(name)
+	if len(r) <= head+tail+1 {
+		return name
+	}
+	return string(r[:head]) + "…" + string(r[len(r)-tail:])
 }
 
 // deleteBranch deletes a local branch once the user says so; one whose

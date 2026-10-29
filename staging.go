@@ -240,10 +240,10 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 				a.openMerge(pane, f)
 			}
 			m.Separator()
-			if m.Item(locales.GitUseSide(ours)).Chosen() {
+			if m.Item(locales.GitUseSide(menuName(ours))).Chosen() {
 				a.resolveSide(pane, f, git.SideOurs, ours)
 			}
-			if m.Item(locales.GitUseSide(theirs)).Chosen() {
+			if m.Item(locales.GitUseSide(menuName(theirs))).Chosen() {
 				a.resolveSide(pane, f, git.SideTheirs, theirs)
 			}
 			m.Separator()

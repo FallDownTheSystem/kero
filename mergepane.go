@@ -168,10 +168,10 @@ func (a *App) mergeBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.P
 		}
 		b.Children(func() { ui.Icon(c, mergeIcon).Size(15, 15) })
 		b.Menu(func(mn *ui.Menu) {
-			if mn.Item(locales.MergeUseAll(ours)).Chosen() {
+			if mn.Item(locales.MergeUseAll(menuName(ours))).Chosen() {
 				m.ChooseAll(editor.MergeOurs)
 			}
-			if mn.Item(locales.MergeUseAll(theirs)).Chosen() {
+			if mn.Item(locales.MergeUseAll(menuName(theirs))).Chosen() {
 				m.ChooseAll(editor.MergeTheirs)
 			}
 			mn.Separator()
