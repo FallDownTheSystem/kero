@@ -71,6 +71,7 @@ kero config check             # 不明なキーと不正な値を報告
 | キー                  | デフォルト | 説明                                                                     |
 | --------------------- | ---------- | ------------------------------------------------------------------------ |
 | `theme`               | `paper`    | ウインドウ、ペイン、ターミナルのテーマ: Kero のテーマ（`petal`、`mist`、`meadow`、`dusk`、`tide`、`apricot`、`aurora`、`dune`、`paper`、`plain`）、任意の Ghostty テーマ、または `light:paper,dark:dusk` のように外観ごとに |
+| `file-theme`          | `terminal` | エディタのペインとエクスプローラのコードの色: ターミナルのテーマには `terminal`、それ以外は `theme` と同じ書き方 |
 | `font-family`         |            | 空欄なら Kero に付属の JetBrains Mono Nerd Font、`monospace` ならシステムのもの、またはインストール済みの任意のファミリー |
 | `font-size`           | `13`       | ポイント単位                                                             |
 | `font-weight`         | `400`      | `100` から `900`                                                         |
@@ -85,6 +86,8 @@ kero config check             # 不明なキーと不正な値を報告
 | `clipboard-read`      | `ask`      | プログラムによるクリップボードの読み取り（OSC 52）: `ask`、`allow`、`deny` |
 | `right-click-action`  | `context-menu` | `context-menu`、`paste`、`copy-or-paste`                             |
 | `mouse-scroll-multiplier` | `precision:1,discrete:3` | スクロールの量。Ghostty と同じく、`precision:` はトラックパッドのスクロールの倍率、`discrete:` はマウスホイール 1 ノッチでスクロールする行数（Windows では 3 行設定のときの 1 ノッチ）。数値を 1 つだけ書くと両方に適用。`0.01` から `10000` |
+
+独自のテーマは、Ghostty のテーマフォルダにある Ghostty 形式のファイルです: `$XDG_CONFIG_HOME/ghostty/themes`（設定されている場合）、それ以外は Windows で `%LOCALAPPDATA%\ghostty\themes`、その他で `~/.config/ghostty/themes`。設定 › 外観で、Ghostty のテーマのメニューでテーマにポインタを置くとウインドウでプレビューでき、「テーマをカスタマイズ」で使用中のテーマのすべての色を編集して、独自のテーマとしてそこに保存できます。ファイルのテーマはエディタのペインとエクスプローラを彩ります。そこに表示されるコードはファイルのテーマの 16 色を使います: キーワードはマゼンタ、文字列は緑、型は黄、関数は青、コメントは明るい黒。ファイルのテーマは設定 › 外観 › ファイルの色で選びます。既定ではターミナルのテーマと同じです。
 
 ## シェル
 

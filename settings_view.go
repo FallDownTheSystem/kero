@@ -79,6 +79,9 @@ type settingsState struct {
 	hostEdit     hostDraft                  // a host's, as the user edits it
 	tailnet      tailnetLook                // this machine on the tailnet, for the Hosts page
 	confirm      *confirmation              // a question, asked in this window
+	listed       map[string]*terminal.Theme // the themes the menus listed, by name
+	themeEdit    *themeDraft                // the theme being edited
+	preview      themePreview               // the themes the page being built previews
 }
 
 // openSettings shows the Settings window, on a page.
@@ -103,6 +106,7 @@ func (a *App) openSettings(page string) {
 		}
 	})
 	a.ss.draft = map[string]string{}
+	a.ss.listed = nil // the theme files may have changed since
 	a.refreshAgents()
 	a.refreshService()
 	a.setWin = mygo.NewWindow(framed(mygo.WindowOptions{
@@ -116,6 +120,10 @@ func (a *App) openSettings(page string) {
 		a.setWin = nil
 		a.setRecording("") // the menus take their shortcuts back
 		a.ss.query = ""
+		// A theme edited and not saved is gone, and the terminals show the
+		// themes chosen again.
+		a.ss.themeEdit = nil
+		a.setPreview(themePreview{})
 	})
 }
 
@@ -249,6 +257,8 @@ func (a *App) settingsView(c *ui.Context) {
 				box := ui.Box(c.Key("page")).Grow(1).MinHeight(0)
 				_, py, over := box.PointerPosition()
 				edgeOn := sc.Y > 0.5 || over && py < headerH
+				// The page previews themes as it is built, none unless it does.
+				a.ss.preview = themePreview{}
 				box.Children(func() {
 					ui.Scroll(c.Key("page-"+page.id)).Fill().Padding(headerH+16, 24, 28, 24).ScrollbarInsets(headerH, 0, 0).TrackScroll(sc).Children(func() {
 						ui.Column(c).Gap(22).MaxWidth(620).Children(func() {
@@ -301,6 +311,7 @@ func (a *App) settingsView(c *ui.Context) {
 	if !reflect.DeepEqual(a.set, a.applied) {
 		a.applySettings(a.set)
 	}
+	a.setPreview(a.ss.preview)
 }
 
 // searchSettings applies the sidebar's search: it shows a page with
@@ -741,28 +752,8 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 			})
 		}
 	})
-	// A Ghostty theme in place of kero's: none goes back to kero's default.
-	none := locales.SetThemeNone()
-	themes := append([]string{none}, terminal.GhosttyThemes()...)
-	ghostty := func(key, value string, choose func(string)) {
-		if keroID(value) != "" {
-			value = none
-		}
-		a.searchPopup(c, key, value, themes, 240, nil, pal, func(v string) {
-			if v == none {
-				v = settings.Default().LightTheme
-			}
-			choose(v)
-		})
-	}
-	settingsGroup(c, pal, locales.SetColors(), locales.SetColorsDetail(), func() {
-		settingRow(c, pal, locales.SetLightWindows(), "", func() {
-			ghostty("light", s.LightTheme, func(v string) { a.set.LightTheme = v })
-		})
-		settingRow(c, pal, locales.SetDarkWindows(), "", func() {
-			ghostty("dark", s.DarkTheme, func(v string) { a.set.DarkTheme = v })
-		})
-	})
+	a.colorSettings(c, pal)
+	a.fileColorSettings(c, pal)
 }
 
 // languageName names a language in itself, as "简体中文", so that whoever
@@ -893,7 +884,7 @@ var otherFonts = sync.OnceValue(func() []string {
 
 func (a *App) terminalPage(c *ui.Context, pal *palette) {
 	s := &a.set
-	a.terminalPreview(c, pal)
+	a.terminalPreview(c, pal, a.shownTheme(c.Theme().Dark))
 	settingsGroup(c, pal, locales.SetText(), "", func() {
 		settingRow(c, pal, locales.SetFont(), locales.SetFontDetail(), func() {
 			// The picker's names for the settings' values: "" is kero's
@@ -909,7 +900,7 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			if !slices.Contains(opts, family) {
 				opts = append([]string{family}, opts...)
 			}
-			a.searchPopup(c, "font", family, opts, 240, locales.SetUseFont, pal, func(v string) {
+			a.searchPopup(c, "font", family, opts, 240, locales.SetUseFont, nil, pal, func(v string) {
 				switch v {
 				case "JetBrains Mono Nerd Font":
 					v = ""
@@ -990,13 +981,8 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 }
 
 // terminalPreview shows text as the terminals would draw it: the font,
-// its size and line height, and the colors of the window's appearance.
-func (a *App) terminalPreview(c *ui.Context, pal *palette) {
-	light, dark := a.termThemes()
-	th := light
-	if pal.dark {
-		th = dark
-	}
+// its size and line height, and th's colors.
+func (a *App) terminalPreview(c *ui.Context, pal *palette, th *terminal.Theme) {
 	font := a.termFamily()
 	features := ""
 	if !a.set.Ligatures {

@@ -212,12 +212,18 @@ func (a *App) dims(p *proto.Pane) bool {
 func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi bool) {
 	focused := p.ID == a.focusOf(s)
 	dim := multi && a.dims(p)
-	bg := pal.card
-	// A browser's page stays opaque, so its toolbar does too: the veil
-	// alone fades it.
-	if dim && !focused && !p.Browser() {
-		bg = pal.cardDim
+	// A terminal's card is its theme's, an editor's the files' theme's (see
+	// cardPalette); the window's palette draws the card's shadow still. A
+	// browser's page stays opaque, so its toolbar does too: the veil alone
+	// fades it.
+	cpal := pal
+	switch {
+	case p.Terminal():
+		cpal = cardPalette(pal, a.activeTheme(c.Theme().Dark))
+	case p.Editor():
+		cpal = cardPalette(pal, a.fileTheme(c.Theme().Dark))
 	}
+	bg := cardBackground(pal, cpal, dim && !focused && !p.Browser())
 	card := ui.Column(c.Key("pane-" + p.ID)).Grow(1).Basis(0).MinWidth(0).MinHeight(0).Radius(14).Clip().Bind(a.paneRef("card-" + p.ID))
 	paned(card.Background(card.AnimateColor("bg", bg, ui.Animation{Duration: 140 * time.Millisecond})), pal)
 	hovered := card.Hovered()
@@ -262,16 +268,16 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 			// A browser's address bar is its header.
 			dragging = a.paneBrowser(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
 		case p.Editor():
-			dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
-			a.paneEditor(c, pal, s, p)
+			dragging = a.paneHeader(c, cpal, bar, shown, s, p, top, left, right, multi, focused, hovered)
+			a.paneEditor(c, cpal, s, p)
 		default:
-			dragging = a.paneHeader(c, pal, bar, shown, s, p, top, left, right, multi, focused, hovered)
-			a.paneTerminal(c, pal, s, p)
+			dragging = a.paneHeader(c, cpal, bar, shown, s, p, top, left, right, multi, focused, hovered)
+			a.paneTerminal(c, cpal, s, p)
 		}
 		if dim {
 			// The panes the user is not in fade, text and all; a page too,
 			// as what paints after a web view shows over it.
-			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(pal.veil)
+			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(cpal.veil)
 			v.Opacity(v.Animate("on", b2f(!focused), 160*time.Millisecond))
 		}
 		if zone != zoneNone {

@@ -2824,14 +2824,14 @@ func (msgs Messages) SetColors() string {
 	return Catalog.Format(msgs.locale, "setColors", nil)
 }
 
-// SetColorsDetail says "One of Ghostty’s themes, or your own in ~/.config/ghostty/themes, colors the window, its panes and terminals in pla…"
+// SetColorsDetail says "One of Ghostty’s themes, or your own in {dir}, colors the window, its panes and terminals in place of the theme abo…"
 // in the language the app shows.
-func SetColorsDetail() string { return In(i18n.Locale()).SetColorsDetail() }
+func SetColorsDetail(dir string) string { return In(i18n.Locale()).SetColorsDetail(dir) }
 
-// SetColorsDetail says "One of Ghostty’s themes, or your own in ~/.config/ghostty/themes, colors the window, its panes and terminals in pla…"
+// SetColorsDetail says "One of Ghostty’s themes, or your own in {dir}, colors the window, its panes and terminals in place of the theme abo…"
 // in the language of msgs.
-func (msgs Messages) SetColorsDetail() string {
-	return Catalog.Format(msgs.locale, "setColorsDetail", nil)
+func (msgs Messages) SetColorsDetail(dir string) string {
+	return Catalog.Format(msgs.locale, "setColorsDetail", map[string]any{"dir": dir})
 }
 
 // SetLightWindows says "Light windows"
@@ -2862,6 +2862,366 @@ func SetThemeNone() string { return In(i18n.Locale()).SetThemeNone() }
 // in the language of msgs.
 func (msgs Messages) SetThemeNone() string {
 	return Catalog.Format(msgs.locale, "setThemeNone", nil)
+}
+
+// SetFileColors says "File Colors"
+// in the language the app shows.
+func SetFileColors() string { return In(i18n.Locale()).SetFileColors() }
+
+// SetFileColors says "File Colors"
+// in the language of msgs.
+func (msgs Messages) SetFileColors() string {
+	return Catalog.Format(msgs.locale, "setFileColors", nil)
+}
+
+// SetFileColorsDetail says "Code in editor panes and the Explorer: in the terminals’ theme, or a theme of its own."
+// in the language the app shows.
+func SetFileColorsDetail() string { return In(i18n.Locale()).SetFileColorsDetail() }
+
+// SetFileColorsDetail says "Code in editor panes and the Explorer: in the terminals’ theme, or a theme of its own."
+// in the language of msgs.
+func (msgs Messages) SetFileColorsDetail() string {
+	return Catalog.Format(msgs.locale, "setFileColorsDetail", nil)
+}
+
+// SetSameAsTerminal says "Same as Terminal"
+// in the language the app shows.
+func SetSameAsTerminal() string { return In(i18n.Locale()).SetSameAsTerminal() }
+
+// SetSameAsTerminal says "Same as Terminal"
+// in the language of msgs.
+func (msgs Messages) SetSameAsTerminal() string {
+	return Catalog.Format(msgs.locale, "setSameAsTerminal", nil)
+}
+
+// SetCustomizeTheme says "Customize Theme"
+// in the language the app shows.
+func SetCustomizeTheme() string { return In(i18n.Locale()).SetCustomizeTheme() }
+
+// SetCustomizeTheme says "Customize Theme"
+// in the language of msgs.
+func (msgs Messages) SetCustomizeTheme() string {
+	return Catalog.Format(msgs.locale, "setCustomizeTheme", nil)
+}
+
+// SetEditLightTheme says "Theme for Light Windows"
+// in the language the app shows.
+func SetEditLightTheme() string { return In(i18n.Locale()).SetEditLightTheme() }
+
+// SetEditLightTheme says "Theme for Light Windows"
+// in the language of msgs.
+func (msgs Messages) SetEditLightTheme() string {
+	return Catalog.Format(msgs.locale, "setEditLightTheme", nil)
+}
+
+// SetEditDarkTheme says "Theme for Dark Windows"
+// in the language the app shows.
+func SetEditDarkTheme() string { return In(i18n.Locale()).SetEditDarkTheme() }
+
+// SetEditDarkTheme says "Theme for Dark Windows"
+// in the language of msgs.
+func (msgs Messages) SetEditDarkTheme() string {
+	return Catalog.Format(msgs.locale, "setEditDarkTheme", nil)
+}
+
+// SetThemeSavesTo says "Saved among your themes, in {dir}."
+// in the language the app shows.
+func SetThemeSavesTo(dir string) string { return In(i18n.Locale()).SetThemeSavesTo(dir) }
+
+// SetThemeSavesTo says "Saved among your themes, in {dir}."
+// in the language of msgs.
+func (msgs Messages) SetThemeSavesTo(dir string) string {
+	return Catalog.Format(msgs.locale, "setThemeSavesTo", map[string]any{"dir": dir})
+}
+
+// SetThemeName says "Name"
+// in the language the app shows.
+func SetThemeName() string { return In(i18n.Locale()).SetThemeName() }
+
+// SetThemeName says "Name"
+// in the language of msgs.
+func (msgs Messages) SetThemeName() string {
+	return Catalog.Format(msgs.locale, "setThemeName", nil)
+}
+
+// SetThemeReplaces says "Replaces your theme of this name."
+// in the language the app shows.
+func SetThemeReplaces() string { return In(i18n.Locale()).SetThemeReplaces() }
+
+// SetThemeReplaces says "Replaces your theme of this name."
+// in the language of msgs.
+func (msgs Messages) SetThemeReplaces() string {
+	return Catalog.Format(msgs.locale, "setThemeReplaces", nil)
+}
+
+// SetThemeNameEmpty says "Give the theme a name."
+// in the language the app shows.
+func SetThemeNameEmpty() string { return In(i18n.Locale()).SetThemeNameEmpty() }
+
+// SetThemeNameEmpty says "Give the theme a name."
+// in the language of msgs.
+func (msgs Messages) SetThemeNameEmpty() string {
+	return Catalog.Format(msgs.locale, "setThemeNameEmpty", nil)
+}
+
+// SetThemeNameInvalid says "A name can’t start with a dot or have / \\ : * ? \" < > |."
+// in the language the app shows.
+func SetThemeNameInvalid() string { return In(i18n.Locale()).SetThemeNameInvalid() }
+
+// SetThemeNameInvalid says "A name can’t start with a dot or have / \\ : * ? \" < > |."
+// in the language of msgs.
+func (msgs Messages) SetThemeNameInvalid() string {
+	return Catalog.Format(msgs.locale, "setThemeNameInvalid", nil)
+}
+
+// SetThemeNameTaken says "“{name}” is a theme of Ghostty’s: choose another name."
+// in the language the app shows.
+func SetThemeNameTaken(name string) string { return In(i18n.Locale()).SetThemeNameTaken(name) }
+
+// SetThemeNameTaken says "“{name}” is a theme of Ghostty’s: choose another name."
+// in the language of msgs.
+func (msgs Messages) SetThemeNameTaken(name string) string {
+	return Catalog.Format(msgs.locale, "setThemeNameTaken", map[string]any{"name": name})
+}
+
+// SetThemeCopyName says "{name} Custom"
+// in the language the app shows.
+func SetThemeCopyName(name string) string { return In(i18n.Locale()).SetThemeCopyName(name) }
+
+// SetThemeCopyName says "{name} Custom"
+// in the language of msgs.
+func (msgs Messages) SetThemeCopyName(name string) string {
+	return Catalog.Format(msgs.locale, "setThemeCopyName", map[string]any{"name": name})
+}
+
+// SetThemeSaveFailed says "Couldn’t save the theme: {error}"
+// in the language the app shows.
+func SetThemeSaveFailed(error string) string { return In(i18n.Locale()).SetThemeSaveFailed(error) }
+
+// SetThemeSaveFailed says "Couldn’t save the theme: {error}"
+// in the language of msgs.
+func (msgs Messages) SetThemeSaveFailed(error string) string {
+	return Catalog.Format(msgs.locale, "setThemeSaveFailed", map[string]any{"error": error})
+}
+
+// SetThemeBase says "Background and text"
+// in the language the app shows.
+func SetThemeBase() string { return In(i18n.Locale()).SetThemeBase() }
+
+// SetThemeBase says "Background and text"
+// in the language of msgs.
+func (msgs Messages) SetThemeBase() string {
+	return Catalog.Format(msgs.locale, "setThemeBase", nil)
+}
+
+// SetThemeBackground says "Background"
+// in the language the app shows.
+func SetThemeBackground() string { return In(i18n.Locale()).SetThemeBackground() }
+
+// SetThemeBackground says "Background"
+// in the language of msgs.
+func (msgs Messages) SetThemeBackground() string {
+	return Catalog.Format(msgs.locale, "setThemeBackground", nil)
+}
+
+// SetThemeForeground says "Text"
+// in the language the app shows.
+func SetThemeForeground() string { return In(i18n.Locale()).SetThemeForeground() }
+
+// SetThemeForeground says "Text"
+// in the language of msgs.
+func (msgs Messages) SetThemeForeground() string {
+	return Catalog.Format(msgs.locale, "setThemeForeground", nil)
+}
+
+// SetThemeCursorText says "Text under the cursor"
+// in the language the app shows.
+func SetThemeCursorText() string { return In(i18n.Locale()).SetThemeCursorText() }
+
+// SetThemeCursorText says "Text under the cursor"
+// in the language of msgs.
+func (msgs Messages) SetThemeCursorText() string {
+	return Catalog.Format(msgs.locale, "setThemeCursorText", nil)
+}
+
+// SetThemeSelection says "Selection"
+// in the language the app shows.
+func SetThemeSelection() string { return In(i18n.Locale()).SetThemeSelection() }
+
+// SetThemeSelection says "Selection"
+// in the language of msgs.
+func (msgs Messages) SetThemeSelection() string {
+	return Catalog.Format(msgs.locale, "setThemeSelection", nil)
+}
+
+// SetThemeSelectionText says "Selected text"
+// in the language the app shows.
+func SetThemeSelectionText() string { return In(i18n.Locale()).SetThemeSelectionText() }
+
+// SetThemeSelectionText says "Selected text"
+// in the language of msgs.
+func (msgs Messages) SetThemeSelectionText() string {
+	return Catalog.Format(msgs.locale, "setThemeSelectionText", nil)
+}
+
+// SetThemeMatches says "Search matches"
+// in the language the app shows.
+func SetThemeMatches() string { return In(i18n.Locale()).SetThemeMatches() }
+
+// SetThemeMatches says "Search matches"
+// in the language of msgs.
+func (msgs Messages) SetThemeMatches() string {
+	return Catalog.Format(msgs.locale, "setThemeMatches", nil)
+}
+
+// SetThemeMatch says "Match"
+// in the language the app shows.
+func SetThemeMatch() string { return In(i18n.Locale()).SetThemeMatch() }
+
+// SetThemeMatch says "Match"
+// in the language of msgs.
+func (msgs Messages) SetThemeMatch() string {
+	return Catalog.Format(msgs.locale, "setThemeMatch", nil)
+}
+
+// SetThemeMatchText says "Match text"
+// in the language the app shows.
+func SetThemeMatchText() string { return In(i18n.Locale()).SetThemeMatchText() }
+
+// SetThemeMatchText says "Match text"
+// in the language of msgs.
+func (msgs Messages) SetThemeMatchText() string {
+	return Catalog.Format(msgs.locale, "setThemeMatchText", nil)
+}
+
+// SetThemeCurrentMatch says "Current match"
+// in the language the app shows.
+func SetThemeCurrentMatch() string { return In(i18n.Locale()).SetThemeCurrentMatch() }
+
+// SetThemeCurrentMatch says "Current match"
+// in the language of msgs.
+func (msgs Messages) SetThemeCurrentMatch() string {
+	return Catalog.Format(msgs.locale, "setThemeCurrentMatch", nil)
+}
+
+// SetThemeCurrentMatchText says "Current match text"
+// in the language the app shows.
+func SetThemeCurrentMatchText() string { return In(i18n.Locale()).SetThemeCurrentMatchText() }
+
+// SetThemeCurrentMatchText says "Current match text"
+// in the language of msgs.
+func (msgs Messages) SetThemeCurrentMatchText() string {
+	return Catalog.Format(msgs.locale, "setThemeCurrentMatchText", nil)
+}
+
+// SetThemeNormal says "Normal colors"
+// in the language the app shows.
+func SetThemeNormal() string { return In(i18n.Locale()).SetThemeNormal() }
+
+// SetThemeNormal says "Normal colors"
+// in the language of msgs.
+func (msgs Messages) SetThemeNormal() string {
+	return Catalog.Format(msgs.locale, "setThemeNormal", nil)
+}
+
+// SetThemeBright says "Bright colors"
+// in the language the app shows.
+func SetThemeBright() string { return In(i18n.Locale()).SetThemeBright() }
+
+// SetThemeBright says "Bright colors"
+// in the language of msgs.
+func (msgs Messages) SetThemeBright() string {
+	return Catalog.Format(msgs.locale, "setThemeBright", nil)
+}
+
+// SetColorBlack says "Black"
+// in the language the app shows.
+func SetColorBlack() string { return In(i18n.Locale()).SetColorBlack() }
+
+// SetColorBlack says "Black"
+// in the language of msgs.
+func (msgs Messages) SetColorBlack() string {
+	return Catalog.Format(msgs.locale, "setColorBlack", nil)
+}
+
+// SetColorRed says "Red"
+// in the language the app shows.
+func SetColorRed() string { return In(i18n.Locale()).SetColorRed() }
+
+// SetColorRed says "Red"
+// in the language of msgs.
+func (msgs Messages) SetColorRed() string {
+	return Catalog.Format(msgs.locale, "setColorRed", nil)
+}
+
+// SetColorGreen says "Green"
+// in the language the app shows.
+func SetColorGreen() string { return In(i18n.Locale()).SetColorGreen() }
+
+// SetColorGreen says "Green"
+// in the language of msgs.
+func (msgs Messages) SetColorGreen() string {
+	return Catalog.Format(msgs.locale, "setColorGreen", nil)
+}
+
+// SetColorYellow says "Yellow"
+// in the language the app shows.
+func SetColorYellow() string { return In(i18n.Locale()).SetColorYellow() }
+
+// SetColorYellow says "Yellow"
+// in the language of msgs.
+func (msgs Messages) SetColorYellow() string {
+	return Catalog.Format(msgs.locale, "setColorYellow", nil)
+}
+
+// SetColorBlue says "Blue"
+// in the language the app shows.
+func SetColorBlue() string { return In(i18n.Locale()).SetColorBlue() }
+
+// SetColorBlue says "Blue"
+// in the language of msgs.
+func (msgs Messages) SetColorBlue() string {
+	return Catalog.Format(msgs.locale, "setColorBlue", nil)
+}
+
+// SetColorMagenta says "Magenta"
+// in the language the app shows.
+func SetColorMagenta() string { return In(i18n.Locale()).SetColorMagenta() }
+
+// SetColorMagenta says "Magenta"
+// in the language of msgs.
+func (msgs Messages) SetColorMagenta() string {
+	return Catalog.Format(msgs.locale, "setColorMagenta", nil)
+}
+
+// SetColorCyan says "Cyan"
+// in the language the app shows.
+func SetColorCyan() string { return In(i18n.Locale()).SetColorCyan() }
+
+// SetColorCyan says "Cyan"
+// in the language of msgs.
+func (msgs Messages) SetColorCyan() string {
+	return Catalog.Format(msgs.locale, "setColorCyan", nil)
+}
+
+// SetColorWhite says "White"
+// in the language the app shows.
+func SetColorWhite() string { return In(i18n.Locale()).SetColorWhite() }
+
+// SetColorWhite says "White"
+// in the language of msgs.
+func (msgs Messages) SetColorWhite() string {
+	return Catalog.Format(msgs.locale, "setColorWhite", nil)
+}
+
+// SetColorBright says "Bright {color}"
+// in the language the app shows.
+func SetColorBright(color string) string { return In(i18n.Locale()).SetColorBright(color) }
+
+// SetColorBright says "Bright {color}"
+// in the language of msgs.
+func (msgs Messages) SetColorBright(color string) string {
+	return Catalog.Format(msgs.locale, "setColorBright", map[string]any{"color": color})
 }
 
 // SetCursor says "Cursor"

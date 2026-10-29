@@ -84,7 +84,7 @@ func popup[T comparable](c *ui.Context, key string, value *T, options []T, label
 				// as the current item, highlighted as the menu opens, is
 				// then.
 				hi := item.Highlighted() && (item.Hovered() || !over && o != *value)
-				menuRow(c, item, label(o), o == *value, hi, pal)
+				menuRow(c, item, label(o), o == *value, hi, pal, nil)
 			}
 		})
 	})
@@ -132,10 +132,12 @@ func menuPanel(panel ui.Element, pal *palette) ui.Element {
 // menuItem styles an item of a menu: a check by the current one, and the
 // accent behind the one the pointer or the arrows are on.
 func menuItem(c *ui.Context, item ui.Element, label string, current bool, pal *palette) {
-	menuRow(c, item, label, current, item.Highlighted(), pal)
+	menuRow(c, item, label, current, item.Highlighted(), pal, nil)
 }
 
-func menuRow(c *ui.Context, item ui.Element, label string, current, highlighted bool, pal *palette) {
+// menuRow draws an item of a menu; trail, when set, draws after its label,
+// at the item's end.
+func menuRow(c *ui.Context, item ui.Element, label string, current, highlighted bool, pal *palette, trail func()) {
 	item.Height(menuItemH).Padding(0, 12, 0, 6).Gap(5).Radius(7).AlignItems(ui.Center)
 	fg := pal.text
 	if highlighted {
@@ -148,6 +150,10 @@ func menuRow(c *ui.Context, item ui.Element, label string, current, highlighted 
 			mark.Opacity(0)
 		}
 		ui.Text(c, label).FontSize(13).SingleLine().Ellipsis("…").MinWidth(0)
+		if trail != nil {
+			ui.Spacer(c)
+			trail()
+		}
 	})
 }
 
@@ -158,6 +164,7 @@ type searchMenu struct {
 	query   string
 	hi      int
 	hovered string  // the item the pointer came to last
+	lit     string  // the highlighted item
 	reveal  bool    // the highlighted item scrolls into view, once
 	at      ui.Rect // the button's bounds as the menu opened
 }
@@ -166,8 +173,10 @@ type searchMenu struct {
 // opens below it with a search field atop, for lists too long to scroll
 // through: typing filters them, the arrows move, Return chooses and
 // Escape closes. With custom set, a query no option is offers itself, as
-// custom labels it: "Use “%s”". choose gets the choice.
-func (a *App) searchPopup(c *ui.Context, key, value string, options []string, width float32, custom func(string) string, pal *palette, choose func(string)) {
+// custom labels it: "Use “%s”". With mark set, it draws at the end of each
+// option's row. choose gets the choice. It returns the option highlighted
+// while the menu is open, for a preview of it, and "" while it is closed.
+func (a *App) searchPopup(c *ui.Context, key, value string, options []string, width float32, custom func(string) string, mark func(string), pal *palette, choose func(string)) string {
 	if a.ss.menus == nil {
 		a.ss.menus = map[string]*searchMenu{}
 	}
@@ -179,7 +188,7 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 	trig := ui.ButtonBase(c.Key(key)).MaxWidth(width).Label(value)
 	if trig.Clicked() {
 		m.open = !m.open
-		m.query, m.hovered, m.reveal = "", "", true
+		m.query, m.hovered, m.lit, m.reveal = "", "", "", true
 		m.hi = max(slices.Index(options, value), 0)
 		m.at = trig.Bounds()
 	}
@@ -220,6 +229,7 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 			exact = exact || strings.ToLower(o) == q
 		}
 		labels := slices.Clone(shown)
+		found := len(shown)
 		if custom != nil && q != "" && !exact {
 			shown = append(shown, strings.TrimSpace(m.query))
 			labels = append(labels, custom(strings.TrimSpace(m.query)))
@@ -248,6 +258,7 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 		in.OnShortcut(0, ui.KeyUp, func() { m.hi, m.reveal = max(m.hi-1, 0), true })
 		in.OnSubmit(func() { pick(m.hi) })
 		if len(shown) == 0 {
+			m.lit = ""
 			ui.Text(c, locales.CommonNoResults()).FontSize(13).TextColor(pal.textFaint).Padding(6, 12)
 			return
 		}
@@ -266,7 +277,11 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 				if row.Clicked() {
 					pick(i)
 				}
-				menuRow(c, row, labels[i], o == value, i == m.hi, pal)
+				var trail func()
+				if mark != nil && i < found {
+					trail = func() { mark(o) }
+				}
+				menuRow(c, row, labels[i], o == value, i == m.hi, pal, trail)
 				if reveal && i == m.hi {
 					row.ScrollIntoView()
 				}
@@ -276,7 +291,15 @@ func (a *App) searchPopup(c *ui.Context, key, value string, options []string, wi
 			m.hovered, m.hi = shown[moved], moved
 			c.After(0)
 		}
+		m.lit = ""
+		if m.hi < found {
+			m.lit = shown[m.hi]
+		}
 	})
+	if !m.open {
+		return ""
+	}
+	return m.lit
 }
 
 // field styles a text field's frame, around its input.

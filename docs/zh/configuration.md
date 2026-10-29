@@ -71,6 +71,7 @@ kero config check             # 报告未知的配置项和无效的值
 | 配置项                | 默认值  | 说明                                                                     |
 | --------------------- | ------- | ------------------------------------------------------------------------ |
 | `theme`               | `paper` | 窗口、窗格和终端的主题：Kero 主题（`petal`、`mist`、`meadow`、`dusk`、`tide`、`apricot`、`aurora`、`dune`、`paper` 或 `plain`）、任意 Ghostty 主题，或按外观分别设置，如 `light:paper,dark:dusk` |
+| `file-theme`          | `terminal` | 编辑器窗格和资源管理器中代码的配色：`terminal` 表示使用终端的主题，否则写法同 `theme` |
 | `font-family`         |         | 留空则使用 Kero 自带的 JetBrains Mono Nerd Font；设为 `monospace` 则使用系统等宽字体；也可以填任何已安装的字体族 |
 | `font-size`           | `13`    | 单位为磅                                                                 |
 | `font-weight`         | `400`   | `100` 到 `900`                                                           |
@@ -85,6 +86,8 @@ kero config check             # 报告未知的配置项和无效的值
 | `clipboard-read`      | `ask`   | 程序读取剪贴板（OSC 52）时：`ask`、`allow` 或 `deny`                     |
 | `right-click-action`  | `context-menu` | `context-menu`、`paste` 或 `copy-or-paste`                        |
 | `mouse-scroll-multiplier` | `precision:1,discrete:3` | 滚动的幅度，同 Ghostty：`precision:` 是触控板滚动的倍数，`discrete:` 是鼠标滚轮每一格滚动的行数（Windows 上指系统设为 3 行时的一格）；只写一个数字则同时设置两者，范围 `0.01` 到 `10000` |
+
+你自己的主题是 Ghostty 主题文件夹中 Ghostty 格式的文件：设置了 `$XDG_CONFIG_HOME` 时为 `$XDG_CONFIG_HOME/ghostty/themes`，否则在 Windows 上为 `%LOCALAPPDATA%\ghostty\themes`，在其他系统上为 `~/.config/ghostty/themes`。在“设置 › 外观”中，将指针移到 Ghostty 主题菜单中的主题上，即可在窗口中预览；使用“自定主题”可编辑当前主题的每种颜色，并将结果作为你自己的主题存储在该文件夹中。文件主题为编辑器窗格和资源管理器配色，其中的代码使用文件主题的 16 种颜色：关键字为品红色，字符串为绿色，类型为黄色，函数为蓝色，注释为明亮的黑色。在“设置 › 外观 › 文件颜色”中选择文件主题，默认与终端相同。
 
 ## Shell
 

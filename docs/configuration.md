@@ -71,6 +71,7 @@ kero config check             # report unknown keys and bad values
 | Key                   | Default | Description                                                              |
 | --------------------- | ------- | ------------------------------------------------------------------------ |
 | `theme`               | `paper` | The theme of the window, its panes and terminals: one of Kero's (`petal`, `mist`, `meadow`, `dusk`, `tide`, `apricot`, `aurora`, `dune`, `paper` or `plain`), any Ghostty theme, or one for each appearance, as `light:paper,dark:dusk` |
+| `file-theme`          | `terminal` | The colors of code in editor panes and the Explorer: `terminal` for the terminals' theme, else as `theme` |
 | `font-family`         |         | Empty for JetBrains Mono Nerd Font, which Kero includes; `monospace` for the system's; or any installed family |
 | `font-size`           | `13`    | In points                                                                |
 | `font-weight`         | `400`   | `100` to `900`                                                           |
@@ -85,6 +86,8 @@ kero config check             # report unknown keys and bad values
 | `clipboard-read`      | `ask`   | Programs reading the clipboard (OSC 52): `ask`, `allow` or `deny`        |
 | `right-click-action`  | `context-menu` | `context-menu`, `paste` or `copy-or-paste`                        |
 | `mouse-scroll-multiplier` | `precision:1,discrete:3` | How far scrolling goes, as in Ghostty: `precision:` scales a touchpad's, `discrete:` is the rows a notch of a mouse wheel scrolls (on Windows, a notch at its 3-line setting); one number sets both, from `0.01` to `10000` |
+
+Your own themes are files in Ghostty's format in Ghostty's themes folder: `$XDG_CONFIG_HOME/ghostty/themes` when that is set, else `%LOCALAPPDATA%\ghostty\themes` on Windows and `~/.config/ghostty/themes` elsewhere. In Settings › Appearance, point at a theme in the Ghostty themes' menus to preview it in the window, and use Customize Theme to edit every color of the theme you use and save the result there as a theme of your own. The file theme colors the editor panes and the Explorer, whose code takes its 16 colors: keywords magenta, strings green, types yellow, functions blue, comments bright black. Settings › Appearance › File Colors chooses the file theme, the terminals' by default.
 
 ## Shell
 

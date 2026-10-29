@@ -1,11 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"math"
+	"strings"
 	"sync/atomic"
 
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
+
+	"kero/internal/settings"
 )
 
 // palette is kero's colors, for the light and the dark appearance.
@@ -57,6 +61,10 @@ type palette struct {
 	popover   ui.Color
 	kbd       ui.Color
 	kbdBorder ui.Color
+
+	// code is the theme of code on a card (cardPalette): of its terminal,
+	// or of its files; nil for the window's own palettes.
+	code *terminal.Theme
 }
 
 var lightPalette = palette{
@@ -213,24 +221,52 @@ type look struct {
 }
 
 // looks are the window's in the light and in the dark, as the settings
-// key names them.
+// key names them, unless Settings previews others (themePreview): chosen
+// are the settings' still.
 type looks struct {
-	key         string
-	light, dark *look
+	key                     string
+	light, dark             *look
+	chosenLight, chosenDark *look
 }
 
 var currentLooks atomic.Pointer[looks]
 
 // looks returns the window's looks, as the settings choose them: the
-// theme of each appearance, kero's (the background's) or a Ghostty one.
+// theme of each appearance, kero's (the background's) or a Ghostty one,
+// or the one Settings previews.
 func (a *App) looks() *looks {
-	key := a.set.LightTheme + "\x00" + a.set.DarkTheme
-	if l := currentLooks.Load(); l != nil && l.key == key {
-		return l
+	names := a.set.LightTheme + "\x00" + a.set.DarkTheme
+	key := fmt.Sprintf("%s\x00%p\x00%p", names, a.preview.light, a.preview.dark)
+	old := currentLooks.Load()
+	if old != nil && old.key == key {
+		return old
 	}
-	l := &looks{key: key, light: lookNamed(a.set.LightTheme, false), dark: lookNamed(a.set.DarkTheme, true)}
+	l := &looks{key: key}
+	if old != nil && strings.HasPrefix(old.key, names+"\x00") {
+		l.chosenLight, l.chosenDark = old.chosenLight, old.chosenDark
+	} else {
+		l.chosenLight, l.chosenDark = lookNamed(a.set.LightTheme, false), lookNamed(a.set.DarkTheme, true)
+	}
+	l.light, l.dark = l.chosenLight, l.chosenDark
+	if a.preview.light != nil {
+		l.light = lookOf(a.preview.light, false)
+	}
+	if a.preview.dark != nil {
+		l.dark = lookOf(a.preview.dark, true)
+	}
 	currentLooks.Store(l)
 	return l
+}
+
+// lookOf is the look of a terminal theme Settings previews: kero's whose
+// colors it has, with its wash, else the one a Ghostty theme has.
+func lookOf(th *terminal.Theme, dark bool) *look {
+	for _, t := range settings.KeroThemes {
+		if l := keroLook(t.ID, dark); *l.term == *th {
+			return l
+		}
+	}
+	return ghosttyLook(th)
 }
 
 // lookFor is the look of the window c draws, by its appearance.

@@ -103,6 +103,8 @@ type App struct {
 	applied    settings.Settings // set, as last applied and saved
 	setWin     *mygo.Window      // the Settings window, while open
 	ss         settingsState
+	themes     themeCache   // the terminal themes set names
+	preview    themePreview // the terminal themes Settings previews
 	selected   string
 	terms      map[string]*termEntry
 	webs       map[string]*webEntry // browser panes' pages, by pane

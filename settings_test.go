@@ -432,7 +432,7 @@ func TestPopupButtons(t *testing.T) {
 		// The theme picker, under Appearance: typing filters, Return
 		// chooses.
 		a.ss.page = "appearance"
-		tt.SetSize(820, 1400) // under both rows of themes
+		tt.SetSize(820, 1900) // under both rows of themes, and the Explorer's settings above them
 		tt.Frame()
 		if err := tt.Click("None"); err != nil {
 			t.Fatal(err)

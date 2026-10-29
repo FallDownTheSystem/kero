@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 
@@ -48,10 +49,10 @@ type sideState struct {
 	wide    bool
 	changes changesState
 	files   filesState
-	// theme is the diffs' colors, made again only as the window's
-	// appearance or the terminals' themes change.
-	theme    *editor.Theme
-	themeKey string
+	// theme is the colors of code, made again only as the theme they are
+	// of, themeOf, changes.
+	theme   *editor.Theme
+	themeOf terminal.Theme
 }
 
 // changesState is the Changes view's: the files changed since a base,
@@ -245,11 +246,11 @@ func (a *App) sidePanel(c *ui.Context, pal *palette, bar ui.TitleBar, shown floa
 	// While the user is elsewhere, the panel fades as a terminal they are
 	// not in does, as they chose (settings' DimExplorer).
 	dim := a.set.DimExplorer && !a.side.focused
-	bg := pal.card
-	if dim {
-		bg = pal.cardDim
-	}
-	raised(card.Background(card.AnimateColor("bg", bg, ui.Animation{Duration: 140 * time.Millisecond})), pal)
+	// The panel shows code as the editor panes do, on the files' theme's
+	// background; the window's palette draws its shadow still.
+	wpal := pal
+	pal = cardPalette(pal, a.fileTheme(c.Theme().Dark))
+	paned(card.Background(card.AnimateColor("bg", cardBackground(wpal, pal, dim), ui.Animation{Duration: 140 * time.Millisecond})), wpal)
 	files := a.prefs.Side == sideFiles
 	// The side's buttons and the window's controls take the header's room
 	// at the window's edge: in a narrow panel the tabs give theirs, down to
@@ -759,7 +760,7 @@ func (a *App) fetchChanges(scope, stamp, pane, base string) {
 // statusBadge is a file's change as a letter in its color: A added, M
 // modified, D deleted, R renamed, T a change of type.
 func (a *App) statusBadge(c *ui.Context, pal *palette, status string) {
-	added, removed, modified := a.diffColors(pal)
+	added, removed, modified := a.diffColors(c, pal)
 	letter, col := "M", modified
 	switch status {
 	case "added":
@@ -782,7 +783,7 @@ func (a *App) lineCounts(c *ui.Context, pal *palette, added, removed int, size f
 	if added == 0 && removed == 0 {
 		return
 	}
-	plus, minus, _ := a.diffColors(pal)
+	plus, minus, _ := a.diffColors(c, pal)
 	ui.Row(c).Gap(5).Shrink(0).Children(func() {
 		if added > 0 {
 			ui.Text(c, "+"+itoa(added)).FontSize(size).FontFeatures("tnum").TextColor(plus).SingleLine()
@@ -796,24 +797,17 @@ func (a *App) lineCounts(c *ui.Context, pal *palette, added, removed int, size f
 // diffColors are the colors of lines added, removed and modified: the
 // terminals' green, red and yellow, so that a diff reads as one printed in
 // the pane beside it.
-func (a *App) diffColors(pal *palette) (added, removed, modified ui.Color) {
-	light, dark := a.termThemes()
-	t := light
-	if pal.dark {
-		t = dark
-	}
+func (a *App) diffColors(c *ui.Context, pal *palette) (added, removed, modified ui.Color) {
+	t := a.codeOf(c, pal)
 	return t.Palette[2], t.Palette[1], t.Palette[3]
 }
 
-// codeTheme is the diffs' colors: the card's, with the diff colors.
+// codeTheme is the colors of code, in diffs and editors, on what pal
+// colors (editorTheme, codeOf).
 func (a *App) codeTheme(c *ui.Context, pal *palette) *editor.Theme {
-	added, removed, modified := a.diffColors(pal)
-	key := fmt.Sprint(pal.dark, added, removed, modified)
-	if a.side.theme == nil || a.side.themeKey != key {
-		t := editor.DefaultTheme(c.Theme())
-		t.Background, t.Text = pal.card, pal.text
-		t.Added, t.Deleted, t.Modified = added, removed, modified
-		a.side.theme, a.side.themeKey = t, key
+	th := a.codeOf(c, pal)
+	if a.side.theme == nil || a.side.themeOf != *th {
+		a.side.theme, a.side.themeOf = editorTheme(c.Theme(), th), *th
 	}
 	return a.side.theme
 }
