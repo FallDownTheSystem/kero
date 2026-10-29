@@ -122,7 +122,7 @@ var keys = []key{
 
 	choiceKey("window-theme", "the app's appearance", func(s *Settings) *string { return &s.Appearance }, "system", "light", "dark"),
 	choiceKey("language", "the app's language; system follows the system's", func(s *Settings) *string { return &s.Language }, append([]string{"system"}, Languages...)...),
-	mapChoice("background", "the window's wash", func(s *Settings) *string { return &s.Background },
+	mapChoice("background", "kero's theme, which colors the window, its panes and terminals", func(s *Settings) *string { return &s.Background },
 		[]string{"petal", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "plain"},
 		[]string{"rex", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
@@ -135,7 +135,7 @@ var keys = []key{
 	boolKey("font-thicken", "a heavier stroke, as Ghostty's", func(s *Settings) *bool { return &s.Thicken }),
 	numberKey("minimum-contrast", "the least contrast text keeps with its background, 1 (none) to 21, as Ghostty's", func(s *Settings) float64 { return float64(s.MinContrast) }, func(s *Settings, n float64) { s.MinContrast = float32(min(max(n, 1), 21)) }),
 	boolKey("dim-unfocused-terminals", "fade the terminals you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimUnfocused }),
-	{name: "theme", doc: "terminal colors: kero, a Ghostty theme, or light:<theme>,dark:<theme>",
+	{name: "theme", doc: "a Ghostty theme in place of kero's, for the window, its panes and terminals: kero (none), a Ghostty theme, or light:<theme>,dark:<theme>",
 		get: func(s *Settings) []string {
 			if s.LightTheme == s.DarkTheme {
 				return []string{s.LightTheme}

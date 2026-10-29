@@ -84,6 +84,7 @@ func b2f(b bool) float32 {
 }
 
 func (a *App) view(c *ui.Context) {
+	a.looks()
 	pal := paletteFor(c)
 	c.SetTheme(borderless(c, pal))
 
@@ -95,7 +96,7 @@ func (a *App) view(c *ui.Context) {
 
 	bar := c.TitleBar()
 	row := ui.Row(c).Fill().AlignItems(ui.Stretch)
-	backdrop(c, pal, row, a.set)
+	backdrop(c, row)
 	// A curve, not a spring: a spring's long tail crawls under a pixel a
 	// frame, which whole pixels turn into hops and holds, a shake as it
 	// settles. This one lands in about 13 frames, moving in every one.

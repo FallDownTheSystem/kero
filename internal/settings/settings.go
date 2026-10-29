@@ -36,7 +36,7 @@ type Settings struct {
 	// Appearance
 	Appearance string `json:"appearance"` // "system", "light" or "dark"
 	Language   string `json:"language"`   // "system", or one of Languages
-	Background string `json:"background"` // a wash, see Backgrounds
+	Background string `json:"background"` // kero's theme, see Backgrounds
 	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
 
 	// Terminal
@@ -194,7 +194,8 @@ var Languages = []string{"en", "ja", "zh-Hans"}
 // bar, the Dock alone, or the menu bar alone.
 var AppIcons = []string{"dock-and-menubar", "dock", "menubar"}
 
-// Backgrounds are the washes the window can show.
+// Backgrounds are kero's themes, each named for the wash it shows under
+// the window's cards.
 var Backgrounds = []struct{ ID, Name string }{
 	{"rex", "Petal"},
 	{"mist", "Mist"},

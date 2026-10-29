@@ -725,19 +725,11 @@ func (a *App) termFont() terminal.Font {
 	return f
 }
 
-// termThemes returns the terminal's colors in light and dark windows:
-// kero's, on the card's color, or a Ghostty theme of the user's choice.
+// termThemes returns the terminal's colors in light and dark windows: the
+// themes', which the window's colors are of (looks).
 func (a *App) termThemes() (light, dark *terminal.Theme) {
-	pick := func(name string, def *terminal.Theme) *terminal.Theme {
-		if name == "" || name == "kero" {
-			return def
-		}
-		if t, err := terminal.GhosttyTheme(name); err == nil {
-			return t
-		}
-		return def
-	}
-	return pick(a.set.LightTheme, lightTermTheme), pick(a.set.DarkTheme, darkTermTheme)
+	l := a.looks()
+	return l.light.term, l.dark.term
 }
 
 // commandKeys are the keys that, with ⌘ alone on a Mac, send the program a
@@ -864,7 +856,7 @@ func (a *App) apply(s settings.Settings, save bool) {
 	}
 	font := old.FontFamily != s.FontFamily || old.FontSize != s.FontSize || old.FontWeight != s.FontWeight ||
 		old.LineHeight != s.LineHeight || old.Ligatures != s.Ligatures || old.Thicken != s.Thicken
-	themes := old.LightTheme != s.LightTheme || old.DarkTheme != s.DarkTheme
+	themes := old.LightTheme != s.LightTheme || old.DarkTheme != s.DarkTheme || old.Background != s.Background
 	anew := old.Cursor != s.Cursor || old.CursorBlink != s.CursorBlink || old.OptionAsAlt != s.OptionAsAlt ||
 		old.Clipboard != s.Clipboard || old.RightClick != s.RightClick
 	light, dark := a.termThemes()

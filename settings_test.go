@@ -367,8 +367,11 @@ func TestPopupButtons(t *testing.T) {
 			t.Errorf("chose weight %d, want 500", a.set.FontWeight)
 		}
 
-		// The theme picker: typing filters, Return chooses.
-		if err := tt.Click("kero"); err != nil {
+		// The theme picker, under Appearance: typing filters, Return
+		// chooses.
+		a.ss.page = "appearance"
+		tt.Frame()
+		if err := tt.Click("None"); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
@@ -387,6 +390,8 @@ func TestPopupButtons(t *testing.T) {
 		}
 
 		// The font picker takes a font it does not list.
+		a.ss.page = "terminal"
+		tt.Frame()
 		if err := tt.Click("JetBrains Mono Nerd Font"); err != nil {
 			t.Fatal(err)
 		}
