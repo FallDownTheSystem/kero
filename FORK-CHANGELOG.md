@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.4
+
+- History shows branch and tag names whole when the view has room, and in
+  a narrow view truncates the commit's subject before them
+- Branch and tag pills take the color of their lane in the graph; the
+  branch checked out has a check, bold text and a border
+
 ## 2.1.27-fork.3
 
 - The History graph draws every branch in a lane of its own: past six,
