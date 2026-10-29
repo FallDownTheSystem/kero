@@ -166,21 +166,23 @@ type Stash struct {
 	Hash    string // its commit, which tells it from the one at Index later
 	Time    int64
 	Message string // as git stash list says it: "On main: wip"
+	Base    string // the commit it was made on
 }
 
 // Stashes returns the stash, its newest first.
 func (r Repo) Stashes(ctx context.Context) ([]Stash, error) {
-	out, err := run(ctx, r.Root, nil, "stash", "list", "--format=%gd%x1f%H%x1f%ct%x1f%gs%x1e")
+	out, err := run(ctx, r.Root, nil, "stash", "list", "--format=%gd%x1f%H%x1f%ct%x1f%P%x1f%gs%x1e")
 	if err != nil {
 		return nil, err
 	}
 	var list []Stash
 	for _, rec := range strings.Split(string(out), "\x1e") {
 		f := strings.Split(strings.TrimSpace(rec), "\x1f")
-		if len(f) != 4 {
+		if len(f) != 5 {
 			continue
 		}
-		s := Stash{Hash: f[1], Message: f[3]}
+		s := Stash{Hash: f[1], Message: f[4]}
+		s.Base, _, _ = strings.Cut(f[3], " ")
 		fmt.Sscanf(f[0], "stash@{%d}", &s.Index)
 		s.Time, _ = strconv.ParseInt(f[2], 10, 64)
 		list = append(list, s)

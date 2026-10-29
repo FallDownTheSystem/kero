@@ -920,6 +920,8 @@
   "historyShowUncommitted": "显示未提交的改动",
   "historyCheckout": "检出",
   "historyCheckoutBranch": "检出 {name}",
+  "historyOpenWorktree": "打开 {name} 的工作树",
+  "historyCopyWorktreePath": "复制 {name} 的工作树路径",
   "historyCherryPick": "拣选",
   "historyCherryPickOf": "拣选 {hash}",
   "historyRevert": "还原提交",

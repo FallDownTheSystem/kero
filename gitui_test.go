@@ -861,6 +861,64 @@ func TestHistoryRefsWide(t *testing.T) {
 	}
 }
 
+// A commit's chips tell its refs apart by their icons, with its stashes
+// among them: a stash's chip has the stash's actions, and a branch
+// checked out in another worktree opens it rather than checking it out.
+func TestHistoryChips(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		a := testApp(t)
+		gitCalls(t, a, nil)
+		g, _ := gitDemo(a)
+		a.prefs.Side = sideHistory
+		a.side.wide = true
+		hs := &a.side.git.hist
+		hs.key = g.Root + "|0|0||"
+		hs.stamp = gitStamp(g) + "|0"
+		hs.stashAt = hs.stamp
+		hs.remotes = []string{"origin"}
+		hs.worktrees = map[string]string{"review/pr-216": "/tmp/demo-review-pr-216"}
+		hs.stashes = []proto.GitStash{{Index: 0, Hash: "s0", Base: "c2", Message: "On main: wip"}}
+		now := time.Now().Unix()
+		hs.commits = []proto.GitCommit{
+			{Hash: "c4", Parents: []string{"c1"}, Time: now, Refs: "origin/SQTDEV-12790_B2C", Subject: "Remote work"},
+			{Hash: "c3", Parents: []string{"c1"}, Time: now - 600, Refs: "review/pr-216", Subject: "Fix test"},
+			{Hash: "c2", Parents: []string{"c1"}, Time: now - 1200, Refs: "HEAD -> main, origin/main, tag: v1.0", Subject: "Main work"},
+			{Hash: "c1", Time: now - 3600, Subject: "First commit"},
+		}
+		for _, cm := range hs.commits {
+			hs.graph = append(hs.graph, hs.layout.Add(gitgraph.Commit{Hash: cm.Hash, Parents: cm.Parents}))
+		}
+		tt := ui.NewTester(a.view, 1280, 400)
+		tt.SetDark(dark)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		shot(t, tt, "history-chips-"+map[bool]string{false: "light", true: "dark"}[dark])
+		if dark {
+			continue
+		}
+		for _, want := range []string{"stash@{0}", "review/pr-216", "origin/SQTDEV-12790_B2C", "main", "v1.0"} {
+			if _, ok := tt.Find(want); !ok {
+				t.Errorf("no %q chip; texts %q", want, tt.Texts())
+			}
+		}
+		if err := tt.RightClick("stash@{0}"); err != nil {
+			t.Fatal(err)
+		}
+		if items := tt.Menu(); !slices.Contains(items, "Apply Stash") || !slices.Contains(items, "Pop Stash") || !slices.Contains(items, "Drop Stash") {
+			t.Errorf("the stash's chip's menu: %q", items)
+		}
+		tt.CloseMenu()
+		if err := tt.RightClick("Fix test"); err != nil {
+			t.Fatal(err)
+		}
+		if items := tt.Menu(); !slices.Contains(items, "Open Worktree of review/pr-216") || slices.Contains(items, "Check Out review/pr-216") {
+			t.Errorf("the worktree's branch's commit menu: %q", items)
+		}
+		tt.CloseMenu()
+	}
+}
+
 // History draws the worktree's commits as a graph, under the changes not
 // committed, and opens a commit below its row.
 func TestHistoryGraph(t *testing.T) {

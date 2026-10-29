@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -332,7 +333,7 @@ func (d *Daemon) gitStashes(p proto.GitParams) (proto.GitStashes, error) {
 	}
 	res := proto.GitStashes{Stashes: make([]proto.GitStash, 0, len(list))}
 	for _, s := range list {
-		res.Stashes = append(res.Stashes, proto.GitStash{Index: s.Index, Hash: s.Hash, Time: s.Time, Message: s.Message})
+		res.Stashes = append(res.Stashes, proto.GitStash{Index: s.Index, Hash: s.Hash, Time: s.Time, Message: s.Message, Base: s.Base})
 	}
 	return res, nil
 }
@@ -414,6 +415,16 @@ func (d *Daemon) gitLog(p proto.GitLogParams) (proto.GitLog, error) {
 	if p.Skip == 0 {
 		res.Unpushed, _ = r.Unpushed(ctx, st.Upstream != "", 1000)
 		res.Remotes, _ = r.Remotes(ctx)
+		if cos, err := r.Checkouts(ctx); err == nil {
+			for _, co := range cos {
+				if co.Branch != "" && filepath.Clean(co.Path) != filepath.Clean(r.Root) {
+					if res.Worktrees == nil {
+						res.Worktrees = map[string]string{}
+					}
+					res.Worktrees[co.Branch] = co.Path
+				}
+			}
+		}
 	}
 	return res, nil
 }

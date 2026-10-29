@@ -151,6 +151,7 @@ type (
 		Hash    string `json:"hash"`
 		Time    int64  `json:"time,omitempty"`
 		Message string `json:"message"`
+		Base    string `json:"base,omitempty"` // the commit it was made on
 	}
 
 	// GitLogParams ask for a page of a pane's worktree's history: of its
@@ -176,6 +177,9 @@ type (
 		More     bool        `json:"more,omitempty"`
 		Unpushed []string    `json:"unpushed,omitempty"`
 		Remotes  []string    `json:"remotes,omitempty"`
+		// Worktrees are the branches checked out in the repository's
+		// other worktrees, at their paths.
+		Worktrees map[string]string `json:"worktrees,omitempty"`
 	}
 	GitCommit struct {
 		Hash    string   `json:"hash"`

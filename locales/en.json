@@ -1537,6 +1537,8 @@
   "historyShowUncommitted": "Show uncommitted changes",
   "historyCheckout": "Check Out",
   "historyCheckoutBranch": "Check Out {name}",
+  "historyOpenWorktree": "Open Worktree of {name}",
+  "historyCopyWorktreePath": "Copy Worktree Path of {name}",
   "historyCherryPick": "Cherry-Pick",
   "historyCherryPickOf": "Cherry-Pick {hash}",
   "historyRevert": "Revert Commit",

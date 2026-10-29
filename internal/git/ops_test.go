@@ -246,6 +246,9 @@ func TestStashPopIndex(t *testing.T) {
 	if len(list) != 1 {
 		t.Fatalf("stashes %+v", list)
 	}
+	if head := strings.TrimSpace(gitIn(t, r.Root, "rev-parse", "HEAD")); list[0].Base != head {
+		t.Errorf("the stash made on %s says it was made on %q", head, list[0].Base)
+	}
 	if _, err := r.StashApply(ctx, 0, list[0].Hash, true); err != nil {
 		t.Fatal(err)
 	}

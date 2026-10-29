@@ -9336,6 +9336,28 @@ func (msgs Messages) HistoryCheckoutBranch(name string) string {
 	return Catalog.Format(msgs.locale, "historyCheckoutBranch", map[string]any{"name": name})
 }
 
+// HistoryOpenWorktree says "Open Worktree of {name}"
+// in the language the app shows.
+func HistoryOpenWorktree(name string) string { return In(i18n.Locale()).HistoryOpenWorktree(name) }
+
+// HistoryOpenWorktree says "Open Worktree of {name}"
+// in the language of msgs.
+func (msgs Messages) HistoryOpenWorktree(name string) string {
+	return Catalog.Format(msgs.locale, "historyOpenWorktree", map[string]any{"name": name})
+}
+
+// HistoryCopyWorktreePath says "Copy Worktree Path of {name}"
+// in the language the app shows.
+func HistoryCopyWorktreePath(name string) string {
+	return In(i18n.Locale()).HistoryCopyWorktreePath(name)
+}
+
+// HistoryCopyWorktreePath says "Copy Worktree Path of {name}"
+// in the language of msgs.
+func (msgs Messages) HistoryCopyWorktreePath(name string) string {
+	return Catalog.Format(msgs.locale, "historyCopyWorktreePath", map[string]any{"name": name})
+}
+
 // HistoryCherryPick says "Cherry-Pick"
 // in the language the app shows.
 func HistoryCherryPick() string { return In(i18n.Locale()).HistoryCherryPick() }

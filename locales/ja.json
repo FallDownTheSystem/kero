@@ -920,6 +920,8 @@
   "historyShowUncommitted": "コミットしていない変更を表示",
   "historyCheckout": "チェックアウト",
   "historyCheckoutBranch": "{name} をチェックアウト",
+  "historyOpenWorktree": "{name} のワークツリーを開く",
+  "historyCopyWorktreePath": "{name} のワークツリーのパスをコピー",
   "historyCherryPick": "チェリーピック",
   "historyCherryPickOf": "{hash} をチェリーピック",
   "historyRevert": "コミットをリバート",

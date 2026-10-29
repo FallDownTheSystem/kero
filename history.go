@@ -40,6 +40,9 @@ const (
 type historyState struct {
 	// laneStep is the distance between the graph's lanes (graphWidth).
 	laneStep float32
+	// worktrees are the branches checked out in other worktrees, by
+	// name, at their worktrees' paths.
+	worktrees map[string]string
 	// chipMax is the widest a commit's refs get: a share of the view, so
 	// that a wide view shows whole names (commitRow).
 	chipMax float32
@@ -329,7 +332,7 @@ func (a *App) fetchHistory(pane, key, stamp string, skip int) {
 				for _, h := range res.Unpushed {
 					hs.unpushed[h] = true
 				}
-				hs.remotes = res.Remotes
+				hs.remotes, hs.worktrees = res.Remotes, res.Worktrees
 			} else if skip != len(hs.commits) {
 				return // a page of a list since fetched anew
 			}
@@ -475,6 +478,11 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 	}
 	row.ContextMenu(func(m *ui.Menu) { a.commitMenu(c, m, s, pane, cm) })
 	refs := parseRefs(cm.Refs, hs.remotes)
+	for i, r := range refs {
+		if !r.remote && !r.tag {
+			refs[i].worktree = hs.worktrees[r.name]
+		}
+	}
 	head := slices.ContainsFunc(refs, func(r gitRef) bool { return r.head })
 	colors := a.laneColors(c, pal)
 	row.Children(func() {
@@ -526,7 +534,7 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 					lc := colors[hs.graph[i].Color%len(colors)]
 					lane = &lc
 				}
-				a.refChips(c, pal, refs, lane)
+				a.refChips(c, pal, pane, refs, lane, cm.Hash)
 			})
 			ui.Text(c, ago(cm.Time*1000, time.Now())).FontSize(11.5).FontFeatures("tnum").TextColor(pal.textFaint).SingleLine().Shrink(0)
 		})
@@ -540,6 +548,11 @@ type gitRef struct {
 	remote bool
 	tag    bool
 	head   bool // HEAD is on it, or at it, detached
+	// worktree is the path of the other worktree a local branch is
+	// checked out in; stash the stash a chip stands for, made on the
+	// commit.
+	worktree string
+	stash    *proto.GitStash
 	// tracked are the remotes' branches of a local branch's name at the
 	// same commit, which its chip shows with it (chipRefs).
 	tracked []string
@@ -623,9 +636,15 @@ func chipRefs(refs []gitRef) []gitRef {
 // both icons in its chip. With a lane's color, the chips take it. The
 // branch checked out has a check, bold text and a border of its color,
 // not a color of its own, which would read as another lane's.
-func (a *App) refChips(c *ui.Context, pal *palette, refs []gitRef, lane *ui.Color) {
+func (a *App) refChips(c *ui.Context, pal *palette, pane *proto.Pane, refs []gitRef, lane *ui.Color, hash string) {
 	const shown = 3
 	refs = chipRefs(refs)
+	// The stashes made on the commit, after its refs.
+	for i := range a.side.git.hist.stashes {
+		if st := &a.side.git.hist.stashes[i]; st.Base == hash {
+			refs = append(refs, gitRef{name: "stash@{" + itoa(st.Index) + "}", stash: st})
+		}
+	}
 	for i, r := range refs {
 		if i == shown {
 			more := make([]string, 0, len(refs)-shown)
@@ -636,42 +655,55 @@ func (a *App) refChips(c *ui.Context, pal *palette, refs []gitRef, lane *ui.Colo
 			ui.Text(c, "+"+itoa(len(refs)-shown)).FontSize(11).TextColor(pal.textFaint).SingleLine().Shrink(0).Tooltip(strings.Join(more, "\n"))
 			return
 		}
+		// One style for every kind, its icon telling them apart: a
+		// branch's, a remote's globe, a worktree's folder, a tag's, a
+		// stash's box.
 		bg, fg, icon := pal.chip, pal.textMuted, branchIcon
 		switch {
+		case r.stash != nil:
+			icon = archiveIcon
 		case r.tag:
 			icon = tagIcon
 		case r.remote:
-			bg, fg, icon = ui.Color{}, pal.textFaint, globeIcon
+			icon = globeIcon
+		case r.worktree != "":
+			icon = folderIcon
 		case r.name == "HEAD":
 			icon = nil
 		}
-		border := pal.text.Alpha(0.14)
 		switch {
+		case r.stash != nil: // not a lane's
 		case lane != nil:
-			fg, border = *lane, lane.Alpha(0.45)
-			if !r.remote {
-				bg = lane.Alpha(0.14)
-			}
+			bg, fg = lane.Alpha(0.14), *lane
 		case r.head:
 			bg, fg = pal.accent.Alpha(0.16), pal.accent
 		}
 		weight := 550
 		if r.head {
-			border, weight = fg, 750
+			weight = 750
 		}
 		chip := ui.Row(c.Key("ref-"+r.name)).Height(18).Padding(0, 6, 0, 5).Gap(3).Radius(5).AlignItems(ui.Center).Background(bg).Shrink(1).MinWidth(0)
-		if r.remote || r.head {
-			chip.Border(1, border)
+		if r.head {
+			chip.Border(1, fg)
 		}
-		chip.Tooltip(strings.Join(append([]string{r.name}, r.tracked...), "\n")).Children(func() {
+		tip := strings.Join(append([]string{r.name}, r.tracked...), "\n")
+		switch {
+		case r.stash != nil:
+			tip = r.stash.Message
+			st := *r.stash
+			chip.ContextMenu(func(m *ui.Menu) { a.stashMenu(m, pane, st) })
+		case r.worktree != "":
+			tip += "\n" + r.worktree
+		}
+		chip.Tooltip(tip).Children(func() {
 			if r.head {
-				ui.Icon(c, checkIcon).Size(10, 10).TextColor(fg).Shrink(0)
+				ui.Icon(c, checkIcon).Size(11, 11).TextColor(fg).Shrink(0)
 			}
 			if icon != nil {
-				ui.Icon(c, icon).Size(9, 9).TextColor(fg).Shrink(0)
+				ui.Icon(c, icon).Size(11, 11).TextColor(fg).Shrink(0)
 			}
 			if len(r.tracked) > 0 {
-				ui.Icon(c, globeIcon).Size(9, 9).TextColor(fg).Shrink(0)
+				ui.Icon(c, globeIcon).Size(11, 11).TextColor(fg).Shrink(0)
 			}
 			ui.Text(c, r.name).FontSize(11).FontWeight(weight).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0)
 		})
@@ -851,7 +883,7 @@ func (a *App) stashesRow(c *ui.Context, pal *palette) {
 // stashRow is an entry of the stash, with Apply, Pop and Drop; a click
 // opens it as a commit's.
 func (a *App) stashRow(c *ui.Context, pal *palette, pane *proto.Pane, st proto.GitStash) {
-	id, root := pane.ID, pane.Git.Root
+	id := pane.ID
 	row := ui.Row(c.Key("stash")).Height(28).Padding(0, 6, 0, 30).Gap(6).AlignItems(ui.Center)
 	if a.side.git.hist.opened[st.Hash] != nil {
 		row.Background(pal.rowHover.Alpha(0.6))
@@ -861,24 +893,51 @@ func (a *App) stashRow(c *ui.Context, pal *palette, pane *proto.Pane, st proto.G
 	if row.Clicked() {
 		a.toggleCommit(id, st.Hash)
 	}
-	p := proto.GitOpParams{Index: st.Index, Hash: st.Hash}
+	apply, pop, drop := a.stashOps(pane, st)
+	row.ContextMenu(func(m *ui.Menu) { a.stashMenu(m, pane, st) })
 	row.Children(func() {
 		ui.Text(c, st.Message).FontSize(12.5).TextColor(pal.text).SingleLine().Ellipsis("…").Grow(1).MinWidth(0).Tooltip(st.Message)
 		ui.Text(c, ago(st.Time*1000, time.Now())).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0)
-		iconButton(c, "apply", checkIcon, locales.HistoryStashApply(), pal, func() {
-			p.Op = "stashApply"
-			a.guarded(id, root, locales.HistoryStashApply(), func() { a.runGit(id, root, p, locales.HistoryStashApply(), nil) })
-		})
-		iconButton(c, "pop", pullIcon, locales.HistoryStashPop(), pal, func() {
-			p.Op = "stashPop"
-			a.guarded(id, root, locales.HistoryStashPop(), func() { a.runGit(id, root, p, locales.HistoryStashApply(), nil) })
-		})
-		iconButton(c, "drop", closeIcon, locales.HistoryStashDrop(), pal, func() {
-			p.Op = "stashDrop"
-			a.confirm = &confirmation{open: true, title: locales.HistoryDropTitle(), detail: locales.HistoryDropDetail(st.Message),
-				action: locales.HistoryStashDrop(), destroy: true, run: func() { a.runGit(id, root, p, locales.HistoryStashDrop(), nil) }}
-		})
+		iconButton(c, "apply", checkIcon, locales.HistoryStashApply(), pal, apply)
+		iconButton(c, "pop", pullIcon, locales.HistoryStashPop(), pal, pop)
+		iconButton(c, "drop", closeIcon, locales.HistoryStashDrop(), pal, drop)
 	})
+}
+
+// stashOps are what a stash's row and its chip on the graph do with it:
+// apply it, pop it, and drop it once the user confirms.
+func (a *App) stashOps(pane *proto.Pane, st proto.GitStash) (apply, pop, drop func()) {
+	id, root := pane.ID, pane.Git.Root
+	p := proto.GitOpParams{Index: st.Index, Hash: st.Hash}
+	apply = func() {
+		p.Op = "stashApply"
+		a.guarded(id, root, locales.HistoryStashApply(), func() { a.runGit(id, root, p, locales.HistoryStashApply(), nil) })
+	}
+	pop = func() {
+		p.Op = "stashPop"
+		a.guarded(id, root, locales.HistoryStashPop(), func() { a.runGit(id, root, p, locales.HistoryStashApply(), nil) })
+	}
+	drop = func() {
+		p.Op = "stashDrop"
+		a.confirm = &confirmation{open: true, title: locales.HistoryDropTitle(), detail: locales.HistoryDropDetail(st.Message),
+			action: locales.HistoryStashDrop(), destroy: true, run: func() { a.runGit(id, root, p, locales.HistoryStashDrop(), nil) }}
+	}
+	return apply, pop, drop
+}
+
+// stashMenu is a stash's menu, of its row and its chip.
+func (a *App) stashMenu(m *ui.Menu, pane *proto.Pane, st proto.GitStash) {
+	apply, pop, drop := a.stashOps(pane, st)
+	if m.Item(locales.HistoryStashApply()).Chosen() {
+		apply()
+	}
+	if m.Item(locales.HistoryStashPop()).Chosen() {
+		pop()
+	}
+	m.Separator()
+	if m.Item(locales.HistoryStashDrop()).Chosen() {
+		drop()
+	}
 }
 
 // uncommittedRow stands for the changes not committed, atop the graph:
@@ -941,12 +1000,19 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 	m.Separator()
 	// A commit a branch is at checks the branch out, a remote's as the
 	// local branch of its name; one with none, the commit, detached.
+	// A branch checked out in another worktree, which git won't check
+	// out here, opens that worktree's session instead.
 	refs := parseRefs(cm.Refs, a.side.git.hist.remotes)
 	var targets []proto.GitBranch
+	var worktrees []string
 	local := map[string]bool{}
 	for _, r := range refs {
 		if !r.tag && !r.remote && r.name != "HEAD" {
 			local[r.name] = true
+			if a.side.git.hist.worktrees[r.name] != "" {
+				worktrees = append(worktrees, r.name)
+				continue
+			}
 			targets = append(targets, proto.GitBranch{Name: r.name, Current: r.name == pane.Git.Branch})
 		}
 	}
@@ -955,8 +1021,20 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 			targets = append(targets, proto.GitBranch{Name: r.name, Remote: true})
 		}
 	}
+	for _, name := range worktrees {
+		path := a.side.git.hist.worktrees[name]
+		if m.Item(locales.HistoryOpenWorktree(name)).Chosen() {
+			a.openWorktree(id, path)
+		}
+		if m.Item(locales.HistoryCopyWorktreePath(name)).Chosen() {
+			c.WriteClipboard(path)
+		}
+	}
 	switch len(targets) {
 	case 0:
+		if len(worktrees) > 0 {
+			break
+		}
 		if m.Item(locales.HistoryCheckout()).Chosen() {
 			a.guarded(id, root, locales.HistoryCheckout(), func() {
 				a.runGit(id, root, proto.GitOpParams{Op: "checkout", Rev: cm.Hash}, locales.GitSwitchTo(short), nil)
@@ -1027,4 +1105,22 @@ func (a *App) showHistory(relPath string) {
 	hs := &a.side.git.hist
 	hs.path, hs.query, hs.asked = relPath, "", ""
 	a.showSide(sideHistory)
+}
+
+// openWorktree shows the session working in the worktree at path, on the
+// host of the pane, or opens one there.
+func (a *App) openWorktree(pane, path string) {
+	h := a.hostOf(pane)
+	for _, s := range a.st.Sessions {
+		if a.hostOf(s.ID) != h {
+			continue
+		}
+		for _, p := range s.Panes {
+			if p.Git != nil && p.Git.Root == path {
+				a.selectSession(s.ID)
+				return
+			}
+		}
+	}
+	a.newSessionIn(h, path)
 }
