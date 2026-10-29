@@ -224,11 +224,11 @@ var currentLooks atomic.Pointer[looks]
 // looks returns the window's looks, as the settings choose them: the
 // theme of each appearance, kero's (the background's) or a Ghostty one.
 func (a *App) looks() *looks {
-	key := a.set.Background + "\x00" + a.set.LightTheme + "\x00" + a.set.DarkTheme
+	key := a.set.LightTheme + "\x00" + a.set.DarkTheme
 	if l := currentLooks.Load(); l != nil && l.key == key {
 		return l
 	}
-	l := &looks{key: key, light: lookNamed(a.set.LightTheme, a.set.Background, false), dark: lookNamed(a.set.DarkTheme, a.set.Background, true)}
+	l := &looks{key: key, light: lookNamed(a.set.LightTheme, false), dark: lookNamed(a.set.DarkTheme, true)}
 	currentLooks.Store(l)
 	return l
 }
@@ -239,26 +239,23 @@ func lookFor(c *ui.Context) *look {
 	l := currentLooks.Load()
 	switch {
 	case l == nil:
-		return keroLook("rex", dark)
+		return keroLook("paper", dark)
 	case dark:
 		return l.dark
 	}
 	return l.light
 }
 
-// lookNamed is the look of a theme: one of kero's by its name, kero's
-// of the wash bg for "kero", else a Ghostty one by its name.
-func lookNamed(name, bg string, dark bool) *look {
-	if name == "" || name == "kero" {
-		return keroLook(bg, dark)
-	}
+// lookNamed is the look of a theme: one of kero's by its name, else a
+// Ghostty one by its name, else kero's default.
+func lookNamed(name string, dark bool) *look {
 	if id := keroID(name); id != "" {
 		return keroLook(id, dark)
 	}
 	if th, err := terminal.GhosttyTheme(name); err == nil {
 		return ghosttyLook(th)
 	}
-	return keroLook(bg, dark)
+	return keroLook("paper", dark)
 }
 
 // keroID is the wash of one of kero's themes by its name in the
@@ -287,7 +284,7 @@ func keroName(id string) string {
 func keroLook(id string, dark bool) *look {
 	l, ok := keroLooks[id]
 	if !ok {
-		l = keroLooks["rex"]
+		l = keroLooks["paper"]
 	}
 	if dark {
 		return l[1]

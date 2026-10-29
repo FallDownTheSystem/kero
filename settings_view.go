@@ -655,22 +655,22 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 			}
 			ui.Text(c, label).FontSize(12).TextColor(pal.textFaint).Padding(4, 4, 0, 4)
 			ui.Row(c).Gap(12).Wrap().Children(func() {
-				for _, b := range settings.Backgrounds {
-					a.backgroundTile(c, pal, b.ID, backgroundName(b.ID, b.Name), dark)
+				for _, t := range settings.KeroThemes {
+					a.backgroundTile(c, pal, t.ID, backgroundName(t.ID, t.Name), dark)
 				}
 			})
 		}
 	})
-	// A Ghostty theme in place of kero's: "kero" is none.
+	// A Ghostty theme in place of kero's: none goes back to kero's default.
 	none := locales.SetThemeNone()
 	themes := append([]string{none}, terminal.GhosttyThemes()...)
 	ghostty := func(key, value string, choose func(string)) {
-		if value == "kero" || keroID(value) != "" {
+		if keroID(value) != "" {
 			value = none
 		}
 		a.searchPopup(c, key, value, themes, 240, nil, pal, func(v string) {
 			if v == none {
-				v = "kero"
+				v = settings.Default().LightTheme
 			}
 			choose(v)
 		})
@@ -732,7 +732,7 @@ func (a *App) backgroundTile(c *ui.Context, pal *palette, id, name string, dark 
 	if dark {
 		slot, key, windows = &a.set.DarkTheme, "bg-dark-", locales.SetDarkWindows()
 	}
-	sel := keroID(*slot) == id || (*slot == "kero" || *slot == "") && a.set.Background == id
+	sel := keroID(*slot) == id
 	tile := ui.ButtonBase(c.Key(key + id)).Column().Width(124).Gap(8).AlignItems(ui.Stretch).Label(name + ", " + windows)
 	if tile.Clicked() {
 		*slot = keroName(id)

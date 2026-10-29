@@ -142,7 +142,7 @@ func TestDarkShots(t *testing.T) {
 		tt.Frame()
 		shot(t, tt, "dark-"+p)
 	}
-	a.set.Background = "plain"
+	a.set.LightTheme, a.set.DarkTheme = "plain", "plain"
 	a.applied = a.set.Clone()
 	main := ui.NewTester(a.view, 1000, 560)
 	main.SetDark(true)

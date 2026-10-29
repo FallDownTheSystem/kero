@@ -856,7 +856,7 @@ func (a *App) apply(s settings.Settings, save bool) {
 	}
 	font := old.FontFamily != s.FontFamily || old.FontSize != s.FontSize || old.FontWeight != s.FontWeight ||
 		old.LineHeight != s.LineHeight || old.Ligatures != s.Ligatures || old.Thicken != s.Thicken
-	themes := old.LightTheme != s.LightTheme || old.DarkTheme != s.DarkTheme || old.Background != s.Background
+	themes := old.LightTheme != s.LightTheme || old.DarkTheme != s.DarkTheme
 	anew := old.Cursor != s.Cursor || old.CursorBlink != s.CursorBlink || old.OptionAsAlt != s.OptionAsAlt ||
 		old.Clipboard != s.Clipboard || old.RightClick != s.RightClick
 	light, dark := a.termThemes()

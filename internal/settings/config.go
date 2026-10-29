@@ -122,9 +122,6 @@ var keys = []key{
 
 	choiceKey("window-theme", "the app's appearance", func(s *Settings) *string { return &s.Appearance }, "system", "light", "dark"),
 	choiceKey("language", "the app's language; system follows the system's", func(s *Settings) *string { return &s.Language }, append([]string{"system"}, Languages...)...),
-	mapChoice("background", "kero's theme where theme is kero", func(s *Settings) *string { return &s.Background },
-		[]string{"petal", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "paper", "plain"},
-		[]string{"rex", "mist", "meadow", "dusk", "tide", "apricot", "aurora", "dune", "paper", "plain"}),
 	boolKey("window-translucent", "let the desktop show through the window", func(s *Settings) *bool { return &s.Vibrancy }),
 
 	stringKey("font-family", "the terminals' font: empty for JetBrains Mono Nerd Font, which Kero carries; monospace for the system's", func(s *Settings) *string { return &s.FontFamily }),
@@ -135,7 +132,7 @@ var keys = []key{
 	boolKey("font-thicken", "a heavier stroke, as Ghostty's", func(s *Settings) *bool { return &s.Thicken }),
 	numberKey("minimum-contrast", "the least contrast text keeps with its background, 1 (none) to 21, as Ghostty's", func(s *Settings) float64 { return float64(s.MinContrast) }, func(s *Settings, n float64) { s.MinContrast = float32(min(max(n, 1), 21)) }),
 	boolKey("dim-unfocused-terminals", "fade the terminals you're not in, when a session has several panes", func(s *Settings) *bool { return &s.DimUnfocused }),
-	{name: "theme", doc: "the theme of the window, its panes and terminals: one of kero's, as paper, a Ghostty theme, kero for background's, or light:<theme>,dark:<theme>",
+	{name: "theme", doc: "the theme of the window, its panes and terminals: one of kero's (" + strings.Join(keroThemeNames(), ", ") + "), a Ghostty theme, or light:<theme>,dark:<theme>",
 		get: func(s *Settings) []string {
 			if s.LightTheme == s.DarkTheme {
 				return []string{s.LightTheme}
@@ -382,6 +379,19 @@ var keys = []key{
 		}},
 }
 
+func keroThemeNames() []string {
+	var names []string
+	for _, t := range KeroThemes {
+		names = append(names, t.Name)
+	}
+	return names
+}
+
+// legacyBackground is the key that chose kero's theme before theme took
+// kero's themes by name, for theme = kero, then its default. parse reads
+// it, and format writes theme in its place.
+const legacyBackground = "background"
+
 func adListIDs() []string {
 	var ids []string
 	for _, s := range adblock.Catalog {
@@ -489,7 +499,7 @@ func parse(data string) (Settings, []string) {
 		if l.key == "" {
 			continue
 		}
-		if findKey(l.key) == nil {
+		if findKey(l.key) == nil && l.key != legacyBackground {
 			problems = append(problems, fmt.Sprintf("line %d: no setting %q", n+1, l.key))
 			continue
 		}
@@ -498,6 +508,15 @@ func parse(data string) (Settings, []string) {
 		}
 		values[l.key] = append(values[l.key], l.value)
 	}
+	if v := values[legacyBackground]; len(v) > 0 {
+		order = slices.DeleteFunc(order, func(k string) bool { return k == legacyBackground })
+		if bg := keroThemeName(v[len(v)-1]); bg != "" {
+			s.LightTheme, s.DarkTheme = bg, bg
+		} else if v[len(v)-1] != "" {
+			problems = append(problems, fmt.Sprintf("%s: %q is none of %s", legacyBackground, v[len(v)-1], strings.Join(keroThemeNames(), ", ")))
+		}
+	}
+	bg := s.LightTheme
 	for _, name := range order {
 		k := findKey(name)
 		v := values[name]
@@ -508,6 +527,7 @@ func parse(data string) (Settings, []string) {
 			problems = append(problems, name+": "+err.Error())
 		}
 	}
+	s.LightTheme, s.DarkTheme = keroTheme(s.LightTheme, bg), keroTheme(s.DarkTheme, bg)
 	s.normalize()
 	return s, problems
 }
@@ -536,6 +556,9 @@ func format(s Settings, data string) string {
 	}
 	for _, l := range lines {
 		k := findKey(l.key)
+		if l.key == legacyBackground {
+			k = findKey("theme") // theme holds it now
+		}
 		switch {
 		case k == nil:
 			out = append(out, l.text)
