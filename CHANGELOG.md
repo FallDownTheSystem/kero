@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.27
+
+- Paper is the theme a window starts with, and `theme` names Kero's
+  themes as the tiles under Settings › Appearance › **Theme** do:
+  `paper`, `petal`, `mist`, `meadow`, `dusk`, `tide`, `apricot`,
+  `aurora`, `dune` or `plain`, a Ghostty theme, or one for each
+  appearance, as `light:paper,dark:dusk`. **None** under Settings ›
+  Appearance › **Ghostty themes** goes back to it, Paper until you
+  choose another of Kero's.
+- `background` is gone: a `background = petal` line still picks that
+  theme, and `theme = kero` still follows it, while saving from Settings
+  writes `theme` in its place.
+
 ## 2.1.26
 
 - A theme colors the whole window now, as it does in Ghostty: the panes,
