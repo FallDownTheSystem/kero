@@ -28,16 +28,19 @@ its installs update to.
 
    ```sh
    git fetch upstream --tags
-   git log --oneline main..upstream/main
-   git log --oneline upstream/main..main
+   git log --oneline main..vX.Y.Z
+   git log --oneline vX.Y.Z..main
    ```
 
 3. Back up, then rebase:
 
    ```sh
    git branch -f backup/pre-rebase-X.Y.Z main
-   git rebase upstream/main
+   git rebase vX.Y.Z
    ```
+
+   Rebase onto the release's tag, not `upstream/main`, which may be past
+   it.
 
 4. Resolve conflicts (see below), then check that it still builds and
    passes:
@@ -117,9 +120,9 @@ it, and it builds for macOS with upstream's certificates.
   either side, then run `go tool mygo generate`, which writes it from the
   JSON.
 - `go.mod` and `go.sum`: take upstream's MyGo version, and keep the fork's
-  `replace` of MyGo. When upstream's version is a new one, rebase MyGo's
-  `kero` branch onto that commit first and point the `replace` at it (see
-  below), then `go mod tidy`.
+  `replace` of MyGo. When MyGo has a new release, rebase MyGo's `kero`
+  branch onto it first and point the `replace` at it (see below), then
+  `go mod tidy`.
 - `docs/` in three languages (en, ja, zh): keep both sides' paragraphs.
 - `internal/actions/actions.go`, `actions.go`: both sides add actions; keep
   both, in the menus' order.
@@ -131,9 +134,10 @@ endings only (`git diff` shows nothing): `git checkout -- locales/catalog_gen.go
 
 ## Rules for the fork's changes
 
-- MyGo is forked too: `FallDownTheSystem/mygo`, its branch `kero`, on the
-  commit of upstream's MyGo that Kero's `go.mod` requires. `go.mod`
-  replaces MyGo with it. A fix or a feature Kero needs of MyGo goes there,
+- MyGo is forked too: `FallDownTheSystem/mygo`, its branch `kero`, on
+  MyGo's latest release, even one newer than the commit Kero's `go.mod`
+  requires, and never on a commit past it. `go.mod` replaces MyGo with it.
+  Kero builds and tests against it before it is pushed. A fix or a feature Kero needs of MyGo goes there,
   a commit each, and a bug is reported upstream too. Work on both with a
   `go.work` beside `go.mod` (`use (. ..\mygo)`), which git ignores. Once
   `kero` is pushed, point the `replace` at its new commit:
