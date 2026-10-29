@@ -79,6 +79,9 @@ func TestSidePanel(t *testing.T) {
 	if !a.fileCollapsed(fileKey(turnScope, "", sf.f.Path)) || tt.HasText("Collapse All Files") {
 		t.Error("login.go came unfolded")
 	}
+	// The tree's folders unfold with them, else the files stay hidden.
+	dirs := []string{fileKey(turnScope, "", "internal"), fileKey(turnScope, "", "internal/auth"), fileKey(turnScope, "", "docs")}
+	ch.folded = map[string]bool{dirs[0]: true, dirs[1]: true, dirs[2]: true}
 	if err := tt.Click("Expand All Files"); err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +91,24 @@ func TestSidePanel(t *testing.T) {
 			t.Errorf("Expand All Files left %s folded", f.Path)
 		}
 	}
+	for _, d := range dirs {
+		if ch.folded[d] {
+			t.Errorf("Expand All Files left the folder %s folded", d)
+		}
+	}
+	if err := tt.Click("Collapse All Files"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	for _, d := range dirs {
+		if !ch.folded[d] {
+			t.Errorf("Collapse All Files left the folder %s open", d)
+		}
+	}
+	if err := tt.Click("Expand All Files"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
 	a.showText(sf, proto.GitText{
 		Old:  "package auth\n\nfunc Login(user string) error {\n\treturn nil\n}\n",
 		New:  "package auth\n\nimport \"errors\"\n\n// Login signs a user in.\nfunc Login(user, password string) error {\n\tif password == \"\" {\n\t\treturn errors.New(\"no password\")\n\t}\n\treturn nil\n}\n",

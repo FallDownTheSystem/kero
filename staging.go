@@ -46,10 +46,11 @@ func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 	band.Children(func() {
 		scope := changesScope(pane, git.BaseHead)
 		keys := make([]string, len(list))
+		paths := make([]string, len(list))
 		for i, f := range list {
-			keys[i] = fileKey(scope, section, f.Path)
+			keys[i], paths[i] = fileKey(scope, section, f.Path), f.Path
 		}
-		a.foldAllButton(c, pal, keys)
+		a.foldAllButton(c, pal, keys, dirKeys(scope, section, paths))
 		ui.Icon(c, icon).Size(13, 13).TextColor(col).Shrink(0)
 		ui.Text(c, title).FontSize(12.5).FontWeight(650).TextColor(pal.text).SingleLine().Shrink(0)
 		ui.Box(c).Height(16).Padding(0, 6).Radius(8).Center().Background(col.Alpha(0.16)).Children(func() {

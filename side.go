@@ -583,10 +583,11 @@ func (a *App) changesView(c *ui.Context, pal *palette, s *proto.Session, width f
 				// Uncommitted's sections each have theirs, in their titles.
 				if ix == nil {
 					keys := make([]string, len(res.Files))
+					paths := make([]string, len(res.Files))
 					for i, f := range res.Files {
-						keys[i] = fileKey(scope, "", f.Path)
+						keys[i], paths[i] = fileKey(scope, "", f.Path), f.Path
 					}
-					a.foldAllButton(c, pal, keys)
+					a.foldAllButton(c, pal, keys, dirKeys(scope, "", paths))
 				}
 				ui.Text(c, locales.ChangesFiles(len(res.Files))).FontSize(12.5).TextColor(pal.textMuted).SingleLine().Shrink(0)
 				a.lineCounts(c, pal, added, removed, 12.5)
@@ -901,9 +902,10 @@ func (a *App) fileCollapsed(key string) bool {
 }
 
 // foldAllButton folds every file of keys (fileKey) while one is unfolded,
-// else unfolds them all. It starts a row 12 DIPs in, as a file's header
-// does, its icon over the files' chevrons.
-func (a *App) foldAllButton(c *ui.Context, pal *palette, keys []string) {
+// else unfolds them all, and the tree's folders, of keys dirs, with them:
+// unfolded files in a folded folder would show nothing. It starts a row
+// 12 DIPs in, as a file's header does, its icon over the files' chevrons.
+func (a *App) foldAllButton(c *ui.Context, pal *palette, keys, dirs []string) {
 	if len(keys) == 0 {
 		return
 	}
@@ -929,7 +931,27 @@ func (a *App) foldAllButton(c *ui.Context, pal *palette, keys []string) {
 		for _, k := range keys {
 			ch.collapsed[k] = fold
 		}
+		if ch.folded == nil {
+			ch.folded = map[string]bool{}
+		}
+		for _, k := range dirs {
+			ch.folded[k] = fold
+		}
 	}
+}
+
+// dirKeys are the keys (fileKey) of every folder the files at paths are
+// in, as the tree's folders are folded by.
+func dirKeys(scope, section string, paths []string) []string {
+	seen := map[string]bool{}
+	var keys []string
+	for _, p := range paths {
+		for d := path.Dir(p); d != "." && d != "/" && !seen[d]; d = path.Dir(d) {
+			seen[d] = true
+			keys = append(keys, fileKey(scope, section, d))
+		}
+	}
+	return keys
 }
 
 // fileDiff is a changed file's diff, under its header, or why it shows
