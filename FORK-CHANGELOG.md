@@ -5,6 +5,17 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.2
+
+- The pull requests list shows checks and review as separate pills, so
+  ✓ Checks and Approved no longer read as one
+- Repository Setup… sets a repository's own prompts for commit
+  messages, pull request descriptions and reviews; Settings › Git keeps
+  the defaults, now with the review prompt too
+- On Windows, the window reopens where it was closed: on a display left
+  of the main one it no longer creeps right on every launch, and on a
+  display of other scaling it no longer grows toward the other display
+
 ## 2.1.27-fork.1
 
 - Based on Kero 2.1.27, with 2.1.25 and 2.1.26 (see the
