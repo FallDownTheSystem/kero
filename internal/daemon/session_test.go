@@ -358,7 +358,16 @@ func TestSubmit(t *testing.T) {
 		}
 		return strings.Count(string(b), "\r")
 	}
-	time.Sleep(500 * time.Millisecond) // stty
+	// The shell opens the file for cat once stty is done; a fixed wait
+	// was too short on a busy runner.
+	for i := 0; ; i++ {
+		if _, err := os.Stat(out); err == nil {
+			break
+		} else if i == 1000 {
+			t.Fatal("cat never started")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	if n := enters(proto.Idle); n != 1+enterTries {
 		t.Errorf("an idle agent got %d Enters", n)
 	}
