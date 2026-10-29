@@ -5,6 +5,16 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.8
+
+- The Changes view lists a file git considers changed even when it shows
+  no lines changed, as one written anew with other line endings, which
+  a branch switch refuses to overwrite: stage or discard it from there
+- Expand All Files and Collapse All Files open and fold the tree's
+  folders too
+- With focus following the mouse off, a click on a Markdown preview's
+  text focuses its pane
+
 ## 2.1.27-fork.7
 
 - In History, branch and tag names are in regular text; only the branch
