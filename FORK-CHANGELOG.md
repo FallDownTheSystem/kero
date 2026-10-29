@@ -5,6 +5,11 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.7
+
+- In History, branch and tag names are in regular text; only the branch
+  you're on is bold, with an outline and no check
+
 ## 2.1.27-fork.6
 
 - History's pills share one filled style, told apart by bigger icons;
