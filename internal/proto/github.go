@@ -131,13 +131,15 @@ type (
 	// what a pane's branch brings into Base of Remote's repository,
 	// written as GitMessageParams' commit message is: by Command, after
 	// Prompt, the user's words of how to write them, "" for kerod's own.
+	// Repos are prompts of repositories, as GitMessageParams' are.
 	PRMessageParams struct {
-		Pane    string `json:"pane"`
-		ID      string `json:"id,omitempty"`
-		Remote  string `json:"remote,omitempty"`
-		Base    string `json:"base"`
-		Command string `json:"command,omitempty"`
-		Prompt  string `json:"prompt,omitempty"`
+		Pane    string            `json:"pane"`
+		ID      string            `json:"id,omitempty"`
+		Remote  string            `json:"remote,omitempty"`
+		Base    string            `json:"base"`
+		Command string            `json:"command,omitempty"`
+		Prompt  string            `json:"prompt,omitempty"`
+		Repos   map[string]string `json:"repos,omitempty"`
 	}
 	PRMessage struct {
 		Title string `json:"title"`

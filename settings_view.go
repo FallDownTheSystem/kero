@@ -73,7 +73,7 @@ type settingsState struct {
 	messageEdit  bool
 	// prompts are the commit message's and the pull request's prompts as
 	// typed, kept while their fields have the focus.
-	prompts [2]promptDraft
+	prompts [3]promptDraft
 	// resumeDraft is each agent's resume command as typed, and
 	// resumeEdit the agent whose field has the focus.
 	resumeDraft map[string]*string
@@ -698,6 +698,7 @@ func (a *App) gitPage(c *ui.Context, pal *palette) {
 			})
 		}
 		promptSetting(c, pal, "pr-prompt", locales.SetPRPrompt(), locales.SetPRPromptDetail(), &s.PRMessagePrompt, commitmsg.DefaultPRPrompt, &a.ss.prompts[1])
+		promptSetting(c, pal, "review-prompt", locales.SetReviewPrompt(), locales.SetReviewPromptDetail(), &s.ReviewPrompt, DefaultReviewPrompt, &a.ss.prompts[2])
 	})
 }
 

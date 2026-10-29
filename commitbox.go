@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
 
 	"kero/locales"
 )
@@ -271,7 +272,8 @@ func (a *App) writeMessage(pane *proto.Pane, d *commitDraft) {
 	}
 	id := opID()
 	d.writing, d.writePane, d.err = id, pane.ID, ""
-	p := proto.GitMessageParams{Pane: pane.ID, ID: id, Command: a.set.CommitMessageCommand, Prompt: a.set.CommitMessagePrompt}
+	p := proto.GitMessageParams{Pane: pane.ID, ID: id, Command: a.set.CommitMessageCommand, Prompt: a.set.CommitMessagePrompt,
+		Repos: a.repoPrompts(func(r settings.ReviewSetup) string { return r.CommitPrompt })}
 	go func() {
 		var res proto.GitMessage
 		err := cl.Call("git.message", p, &res)

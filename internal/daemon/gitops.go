@@ -504,6 +504,15 @@ func (d *Daemon) gitMessage(p proto.GitMessageParams) (proto.GitMessage, error) 
 	if stat == "" {
 		return proto.GitMessage{}, errors.New("nothing is staged")
 	}
+	if len(p.Repos) > 0 {
+		// The repository's on GitHub, as its pull requests are: of the
+		// remote its branch pushes to, else the first.
+		if repos, byName, err := gitHubRepos(ctx, r); err == nil {
+			if remote, err := pickRemote(ctx, r, byName, repos, ""); err == nil {
+				p.Prompt = repoPrompt(p.Prompt, p.Repos, byName[remote].Slug())
+			}
+		}
+	}
 	var agent *commitmsg.Agent
 	if as != nil {
 		agent = &commitmsg.Agent{Name: as.Agent, ID: as.ID}

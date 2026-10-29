@@ -145,6 +145,9 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `pr-poll-interval` | `5` | How often Kero checks for new pull requests, in minutes |
 | `review-command` |  | The agent command that [reviews](./changes.md#review) a repository's pull requests, as `owner/name=codex --full-auto`; empty for `claude`. Repeat it for each repository |
 | `review-prompt` |  | What the review agent is asked, as `owner/name=/code-review {ticket} #{number}`; empty for Kero's own. Write a line break as `\n`. Repeat it for each repository |
+| `pr-review-prompt` |  | What a [review](./changes.md#review) agent is asked, for every repository without its own `review-prompt`; empty for Kero's own. Write a line break as `\n` |
+| `repo-commit-message-prompt` |  | A repository's own `commit-message-prompt`, as `owner/name=Write in Finnish`. Repeat it for each repository |
+| `repo-pr-message-prompt` |  | A repository's own `pr-message-prompt`, as `repo-commit-message-prompt` |
 
 ## Files
 

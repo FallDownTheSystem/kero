@@ -10172,6 +10172,26 @@ func (msgs Messages) SetPRPromptDetail() string {
 	return Catalog.Format(msgs.locale, "setPRPromptDetail", nil)
 }
 
+// SetReviewPromptDetail says "What the agent reviewing a pull request is asked. A repository's setup, in the Review tab, can replace these prompts."
+// in the language the app shows.
+func SetReviewPromptDetail() string { return In(i18n.Locale()).SetReviewPromptDetail() }
+
+// SetReviewPromptDetail says "What the agent reviewing a pull request is asked. A repository's setup, in the Review tab, can replace these prompts."
+// in the language of msgs.
+func (msgs Messages) SetReviewPromptDetail() string {
+	return Catalog.Format(msgs.locale, "setReviewPromptDetail", nil)
+}
+
+// SetReviewPrompt says "Review prompt"
+// in the language the app shows.
+func SetReviewPrompt() string { return In(i18n.Locale()).SetReviewPrompt() }
+
+// SetReviewPrompt says "Review prompt"
+// in the language of msgs.
+func (msgs Messages) SetReviewPrompt() string {
+	return Catalog.Format(msgs.locale, "setReviewPrompt", nil)
+}
+
 // SetResetPrompt says "Reset to Default"
 // in the language the app shows.
 func SetResetPrompt() string { return In(i18n.Locale()).SetResetPrompt() }
@@ -10212,11 +10232,11 @@ func (msgs Messages) PrsRefresh() string {
 	return Catalog.Format(msgs.locale, "prsRefresh", nil)
 }
 
-// PrsSetup says "Review Setup…"
+// PrsSetup says "Repository Setup…"
 // in the language the app shows.
 func PrsSetup() string { return In(i18n.Locale()).PrsSetup() }
 
-// PrsSetup says "Review Setup…"
+// PrsSetup says "Repository Setup…"
 // in the language of msgs.
 func (msgs Messages) PrsSetup() string {
 	return Catalog.Format(msgs.locale, "prsSetup", nil)
@@ -10702,21 +10722,21 @@ func (msgs Messages) PrsPreviousComment() string {
 	return Catalog.Format(msgs.locale, "prsPreviousComment", nil)
 }
 
-// PrsSetupTitle says "Review Setup for {repo}"
+// PrsSetupTitle says "Repository Setup for {repo}"
 // in the language the app shows.
 func PrsSetupTitle(repo string) string { return In(i18n.Locale()).PrsSetupTitle(repo) }
 
-// PrsSetupTitle says "Review Setup for {repo}"
+// PrsSetupTitle says "Repository Setup for {repo}"
 // in the language of msgs.
 func (msgs Messages) PrsSetupTitle(repo string) string {
 	return Catalog.Format(msgs.locale, "prsSetupTitle", map[string]any{"repo": repo})
 }
 
-// PrsSetupDetail says "How an agent reviews this repository's pull requests. Kero saves this setup for this repository only."
+// PrsSetupDetail says "How agents review this repository's pull requests and write its commit messages and pull requests. Kero saves this se…"
 // in the language the app shows.
 func PrsSetupDetail() string { return In(i18n.Locale()).PrsSetupDetail() }
 
-// PrsSetupDetail says "How an agent reviews this repository's pull requests. Kero saves this setup for this repository only."
+// PrsSetupDetail says "How agents review this repository's pull requests and write its commit messages and pull requests. Kero saves this se…"
 // in the language of msgs.
 func (msgs Messages) PrsSetupDetail() string {
 	return Catalog.Format(msgs.locale, "prsSetupDetail", nil)
@@ -10732,11 +10752,11 @@ func (msgs Messages) PrsSetupCommand() string {
 	return Catalog.Format(msgs.locale, "prsSetupCommand", nil)
 }
 
-// PrsSetupPrompt says "Prompt"
+// PrsSetupPrompt says "Review prompt"
 // in the language the app shows.
 func PrsSetupPrompt() string { return In(i18n.Locale()).PrsSetupPrompt() }
 
-// PrsSetupPrompt says "Prompt"
+// PrsSetupPrompt says "Review prompt"
 // in the language of msgs.
 func (msgs Messages) PrsSetupPrompt() string {
 	return Catalog.Format(msgs.locale, "prsSetupPrompt", nil)
@@ -10760,6 +10780,16 @@ func PrsSetupPlaceholders() string { return In(i18n.Locale()).PrsSetupPlaceholde
 // in the language of msgs.
 func (msgs Messages) PrsSetupPlaceholders() string {
 	return Catalog.Format(msgs.locale, "prsSetupPlaceholders", nil)
+}
+
+// PrsSetupGlobal says "A prompt left as it is follows the one in Settings › Git."
+// in the language the app shows.
+func PrsSetupGlobal() string { return In(i18n.Locale()).PrsSetupGlobal() }
+
+// PrsSetupGlobal says "A prompt left as it is follows the one in Settings › Git."
+// in the language of msgs.
+func (msgs Messages) PrsSetupGlobal() string {
+	return Catalog.Format(msgs.locale, "prsSetupGlobal", nil)
 }
 
 // PrsCantDraft says "Couldn't prepare the pull request"

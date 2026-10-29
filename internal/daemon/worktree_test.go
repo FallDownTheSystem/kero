@@ -244,3 +244,36 @@ func TestReviewWorktrees(t *testing.T) {
 		t.Errorf("a worktree of the main checkout's branch: %v", err)
 	}
 }
+
+// A commit message of a repository on GitHub is written with that
+// repository's own prompt, which the app sends with the others', else the
+// prompt of all of them. The command prints which it was given.
+func TestCommitMessageRepoPrompt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("grep")
+	}
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	runGit(t, repo, "remote", "add", "origin", "git@github.com:Me/Demo.git")
+	os.WriteFile(filepath.Join(repo, "b.txt"), []byte("b\n"), 0o644)
+	runGit(t, repo, "add", "b.txt")
+	s, err := d.create(proto.CreateParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	write := func(repos map[string]string) string {
+		t.Helper()
+		m, err := d.gitMessage(proto.GitMessageParams{Pane: s.Panes[0].ID, Command: "grep -oE 'ALL_REPOS|DEMO_OWN|OTHER_REPO'", Prompt: "ALL_REPOS", Repos: repos})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return m.Message
+	}
+	if m := write(map[string]string{"me/demo": "DEMO_OWN", "me/other": "OTHER_REPO"}); !strings.Contains(m, "DEMO_OWN") || strings.Contains(m, "ALL_REPOS") || strings.Contains(m, "OTHER_REPO") {
+		t.Errorf("with demo's own prompt: %q", m)
+	}
+	if m := write(map[string]string{"me/other": "OTHER_REPO"}); !strings.Contains(m, "ALL_REPOS") || strings.Contains(m, "OTHER_REPO") {
+		t.Errorf("with another's prompt alone: %q", m)
+	}
+}
