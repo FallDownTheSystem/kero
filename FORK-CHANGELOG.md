@@ -5,6 +5,16 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.9
+
+- Files and their Markdown previews zoom on their own: Smaller Text and
+  Bigger Text in the file's bar, or Ctrl + = / - / 0 while a file has
+  the focus; terminals keep their size
+- On Windows, right-click menus are smaller, with text the size of
+  Kero's and shorter rows
+- A long branch name in a menu's item is cut in its middle, so the menu
+  stays narrow
+
 ## 2.1.27-fork.8
 
 - The Changes view lists a file git considers changed even when it shows
