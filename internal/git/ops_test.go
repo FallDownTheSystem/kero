@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -694,6 +695,42 @@ func TestLiteralPaths(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(r.Root, "u[xy]")); !os.IsNotExist(err) {
 		t.Errorf("u[xy] not deleted: %v", err)
+	}
+}
+
+// A folder of thousands of files, more paths than one Windows command line
+// holds, is staged, unstaged and discarded whole, in batches that drop
+// none at their edges.
+func TestManyPaths(t *testing.T) {
+	ctx := context.Background()
+	r := opsRepo(t, map[string]string{"keep.txt": "k\n"})
+	dir := filepath.Join(r.Root, "generated", "a-fairly-long-folder-name")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var files []string
+	for i := range 3000 {
+		name := fmt.Sprintf("generated/a-fairly-long-folder-name/file-%04d.css", i)
+		write(t, filepath.Join(r.Root, name), "x\n")
+		files = append(files, name)
+	}
+	if n := len(batches(files)); n < 3 {
+		t.Fatalf("%d batches, want several", n)
+	}
+	if err := r.Stage(ctx, files); err != nil {
+		t.Fatal(err)
+	}
+	if staged, _, _ := r.Index(ctx); len(staged) != len(files) {
+		t.Errorf("staged %d of %d", len(staged), len(files))
+	}
+	if err := r.Unstage(ctx, files); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Discard(ctx, nil, files); err != nil {
+		t.Fatal(err)
+	}
+	if out := gitIn(t, r.Root, "status", "--porcelain", "--untracked-files=all"); out != "" {
+		t.Errorf("left after discard: %.200q", out)
 	}
 }
 

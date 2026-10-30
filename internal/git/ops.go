@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -182,6 +183,42 @@ func pathArgs(args []string, paths []string) []string {
 // literal is a path as a pathspec that matches it alone.
 func literal(path string) string { return ":(literal)" + path }
 
+// argBudget is how many characters of paths one git command takes:
+// Windows caps a command line at 32,767, which a folder of thousands of
+// files, each its own path, passes; the rest is room for git's path and
+// options.
+const argBudget = 24000
+
+// batches splits paths into runs whose pathspecs fit in argBudget; none
+// is one run of none, all of the worktree.
+func batches(paths []string) [][]string {
+	if len(paths) == 0 {
+		return [][]string{nil}
+	}
+	var out [][]string
+	start, size := 0, 0
+	for i, p := range paths {
+		n := len(literal(p)) + 3 // a space and quotes
+		if i > start && size+n > argBudget {
+			out = append(out, paths[start:i])
+			start, size = i, 0
+		}
+		size += n
+	}
+	return append(out, paths[start:])
+}
+
+// writePaths runs git with args and paths as write does, in as many runs
+// as the command line needs.
+func (r Repo) writePaths(ctx context.Context, args []string, paths []string) error {
+	for _, b := range batches(paths) {
+		if _, err := r.write(ctx, "", nil, pathArgs(slices.Clone(args), b)...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // hasHead reports whether the worktree has a commit.
 func (r Repo) hasHead(ctx context.Context) bool {
 	_, err := run(ctx, r.Root, nil, "rev-parse", "--verify", "--quiet", "HEAD")
@@ -191,28 +228,26 @@ func (r Repo) hasHead(ctx context.Context) bool {
 // Stage stages the files under paths, or all, as they are: new, changed
 // and gone ones.
 func (r Repo) Stage(ctx context.Context, paths []string) error {
-	_, err := r.write(ctx, "", nil, pathArgs([]string{"add", "--all"}, paths)...)
-	return err
+	return r.writePaths(ctx, []string{"add", "--all"}, paths)
 }
 
 // Unstage puts the index's files under paths, or all, back as HEAD has
 // them, leaving the working tree as it is: out of the index, before the
 // first commit, as git reset without a commit does.
 func (r Repo) Unstage(ctx context.Context, paths []string) error {
-	_, err := r.write(ctx, "", nil, pathArgs([]string{"reset", "-q"}, paths)...)
-	return err
+	return r.writePaths(ctx, []string{"reset", "-q"}, paths)
 }
 
 // Discard drops the working tree's changes of tracked files since the
 // index, and removes untracked files.
 func (r Repo) Discard(ctx context.Context, tracked, untracked []string) error {
 	if len(tracked) > 0 {
-		if _, err := r.write(ctx, "", nil, pathArgs([]string{"checkout", "-q"}, tracked)...); err != nil {
+		if err := r.writePaths(ctx, []string{"checkout", "-q"}, tracked); err != nil {
 			return err
 		}
 	}
 	if len(untracked) > 0 {
-		if _, err := r.write(ctx, "", nil, pathArgs([]string{"clean", "-f", "-q"}, untracked)...); err != nil {
+		if err := r.writePaths(ctx, []string{"clean", "-f", "-q"}, untracked); err != nil {
 			return err
 		}
 	}
@@ -225,14 +260,16 @@ func (r Repo) Tracked(ctx context.Context, paths []string) ([]string, error) {
 	if len(paths) == 0 {
 		return nil, nil
 	}
-	out, err := run(ctx, r.Root, nil, pathArgs([]string{"ls-files", "-z"}, paths)...)
-	if err != nil {
-		return nil, err
-	}
 	var files []string
-	for f := range strings.SplitSeq(string(out), "\x00") {
-		if f != "" {
-			files = append(files, f)
+	for _, b := range batches(paths) {
+		out, err := run(ctx, r.Root, nil, pathArgs([]string{"ls-files", "-z"}, b)...)
+		if err != nil {
+			return nil, err
+		}
+		for f := range strings.SplitSeq(string(out), "\x00") {
+			if f != "" {
+				files = append(files, f)
+			}
 		}
 	}
 	return files, nil
@@ -290,8 +327,7 @@ func (r Repo) Ignore(ctx context.Context, paths []string, untrack bool) error {
 	if !untrack {
 		return nil
 	}
-	_, err = r.write(ctx, "", nil, pathArgs([]string{"rm", "-r", "-q", "--cached", "--ignore-unmatch"}, plain)...)
-	return err
+	return r.writePaths(ctx, []string{"rm", "-r", "-q", "--cached", "--ignore-unmatch"}, plain)
 }
 
 // ignorePattern is the line of .gitignore that matches the file or folder
