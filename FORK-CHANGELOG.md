@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.12
+
+- Discarding, staging or unstaging a folder of thousands of files works
+  on Windows, where it failed with "The filename or extension is too
+  long": the paths go to git in batches that fit a command line
+
 ## 2.1.27-fork.11
 
 - Search results and the Files view's header show a file's whole name
