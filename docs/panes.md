@@ -45,7 +45,7 @@ Run inside Kero, `kero split` splits the pane it runs in. Elsewhere, name a targ
 
 An editor pane shows a file beside your terminals, highlighted as its language is, to read and edit: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, only as it was when it was read, as in the [Files view](./changes.md#files). It splits, zooms, moves and closes like any pane, and comes back on the same file when Kero restarts. Closing it with edits not saved asks first.
 
-Open one from the Files view: right-click a file and choose **Open in Pane**, or click the split button above a file. Or drag a file onto a pane: dropped near an edge, it opens beside the pane on that side; dropped in the middle of an editor pane, it takes the place of its file, unless that one has unsaved edits. From a shell, or an agent:
+Open one from the Files view: right-click a file and choose **Open in Pane**, or click the split button above a file. Or drag a file onto a pane: dropped near an edge, it opens beside the pane on that side; dropped in the middle of an editor pane, it takes the place of its file, unless that one has unsaved edits. Files and folders dragged from your file manager open the same way, a folder in a terminal there; on a terminal, only near its left, right or top edge, as the rest of it pastes their paths. From a shell, or an agent:
 
 ```sh
 kero split --file src/main.go

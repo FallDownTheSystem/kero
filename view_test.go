@@ -157,6 +157,87 @@ func TestSidebarKeepsTerminalDrops(t *testing.T) {
 	}
 }
 
+// Files from another app open beside a terminal dropped along its left,
+// right or top edge, a folder in a terminal; at its middle and bottom the
+// terminal takes them, as it pastes their paths at a prompt.
+func TestPaneTakesFilesFromOtherApps(t *testing.T) {
+	a := testDropApp(t)
+	splits := make(chan proto.CreateParams, 4)
+	a.local().cl, _ = projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method == "split" {
+			var p proto.CreateParams
+			json.Unmarshal(raw, &p)
+			splits <- p
+			return proto.Pane{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	for _, id := range []string{"a", "b"} {
+		term, err := terminal.New(terminal.Options{Conn: idleConn{make(chan struct{})}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { term.Close() })
+		a.terms[id] = &termEntry{term: term}
+	}
+	var card ui.Rect
+	tt := ui.NewTester(func(c *ui.Context) {
+		a.view(c)
+		card = a.paneRef("card-b").Bounds(c)
+	}, 1280, 720)
+	tt.Frame()
+	file, dir := filepath.Join(t.TempDir(), "notes.md"), t.TempDir()
+	if err := os.WriteFile(file, []byte("# notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	split := func(what string) (proto.CreateParams, bool) {
+		t.Helper()
+		select {
+		case p := <-splits:
+			return p, true
+		case <-time.After(time.Second):
+		}
+		return proto.CreateParams{}, false
+	}
+
+	// Pane a's controls say Split Right too: the preview is another one.
+	previews := func() (n int) {
+		for _, s := range tt.Texts() {
+			if s == "Split Right" || s == "Split Left" || s == "Split Up" {
+				n++
+			}
+		}
+		return n - 1
+	}
+	tt.DragFiles(card.X+card.W-20, card.Y+card.H/2)
+	if previews() != 1 {
+		t.Errorf("no preview of a split at the right edge; texts %q", tt.Texts())
+	}
+	tt.Advance(400 * time.Millisecond)
+	tt.Frame()
+	shot(t, tt, "os-drop-right")
+	tt.DropFiles(card.X+card.W-20, card.Y+card.H/2, file)
+	if p, ok := split("file"); !ok || p.Split != "b" || p.Direction != "right" || p.File != file {
+		t.Errorf("file dropped at the right edge split %+v, %v", p, ok)
+	}
+	tt.DropFiles(card.X+15, card.Y+card.H/2, dir)
+	if p, ok := split("folder"); !ok || p.Split != "b" || p.Direction != "left" || p.Dir != dir || p.File != "" {
+		t.Errorf("folder dropped at the left edge split %+v, %v", p, ok)
+	}
+	for _, at := range [][2]float32{{card.X + card.W/2, card.Y + card.H/2}, {card.X + card.W/2, card.Y + card.H - 20}} {
+		tt.DragFiles(at[0], at[1])
+		if previews() != 0 {
+			t.Errorf("a split previewed over the terminal at %v: %q", at, tt.Texts())
+		}
+		if !tt.DropFiles(at[0], at[1], file) {
+			t.Errorf("the terminal did not take the drop at %v", at)
+		}
+		if p, ok := split("paste"); ok {
+			t.Errorf("a drop on the terminal at %v split %+v", at, p)
+		}
+	}
+}
+
 func TestDragPaneToSide(t *testing.T) {
 	a := testDropApp(t)
 	tt := ui.NewTester(a.view, 1100, 640)

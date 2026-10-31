@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
+	"slices"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -264,8 +266,35 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 			})
 		}
 	}
+	// Files dragged from another app open as the Files view's do, on an
+	// editor pane; on a terminal, near its left, right or top edge, where
+	// what the card puts over the terminal takes them, else the terminal
+	// does, pasting their paths, as at its prompt.
+	osZone := zoneNone
+	takesFiles := (p.Editor() || p.Terminal()) && !a.hostOf(p.ID).remote()
+	if x, y, over := card.FileDragAt(); over && takesFiles {
+		b := a.paneRef("card-" + p.ID).Bounds(c)
+		if p.Editor() {
+			osZone = zoneAt(x/max(b.W, 1), y/max(b.H, 1), true)
+		} else {
+			osZone = termZone(x, y, b.W, b.H)
+		}
+	}
+	if osZone != zoneNone {
+		zone, file = osZone, true
+	}
 	if zone != zoneNone {
 		a.lastZone = zone
+	}
+	sid, target := s.ID, p.ID
+	dropped := func(e ui.Element) {
+		if files := e.DroppedFiles(); len(files) > 0 {
+			files, drop := slices.Clone(files), a.lastZone
+			a.defer_(func() { a.dropOSFiles(sid, target, files, drop) })
+		}
+	}
+	if takesFiles {
+		dropped(card)
 	}
 
 	dragging := false
@@ -286,6 +315,9 @@ func (a *App) paneCard(c *ui.Context, pal *palette, bar ui.TitleBar, shown float
 			// as what paints after a web view shows over it.
 			v := ui.Box(c.Key("veil")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Background(cpal.veil)
 			v.Opacity(v.Animate("on", b2f(!focused), 160*time.Millisecond))
+		}
+		if osZone != zoneNone && p.Terminal() {
+			dropped(ui.Box(c.Key("file-drop")).Absolute().Top(0).Left(0).Right(0).Bottom(0))
 		}
 		if zone != zoneNone {
 			a.dropPreview(c, pal, p.ID, zone, file)
@@ -500,6 +532,48 @@ func (a *App) dropFile(sid, target, path string, zone dropZone) {
 		zone = zoneRight
 	}
 	a.split(s, proto.CreateParams{Split: target, Direction: zone.side(), File: path})
+}
+
+// termZone is the zone of a terminal's card, w by h, that files dragged
+// from another app at x, y go to: beside it in a band along its left,
+// right or top edge, its header with it; none in the rest, its bottom too,
+// where a prompt waits, as the terminal takes them there.
+func termZone(x, y, w, h float32) dropZone {
+	band := func(d float32) float32 { return min(max(d*0.15, 40), 120) }
+	switch {
+	case x < band(w):
+		return zoneLeft
+	case x > w-band(w):
+		return zoneRight
+	case y < headerH+band(h):
+		return zoneUp
+	}
+	return zoneNone
+}
+
+// dropOSFiles opens files dropped from another app on a pane, as
+// dropFile does a file of the Files view: a folder in a terminal there,
+// and each after the first beside the pane, the first alone taking an
+// editor pane's place.
+func (a *App) dropOSFiles(sid, target string, paths []string, zone dropZone) {
+	s := a.session(sid)
+	if s == nil || zone == zoneNone {
+		return
+	}
+	for i, path := range paths {
+		z := zone
+		if i > 0 && z == zoneSwap {
+			z = zoneRight
+		}
+		if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+			if z == zoneSwap {
+				z = zoneRight
+			}
+			a.split(s, proto.CreateParams{Split: target, Direction: z.side(), Dir: path})
+			continue
+		}
+		a.dropFile(sid, target, path, z)
+	}
 }
 
 // paneHeader builds a pane's header, and reports whether its title is
