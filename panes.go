@@ -536,6 +536,9 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 				grip.Background(pal.rowHover).Cursor(ui.CursorGrab)
 			}
 		}
+		if p.Editor() && p.File != "" {
+			grip.ContextMenu(func(m *ui.Menu) { a.editorMenu(c, m, s, p) })
+		}
 		grip.Children(func() {
 			if multi {
 				if p.Status != proto.Idle || p.Unread {

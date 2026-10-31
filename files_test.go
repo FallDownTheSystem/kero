@@ -198,6 +198,24 @@ func TestEditorPane(t *testing.T) {
 	}
 	shot(t, tt, "editor-pane")
 
+	// Its title's menu copies its path, whole or from the session's
+	// folder, and opens it outside kero.
+	for _, c := range []struct{ item, want string }{{"Copy Path", "/tmp/main.go"}, {"Copy Relative Path", "main.go"}} {
+		if err := tt.RightClick("main.go"); err != nil {
+			t.Fatal(err)
+		}
+		if items := tt.Menu(); !slices.Contains(items, "Open in Editor") || !slices.Contains(items, "Show in "+fileManager()) {
+			t.Fatalf("title's menu %q", items)
+		}
+		if err := tt.ChooseMenuItem(c.item); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		if got := tt.Clipboard(); got != c.want {
+			t.Errorf("%s copied %q", c.item, got)
+		}
+	}
+
 	// The text size keys zoom the file while its pane has the keyboard,
 	// and the terminals' text while a terminal has it; the bar's buttons
 	// zoom the file too.

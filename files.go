@@ -798,7 +798,16 @@ func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir 
 			a.showHistory(strings.ReplaceAll(t.rel(path), `\`, "/"))
 		}
 	}
-	if !a.hostOf(t.pane).remote() {
+	a.pathItems(c, m, t.pane, path, t.rel(path), dir)
+}
+
+// pathItems are the items of a file's or folder's menu, of pane's host,
+// that open it on this machine, which a host's but this one's has none
+// of: in the user's editor, the app the system asks for and the file
+// manager; then what copies its path, and rel, its path from the folder
+// the user works in, unless "".
+func (a *App) pathItems(c *ui.Context, m *ui.Menu, pane, path, rel string, dir bool) {
+	if !a.hostOf(pane).remote() {
 		if m.Item(locales.FilesOpenInEditor()).Chosen() {
 			a.openInEditor(path)
 		}
@@ -815,9 +824,26 @@ func (a *App) fileMenu(c *ui.Context, m *ui.Menu, t *fileTree, path string, dir 
 	if m.Item(locales.FilesCopyPath()).Chosen() {
 		c.WriteClipboard(path)
 	}
-	if m.Item(locales.FilesCopyRelativePath()).Chosen() {
-		c.WriteClipboard(t.rel(path))
+	if rel != "" && m.Item(locales.FilesCopyRelativePath()).Chosen() {
+		c.WriteClipboard(rel)
 	}
+}
+
+// editorMenu is the menu of an editor pane's title: what acts on its file
+// as the Files view's menu of it does, its relative path from the folder
+// that view shows for the session.
+func (a *App) editorMenu(c *ui.Context, m *ui.Menu, s *proto.Session, p *proto.Pane) {
+	rel := ""
+	if rp, root := a.filesRoot(s); rp != nil {
+		t := &fileTree{root: root}
+		if _, ok := t.within(p.File); ok {
+			rel = t.rel(p.File)
+			if g := rp.Git; g != nil && g.Root == root && m.Item(locales.FilesShowHistory()).Chosen() {
+				a.showHistory(strings.ReplaceAll(rel, `\`, "/"))
+			}
+		}
+	}
+	a.pathItems(c, m, p.ID, p.File, rel, false)
 }
 
 // openItems are the items of a menu of a file of a pane's host, outside
