@@ -5,6 +5,17 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.27-fork.13
+
+- Right-click a file pane's name at the top to copy its path, whole or
+  relative, open it in your editor or with another app, show it in the
+  file manager, or show its history
+- Files and folders dragged in from the file manager open in panes, as
+  ones from the Files view do: beside a pane when dropped near its edge,
+  in an editor pane's place at its middle, a folder in a terminal. On a
+  terminal, only its left, right and top edges open them; the rest of it
+  pastes their paths, as before
+
 ## 2.1.27-fork.12
 
 - Discarding, staging or unstaging a folder of thousands of files works
