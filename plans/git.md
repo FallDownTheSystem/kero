@@ -257,8 +257,10 @@ The viewer's `HunkActions` give each change Revert and Keep, which suit the
 - The panel is a side panel of views (`side.go`), Changes the first: a
   header and a resizable edge. Changes is one scroll of the files, each a
   header (sticky while its diff scrolls past) and its diff (`FitContent`),
-  folded on a click, and from the start for a binary or huge file. A Files
-  view, the worktree's tree, is meant to join it as another view.
+  folded on a click, and from the start for a binary or huge file. Files
+  (`files.go`), the worktree's tree, is the other view: a file chosen
+  opens below it in an editor, which saves through kerod's `fs.write` only
+  as the file was read.
 - A file's text is fetched as its section shows, a few at a time, and again
   as the list counts its change anew, rather than on a timer.
 - It toggles with ⌥⌘G (Ctrl+Shift+G elsewhere), `changes.toggle`: ⇧⌘G is
