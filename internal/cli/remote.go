@@ -285,10 +285,11 @@ func hostsCmd(args []string) error {
 }
 
 // releasedVersion is this Kero's version, to install the same on a host,
-// "" for a development build, which installs the latest release.
+// "" for a development build or the fork's, which installs the latest
+// release.
 func releasedVersion() string {
 	v := build.Version()
-	if v == "" || strings.Contains(v, "dev") {
+	if v == "" || strings.Contains(v, "dev") || build.Fork(v) {
 		return ""
 	}
 	return v

@@ -55,7 +55,10 @@ func TestHookInstallKeepsSettings(t *testing.T) {
 	if i, j, k := strings.Index(got, `"model"`), strings.Index(got, `"hooks"`), strings.Index(got, `"env"`); !(i < j && j < k) {
 		t.Fatalf("keys out of order:\n%s", got)
 	}
-	for _, want := range []string{`"say done"`, `"echo hi"`, `"matcher": "startup"`, `"timeout": 10`, "kero home/bin/kero' hook claude"} {
+	// The command as JSON writes it: quoted for the platform's shell, a
+	// Windows path's backslashes escaped.
+	command, _ := json.Marshal(h.command())
+	for _, want := range []string{`"say done"`, `"echo hi"`, `"matcher": "startup"`, `"timeout": 10`, string(command)} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("no %s in:\n%s", want, got)
 		}
@@ -128,7 +131,9 @@ func TestHookRefusesBadSettings(t *testing.T) {
 // Kero's own kero command, and come out whole.
 func TestAgentPlugins(t *testing.T) {
 	home := t.TempDir()
+	// Windows' home is USERPROFILE's, not HOME's.
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	t.Setenv("KERO_HOME", filepath.Join(home, "kero"))
 	for _, env := range []string{"CLAUDE_CONFIG_DIR", "CODEX_HOME", "PI_CODING_AGENT_DIR", "XDG_CONFIG_HOME"} {
 		t.Setenv(env, "")
@@ -158,9 +163,15 @@ func TestAgentPlugins(t *testing.T) {
 			t.Fatalf("%s: %s after install", it.name(), it.state())
 		}
 		p := it.(agentPlugin)
+		// A string of the plugin's code, a Windows path's backslashes
+		// escaped.
+		exe, _ := json.Marshal(kero())
+		if !strings.HasPrefix(kero(), filepath.Join(home, "kero", "bin", "kero")) {
+			t.Fatalf("kero is %s, not of KERO_HOME", kero())
+		}
 		for name := range p.files {
 			b := read(t, filepath.Join(p.dir, name))
-			if strings.Contains(b, "__KERO__") || name != "package.json" && !strings.Contains(b, filepath.Join(home, "kero", "bin", "kero")) {
+			if strings.Contains(b, "__KERO__") || name != "package.json" && !strings.Contains(b, string(exe)) {
 				t.Fatalf("%s/%s runs no kero:\n%s", it.name(), name, b)
 			}
 		}
