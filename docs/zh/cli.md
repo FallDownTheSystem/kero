@@ -25,6 +25,8 @@ kero new -n api -d ~/code/api    # 新建会话，并打印它的 id
 kero new -- npm run dev          # 新建一个运行某条命令的会话
 kero split --down -- npm test    # 在当前窗格旁新建一个窗格
 kero split --url localhost:3000  # 新建一个显示网页的浏览器窗格
+kero split --file src/main.go    # 新建一个文件的编辑器窗格
+kero new --file notes/plan.md    # 新建独立的编辑器会话；保存时创建文件
 kero rename api backend          # 重命名会话
 kero focus backend               # 在 app 中显示它
 kero close backend               # 结束会话（如果给的是窗格，则关闭该窗格）
@@ -42,6 +44,7 @@ kero restart <pane>              # 重新启动已退出窗格的 shell
 | `-f`, `--focus`             | 在 app 中显示它                                 |
 | `-w`, `--wait`              | 等待它的命令结束，并以该命令的退出码退出        |
 | `-u`, `--url <url>`         | 打开显示该网页的浏览器，而不是 shell            |
+| `--file <path>`             | 打开该文件的编辑器，而不是 shell                |
 | `--worktree <branch>`       | 在专属的 git 工作树中、以新分支启动（[详情](./changes.md#sessions-in-their-own-worktree)） |
 | `--base <ref>`              | 工作树分支的起点（默认：默认分支）              |
 
@@ -188,6 +191,22 @@ kero diff review --branch                 # 自默认分支以来的改动
 
 见 [改动](./changes.md)。
 
+## 草稿审查
+
+审查拉取请求的智能体把评论写进[草稿审查](./changes.md#draft-reviews)，由你在 Kero 中发布。行号是拉取请求头部中文件的行号（加 `--base` 时为基础分支的行号），并且必须在拉取请求的差异中：
+
+```sh
+kero pr comment src/parse.go:42 "This drops the last token."
+kero pr comment src/parse.go:40-44 -      # 正文从标准输入读取
+kero pr comment src/api.go "Split this file?"   # 整个文件
+kero pr summary "Two bugs in the parser."
+kero pr show                              # 草稿，以及每条评论的 id
+kero pr edit 3 "Clearer text"
+kero pr delete 3
+```
+
+在从 Kero 开始的审查中，窗格知道它的拉取请求；在其他地方，用 `--pr <编号>` 指定。
+
 ## 配置与设置
 
 ```sh
@@ -232,7 +251,10 @@ kero actions                     # 列出所有操作
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
+kero do files.show path=src/main.go
 ```
+
+相对路径的 `path=` 或 `dir=` 是相对于运行 `kero do` 时所在的文件夹。
 
 ## 退出码
 

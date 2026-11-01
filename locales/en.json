@@ -347,7 +347,7 @@
   "setDirProject": "Project",
   "setDirHome": "Home",
   "setSessionName": "Name sessions after",
-  "setSessionNameDetail": "Until you or an agent name one. With Pane You’re In, a pane running only its shell defers to the pane that needs you most.",
+  "setSessionNameDetail": "Until you or an agent names the session.",
   "setNameFocused": "Pane You’re In",
   "setNameLead": "Pane That Needs You",
   "setNameFolder": "Folder",
@@ -362,7 +362,7 @@
   "setRestoreSessions": "Restore sessions after a restart",
   "setRestoreSessionsDetail": "If the background service stops, as when the Mac restarts, sessions start again in their folders, under their history.",
   "setResumeAgents": "Resume agents",
-  "setResumeAgentsDetail": "Claude Code, Codex, Pi and OpenCode pick up their conversation where it was, once Kero’s skill is set up for them in Agents.",
+  "setResumeAgentsDetail": "Claude Code, Codex, Pi and OpenCode continue their conversations, once set up in Agents.",
   "setStartup": "Startup",
   "setOpenAtLogin": "Open Kero at login",
   "setLoginFailed": "Couldn’t change it: {error}",
@@ -395,8 +395,8 @@
   "setLanguageSystem": "System",
   "setTranslucent": "Translucent window",
   "setTranslucentDetail": "Let the desktop show through the window’s background.",
-  "setDimUnfocused": "Dim unfocused terminals",
-  "setDimUnfocusedDetail": "When a session has several panes, the terminals you’re not in fade.",
+  "setDimUnfocused": "Dim unfocused",
+  "setDimUnfocusedDetail": "Fade what you’re not in: the panes of the kinds turned on, when a session has several, and the viewer.",
   "setBackground": "Theme",
   "bgPetal": "Petal",
   "bgMist": "Mist",
@@ -410,7 +410,7 @@
   "bgPlain": "Plain",
   "setText": "Text",
   "setFont": "Font",
-  "setFontDetail": "JetBrains Mono with Nerd Fonts’ icons comes with Kero. Any installed monospaced font works; names separated by commas are tried in order.",
+  "setFontDetail": "Any monospaced font; names separated by commas are tried in order.",
   "setFontSystem": "System",
   "setUseFont": "Use “{name}”",
   "setSize": "Size",
@@ -428,7 +428,7 @@
   "setThicken": "Thicken text",
   "setThickenDetail": "A heavier stroke, as Ghostty’s font-thicken.",
   "setColors": "Ghostty themes",
-  "setColorsDetail": "One of Ghostty’s themes, or your own in ~/.config/ghostty/themes, colors the window, its panes and terminals in place of the theme above.",
+  "setColorsDetail": "One of Ghostty’s themes, or your own in {dir}, colors the window, its panes and terminals in place of the theme above. Point at a theme to preview it.",
   "setLightWindows": "Light windows",
   "setDarkWindows": "Dark windows",
   "setThemeNone": "None",
@@ -493,20 +493,20 @@
   "setNotifyError": "Couldn’t notify: {error}",
   "setRemoteControl": "Remote Control",
   "setRemoteControlRow": "Let commands drive this window",
-  "setRemoteControlDetail": "kero do and kero focus run the app’s actions, as its menus do: splitting, switching sessions, opening the palette. kero browser clicks, types and reads in browser panes.",
+  "setRemoteControlDetail": "Lets agents run the app's actions with kero do and kero focus, and drive browser panes with kero browser.",
   "setCli": "Command line tool",
   "setCliDetail": "Inside Kero, every pane has the kero command on its PATH already.",
   "setCliNotInstalled": "Not installed: other terminals don’t know the kero command.",
   "setCliRow": "kero in your terminal",
   "setSkills": "Skills for agents",
-  "setSkillsDetail": "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells them, as they start, which session they’re in.",
+  "setSkillsDetail": "Teaches agents to start and drive sessions and panes, and to report their status.",
   "setSkillInstalled": "Installed",
   "setSkillOutdated": "Installed, from an older Kero",
   "setSkillMissing": "Not installed",
   "setProgramStatus": "Program status",
   "setProgramStatusDetail": "Programs report what they do with OSC 7501, Superlogical’s program status protocol: the sidebar shows it, and notifies you.",
   "setConfiguration": "Configuration",
-  "setConfigurationDetail": "Every setting here is a line of this file, as Ghostty’s: edit it in any editor, and what you save applies at once. kero config show lists every key.",
+  "setConfigurationDetail": "Every setting here is a line of this file, and what you save there applies at once. kero config show lists every key.",
   "setConfigFile": "Config file",
   "setBackgroundService": "Background service",
   "setBackgroundServiceDetail": "kerod runs your sessions: quitting kero leaves it running.",
@@ -570,9 +570,9 @@
   "changesTurn": "Last Turn",
   "changesUncommitted": "Uncommitted",
   "changesBranch": "Branch",
-  "changesTurnTip": "What the agent changed since it last started working",
-  "changesUncommittedTip": "What isn't committed, untracked files too",
-  "changesBranchTip": "What this branch changed since it left {branch}",
+  "changesTurnTip": "Changes the agent made since it last started working",
+  "changesUncommittedTip": "Changes not yet committed, including untracked files",
+  "changesBranchTip": "Changes on this branch since it branched from {branch}",
   "changesFiles": "{count, plural, one {# file} other {# files}}",
   "@changesFiles": {
     "placeholders": {
@@ -644,7 +644,7 @@
   "setAdListFanboyCookie": "Cookie notices and consent banners.",
   "setAdListFanboySocial": "Social media buttons and embeds.",
   "setAdListFanboyAnnoyance": "Pop-ups, newsletter prompts and chat boxes, and the cookie and social lists' too.",
-  "setAdListsNote": "Lists hide more as they add up, and may break a page now and then. Lists of other URLs go in the configuration, as browser-filter-list.",
+  "setAdListsNote": "More lists hide more, and may break a page now and then. Add other lists as browser-filter-list in the configuration.",
   "changesUnmodified": "{count, plural, one {# unmodified line} other {# unmodified lines}}",
   "@changesUnmodified": {
     "placeholders": {
@@ -1010,12 +1010,12 @@
     }
   },
   "setHosts": "Hosts",
-  "setHostsDetail": "Other machines whose sessions show in the sidebar after this computer's. Kero reaches them over SSH with your keys and agent, through WSL, or through kerod's listener on your tailnet, and kero -H <name> drives them from the command line.",
+  "setHostsDetail": "Other machines whose sessions show in the sidebar, over SSH, WSL or your tailnet.",
   "setHostsNone": "No hosts",
   "setHostsNoneDetail": "Add a machine you reach with ssh. If Kero isn't installed there, Kero offers to install it.",
   "setHostsDocs": "Setting up hosts",
   "setHostAdd": "Add a Host",
-  "setHostAddDetail": "me@devbox or ssh://me@devbox:2222 over SSH, as ssh takes it with your ~/.ssh/config; wsl://Ubuntu for a WSL distribution; http://devbox:7373 or https://devbox.tail1234.ts.net for kerod's tailnet listener.",
+  "setHostAddDetail": "me@devbox over SSH, wsl://Ubuntu for WSL, or https://devbox.tail1234.ts.net for kerod's tailnet listener.",
   "setHostAddressPlaceholder": "me@devbox",
   "setHostNamePlaceholder": "Name: {name}",
   "@setHostNamePlaceholder": {
@@ -1051,7 +1051,7 @@
   "setRemoteUpdates": "Let them update Kero here",
   "setRemoteUpdatesDetail": "Kero on your other machines can update this app to its version. The app relaunches, and the programs running in its sessions end.",
   "setHostSettingsSplit": "A host's own settings",
-  "setHostSettingsSplitDetail": "The shell, environment, scrollback and session restore of a host's sessions come from its own configuration: run kero config edit on the host. Appearance, keyboard and notifications are this app's.",
+  "setHostSettingsSplitDetail": "A host's shell, environment, scrollback and session restore come from its own configuration: run kero config edit there.",
   "setShellThisComputer": "These apply to this computer's sessions. Each host's come from its own configuration (Settings › Hosts).",
   "confirmQuitAllHosts": "Sessions on other machines keep running.",
   "hostInstallTitle": "Install Kero on {host}?",
@@ -1173,5 +1173,765 @@
   "endedSetUpSkill": "Set up Kero's skill for your agents to list their ended conversations here",
   "actionQuickTerminal": "Quick Terminal",
   "toastGlobalShortcutFailed": "Couldn’t use {keys} for the quick terminal: {error}",
-  "setShortcutGlobal": "Works in every app"
+  "setShortcutGlobal": "Works in every app",
+  "footerMenus": "Menus",
+  "pageFiles": "Files",
+  "pageGit": "Git",
+  "setDimTerminal": "Terminal",
+  "setDimFiles": "Files",
+  "setDimWeb": "Web",
+  "setDimExplorer": "Viewer",
+  "setAppFont": "App Font",
+  "setAppFontDetail": "The font of the sidebars, the viewer, menus and settings.",
+  "setWeightSemilight": "Semilight",
+  "setFileColors": "File Colors",
+  "setFileColorsDetail": "Code in editor panes and the viewer: in the terminals’ theme, or a theme of its own.",
+  "setSameAsTerminal": "Same as Terminal",
+  "setCustomizeTheme": "Customize Theme",
+  "setEditLightTheme": "Theme for Light Windows",
+  "setEditDarkTheme": "Theme for Dark Windows",
+  "setThemeSavesTo": "Saved among your themes, in {dir}.",
+  "setThemeName": "Name",
+  "setThemeReplaces": "Replaces your theme of this name.",
+  "setThemeNameEmpty": "Give the theme a name.",
+  "setThemeNameInvalid": "A name can’t start with a dot or have / \\ : * ? \" < > |.",
+  "setThemeNameTaken": "“{name}” is a theme of Ghostty’s: choose another name.",
+  "setThemeCopyName": "{name} Custom",
+  "setThemeSaveFailed": "Couldn’t save the theme: {error}",
+  "setThemeBase": "Background and text",
+  "setThemeBackground": "Background",
+  "setThemeForeground": "Text",
+  "setThemeCursorText": "Text under the cursor",
+  "setThemeSelection": "Selection",
+  "setThemeSelectionText": "Selected text",
+  "setThemeMatches": "Search matches",
+  "setThemeMatch": "Match",
+  "setThemeMatchText": "Match text",
+  "setThemeCurrentMatch": "Current match",
+  "setThemeCurrentMatchText": "Current match text",
+  "setThemeNormal": "Normal colors",
+  "setThemeBright": "Bright colors",
+  "setColorBlack": "Black",
+  "setColorRed": "Red",
+  "setColorGreen": "Green",
+  "setColorYellow": "Yellow",
+  "setColorBlue": "Blue",
+  "setColorMagenta": "Magenta",
+  "setColorCyan": "Cyan",
+  "setColorWhite": "White",
+  "setColorBright": "Bright {color}",
+  "sideZoom": "Zoom Viewer",
+  "splitTerminal": "Terminal",
+  "splitBrowser": "Browser",
+  "splitFile": "New File",
+  "splitFileTitle": "Open a File in the Pane",
+  "filesOpenFile": "Open File…",
+  "setLayout": "Layout",
+  "setSessionsSide": "Sessions sidebar",
+  "setSessionsSideDetail": "The right sidebar and the viewer take the other side.",
+  "setSideLeft": "Left",
+  "setSideRight": "Right",
+  "setExplorerFolder": "Viewer folder",
+  "setExplorerFolderDetail": "What the viewer's header shows of the folder it shows. Fit shows the path, else the name, as the room allows.",
+  "setPathHidden": "Nothing",
+  "setPathFolder": "Name",
+  "setPathFull": "Path",
+  "setPathFit": "Fit",
+  "setPaneFolder": "Pane folder",
+  "setPaneFolderDetail": "What a pane's header shows of the folder it works in. Fit shows the path, else the name, as the room allows.",
+  "setHiddenFiles": "Show dotfiles",
+  "setHiddenFilesDetail": "Files and folders whose names start with a dot, in the Files view.",
+  "changesTree": "Tree View",
+  "gitIgnore": "Add to .gitignore",
+  "gitIgnoreFolder": "Add Folder to .gitignore",
+  "gitIgnoreTrackedTitle": "Stop tracking {name}?",
+  "gitIgnoreTrackedDetail": "{count, plural, one {Git tracks this file, and keeps tracking it when .gitignore lists it. Stop tracking it to remove it from the repository at the next commit. The file stays on disk.} other {Git tracks # files here, and keeps tracking them when .gitignore lists them. Stop tracking them to remove them from the repository at the next commit. The files stay on disk.}}",
+  "gitIgnoreUntrack": "Ignore and Stop Tracking",
+  "gitIgnoreOnly": "Only Add to .gitignore",
+  "setPullRequests": "Pull Requests",
+  "setEditor": "Editor",
+  "setEditorDetail": "What Open in Editor runs, as code or zed. Empty uses the system's app.",
+  "setEditorSystem": "System default",
+  "filesNoFolderDetail": "A session's files show here while one of its terminals works in a folder.",
+  "filesUnsaved": "Unsaved",
+  "filesOpenInEditor": "Open in Editor",
+  "filesOpenWith": "Open With…",
+  "filesCantOpen": "Couldn't open it: {error}",
+  "filesCopyPath": "Copy Path",
+  "filesCopyRelativePath": "Copy Relative Path",
+  "filesSave": "Save",
+  "filesRefresh": "Refresh",
+  "filesOpenInPane": "Open in Pane",
+  "filesOpenHere": "Open Here",
+  "filesFilter": "Filter",
+  "filesFilterTip": "Finds files and folders by name in all of the folder, or by path with a slash, as src/main. Enter or Down opens the first file found, Esc clears it.",
+  "filesClearFilter": "Clear Filter",
+  "filesNoMatch": "Nothing matches “{query}”",
+  "filesCantFind": "Can't search the folder",
+  "filesMoreMatches": "More match than show. Type more of the name.",
+  "filesWrap": "Wrap Lines",
+  "filesPreviewMarkdown": "Preview Markdown",
+  "filesSmaller": "Smaller Text",
+  "filesBigger": "Bigger Text",
+  "filesConfirmCloseTitle": "Close without saving?",
+  "filesConfirmCloseDetail": "Your edits to {file} aren't saved, and go with the pane.",
+  "filesDiscard": "Close Without Saving",
+  "filesCantCreate": "Couldn't create it: {error}",
+  "filesNewTerminal": "New Terminal Here",
+  "filesNotInTree": "{path} isn't in the folder the Files view shows",
+  "filesNew": "New file",
+  "filesNewTip": "The file isn't there yet: saving it makes it",
+  "paneMore": "More",
+  "actionShowFiles": "Show Files",
+  "actionShowChanges": "Show Changes",
+  "actionToggleHistory": "Toggle History",
+  "actionShowHistory": "Show History",
+  "sideHistory": "History",
+  "filesShowHistory": "Show History",
+  "setCommitMessage": "Commit message",
+  "setCommitMessageDetail": "Runs in your shell, with the prompt on its standard input; '{session}' becomes the pane agent's conversation ID, to fork it. Empty forks it with the agent's own command.",
+  "setCommitMessageAgent": "The pane's agent",
+  "gitAnAgent": "An agent",
+  "gitAgentWorking": "{agent} is working here",
+  "gitAgentWorkingDetail": "{action} changes files the agent may be editing. Run it when the agent is done, or now?",
+  "gitAgentWorkingNow": "{action} changes a file the agent may be editing.",
+  "gitWhenDone": "When It's Done",
+  "gitNow": "Now",
+  "gitBusy": "{action} is still running",
+  "gitStillRunning": "Still running…",
+  "gitCancel": "Cancel",
+  "gitWaiting": "{action} is waiting for the agents here to finish",
+  "gitFailed": "{action} failed",
+  "gitDismiss": "Dismiss",
+  "gitShowOutput": "Show Output",
+  "gitHideOutput": "Hide Output",
+  "gitRunInTerminal": "Run in Terminal",
+  "gitSwitchBranch": "Switch Branch",
+  "gitMore": "More Git Actions",
+  "gitPublish": "Publish",
+  "gitPublishTip": "Publish Branch: push it to the remote and track the remote branch",
+  "gitSyncTip": "Sync with {upstream}: pull its commits, then push yours",
+  "gitFetchTip": "Fetch from {upstream}",
+  "gitFetch": "Fetch",
+  "gitFetchAll": "Fetch from All Remotes",
+  "gitFetchPrune": "Fetch and Prune",
+  "gitPull": "Pull",
+  "gitPullMerge": "Pull (Merge)",
+  "gitPullRebase": "Pull (Rebase)",
+  "gitPullFF": "Pull (Fast-Forward Only)",
+  "gitPush": "Push",
+  "gitPushForce": "Force Push",
+  "gitPushForceTitle": "Force push {branch}?",
+  "gitPushForceDetail": "Commits on {upstream} that this branch doesn't have are lost. If someone pushed to it since your last fetch, the push stops instead.",
+  "gitPushTags": "Push with Tags",
+  "gitStash": "Stash",
+  "gitStashAll": "Stash All Changes",
+  "gitStashStaged": "Stash Staged Changes",
+  "gitStashMessage": "Stash with Message…",
+  "gitStashMessageTitle": "Stash All Changes",
+  "gitStashMessagePlaceholder": "Stash message",
+  "gitNewBranch": "New Branch…",
+  "gitNewBranchTitle": "New Branch",
+  "gitNewBranchDetail": "Starts from the current commit and keeps your changes.",
+  "gitNewBranchAt": "Starts from {at}.",
+  "gitBranchName": "Branch name",
+  "gitCreateBranch": "Create Branch",
+  "gitCreateNamed": "Create Branch “{name}”",
+  "gitUndoCommit": "Undo Last Commit",
+  "gitUndoCommitTitle": "Undo the last commit?",
+  "gitUndoCommitDetail": "Its changes return as staged changes.",
+  "gitRefresh": "Refresh",
+  "gitSwitchTo": "Switch to {name}",
+  "gitBranchFilter": "Find a branch, or type a new name",
+  "gitBranches": "Branches",
+  "gitRemoteBranches": "Remote Branches",
+  "gitTags": "Tags",
+  "gitBranchInWorktree": "Checked out in {path}",
+  "gitGone": "gone",
+  "gitInWorktree": "in a worktree",
+  "gitSwitch": "Switch",
+  "gitNewBranchFrom": "New Branch from Here…",
+  "gitOpenInWorktree": "New Session in Worktree",
+  "gitRenameBranch": "Rename Branch…",
+  "gitRenameBranchTitle": "Rename {name}",
+  "gitRename": "Rename",
+  "gitRenameNamed": "Rename {name}",
+  "gitDeleteBranch": "Delete Branch",
+  "gitDeleteBranchTitle": "Delete branch {name}?",
+  "gitDeleteBranchDetail": "Its commits stay on the other branches that contain them.",
+  "gitDeleteUnmergedTitle": "Delete {name} with unmerged commits?",
+  "gitDeleteUnmergedDetail": "Deleting it loses those commits. Git's reflog keeps them for a while.",
+  "gitDeleteAnyway": "Delete Anyway",
+  "gitDeleteNamed": "Delete {name}",
+  "gitSwitchDirtyTitle": "Switch with uncommitted changes?",
+  "gitSwitchDirtyDetail": "Stash {count, plural, one {the changed file} other {the # changed files}} and switch, or bring them to {name} if they don't conflict.",
+  "@gitSwitchDirtyDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStashAndSwitch": "Stash and Switch",
+  "gitStashSwitchMessage": "Before switching to {name}",
+  "gitTakeChanges": "Bring Changes",
+  "gitMessage": "Commit message",
+  "gitMessagePlaceholder": "Message ({keys} to commit)",
+  "gitCommit": "Commit",
+  "gitCommitFiles": "{count, plural, one {Commit # File} other {Commit # Files}}",
+  "@gitCommitFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitAmend": "Amend Last Commit",
+  "gitCommitMerge": "Commit Merge",
+  "gitCommitTip": "Commit the staged changes",
+  "gitResolveFirst": "{count, plural, one {Resolve the conflict first} other {Resolve the # conflicts first}}",
+  "@gitResolveFirst": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStageFirst": "Stage changes to commit first",
+  "gitWriteFirst": "Write a message first",
+  "gitCommitOptions": "Commit Options",
+  "gitCommitAndPush": "Commit and Push",
+  "gitSignoff": "Sign Off",
+  "gitSkipHooks": "Skip Hooks",
+  "gitWriteMessage": "Write Message",
+  "gitWriteMessageTip": "Write the message with a coding agent",
+  "gitWriteMessageFork": "Write the message with a fork of {agent}'s conversation, which knows why it made the changes",
+  "gitWriteMessageCommand": "Write the message with {command}",
+  "gitStopWriting": "Stop Writing",
+  "gitWriteFailed": "Couldn't write the message: {error}",
+  "gitOpMerge": "merge",
+  "gitOpRebase": "rebase",
+  "gitOpCherryPick": "cherry-pick",
+  "gitOpRevert": "revert",
+  "gitOperationReady": "The {op} is in progress.",
+  "gitOperationConflicts": "{count, plural, one {# conflict stops} other {# conflicts stop}} the {op}. Resolve each one, then mark it resolved.",
+  "@gitOperationConflicts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitContinue": "Continue",
+  "gitContinueTip": "Continue the {op}",
+  "gitContinueOp": "Continue the {op}",
+  "gitAbort": "Abort",
+  "gitAbortTip": "Cancel the {op} and go back to where it started",
+  "gitAbortOp": "Abort the {op}",
+  "gitChanges": "Changes",
+  "gitStagedChanges": "Staged Changes",
+  "gitStage": "Stage",
+  "gitStageAll": "Stage All Changes",
+  "gitStageChangeTip": "Stage this change for the next commit",
+  "gitUnstage": "Unstage",
+  "gitUnstageAll": "Unstage All Changes",
+  "gitUnstageChangeTip": "Remove this change from the next commit",
+  "gitDiscard": "Discard",
+  "gitDiscardAll": "Discard All Changes",
+  "gitDiscardChanges": "Discard Changes",
+  "gitDeleteFile": "Delete File",
+  "gitRestoreFile": "Restore File",
+  "gitDiscardChangeTip": "Discard this change",
+  "gitDiscardTitle": "Discard changes to {name}?",
+  "gitDiscardDetail": "Its unstaged changes are lost.",
+  "gitDeleteTitle": "Delete {name}?",
+  "gitDeleteDetail": "It's untracked, so git can't restore it.",
+  "gitRestoreTitle": "Restore {name}?",
+  "gitRestoreDetail": "It returns to its staged version.",
+  "gitDiscardAllTitle": "Discard all unstaged changes?",
+  "gitDiscardAllDetail": "{count, plural, one {The file returns to its staged version, or is deleted if untracked.} other {The # files return to their staged versions, and untracked files are deleted.}}",
+  "@gitDiscardAllDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitMarkResolved": "Mark Resolved",
+  "gitSaveAndMarkResolved": "Save and Mark Resolved",
+  "gitOpenMergeEditor": "Open in Merge Editor",
+  "mergeConflictsLeft": "{count, plural, =0 {All conflicts resolved} one {# conflict left} other {# conflicts left}}",
+  "@mergeConflictsLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mergePrevious": "Previous Conflict",
+  "mergeNext": "Next Conflict",
+  "mergeUseAll": "Use {name}'s Lines in All Conflicts",
+  "mergeShowText": "Show as Text",
+  "mergeShowEditor": "Show Merge Editor",
+  "gitResolve": "Resolve Conflict",
+  "gitOurs": "Ours",
+  "gitTheirs": "Theirs",
+  "gitUseSide": "Use {name}'s Version",
+  "gitUseSideTitle": "Use {name}'s version of {file}?",
+  "gitUseSideDetail": "The file becomes {name}'s version and is marked resolved. Its conflict markers and any edits since the conflict are lost.",
+  "gitResolveOp": "Resolve {file}",
+  "gitResolveWithAgent": "Resolve with Agent",
+  "gitResolveWithAgentTip": "Ask the agent in this worktree to resolve the conflicts and stage them",
+  "gitSentToAgent": "Conflicts sent to {agent}",
+  "gitAgentSendFailed": "Couldn't send the conflicts to the agent: {error}",
+  "gitMergeInto": "Merge {name} into {branch}",
+  "gitMergeIntoNoFF": "Merge {name} into {branch} with a Merge Commit",
+  "gitMergeOp": "Merge {name}",
+  "gitRebase": "Rebase",
+  "gitRebaseOnto": "Rebase {branch} onto {name}",
+  "gitRebaseOp": "Rebase onto {name}",
+  "gitRebaseTitle": "Rebase {branch} onto {name}?",
+  "gitRebaseDetail": "Commits on {branch} that {name} doesn't have are replayed on top of {name}. If {branch} was already pushed, it then needs a force push.",
+  "gitRebaseStashDetail": "{count, plural, one {The changed file is} other {The # changed files are}} stashed first and restored when the rebase ends. If they conflict, they stay in the stash.",
+  "@gitRebaseStashDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStashAndRebase": "Stash and Rebase",
+  "gitRebaseInteractive": "Interactively Rebase {branch} onto {name}…",
+  "rebaseTitle": "Interactive Rebase",
+  "rebaseOnto": "Rebase {branch} onto {commit}",
+  "rebasePick": "Pick",
+  "rebaseReword": "Reword",
+  "rebaseEdit": "Edit",
+  "rebaseSquash": "Squash",
+  "rebaseFixup": "Fixup",
+  "rebaseDrop": "Drop",
+  "rebasePickTip": "Keep the commit as it is",
+  "rebaseRewordTip": "Keep the commit, with a new message",
+  "rebaseEditTip": "Stop at the commit to change it, then continue",
+  "rebaseSquashTip": "Combine the commit with the one below it, and keep both messages",
+  "rebaseFixupTip": "Combine the commit with the one below it, and keep only that one's message",
+  "rebaseDropTip": "Remove the commit",
+  "rebaseHelp": "Drag commits to reorder them, the newest on top. Keys: P Pick, R Reword, E Edit, S Squash, F Fixup, D Drop; Alt+↑ and Alt+↓ move a commit.",
+  "rebaseCommitTab": "Commit",
+  "rebaseChangesTab": "Changes",
+  "rebaseBackup": "Back up the current state to a temporary branch",
+  "rebaseNothing": "{branch} has no commits that {commit} doesn't have.",
+  "rebaseSquashFirst": "{action} needs a kept commit below it",
+  "rebaseAllDropped": "Keep at least one commit, or reset the branch instead",
+  "rebaseSubject": "Subject",
+  "rebaseBody": "Description",
+  "rebaseKeepMessage": "OK",
+  "rebaseNewMessage": "New message",
+  "rebaseOp": "Interactive rebase",
+  "rebaseLoadFailed": "Couldn't list the commits: {error}",
+  "gitChangeMoved": "The change was updated. Review it and try again.",
+  "gitStageFailed": "Couldn't stage: {error}",
+  "gitNewBranchHere": "New Branch Here…",
+  "gitSessionHere": "New Session in Worktree Here…",
+  "gitSessionHereTitle": "New Session in Worktree",
+  "historyCantRead": "Can't read the history",
+  "historyNoMatch": "No matching commits",
+  "historyNone": "No commits yet",
+  "historyNoneDetail": "The branch's commits show here as a graph.",
+  "historyMoreFound": "More commits match than are shown. Refine the filter.",
+  "historyOf": "History of {name}",
+  "historyOfFile": "Show File History",
+  "historyAllFiles": "All Files",
+  "historyBranch": "Branch",
+  "historyAll": "All",
+  "historyFilter": "Filter",
+  "historyFilterTip": "Filter commits by message, author or hash",
+  "historyFirstParent": "First Parent Only: show each merge as one commit",
+  "historyCopyHash": "Copy Hash",
+  "historyCopyBranch": "Copy Branch Name",
+  "historyStashes": "{count, plural, one {Stash: # entry} other {Stash: # entries}}",
+  "@historyStashes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyStashApply": "Apply Stash",
+  "historyStashPop": "Pop Stash",
+  "historyStashDrop": "Drop Stash",
+  "historyDropTitle": "Drop this stash entry?",
+  "historyDropDetail": "“{message}” is lost.",
+  "historyUncommitted": "Uncommitted",
+  "historyShowUncommitted": "Show uncommitted changes",
+  "historyCheckout": "Check Out",
+  "historyCheckoutBranch": "Check Out {name}",
+  "historyOpenWorktree": "Open Worktree of {name}",
+  "historyCopyWorktreePath": "Copy Worktree Path of {name}",
+  "historyCherryPick": "Cherry-Pick",
+  "historyCherryPickOf": "Cherry-Pick {hash}",
+  "historyRevert": "Revert Commit",
+  "historyRevertOf": "Revert {hash}",
+  "historyReset": "Reset to This Commit",
+  "historyResetTo": "Reset to {hash}",
+  "historyResetTitle": "Reset {branch} to {hash}?",
+  "historyResetSoft": "Soft: Keep Changes Staged",
+  "historyResetSoftDetail": "The later commits become staged changes.",
+  "historyResetMixed": "Mixed: Keep Changes",
+  "historyResetMixedDetail": "The later commits become unstaged changes.",
+  "historyResetHard": "Hard: Discard Changes",
+  "historyResetHardDetail": "The later commits and all uncommitted changes are lost.",
+  "gitClearLines": "Clear Selected Lines",
+  "gitStageLines": "{count, plural, one {Stage # Line} other {Stage # Lines}}",
+  "@gitStageLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStageLinesTip": "Stage the selected lines for the next commit",
+  "gitUnstageLines": "{count, plural, one {Unstage # Line} other {Unstage # Lines}}",
+  "@gitUnstageLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitUnstageLinesTip": "Remove the selected lines from the next commit",
+  "gitDiscardLines": "{count, plural, one {Discard # Line} other {Discard # Lines}}",
+  "@gitDiscardLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitDiscardLinesTip": "Discard the changes to the selected lines",
+  "actionSearchConversations": "Search Conversations…",
+  "searchPlaceholder": "Search conversations",
+  "searchTip": "Finds the agents' conversations by what was said in them, their titles and folders. Narrow it with agent:codex, dir:kero or date:<2d, and leave out what has a word with -word. ↑↓ choose, Enter resumes, Esc clears.",
+  "searchClear": "Clear Search",
+  "searchIndexing": "Reading the agents' histories… {done} of {todo}",
+  "@searchIndexing": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "todo": {
+        "type": "int"
+      }
+    }
+  },
+  "searchNoMatches": "No conversation has that",
+  "searchCount": "{count, plural, one {# conversation} other {# conversations}}",
+  "@searchCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchTurns": "{count, plural, one {You wrote # message} other {You wrote # messages}}",
+  "@searchTurns": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchYou": "You",
+  "searchShowSession": "Show Session",
+  "searchRestart": "Kero's service runs an older version, which can't search. Restart it to search this machine's conversations.",
+  "searchRestartHost": "{host} runs an older Kero, which can't search. Update it to search its conversations.",
+  "@searchRestartHost": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "setResumeCommands": "Resume commands",
+  "setResumeCommandsDetail": "Runs in your shell, as cc --resume '{session}', where '{session}' becomes the conversation's ID. Empty uses the agent's own command.",
+  "actionGoToFile": "Go to File…",
+  "actionToggleSearch": "Toggle Search",
+  "actionShowSearch": "Show Search",
+  "goToFileNoFolder": "No folder to find files in: open a session in one",
+  "goToFilePlaceholder": "Go to a file in {folder}",
+  "goToFileHint": "Enter opens it, {keys} in a pane of its own",
+  "goToFileMore": "{count, plural, one {Only # file is listed} other {Only the first # files are listed}}: type to find among them",
+  "sideSearch": "Search",
+  "searchNoFolder": "No folder to search",
+  "searchNoFolderDetail": "Search finds text in the files of the folder of the pane you're in, as Files shows them.",
+  "searchTextPlaceholder": "Search",
+  "searchMatchCase": "Match Case",
+  "searchWholeWord": "Match Whole Word",
+  "searchRegex": "Use Regular Expression",
+  "searchIn": "Searches the files in {folder}",
+  "searchResults": "{count, plural, one {# result} other {# results}} in {files, plural, one {# file} other {# files}}",
+  "searchResultsMore": "The first {count, plural, one {# result} other {# results}}, in {files, plural, one {# file} other {# files}}",
+  "searchUnfoldAll": "Expand All Files",
+  "searchFoldAll": "Collapse All Files",
+  "searchNone": "No results",
+  "searchNoneDetail": "No line of the folder's files has {query}.",
+  "reviewComment": "Comment",
+  "reviewCommentTip": "Comment on the lines selected of this change, or on all of it, for the agent to address",
+  "reviewEdit": "Edit Comment",
+  "reviewDelete": "Delete Comment",
+  "reviewPlaceholder": "Comment on {place}",
+  "reviewDraftHint": "{keys} to add",
+  "reviewAdd": "Comment",
+  "reviewSave": "Save",
+  "reviewRemovedLines": "{path}, removed lines {lines}",
+  "reviewOnFile": "{path}, the whole file",
+  "reviewTitle": "{count, plural, one {# review comment} other {# review comments}}",
+  "reviewDiscard": "Discard Comments",
+  "reviewDiscardTitle": "{count, plural, one {Discard the review comment?} other {Discard # review comments?}}",
+  "reviewDiscardDetail": "The agent won't get them.",
+  "reviewCopy": "Copy as Prompt",
+  "reviewCopied": "Review copied as a prompt",
+  "reviewSend": "Send to Agent",
+  "reviewSendTip": "Paste the comments as one prompt in the pane of the agent in this worktree, and send it",
+  "reviewNoAgent": "No agent works in this worktree",
+  "reviewSendFailed": "Couldn't send the review to the agent: {error}",
+  "reviewSent": "{count, plural, one {# comment} other {# comments}} sent to {agent}",
+  "sideReview": "Review",
+  "actionToggleReview": "Toggle Review",
+  "setCommitPrompt": "Commit message prompt",
+  "setCommitPromptDetail": "How the agent writes a commit message. Kero adds the recent commits and the staged diff after it.",
+  "setPRPrompt": "Pull request prompt",
+  "setPRPromptDetail": "How the agent writes a pull request's title and description. Kero adds the commits and the diff after it.",
+  "setReviewPromptDetail": "What the agent reviewing a pull request is asked. A repository's setup, in the Review tab, can replace these prompts.",
+  "setReviewPrompt": "Review prompt",
+  "setResetPrompt": "Reset to Default",
+  "prsNoRepo": "No repository",
+  "prsNoRepoDetail": "Pull requests show for the Git repository of the pane you are in.",
+  "prsRefresh": "Refresh",
+  "prsSetup": "Repository Setup…",
+  "prsNew": "New Pull Request",
+  "prsBack": "Back to Pull Requests",
+  "prsAll": "Open",
+  "prsMine": "Mine",
+  "prsReviewRequested": "To Review",
+  "prsCantList": "Couldn't list the pull requests",
+  "prsNone": "No pull requests",
+  "prsNoneDetail": "{repo} has no open pull requests that match.",
+  "prsRepo": "Repository",
+  "prsOpenRepo": "Open Pull Requests on GitHub",
+  "prsOpen": "Open on GitHub",
+  "prsCopyLink": "Copy Link",
+  "prsDraft": "Draft",
+  "prsChecksPassed": "Checks",
+  "prsChecksFailed": "Checks",
+  "prsChecksPending": "Checks",
+  "prsApproved": "Approved",
+  "prsChangesRequested": "Changes requested",
+  "prsReview": "Review",
+  "prsReviewTip": "Have an agent review this pull request in a new worktree. Right-click for more places.",
+  "prsReviewWorktree": "Review in New Worktree",
+  "prsReviewHere": "Review in Current Agent",
+  "prsReviewSession": "Review in New Session",
+  "prsReviewWorktreeDetail": "Kero fetches the pull request's branch and starts the agent in a new session, in a worktree of that branch.",
+  "prsReviewHereDetail": "Kero sends the prompt to the agent in the pane you are in.",
+  "prsReviewSessionDetail": "Kero starts the agent in a new session, in the pane's folder.",
+  "prsReviewTitle": "Review #{number}",
+  "@prsReviewTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsTicket": "Ticket",
+  "prsReviewPrompt": "Prompt",
+  "prsStart": "Start Review",
+  "prsFetching": "Fetching #{number}…",
+  "@prsFetching": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsFetchFailed": "Couldn't fetch the pull request: {error}",
+  "prsAgentLate": "The agent isn't ready. Kero copied the prompt: paste it to the agent.",
+  "prsReviewStarted": "Reviewing #{number} in the background. The list shows when the review is ready.",
+  "@prsReviewStarted": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsReviewing": "Reviewing",
+  "prsReviewReady": "Review Ready",
+  "prsInReview": "In Review",
+  "prsDraftComments": "{count, plural, =0 {no comments yet} one {# comment} other {# comments}}",
+  "@prsDraftComments": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsResolve": "Resolve Conversation",
+  "prsUnresolve": "Unresolve",
+  "prsResolved": "Resolved",
+  "prsShowResolved": "Show the resolved conversation",
+  "prsHideResolved": "Fold the resolved conversation",
+  "prsShowInFiles": "Show in Files",
+  "prsResolveFailed": "Couldn't update the conversation: {error}",
+  "prsCommentOnFile": "Comment on File",
+  "prsNextComment": "Next Comment",
+  "prsPreviousComment": "Previous Comment",
+  "prsSetupTitle": "Repository Setup for {repo}",
+  "prsSetupDetail": "How agents review this repository's pull requests and write its commit messages and pull requests. Kero saves this setup for this repository only.",
+  "prsSetupCommand": "Agent command",
+  "prsSetupPrompt": "Review prompt",
+  "prsUseDefault": "Reset to Default",
+  "prsSetupPlaceholders": "Kero replaces '{number}', '{url}', '{title}', '{branch}', '{base}', '{author}' and '{ticket}' with the pull request's values. '{ticket}' is the first issue key, such as PROJ-123, in the title, the description or the branch.",
+  "prsSetupGlobal": "A prompt left as it is follows the one in Settings › Git.",
+  "prsCantDraft": "Couldn't prepare the pull request",
+  "prsBaseTip": "The branch that the pull request goes into",
+  "prsExisting": "This branch already has pull request #{number}: {title}",
+  "@prsExisting": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsTitle": "Title",
+  "prsBody": "Description",
+  "prsBodyPlaceholder": "Description (Markdown)",
+  "prsWrite": "Write Title and Description",
+  "prsWriteTip": "Write the title and the description with a coding agent",
+  "prsCommits": "{count, plural, one {# commit} other {# commits}}",
+  "@prsCommits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsNoCommits": "This branch has no commits that {base} doesn't have.",
+  "prsFiles": "{count, plural, one {# file changed} other {# files changed}}",
+  "@prsFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsUnpushed": "{count, plural, one {# commit isn't} other {# commits aren't}} on {remote}. Kero pushes before it creates the pull request.",
+  "@prsUnpushed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsUncommitted": "{count, plural, one {# uncommitted file stays out of the pull request.} other {# uncommitted files stay out of the pull request.}}",
+  "@prsUncommitted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsCreate": "Create Pull Request",
+  "prsCreateTip": "Push the branch, then create the pull request on GitHub",
+  "prsCreateOptions": "More Ways to Create",
+  "prsCreateDraft": "Create as Draft",
+  "prsShow": "Show on GitHub",
+  "prsAlreadyOpen": "This branch already has an open pull request",
+  "prsTitleFirst": "Type a title first",
+  "prsCreateFailed": "Couldn't create the pull request: {error}",
+  "prsCreated": "Pull request created",
+  "prsFilesTab": "Files",
+  "prsFilesTabCount": "Files ({count})",
+  "@prsFilesTabCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsConversation": "Conversation",
+  "prsCantView": "Couldn't load the pull request",
+  "prsOpenState": "Open",
+  "prsMerged": "Merged",
+  "prsClosed": "Closed",
+  "prsByInto": "{author} wants to merge {head} into {base}",
+  "prsNoDescription": "No description.",
+  "prsDetails": "Details",
+  "prsReviewers": "Reviewers",
+  "prsNoReviewers": "No one has reviewed it, and no review is requested.",
+  "prsAwaiting": "Awaiting review",
+  "prsDismissed": "Dismissed",
+  "prsCommented": "Commented",
+  "prsReviewed": "reviewed",
+  "prsChecks": "Checks",
+  "prsNoComments": "No comments yet.",
+  "prsCantFetch": "Couldn't fetch the changes",
+  "prsNoFiles": "The pull request changes no files",
+  "prsCheckedOut": "Checked out in {dir}: right-click a file to open it",
+  "prsOutdated": "outdated · {place}",
+  "reviewByAgent": "Agent",
+  "reviewAskAgent": "Ask the Agent About It",
+  "reviewAskText": "About your draft comment {id} on {place}:",
+  "@reviewAskText": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDraftReview": "{count, plural, =0 {Your review, no comments yet} one {Your review, # comment} other {Your review, # comments}}",
+  "@prsDraftReview": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDraftOptions": "Review Options",
+  "prsDiscardReview": "Discard Review…",
+  "prsDiscardTitle": "Discard the draft review?",
+  "prsDiscardDetail": "Its comments and summary are deleted. Nothing was posted to GitHub.",
+  "prsDiscard": "Discard",
+  "prsDraftOld": "The pull request changed after the review began. The comments stay on the older commit.",
+  "prsSummary": "Summary (Markdown), the review's text on GitHub",
+  "prsEventComment": "Comment",
+  "prsApprove": "Approve",
+  "prsRequestChanges": "Request Changes",
+  "prsPost": "Post Review",
+  "prsPostTitle": "Post the review to {pr}?",
+  "prsPostDetail": "{count, plural, =0 {The review has no comments on lines. Everyone with access to the pull request sees it.} one {The review and its # comment go to GitHub as one review. Everyone with access to the pull request sees them.} other {The review and its # comments go to GitHub as one review. Everyone with access to the pull request sees them.}}",
+  "@prsPostDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsPosted": "Review posted",
+  "prsDraftFailed": "Couldn't start the draft review: {error}",
+  "prsNotifyReview": "Review requested in {repo}",
+  "prsNotifyNew": "New pull request in {repo}",
+  "setPRNotify": "Notify of new pull requests",
+  "setPRNotifyDetail": "New pull requests that ask for your review, or every new one someone else opens. Uses the GitHub CLI.",
+  "setPRNotifyReview": "Review Requested",
+  "setPRNotifyAll": "All",
+  "setPRNotifyOff": "Off",
+  "setPRPoll": "Check every",
+  "setPRPollMinutes": "{count, plural, one {# minute} other {# minutes}}",
+  "@setPRPollMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

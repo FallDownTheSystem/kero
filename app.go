@@ -14,12 +14,14 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/editor"
 
 	"kero/internal/actions"
 	"kero/internal/client"
@@ -64,14 +66,26 @@ type prefs struct {
 	ArchivedOpen bool `json:"archivedOpen,omitempty"`
 	// QuickSession is the session the quick terminal shows (quick.go).
 	QuickSession string `json:"quickSession,omitempty"`
+	// Wrap wraps the lines of the files the Files view and editor panes
+	// show at their width.
+	Wrap bool `json:"wrap,omitempty"`
+	// FileZoom is how many steps bigger, or smaller, the files the Files
+	// view and editor panes show are than the terminals' text, their
+	// Markdown previews with them (zoomFiles).
+	FileZoom int `json:"fileZoom,omitempty"`
+	// PRSeen are the open pull requests seen last, by host and repository,
+	// of which those not there before notify (prpoll.go).
+	PRSeen map[string][]int `json:"prSeen,omitempty"`
 }
 
 const (
 	defaultSidebar = 268
 	minSidebar     = 200
 	maxSidebar     = 440
-	defaultFont    = 13
-	maxTerms       = 12 // terminals kept attached, most recently shown
+	// maxRight is the right sidebar's: wider, for History's diffs.
+	maxRight    = 720
+	defaultFont = 13
+	maxTerms    = 12 // terminals kept attached, most recently shown
 )
 
 // termEntry is a session's terminal in the app: attached to kerod, which
@@ -106,11 +120,18 @@ type App struct {
 	applied    settings.Settings // set, as last applied and saved
 	setWin     *mygo.Window      // the Settings window, while open
 	ss         settingsState
+	themes     themeCache   // the terminal themes set names
+	preview    themePreview // the terminal themes Settings previews
 	selected   string
 	terms      map[string]*termEntry
-	webs       map[string]*webEntry // browser panes' pages, by pane
-	ads        adBlock              // what their pages block
-	icons      favicons             // and the icons they show
+	webs       map[string]*webEntry  // browser panes' pages, by pane
+	edits      map[string]*fileView  // editor panes' files, by pane
+	gotos      map[string]editor.Pos // where files about to open in editor panes put the caret (openAt)
+	merges     map[string]*paneMerge // editor panes' merge editors, by pane
+	rebase     *rebaseView           // the interactive rebase asked for
+	lastEdit   map[string]string     // the editor pane the user was in last, by session
+	ads        adBlock               // what their pages block
+	icons      favicons              // and the icons they show
 	lru        []string
 	refs       map[string]*ui.Handle // panes' terminals, and splits, by id
 	focus      map[string]string     // the pane the user is in, by session
@@ -135,9 +156,21 @@ type App struct {
 	chrome       chrome // where the sidebar's animation puts things
 
 	pal     paletteState
+	gotoF   goToFile
+	review  map[string]*review // the review comments, by worktree (reviewOf)
 	find    findState
+	srch    convSearch
 	confirm *confirmation
 	wtAsk   *worktreeAsk
+	// prReview asks the prompt of a review of a pull request, prSetup sets
+	// up a repository's reviews, and launches are the agents started that
+	// are sent their prompts as they are ready (pulls.go).
+	prReview *prReview
+	prSetup  *prSetup
+	launches []*agentLaunch
+	// launchStop stops the ticker that checks launches, while some wait.
+	launchStop chan struct{}
+	poll       prPoll
 	// endedAll shows all of the sidebar's Ended; skillMissing tells, as
 	// of skillsAt, that no kind of agent has Kero's skill (ended.go).
 	endedAll     bool
@@ -148,11 +181,22 @@ type App struct {
 	// later are actions that change what the view is building, run once
 	// it is built.
 	later []func()
+	// early are updates that came with no window yet to run them, as in
+	// tests, which the next frame runs.
+	earlyMu sync.Mutex
+	early   []func()
+	// bar is the menu bar's menus as menu last made them.
+	bar []*mygo.MenuItem
 
 	// Focus follows the mouse: the pane the pointer went into, and where
 	// the pointer was last over a pane, in the window.
 	hoverPane string
 	hoverAt   [2]float32
+
+	// menuPane is the pane whose header's button has its menu open, which
+	// keeps the header's controls built until another pane is hovered or
+	// an item is chosen.
+	menuPane string
 
 	// Panes dragged: the zone last under the pointer, the pane whose
 	// drop preview shows and since when, and the panes just moved, which
@@ -185,6 +229,9 @@ type confirmation struct {
 	alt        string
 	altRun     func()
 	altDestroy bool
+	// shown and inSide are that the dialog showed, and whether the user
+	// was in the Explorer then, which keeps the keyboard once it closes.
+	shown, inSide bool
 }
 
 func newApp() *App {
@@ -211,7 +258,7 @@ func (a *App) loadPrefs() {
 	}
 	a.prefs.SidebarWidth = min(max(a.prefs.SidebarWidth, minSidebar), maxSidebar)
 	if a.prefs.RightWidth != 0 {
-		a.prefs.RightWidth = min(max(a.prefs.RightWidth, minSidebar), maxSidebar)
+		a.prefs.RightWidth = min(max(a.prefs.RightWidth, minSidebar), maxRight)
 	}
 	if a.prefs.FontSize == 0 {
 		a.prefs.FontSize = defaultFont
@@ -234,10 +281,27 @@ func (a *App) savePrefs() {
 	}
 }
 
-// update runs fn on the main thread, and draws.
+// update runs fn on the main thread, and draws. Before there is a window,
+// the first frame runs it (runEarly): what a call brings back is never
+// dropped.
 func (a *App) update(fn func()) {
 	if a.win != nil {
 		a.win.Update(fn)
+		return
+	}
+	a.earlyMu.Lock()
+	a.early = append(a.early, fn)
+	a.earlyMu.Unlock()
+}
+
+// runEarly runs the updates that came before there was a window.
+func (a *App) runEarly() {
+	a.earlyMu.Lock()
+	fns := a.early
+	a.early = nil
+	a.earlyMu.Unlock()
+	for _, fn := range fns {
+		fn()
 	}
 }
 
@@ -303,6 +367,21 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 			title = h.name + ": " + title
 		}
 		a.showNotification(n.Session, title, n.Body)
+	case "review":
+		// A draft review changed, as its agent wrote to it: the list that
+		// marks it, and the page that shows it, ask for it anew.
+		ps, r := &a.side.pulls, m.Review
+		if r == nil {
+			return
+		}
+		if slug := pullsSlug(ps.res); strings.EqualFold(slug, r.Slug) && strings.HasPrefix(ps.key, h.name+"\x00") {
+			a.fetchDrafts(h, slug)
+		}
+		g := ps.page
+		if g == nil || a.hostOf(g.pane) != h || g.pr.Number != r.Number || !strings.EqualFold(g.repoSlug(), r.Slug) {
+			return
+		}
+		a.fetchDraftReview(g)
 	}
 }
 
@@ -354,15 +433,23 @@ func (a *App) setState(h *host, st proto.State) {
 // showNotification shows a notification about a session, which a click
 // on it selects.
 func (a *App) showNotification(id, title, body string) {
-	if !mygo.NotificationsSupported() {
-		return
-	}
-	n := mygo.NewNotification(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body, Silent: !a.set.NotifySound})
-	n.OnClick(func() {
+	showNote(mygo.NotificationOptions{ID: "session/" + id, Group: id, Title: title, Body: body, Silent: !a.set.NotifySound}, func() {
 		a.update(func() {
 			a.selectSession(id)
 			a.showWindow()
 		})
+	})
+}
+
+// showNote shows a notification, which click runs on; a variable, which
+// tests replace, as the system's notifications need the app running.
+var showNote = func(o mygo.NotificationOptions, click func()) {
+	if !mygo.NotificationsSupported() {
+		return
+	}
+	n := mygo.NewNotification(o)
+	n.OnClick(func() {
+		click()
 		n.Close()
 	})
 	go n.Show()
@@ -623,7 +710,7 @@ func (g *gated) Read(p []byte) (int, error) {
 // ensureTerm attaches a terminal to a session, unless one is.
 func (a *App) ensureTerm(id string) {
 	h := a.hostOf(id)
-	if a.terms[id] != nil || h.conn != connReady || a.isBrowser(id) {
+	if a.terms[id] != nil || h.conn != connReady || !a.isTerminal(id) {
 		return
 	}
 	e := &termEntry{started: time.Now()}
@@ -887,6 +974,40 @@ func (a *App) zoom(steps int, reset bool) {
 	if s.FontSize != a.set.FontSize {
 		a.applySettings(s)
 	}
+}
+
+// zoomFiles makes the files' text bigger or smaller, as zoom does the
+// terminals': all of them together, remembered.
+func (a *App) zoomFiles(steps int, reset bool) {
+	z := min(max(a.prefs.FileZoom+steps, -6), 24)
+	if reset {
+		z = 0
+	}
+	if z != a.prefs.FileZoom {
+		a.prefs.FileZoom = z
+		a.savePrefs()
+	}
+}
+
+// fileFontSize is the size of a file's text: a step under the terminals',
+// zoomed as the user asks.
+func (a *App) fileFontSize() float32 {
+	return min(max(max(a.set.FontSize-1, 10)+float32(a.prefs.FileZoom), 6), 40)
+}
+
+// filesFocused tells that the keyboard is in a file: an editor pane's, or
+// the viewer's, whose text the text size keys zoom then.
+func (a *App) filesFocused() bool {
+	s := a.session(a.selected)
+	if s == nil {
+		return false
+	}
+	if a.side.focused {
+		v := a.viewOf(s)
+		return v != nil && v.kind == sideFiles
+	}
+	p := s.PaneByID(a.focusOf(s))
+	return p != nil && p.Editor()
 }
 
 // applySettings makes settings the app's, saving them: the terminals take
@@ -1226,6 +1347,12 @@ func (a *App) newSessionOn(h *host, projectID string) {
 // create starts a session on a host, and shows it, opening the project
 // expand in the sidebar.
 func (a *App) create(h *host, p proto.CreateParams, expand string) {
+	a.createThen(h, p, expand, true, nil)
+}
+
+// createThen creates a session as create does, shown when show, else left
+// to work in the background; then, when set, runs then with it.
+func (a *App) createThen(h *host, p proto.CreateParams, expand string, show bool, then func(s proto.Session)) {
 	cl := h.cl
 	if cl == nil {
 		return
@@ -1243,7 +1370,12 @@ func (a *App) create(h *host, p proto.CreateParams, expand string) {
 			}
 			// The state with it may come after the answer.
 			a.addPending(h, s)
-			a.selectSession(s.ID)
+			if show {
+				a.selectSession(s.ID)
+			}
+			if then != nil {
+				then(s)
+			}
 		})
 	}()
 }
@@ -1416,6 +1548,13 @@ func (a *App) closeAllSessions(g group) {
 }
 
 func (a *App) restartSession(id string) {
+	// An editor's file is read anew, unless it has edits, which it keeps.
+	if s := a.sessionOfPane(id); s != nil && s.PaneByID(id).Editor() {
+		if f := a.edits[id]; f != nil && !f.modified() {
+			f.stamp = "\x00"
+		}
+		return
+	}
 	a.call(id, "restart", proto.IDParams{ID: id}, nil)
 }
 

@@ -11,6 +11,16 @@ import (
 // kero carries JetBrains Mono, with Nerd Fonts' icons (resources/fonts,
 // SIL Open Font License, see OFL.txt there): the terminals' font unless
 // the user picks another, and the icons of prompts and of agents' TUIs.
+// It carries fonts for its own text too (resources/fonts/app, a folder
+// each, with its license), which the user picks from in Appearance.
+
+// appFontFamilies are the families of kero's own text it carries, in
+// the order the font menu offers them: sans-serif, then serif.
+var appFontFamilies = []string{"Inter", "Geist", "Mona Sans", "Public Sans", "IBM Plex Sans", "Plus Jakarta Sans", "Manrope", "Figtree",
+	"DM Serif Display", "Playfair Display"}
+
+// appFonts are those of appFontFamilies that registered.
+var appFonts []string
 
 // bundledFont is the family the fonts register as.
 const bundledFont = "JetBrainsMono Nerd Font"
@@ -40,7 +50,25 @@ func loadFonts() {
 			}
 		}
 		if fontsLoaded {
+			loadAppFonts(filepath.Join(dir, "app"))
 			return
+		}
+	}
+}
+
+// loadAppFonts registers the fonts of kero's own text in dir, each
+// family's folder's under its name.
+func loadAppFonts(dir string) {
+	for _, family := range appFontFamilies {
+		files, _ := filepath.Glob(filepath.Join(dir, family, "*.ttf"))
+		ok := false
+		for _, f := range files {
+			if data, err := os.ReadFile(f); err == nil && ui.RegisterFont(data, family) == nil {
+				ok = true
+			}
+		}
+		if ok {
+			appFonts = append(appFonts, family)
 		}
 	}
 }

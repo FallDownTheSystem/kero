@@ -34,6 +34,11 @@ func (a *App) openFind() {
 	if id == "" {
 		return
 	}
+	// An editor pane's editor has a find bar of its own.
+	if f := a.edits[id]; f != nil && f.st != nil && s.PaneByID(id).Editor() {
+		f.st.Find("")
+		return
+	}
 	if a.find.pane != id {
 		if t := a.findTerm(); t != nil {
 			t.EndSearch()
