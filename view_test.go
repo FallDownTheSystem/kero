@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
@@ -238,6 +240,87 @@ func TestSidebarKeepsTerminalDrops(t *testing.T) {
 	}
 }
 
+// Files from another app open beside a terminal dropped along its left,
+// right or top edge, a folder in a terminal; at its middle and bottom the
+// terminal takes them, as it pastes their paths at a prompt.
+func TestPaneTakesFilesFromOtherApps(t *testing.T) {
+	a := testDropApp(t)
+	splits := make(chan proto.CreateParams, 4)
+	a.local().cl, _ = projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method == "split" {
+			var p proto.CreateParams
+			json.Unmarshal(raw, &p)
+			splits <- p
+			return proto.Pane{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	for _, id := range []string{"a", "b"} {
+		term, err := terminal.New(terminal.Options{Conn: idleConn{make(chan struct{})}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { term.Close() })
+		a.terms[id] = &termEntry{term: term}
+	}
+	var card ui.Rect
+	tt := ui.NewTester(func(c *ui.Context) {
+		a.view(c)
+		card = a.paneRef("card-b").Bounds(c)
+	}, 1280, 720)
+	tt.Frame()
+	file, dir := filepath.Join(t.TempDir(), "notes.md"), t.TempDir()
+	if err := os.WriteFile(file, []byte("# notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	split := func(what string) (proto.CreateParams, bool) {
+		t.Helper()
+		select {
+		case p := <-splits:
+			return p, true
+		case <-time.After(time.Second):
+		}
+		return proto.CreateParams{}, false
+	}
+
+	// Pane a's controls say Split Right too: the preview is another one.
+	previews := func() (n int) {
+		for _, s := range tt.Texts() {
+			if s == "Split Right" || s == "Split Left" || s == "Split Up" {
+				n++
+			}
+		}
+		return n - 1
+	}
+	tt.DragFiles(card.X+card.W-20, card.Y+card.H/2)
+	if previews() != 1 {
+		t.Errorf("no preview of a split at the right edge; texts %q", tt.Texts())
+	}
+	tt.Advance(400 * time.Millisecond)
+	tt.Frame()
+	shot(t, tt, "os-drop-right")
+	tt.DropFiles(card.X+card.W-20, card.Y+card.H/2, file)
+	if p, ok := split("file"); !ok || p.Split != "b" || p.Direction != "right" || p.File != file {
+		t.Errorf("file dropped at the right edge split %+v, %v", p, ok)
+	}
+	tt.DropFiles(card.X+15, card.Y+card.H/2, dir)
+	if p, ok := split("folder"); !ok || p.Split != "b" || p.Direction != "left" || p.Dir != dir || p.File != "" {
+		t.Errorf("folder dropped at the left edge split %+v, %v", p, ok)
+	}
+	for _, at := range [][2]float32{{card.X + card.W/2, card.Y + card.H/2}, {card.X + card.W/2, card.Y + card.H - 20}} {
+		tt.DragFiles(at[0], at[1])
+		if previews() != 0 {
+			t.Errorf("a split previewed over the terminal at %v: %q", at, tt.Texts())
+		}
+		if !tt.DropFiles(at[0], at[1], file) {
+			t.Errorf("the terminal did not take the drop at %v", at)
+		}
+		if p, ok := split("paste"); ok {
+			t.Errorf("a drop on the terminal at %v split %+v", at, p)
+		}
+	}
+}
+
 func TestDragPaneToSide(t *testing.T) {
 	a := testDropApp(t)
 	tt := ui.NewTester(a.view, 1100, 640)
@@ -294,7 +377,7 @@ func TestSidebarAnimationMonotonic(t *testing.T) {
 		prevX := float32(-1)
 		prevEdge := float32(-1)
 		for i := 0; i <= 20000; i++ {
-			ch := chromeFor(float32(i)/20000, width, bar)
+			ch := chromeFor(float32(i)/20000, width, bar, false)
 			x := ch.sideW + ch.mainPad + ch.headerPad // the title's left, in the window
 			edge := ch.sideW + ch.mainPad             // the card's left edge
 			for _, v := range []float32{ch.sideW, ch.mainPad, ch.headerPad} {
@@ -310,12 +393,33 @@ func TestSidebarAnimationMonotonic(t *testing.T) {
 			}
 			prevX, prevEdge = x, edge
 		}
-		if ch := chromeFor(1, width, bar); ch.headerPad != 16 || ch.mainPad != 0 || ch.sideW != width {
+		if ch := chromeFor(1, width, bar, false); ch.headerPad != 16 || ch.mainPad != 0 || ch.sideW != width {
 			t.Errorf("width %v shown: %+v", width, ch)
 		}
-		if ch := chromeFor(0, width, bar); ch.sideW != 0 || ch.mainPad != cardGap {
+		if ch := chromeFor(0, width, bar, false); ch.sideW != 0 || ch.mainPad != cardGap {
 			t.Errorf("width %v hidden: %+v", width, ch)
 		}
+	}
+}
+
+// With the sidebar at the window's right, the header at the left edge
+// keeps its room for the traffic lights and the panel's button as the
+// sidebar shows and hides, which only the right's padding follows.
+func TestSidebarRightChrome(t *testing.T) {
+	bar := ui.TitleBar{Left: 78, Height: 60}
+	hidden := chromeFor(0, 268, bar, false)
+	for _, p := range []float32{0, 0.3, 1} {
+		ch := chromeFor(p, 268, bar, true)
+		// One button where the sidebar has two.
+		if ch.headerPad != hidden.headerPad-sideButtonsW(1) || ch.buttonsLeft(bar) != hidden.buttonsLeft(bar) {
+			t.Errorf("progress %v: %+v, want the left edge as with the sidebar hidden, less a button, %+v", p, ch, hidden)
+		}
+	}
+	if ch := chromeFor(1, 268, bar, true); ch.mainPad != 0 || ch.sideW != 268 || ch.cardsRight() {
+		t.Errorf("shown: %+v", ch)
+	}
+	if ch := chromeFor(0, 268, bar, true); ch.mainPad != cardGap || !ch.cardsRight() {
+		t.Errorf("hidden: %+v", ch)
 	}
 }
 
@@ -326,7 +430,7 @@ func TestSidebarAnimationNoHolds(t *testing.T) {
 	frames := int(sidebarMotion.Duration / (time.Second / 60))
 	prev := float32(-1)
 	for i := 0; i <= frames; i++ {
-		w := chromeFor(ease(float32(i)/float32(frames)), 268, ui.TitleBar{}).sideW
+		w := chromeFor(ease(float32(i)/float32(frames)), 268, ui.TitleBar{}, false).sideW
 		if w == prev && w != 268 {
 			t.Errorf("frame %d: the sidebar held at %v before landing", i, w)
 		}
@@ -402,7 +506,9 @@ func TestCopyOnSelectToast(t *testing.T) {
 // next session of it, and says nothing while nothing does ($KERO_SHOTS).
 func TestSidebarFooter(t *testing.T) {
 	a := testApp(t)
-	a.local().conn = connReady
+	// Connected, as ready is: else the app connects, which finds no kerod.
+	cl, _ := projectClient(t, func(string, json.RawMessage) (any, error) { return nil, errors.New("no kerod in a test") })
+	a.local().conn, a.local().cl = connReady, cl
 	tt := ui.NewTester(a.view, 1100, 700)
 	tt.Frame()
 	for _, txt := range tt.Texts() {
@@ -435,6 +541,186 @@ func TestSidebarFooter(t *testing.T) {
 		if a.selected != want {
 			t.Errorf("%q went to %s, want %s", label, a.selected, want)
 		}
+	}
+}
+
+// The foot's Menus button has the menu bar's menus, without the system's
+// items, and runs their actions; a project's menu starts a session of it in
+// a worktree.
+func TestMenusButton(t *testing.T) {
+	// The menus' Check for Updates is the updater's, which runApp uses; in
+	// a language of its own, as no app runs to ask its language of.
+	mygo.Use(updater.New(updater.Options{Language: "en"}))
+	a := testApp(t)
+	a.menu()
+	cl, _ := projectClient(t, func(string, json.RawMessage) (any, error) { return nil, errors.New("no kerod in a test") })
+	a.local().conn, a.local().cl = connReady, cl
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	if err := tt.Click("Menus"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	menu := tt.Menu()
+	for _, want := range []string{"Session", "Edit", "Pane", "View"} {
+		if !slices.Contains(menu, want) {
+			t.Errorf("the menus have no %q: %q", want, menu)
+		}
+	}
+	if err := tt.ChooseMenuItem("Session", "New Session in Worktree…"); err != nil {
+		t.Fatalf("%v; menu %q", err, menu)
+	}
+	tt.Frame()
+	// Of the repository of the session the user is in.
+	if a.wtAsk == nil || a.wtAsk.p.After != a.selected {
+		t.Fatalf("New Session in Worktree… asked %+v", a.wtAsk)
+	}
+	a.wtAsk = nil
+	tt.Frame()
+
+	pr := a.st.Projects[0]
+	a.selected = ""
+	tt.Frame()
+	if err := tt.RightClick(pr.Name); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if err := tt.ChooseMenuItem("New Session in Worktree…"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	tt.Frame()
+	if a.wtAsk == nil || a.wtAsk.p.Project != pr.ID || a.wtAsk.p.Dir != pr.Dir {
+		t.Errorf("the project's New Session in Worktree… asked %+v", a.wtAsk)
+	}
+}
+
+// The search at the sidebar's foot asks the hosts once typing pauses,
+// shows what they found in place of the sessions, opens one to show its
+// messages, resumes the one the arrows chose, and goes as Escape clears
+// it.
+func TestConversationSearch(t *testing.T) {
+	a := testApp(t)
+	asked := make(chan proto.SearchParams, 4)
+	resumed := make(chan proto.ConversationParams, 1)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "conversation.search":
+			var p proto.SearchParams
+			json.Unmarshal(raw, &p)
+			asked <- p
+			return proto.SearchResult{Matched: 2, Indexed: 9, Terms: []string{"login"}, Hits: []proto.SearchHit{
+				{Conversation: proto.Conversation{Agent: "claude", ID: "c1", Dir: "/src/app", Title: "Fix the login redirect", Updated: time.Now().Add(-time.Hour).UnixMilli()},
+					Turns: 7, Score: 3, Snippets: []proto.Snippet{{User: true, Text: "the login page loops", Marks: []int{4, 9}}}},
+				{Conversation: proto.Conversation{Agent: "codex", ID: "x2", Dir: "/src/api", Title: "Login API"}, Turns: 2, Score: 1},
+			}}, nil
+		case "conversation.resume":
+			var p proto.ConversationParams
+			json.Unmarshal(raw, &p)
+			resumed <- p
+		}
+		return nil, errors.New("no kerod in a test")
+	})
+	a.local().conn, a.local().cl = connReady, cl
+	session := a.st.Sessions[0].DisplayName(a.set.SessionName)
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	shot(t, tt, "search-field")
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("login")
+	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
+	tt.Frame()
+	select {
+	case p := <-asked:
+		if p.Query != "login" || !p.Preview {
+			t.Errorf("asked %+v", p)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no search asked")
+	}
+	for deadline := time.Now().Add(5 * time.Second); len(a.srch.hits) == 0 && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		a.runEarly()
+	}
+	tt.Frame()
+	shot(t, tt, "search-found")
+	for _, want := range []string{"Fix the login redirect", "Login API", "2 conversations", "Claude", "Codex", "7"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText(session) {
+		t.Errorf("the session %q shows with the search's", session)
+	}
+	if err := tt.Click("Fix the login redirect"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	shot(t, tt, "search-open")
+	if !tt.HasText("the login page loops") || !tt.HasText("Resume") {
+		t.Errorf("open, no messages: %q", tt.Texts())
+	}
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyDown)
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	select {
+	case p := <-resumed:
+		if p.Agent != "codex" || p.ID != "x2" {
+			t.Errorf("resumed %+v", p)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("nothing resumed")
+	}
+	tt.Frame()
+	if a.searching() || !tt.HasText(session) {
+		t.Errorf("after resuming: %q", tt.Texts())
+	}
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("x")
+	tt.Frame()
+	if !a.searching() {
+		t.Fatal("not searching")
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if a.searching() || !tt.HasText(session) {
+		t.Errorf("after Escape: %q", tt.Texts())
+	}
+}
+
+// A kerod of a Kero with no search says to restart it, not that nothing
+// matched.
+func TestConversationSearchOlderKerod(t *testing.T) {
+	a := testApp(t)
+	cl, _ := projectClient(t, func(method string, _ json.RawMessage) (any, error) {
+		return nil, fmt.Errorf("unknown method %q", method)
+	})
+	a.local().conn, a.local().cl = connReady, cl
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	if err := tt.Click("Search conversations"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("login")
+	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
+	tt.Frame()
+	for deadline := time.Now().Add(5 * time.Second); len(a.srch.older) == 0 && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		a.runEarly()
+	}
+	tt.Frame()
+	if !tt.HasText(locales.SearchRestart()) || !tt.HasText(locales.CommonRestartService()) || tt.HasText(locales.SearchNoMatches()) {
+		t.Errorf("texts %q", tt.Texts())
 	}
 }
 
@@ -813,6 +1099,47 @@ func TestFocusFollowsMouse(t *testing.T) {
 	}
 }
 
+// With focus-follows-mouse, the pointer going into the viewer focuses
+// it, and going back into a pane focuses the pane.
+func TestFocusFollowsMouseExplorer(t *testing.T) {
+	a := testApp(t)
+	a.set.FocusFollowsMouse = true
+	a.prefs.Side = sideFiles
+	s := &a.st.Sessions[0]
+	// A file's pane, whose editor takes the keyboard where the tester has
+	// no terminal to.
+	s.Panes[0].File = "/tmp/a.txt"
+	f := a.editorOf(&s.Panes[0])
+	f.testRead("a\n")
+	fv := &fileView{pane: "a", path: "/tmp/b.go", rel: "b.go", fetched: time.Now()}
+	fv.testRead("package b\n")
+	a.openView(s, sideFiles, fv)
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	tt.Frame()
+	ar, _ := tt.Find("a.txt") // pane a's title
+	fr, ok := tt.Find("b.go") // the viewer's
+	if !ok {
+		t.Fatalf("no viewer; texts %q", tt.Texts())
+	}
+	move := func(x float32) {
+		tt.Move(x, 340)
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+	}
+	move(ar.X + 40)
+	move(fr.X + 20)
+	tt.Frame()
+	if !a.side.focused {
+		t.Fatal("the pointer went into the viewer, which isn't focused")
+	}
+	move(ar.X + 40)
+	tt.Frame()
+	if a.side.focused || a.focusOf(s) != "a" {
+		t.Fatalf("back into a: viewer focused %v, pane focus %q", a.side.focused, a.focusOf(s))
+	}
+}
+
 // writes is a Conn that keeps what the terminal sends to the program.
 type writes struct {
 	idleConn
@@ -877,6 +1204,76 @@ func TestCommandKeysEditLine(t *testing.T) {
 
 // A long name in a narrow sidebar ends in an ellipsis: the time beside
 // it, and the ⌘ shortcut in its place, show whole.
+// A project dragged by its header goes before or after the one it is
+// dropped on, by the half the pointer is in, in the sidebar at once and
+// in kerod's order.
+func TestSidebarDragsProjects(t *testing.T) {
+	a := testApp(t)
+	a.local().conn = connReady
+	moves := make(chan proto.MoveProjectParams, 4)
+	a.local().cl, _ = projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method != "project.move" {
+			return nil, fmt.Errorf("test daemon rejected %s", method)
+		}
+		var p proto.MoveProjectParams
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return nil, err
+		}
+		moves <- p
+		return true, nil
+	})
+	a.st.Projects = []proto.Project{{ID: "p1", Name: "alpha", Dir: "/a"}, {ID: "p2", Name: "bravo", Dir: "/b"}, {ID: "p3", Name: "charlie", Dir: "/c"}}
+	for i, p := range []string{"p2", "p3"} {
+		s := a.st.Sessions[0]
+		s.ID, s.Project, s.Name = "s"+itoa(i+2), p, "work "+p
+		a.st.Sessions = append(a.st.Sessions, s)
+	}
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+	shot(t, tt, "sidebar-projects")
+	order := func() string {
+		var names []string
+		for _, p := range a.st.Projects {
+			names = append(names, p.Name)
+		}
+		return strings.Join(names, ",")
+	}
+	drag := func(name string, toX, toY float32) {
+		t.Helper()
+		r, ok := tt.Find(name)
+		if !ok {
+			t.Fatalf("no %s", name)
+		}
+		x, y := r.X+r.W/2, r.Y+r.H/2
+		tt.Press(x, y)
+		tt.Move(x, y+6)
+		tt.Move(toX, toY)
+		tt.Frame()
+		tt.Release(toX, toY)
+		tt.Frame()
+	}
+	alpha, _ := tt.Find("alpha")
+	drag("charlie", alpha.X, alpha.Y+2)
+	if got := order(); got != "charlie,alpha,bravo" {
+		t.Errorf("charlie dropped on alpha's top: %s", got)
+	}
+	select {
+	case p := <-moves:
+		if p.ID != "p3" || p.Index != 0 {
+			t.Errorf("kerod moved %+v", p)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("kerod wasn't told")
+	}
+	tt.Frame()
+	// On the lower half of the last project's block: after it.
+	session, _ := tt.Find("work p2")
+	drag("charlie", session.X, session.Y+session.H/2)
+	if got := order(); got != "alpha,bravo,charlie" {
+		t.Errorf("charlie dropped below bravo's session: %s", got)
+	}
+}
+
 func TestSidebarRowKeepsTime(t *testing.T) {
 	widths := func(name string) (ago, key float32) {
 		a := testApp(t)
@@ -1052,5 +1449,106 @@ func TestSidebarSplitPanes(t *testing.T) {
 	tt.Frame()
 	if a.prefs.Expanded["s1"] || count("Review the tests") != shown {
 		t.Error("the count of panes didn't collapse the session")
+	}
+}
+
+// A narrow pane's header folds its controls into a menu, and its git chip
+// shows its counts alone, or nothing, rather than run over its buttons.
+func TestPaneHeaderNarrow(t *testing.T) {
+	a := testApp(t)
+	// The sidebar's rows on one line, without the branch the detailed ones
+	// show under the session's name.
+	a.set.SidebarRows = "compact"
+	s := &a.st.Sessions[0]
+	for i := range s.Panes {
+		s.Panes[i].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "feature-login", Files: 2, Added: 78}
+	}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("feature-login") || tt.HasText("More") {
+		t.Errorf("a wide header folds, or has no branch; texts %q", tt.Texts())
+	}
+	tt.SetSize(600, 720)
+	tt.Frame()
+	tt.Frame()
+	if tt.HasText("feature-login") {
+		t.Errorf("a narrow header shows the branch; texts %q", tt.Texts())
+	}
+	if !tt.HasText("More") {
+		t.Errorf("a narrow header's controls don't fold; texts %q", tt.Texts())
+	}
+	if err := tt.Click("More"); err != nil {
+		t.Fatal(err)
+	}
+	if items := tt.Menu(); !slices.Equal(items, []string{"Split Right", "Split Down"}) {
+		t.Errorf("the folded controls' menu: %q", items)
+	}
+}
+
+// A split button's menu offers what goes in the new pane.
+func TestSplitMenu(t *testing.T) {
+	a := testApp(t)
+	// A pane alone shows its buttons only while the pointer is over it.
+	s := &a.st.Sessions[0]
+	s.Panes, s.Layout = s.Panes[:1], nil
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tt.Move(700, 300)
+	tt.Frame()
+	if err := tt.RightClick("Split Right"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	if items := tt.Menu(); !slices.Equal(items, []string{"Terminal", "Browser", "New File"}) {
+		t.Errorf("the split button's menu: %q", items)
+	}
+	// The menu takes the pointer off the header, whose buttons hide: the
+	// item chosen still reaches its button.
+	tt.Move(100, 400)
+	tt.Frame()
+	if err := tt.ChooseMenuItem("Terminal"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.menuPane != "" {
+		t.Errorf("the item chosen did not reach the split button, of pane %q", a.menuPane)
+	}
+}
+
+// A pane's header fits its folder to its room: the path where it fits, else
+// the name, else nothing; and the pointer, which shows the header's
+// controls, doesn't change which.
+func TestPaneFolderFit(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	dir := "/srv/projects/clients/acme/website/frontend"
+	s.Panes, s.Layout = s.Panes[:1], nil
+	s.Panes[0].Dir = dir
+	tt := ui.NewTester(a.view, 1280, 720)
+	for range 3 {
+		tt.Frame()
+	}
+	if !tt.HasText(dir) {
+		t.Errorf("a wide header lacks the path; texts %q", tt.Texts())
+	}
+	tt.SetSize(560, 720)
+	for range 3 {
+		tt.Frame()
+	}
+	if tt.HasText(dir) || !tt.HasText("frontend") {
+		t.Errorf("a narrow header shows %q", tt.Texts())
+	}
+	tt.Move(400, 30)
+	for range 3 {
+		tt.Frame()
+	}
+	if !tt.HasText("frontend") {
+		t.Errorf("the pointer over the header changes its folder; texts %q", tt.Texts())
+	}
+	a.set.PaneFolder = "hidden"
+	tt.SetSize(1280, 720)
+	tt.Frame()
+	if tt.HasText(dir) || tt.HasText("frontend") {
+		t.Errorf("a hidden folder shows; texts %q", tt.Texts())
 	}
 }

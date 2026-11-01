@@ -40,14 +40,20 @@ const (
 type chrome struct {
 	shown     float32 // the sidebar's progress, 0 hidden to 1 shown
 	sideW     float32 // the sidebar's width as shown
-	mainPad   float32 // the left padding of the cards' column
+	mainPad   float32 // the padding of the cards' column on the sidebar's side
 	headerPad float32 // the left padding of the header at the left edge
+	// right tells that the sidebar is at the window's right (settings'
+	// SessionsSide): the header at the left edge holds its buttons always.
+	right bool
 }
 
 // buttonsLeft places the sidebar's buttons that the header holds while
 // the sidebar hides, in the header's coordinates, so that they stay where
 // they are in the window, after the traffic lights, as the card slides.
 func (ch chrome) buttonsLeft(bar ui.TitleBar) float32 {
+	if ch.right {
+		return lead(bar) - cardGap
+	}
 	return lead(bar) - (ch.sideW + ch.mainPad)
 }
 
@@ -63,18 +69,27 @@ func lead(bar ui.TitleBar) float32 {
 
 var sidebarMotion = ui.Animation{Duration: 260 * time.Millisecond, Ease: ui.CubicBezier(0.25, 1, 0.5, 1)}
 
-func chromeFor(progress, width float32, bar ui.TitleBar) chrome {
+func chromeFor(progress, width float32, bar ui.TitleBar, right bool) chrome {
 	round := func(v float32) float32 { return float32(math.Round(float64(v))) }
 	w := round(width * min(max(progress, 0), 1))
 	s := w / width
 	pad := round(cardGap * (1 - s))
 	// Where the header's title starts in the window, rounded once: after
-	// the traffic lights and the sidebar's buttons with the sidebar
-	// hidden, 16 into the card with it shown.
-	hidden, shown := lead(bar)+16+60, width+16
+	// the traffic lights and the left's buttons (leftButtons), the
+	// sidebar's two with it hidden, or the panel's one with the sidebar at
+	// the window's right; 16 into the card with the sidebar shown there.
+	hidden, shown := lead(bar)+16+sideButtonsW(2), width+16
+	if right {
+		hidden = lead(bar) + 16 + sideButtonsW(1)
+		return chrome{shown: s, sideW: w, mainPad: pad, headerPad: round(hidden) - cardGap, right: true}
+	}
 	x := round(hidden + (shown-hidden)*s)
 	return chrome{shown: s, sideW: w, mainPad: pad, headerPad: x - w - pad}
 }
+
+// cardsRight tells that the cards reach the window's right edge, where the
+// window's controls are: the sidebar's, which holds them, is gone or going.
+func (ch chrome) cardsRight() bool { return !ch.right || ch.shown < 0.5 }
 
 func b2f(b bool) float32 {
 	if b {
@@ -83,16 +98,24 @@ func b2f(b bool) float32 {
 	return 0
 }
 
+// chevronTurn is how a chevron turns as what it folds opens or closes:
+// quickly, without overshooting, as it follows a click.
+var chevronTurn = ui.Animation{Spring: ui.SpringOptions{Duration: 200 * time.Millisecond}}
+
 func (a *App) view(c *ui.Context) {
 	a.looks()
 	pal := paletteFor(c)
-	c.SetTheme(borderless(c, pal))
+	th := borderless(c, pal)
+	th.Font = a.set.AppFont
+	c.SetTheme(th)
+	a.runEarly()
 
 	if a.pendingToast != "" {
 		c.Toast(a.pendingToast)
 		a.pendingToast = ""
 	}
 	a.shortcuts(c)
+	a.drainGit()
 
 	bar := c.TitleBar()
 	row := ui.Row(c).Fill().AlignItems(ui.Stretch)
@@ -101,12 +124,13 @@ func (a *App) view(c *ui.Context) {
 	// frame, which whole pixels turn into hops and holds, a shake as it
 	// settles. This one lands in about 13 frames, moving in every one.
 	progress := row.AnimateTo("sidebar", b2f(!a.prefs.SidebarHidden), sidebarMotion)
-	a.chrome = chromeFor(progress, a.prefs.SidebarWidth, bar)
-	shown := a.chrome.shown
+	a.chrome = chromeFor(progress, a.prefs.SidebarWidth, bar, a.sideLeft())
+	shown, sessionsRight := a.chrome.shown, a.chrome.right
 	// The right sidebar, beside a session's panes, comes and goes as the
 	// left one does, in whole pixels, as the user shows or hides it: it
 	// shows at once as the app opens with it shown, without a session for
-	// a moment, and goes at once with the panes.
+	// a moment, and goes at once with the panes. With the sessions at the
+	// window's right (settings' SessionsSide), it stands at the left.
 	work := a.workSession()
 	rightW := a.rightWidth()
 	// In a window too narrow for it beside the cards, it gets out of their
@@ -124,50 +148,85 @@ func (a *App) view(c *ui.Context) {
 	if p := row.AnimateTo("right", b2f(a.rightShown()), sidebarMotion); work != nil {
 		right = float32(math.Round(float64(rightW * min(max(p, 0), 1))))
 	}
+	// The gaps around the cards move the window too; the one by the right
+	// sidebar closes as it comes beside the cards.
+	barPad := float32(math.Round(float64(cardGap * (1 - right/rightW))))
+	// What stands at the window's right edge, under the window controls
+	// (controlsRoom): the right sidebar, or the sessions' at the right.
+	rightPad := barPad
 	a.side.barW = right
-	// The gaps around the cards move the window too; the right one closes
-	// as the sidebar comes beside the cards.
-	rightPad := float32(math.Round(float64(cardGap * (1 - right/rightW))))
+	if sessionsRight {
+		rightPad = a.chrome.mainPad
+		a.side.barW = a.chrome.sideW
+	}
 	a.side.edge = rightPad
 	// The cards' row's width in this frame, which the viewer's comes of:
 	// the last frame's would lag a frame as the window resizes, and shake.
-	a.side.rowW = winW - a.chrome.sideW - right - a.chrome.mainPad - rightPad
+	a.side.rowW = winW - a.chrome.sideW - right - a.chrome.mainPad - barPad
 	a.side.cf = nil
 	a.side.files.showed, a.side.files.shown = a.side.files.shown, false
+	rightBar := func() {
+		if right <= 0 || work == nil {
+			return
+		}
+		// Its content stays at its width as it slides in from the
+		// window's edge.
+		ui.Row(c.Key("right")).Width(right).Shrink(0).AlignItems(ui.Stretch).ClipX().Children(func() {
+			col := ui.Column(c).Width(rightW).Shrink(0).AlignItems(ui.Stretch).Opacity(0.4 + 0.6*right/rightW)
+			if sessionsRight {
+				col.Margin(0, 0, 0, right-rightW)
+			}
+			col.Children(func() { a.rightSidebar(c, pal, work) })
+		})
+		// Over the cards and the sidebar both, which would take the
+		// pointer from it on either side of their edge.
+		a.rightHandle(c, right)
+	}
 	row.Children(func() {
 		w := a.chrome.sideW
-		side := ui.Row(c).Width(w).Shrink(0).AlignItems(ui.Stretch).ClipX()
-		if h := a.local(); h.conn == connReady && h.cl != nil && !a.prefs.SidebarHidden && !a.pal.open && !a.picker.open && (a.confirm == nil || !a.confirm.open) {
-			if files := side.DroppedFiles(); len(files) > 0 {
-				go a.openProjectDirs(h, h.cl, slices.Clone(files), true)
+		// The sidebar slides out at the window's edge: at the left, its
+		// content going with its edge; at the right, clipped by it.
+		sidebar := func() {
+			side := ui.Row(c).Width(w).Shrink(0).AlignItems(ui.Stretch).ClipX()
+			if h := a.local(); h.conn == connReady && h.cl != nil && !a.prefs.SidebarHidden && !a.pal.open && !a.picker.open && (a.confirm == nil || !a.confirm.open) {
+				if files := side.DroppedFiles(); len(files) > 0 {
+					go a.openProjectDirs(h, h.cl, slices.Clone(files), true)
+				}
+				if side.FileDragOver() {
+					side.Background(pal.accent.Alpha(0.08)).Draw(func(p *ui.Painter, r ui.Rect) {
+						p.Stroke(ui.Rect{X: r.X + 4, Y: r.Y + 4, W: r.W - 8, H: r.H - 8}, pal.accent.Alpha(0.55), 8, 1)
+					})
+				}
 			}
-			if side.FileDragOver() {
-				side.Background(pal.accent.Alpha(0.08)).Draw(func(p *ui.Painter, r ui.Rect) {
-					p.Stroke(ui.Rect{X: r.X + 4, Y: r.Y + 4, W: r.W - 8, H: r.H - 8}, pal.accent.Alpha(0.55), 8, 1)
-				})
-			}
+			side.Children(func() {
+				col := ui.Column(c).Width(a.prefs.SidebarWidth).Shrink(0).Opacity(0.4 + 0.6*shown)
+				if !sessionsRight {
+					col.Margin(0, 0, 0, w-a.prefs.SidebarWidth)
+				}
+				col.Children(func() { a.sidebar(c, pal, bar) })
+			})
 		}
-		side.Children(func() {
-			ui.Column(c).Width(a.prefs.SidebarWidth).Shrink(0).Margin(0, 0, 0, w-a.prefs.SidebarWidth).
-				Opacity(0.4 + 0.6*shown).Children(func() { a.sidebar(c, pal, bar) })
-		})
-		main := ui.Column(c).Grow(1).MinWidth(0).Padding(cardGap, rightPad, cardGap, a.chrome.mainPad).DragWindow()
+		if sessionsRight {
+			rightBar()
+		} else {
+			sidebar()
+		}
+		main := ui.Column(c).Grow(1).MinWidth(0).DragWindow()
+		if sessionsRight {
+			main.Padding(cardGap, a.chrome.mainPad, cardGap, barPad)
+		} else {
+			main.Padding(cardGap, barPad, cardGap, a.chrome.mainPad)
+		}
 		main.Children(func() {
 			if shown > 0.01 {
 				a.resizeHandle(c, pal)
 			}
 			a.card(c, pal, bar, shown)
 		})
-		if right > 0 && work != nil {
-			// Its content stays at its width as it slides in from the
-			// window's edge.
-			ui.Row(c.Key("right")).Width(right).Shrink(0).AlignItems(ui.Stretch).ClipX().Children(func() {
-				ui.Column(c).Width(rightW).Shrink(0).AlignItems(ui.Stretch).Opacity(0.4 + 0.6*right/rightW).
-					Children(func() { a.rightSidebar(c, pal, work) })
-			})
-			// Over the cards and the sidebar both, which would take the
-			// pointer from it on either side of their edge.
-			a.rightHandle(c, right)
+		if sessionsRight {
+			sidebar()
+		} else {
+			rightBar()
 		}
 	})
 	a.mainControls(c, pal, rightPad)
@@ -181,9 +240,14 @@ func (a *App) view(c *ui.Context) {
 		}
 	}
 	a.paletteView(c, pal)
+	a.goToFileView(c, pal)
 	a.pickerView(c, pal)
+	a.rebaseView(c, pal)
 	a.confirmView(c, pal)
 	a.worktreeView(c, pal)
+	a.prReviewView(c, pal)
+	a.prSetupView(c, pal)
+	a.pollLaunches(c)
 	// A preview that showed no more fades in anew next time.
 	if !a.previewShown {
 		a.previewKey = ""
@@ -205,13 +269,22 @@ func (a *App) view(c *ui.Context) {
 	}
 }
 
-// resizeHandle is the sidebar's edge, which a drag moves.
+// resizeHandle is the sidebar's edge, which a drag moves: the left of the
+// cards' column, or its right with the sidebar at the window's right.
 func (a *App) resizeHandle(c *ui.Context, pal *palette) {
 	// A drag leaves the keyboard in the pane the user is in.
-	h := ui.Box(c.Key("resize")).Absolute().Left(-4).Top(0).Bottom(0).Width(9).Cursor(ui.CursorResizeColumn).KeepFocus()
+	h := ui.Box(c.Key("resize")).Absolute().Top(0).Bottom(0).Width(9).Cursor(ui.CursorResizeColumn).KeepFocus()
+	if a.chrome.right {
+		h.Right(-4)
+	} else {
+		h.Left(-4)
+	}
 	if dx, _, ok := h.Dragged(); ok {
 		if a.sideDrag == 0 {
 			a.sideDrag = a.prefs.SidebarWidth
+		}
+		if a.chrome.right {
+			dx = -dx
 		}
 		a.sideDrag += dx
 		a.prefs.SidebarWidth = min(max(a.sideDrag, minSidebar), maxSidebar)
@@ -266,17 +339,7 @@ func pointerTooltip(c *ui.Context, el ui.Element, key, s string) {
 	shown := false
 	ui.TooltipBase(c, el, func(tip ui.Element) {
 		shown = true
-		th := c.Theme()
-		fill, text := th.Inverse, th.InverseText
-		if fill == ui.Transparent {
-			fill = th.Text
-		}
-		if text == ui.Transparent {
-			text = th.Background
-		}
-		tip.MaxWidth(th.Space(80)).Padding(th.Space(1.25), th.Space(2)).Radius(th.Space(1.25)).
-			Background(fill).TextColor(text).FontSize(th.FontSize-1).Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, 0.2))
-		tip.Children(func() { ui.Text(c, s) })
+		tipLook(c, tip, c.Theme().Space(80), s)
 		if over {
 			tip.AttachTo(spot, ui.AnchorTopLeft, ui.AnchorTopLeft)
 		}
@@ -288,6 +351,33 @@ func pointerTooltip(c *ui.Context, el ui.Element, key, s string) {
 	}
 }
 
+// wideTooltip is Element.Tooltip, as wide as a line of an email address,
+// for tips of a commit's author and dates, whose lines Tooltip's width
+// breaks.
+func wideTooltip(c *ui.Context, el ui.Element, s string) {
+	el.Description(s)
+	ui.TooltipBase(c, el, func(tip ui.Element) {
+		tipLook(c, tip, 480, s)
+		tip.AttachTo(el, ui.AnchorTop, ui.AnchorBottom).Margin(0, 0, c.Theme().Space(1.5), 0)
+	})
+}
+
+// tipLook gives tip the look of the theme's tooltips, at most max wide,
+// and s for its text.
+func tipLook(c *ui.Context, tip ui.Element, max float32, s string) {
+	th := c.Theme()
+	fill, text := th.Inverse, th.InverseText
+	if fill == ui.Transparent {
+		fill = th.Text
+	}
+	if text == ui.Transparent {
+		text = th.Background
+	}
+	tip.MaxWidth(max).Padding(th.Space(1.25), th.Space(2)).Radius(th.Space(1.25)).
+		Background(fill).TextColor(text).FontSize(th.FontSize-1).Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, 0.2))
+	tip.Children(func() { ui.Text(c, s) })
+}
+
 func kbd(c *ui.Context, pal *palette, keys string) {
 	ui.Text(c, keys).FontSize(11).TextColor(pal.textMuted).Padding(1, 5).Radius(4).
 		Background(pal.kbd).SingleLine()
@@ -296,16 +386,45 @@ func kbd(c *ui.Context, pal *palette, keys string) {
 // --- the sidebar ---
 
 func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
-	ui.Row(c).Height(topBar).Shrink(0).AlignItems(ui.Center).Padding(0, 12, 0, lead(bar)).Gap(2).DragWindow().Children(func() {
-		// After the traffic lights on macOS, at the right; elsewhere the
-		// window controls are at the right, and the buttons at the left,
-		// where they stay as the sidebar hides (chrome.buttonsLeft).
-		if runtime.GOOS == "darwin" {
+	if a.chrome.right {
+		// At the window's right, the sidebar holds its buttons, by the
+		// window's controls over it (mainControls), in line with a
+		// header's.
+		ui.Row(c).Height(topBar).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, 12).Gap(2).DragWindow().Children(func() {
 			ui.Spacer(c)
-		}
-		iconButton(c, "hide-sidebar", sidebarIcon, a.tip(locales.SidebarHide(), "sidebar.toggle"), pal, a.toggleSidebar)
-		iconButton(c, "new-session", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
-	})
+			if !a.chrome.cardsRight() {
+				a.sessionButtons(c, pal, "-s")
+			}
+			if showControls && a.win != nil {
+				ui.Box(c.Key("controls-room")).Width(controlsW + 8).Shrink(0)
+			}
+		})
+	} else {
+		ui.Row(c).Height(topBar).Shrink(0).AlignItems(ui.Center).Padding(0, 12, 0, lead(bar)).Gap(2).DragWindow().Children(func() {
+			// After the traffic lights on macOS, at the right; elsewhere the
+			// window controls are at the right, and the buttons at the left,
+			// where they stay as the sidebar hides (chrome.buttonsLeft).
+			if runtime.GOOS == "darwin" {
+				ui.Spacer(c)
+			}
+			a.leftButtons(c, pal, "")
+		})
+	}
+	// What the search found shows in place of the sessions, until it is
+	// cleared.
+	if a.searching() {
+		ui.Scroll(c.Key("found")).Grow(1).Padding(0, 10, 16, 10).DragWindow().Children(func() { a.searchResults(c, pal) })
+	} else {
+		a.sessionList(c, pal)
+	}
+	a.searchField(c, pal)
+	a.sidebarFooter(c, pal)
+	c.After(20 * time.Second) // times ago move on
+}
+
+// sessionList is the sidebar's sessions, by host and project, and the
+// conversations that ended.
+func (a *App) sessionList(c *ui.Context, pal *palette) {
 	// The space between and below the rows moves the window, as the top
 	// bar does.
 	ui.Scroll(c.Key("sessions")).Grow(1).Padding(0, 10, 16, 10).DragWindow().Children(func() {
@@ -348,8 +467,6 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 			a.endedSections(c, pal)
 		}
 	})
-	a.sidebarFooter(c, pal)
-	c.After(20 * time.Second) // times ago move on
 }
 
 func (a *App) groupView(c *ui.Context, pal *palette, g group, gi, at int, n *int) {
@@ -367,6 +484,8 @@ func (a *App) groupView(c *ui.Context, pal *palette, g group, gi, at int, n *int
 	})
 }
 
+// groupBody is a project's header, below a hairline apart from the one
+// above, and its sessions.
 func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving bool, n *int) {
 	id, key := g.project.ID, g.key()
 	collapsed := a.prefs.Collapsed[key]
@@ -376,15 +495,19 @@ func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving boo
 			needs++
 		}
 	}
-	top := float32(18)
-	if gi == 0 {
-		top = 2
-	}
 	// Its name starts where its sessions' names do (sessionRow), past the
 	// edge a row keeps in dark mode.
 	inset := float32(rowInset)
 	if pal.dark {
 		inset++
+	}
+	top := float32(2)
+	// Below a host's own row, its first project needs no line.
+	if gi > 0 && !(g.first && a.hostNeedsRow(g.host)) {
+		ui.Box(c).Height(1).Margin(8, inset, 0, inset).Background(pal.divider)
+		top = 9
+	} else if gi > 0 {
+		top = 18
 	}
 	hdr := ui.Row(c.Key("project-"+key)).Height(28).Margin(top, 0, 3, 0).Padding(0, 6, 0, inset).Gap(6).AlignItems(ui.Center).Radius(6)
 	// While a project is dragged, the headers it passes do not light up.
@@ -413,6 +536,9 @@ func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving boo
 	hdr.ContextMenu(func(m *ui.Menu) {
 		if m.Item(locales.ActionNewSession()).Chosen() {
 			a.newSessionOn(g.host, id)
+		}
+		if m.Item(locales.ActionNewSessionWorktree()).Chosen() {
+			a.newWorktreeSessionOn(g.host, id, g.project.Dir)
 		}
 		label := locales.SidebarCollapse()
 		if collapsed {
@@ -475,7 +601,7 @@ func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving boo
 			ui.Textf(c, "%d", len(g.sessions)).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum")
 		}
 		chev := ui.Icon(c, chevronIcon).Size(11, 11).TextColor(pal.textFaint)
-		turn := chev.AnimateTo("turn", 90*(1-b2f(collapsed)), ui.Snappy)
+		turn := chev.AnimateTo("turn", 90*(1-b2f(collapsed)), chevronTurn)
 		chev.Rotate(turn).Opacity(chev.Animate("shown", b2f(hovered || collapsed), 120*time.Millisecond))
 		ui.Spacer(c)
 		// A host with no row of its own tells how the app stands with it
@@ -834,6 +960,7 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 		iconButton(c, "open-project", folderIcon, a.tip(locales.ActionOpenProject(), "project.open"), pal, a.openProject)
 		iconButton(c, "palette", searchIcon, a.tip(locales.ActionGoToSession(), "palette.open"), pal, a.openPalette)
 		iconButton(c, "settings", gearIcon, a.tip(locales.SettingsTitle(), "settings.open"), pal, func() { a.openSettings("") })
+		a.menusButton(c, pal)
 		ui.Spacer(c)
 		switch a.local().conn {
 		case connReady:
@@ -852,6 +979,20 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 			a.footerNote(c, pal, pal.danger, locales.StatusDisconnected())
 		}
 	})
+}
+
+// menusButton opens the menu bar's menus, which Windows and Linux show no
+// bar of, and macOS shows only while Kero is in front.
+func (a *App) menusButton(c *ui.Context, pal *palette) {
+	b := ui.ButtonBase(c.Key("menus")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FooterMenus()).Tooltip(locales.FooterMenus())
+	if b.Pressed() {
+		b.Background(pal.rowHover.Alpha(0.12))
+	} else if b.Hovered() {
+		b.Background(pal.rowHover)
+		b.TextColor(pal.text)
+	}
+	b.Children(func() { ui.Icon(c, moreIcon).Size(16, 16) })
+	b.Menu(func(m *ui.Menu) { menuInto(m, a.bar) })
 }
 
 // footerChip counts the sessions that are, by is, as their rows' status
@@ -1051,18 +1192,33 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 	if s := a.workSession(); s != nil {
 		v := a.viewOf(s)
 		if v == nil {
-			a.panes(c, pal, bar, shown, s, true)
+			a.panes(c, pal, bar, shown, s, true, a.chrome.cardsRight())
 			return
 		}
-		// The panes, then the viewer.
+		// The panes and the viewer, at their right, or at their left with
+		// the sessions at the window's right.
+		left := a.sideLeft()
 		row := ui.Row(c.Key("with-side")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Bind(a.paneRef("with-side"))
 		w := a.side.rowW
+		right := a.chrome.cardsRight()
 		row.Children(func() {
+			if a.side.wide {
+				// Zoomed, the viewer takes the panes' room, and their
+				// header's buttons at both of its edges.
+				a.viewerCard(c, pal, s, v, max(w, minSide))
+				return
+			}
+			if left {
+				a.viewerCard(c, pal, s, v, a.sideWidth(w))
+				a.sideEdge(c, pal, w)
+			}
 			ui.Column(c.Key("panes")).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Stretch).Children(func() {
-				a.panes(c, pal, bar, shown, s, false)
+				a.panes(c, pal, bar, shown, s, !left, !left || right)
 			})
-			a.sideEdge(c, pal, w)
-			a.viewerCard(c, pal, s, v, a.sideWidth(w))
+			if !left {
+				a.sideEdge(c, pal, w)
+				a.viewerCard(c, pal, s, v, a.sideWidth(w))
+			}
 		})
 		return
 	}
@@ -1071,14 +1227,10 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 	card.Children(func() {
 		left := a.chrome.headerPad
 		ui.Row(c).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, left).DragWindow().Children(func() {
-			if shown < 0.5 {
-				ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-					iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
-					iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
-				})
-			}
+			a.sidebarButtons(c, pal, bar, shown)
 			ui.Text(c, "Kero").FontSize(14).FontWeight(600).TextColor(pal.text)
 			ui.Spacer(c)
+			a.cornerButtons(c, pal, "-h")
 			a.controlsRoom(c, 0)
 		})
 		ui.Column(c).Grow(1).MinHeight(0).Children(func() {

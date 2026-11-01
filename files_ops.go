@@ -257,9 +257,11 @@ func (a *App) deleteEntry(h *host, it fileItem) {
 }
 
 // entryMenu is a row's menu: opening it in the app the system opens it
-// with, for one of this machine, a new file or folder in its folder, the
-// folder's own for a folder, and the row's rename and delete.
-func (a *App) entryMenu(m *ui.Menu, s *proto.Session, pane string, it fileItem) {
+// with, for one of this machine; a file's opens in an editor pane and its
+// history; a new file, folder or terminal in its folder, the folder's own
+// for a folder; the row's rename and delete; then what else opens it on
+// this machine and copies its path (pathItems). root is the tab's folder.
+func (a *App) entryMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane string, it fileItem, root string) {
 	if !a.hostOf(pane).remote() {
 		if m.Item(locales.FilesOpenDefault()).Chosen() {
 			openPath(it.path)
@@ -270,11 +272,21 @@ func (a *App) entryMenu(m *ui.Menu, s *proto.Session, pane string, it fileItem) 
 	if it.Dir {
 		dir, rel = it.path, it.rel
 	}
+	if !it.Dir {
+		a.paneItems(m, pane, it.path, 0)
+		if g := a.paneGit(pane); g != nil && g.Root == root && m.Item(locales.FilesShowHistory()).Chosen() {
+			a.showHistory(it.rel)
+		}
+		m.Separator()
+	}
 	if m.Item(locales.FilesNewFile()).Chosen() {
 		a.startCreate(s, pane, dir, rel, false)
 	}
 	if m.Item(locales.FilesNewFolder()).Chosen() {
 		a.startCreate(s, pane, dir, rel, true)
+	}
+	if it.Dir && m.Item(locales.FilesNewTerminal()).Chosen() {
+		a.terminalIn(pane, dir)
 	}
 	m.Separator()
 	if m.Item(locales.FilesRename()).Chosen() {
@@ -283,4 +295,6 @@ func (a *App) entryMenu(m *ui.Menu, s *proto.Session, pane string, it fileItem) 
 	if m.Item(locales.FilesDeleteItem()).Chosen() {
 		a.askDelete(pane, it)
 	}
+	m.Separator()
+	a.pathItems(c, m, pane, it.path, it.rel, it.Dir)
 }

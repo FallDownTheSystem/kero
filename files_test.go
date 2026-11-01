@@ -155,6 +155,37 @@ func TestFilesTab(t *testing.T) {
 	if _, ok := tt.Find("auth.go"); ok && len(fs.open) != 0 {
 		t.Error("Collapse Folders left internal unfolded")
 	}
+
+	// The keys move in the tree from the row clicked: Up to a folder,
+	// Right opens it and goes in, Enter opens a file, Left goes out to
+	// its folder and closes it.
+	if err := tt.Click("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	internal := filesKey(h, "/tmp/demo/internal")
+	for _, k := range []ui.Key{ui.KeyUp, ui.KeyUp, ui.KeyRight} {
+		tt.Key(0, k)
+		tt.Frame()
+	}
+	if fs.cursor != internal || !fs.open[internal] {
+		t.Fatalf("Up, Up, Right: at %q, internal open %v", fs.cursor, fs.open[internal])
+	}
+	shot(t, tt, "files-keys")
+	tt.Key(0, ui.KeyRight)
+	tt.Frame()
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if v := a.viewOf(s); v == nil || v.file == nil || v.file.path != "/tmp/demo/internal/auth.go" {
+		t.Fatalf("Right, Enter on internal's first file opened %+v", v)
+	}
+	tt.Key(0, ui.KeyLeft)
+	tt.Frame()
+	tt.Key(0, ui.KeyLeft)
+	tt.Frame()
+	if fs.cursor != internal || fs.open[internal] {
+		t.Errorf("Left, Left from auth.go: at %q, internal open %v", fs.cursor, fs.open[internal])
+	}
 }
 
 // Close takes the viewer while it has the keyboard, as a click in the tree
@@ -538,12 +569,13 @@ func TestViewerEdits(t *testing.T) {
 	shot(t, tt, "viewer-unsaved")
 	a.paneRef("side-card").Focus() // as the user typing there has it
 	tt.Frame()
+	read := fv.hash // as the write's answer, run in a frame, changes it
 	tt.Key(ui.Cmd, ui.KeyS)
 	p, ok := written()
 	if !ok {
 		t.Fatal("Save didn't write the file")
 	}
-	if want := (proto.FSWriteParams{Path: "/tmp/demo/main.go", Hash: fv.hash, Text: "package main\r\n\r\nfunc main() {}\r\n"}); p != want {
+	if want := (proto.FSWriteParams{Path: "/tmp/demo/main.go", Hash: read, Text: "package main\r\n\r\nfunc main() {}\r\n"}); p != want {
 		t.Errorf("wrote %+v, want %+v", p, want)
 	}
 	s.Panes[1].Status = proto.Idle
@@ -602,7 +634,7 @@ func TestViewerEdits(t *testing.T) {
 	sf.edits.saving = false
 	sf.d.New.Edit(editor.Edit{Start: 0, End: 0, Text: "x"})
 	a.showText(sf, proto.GitText{Old: "package a\n", New: "package b\n", Hash: "h2"})
-	if got := sf.d.New.String(); got[:1] != "x" || sf.hash != "h1" {
+	if got := sf.d.New.String(); got[:1] != "x" || sf.hash == "h2" {
 		t.Errorf("reading the file anew went over the user's edit: %q, hash %q", got, sf.hash)
 	}
 	if n := len(a.allTargets()); n != 1 {
@@ -692,7 +724,7 @@ func TestUnsavedOutlastQuit(t *testing.T) {
 	b.side.backup.unsaved = map[string]unsavedText{}
 	u := unsavedText{Kind: sideChanges, Pane: "a", Path: "/tmp/demo/pkg/a.go", Hash: "h0", Text: "package a // edited\n"}
 	b.side.backup.unsaved[u.key()] = u
-	sf := &sideFile{pane: "a", root: "/tmp/demo", f: proto.GitFile{Path: "pkg/a.go"}}
+	sf := &sideFile{pane: "a", base: git.BaseHead, root: "/tmp/demo", f: proto.GitFile{Path: "pkg/a.go"}}
 	b.showText(sf, proto.GitText{Old: "package a\n", New: "package a\n\nvar x = 1\n", Hash: "h1"})
 	if got := sf.d.New.String(); got != u.Text || !sf.d.New.Modified() || sf.hash != "h0" {
 		t.Errorf("the diff's edit came back as %q, hash %q", got, sf.hash)
@@ -720,6 +752,10 @@ func TestFilesTabChanges(t *testing.T) {
 	cl, stop := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
 		if method == "fs.list" {
 			return nil, errors.New("the tree keeps what it listed")
+		}
+		if method == "fs.stat" {
+			// The file made, opened in the viewer.
+			return proto.FSStat{}, nil
 		}
 		calls <- [2]string{method, string(raw)}
 		return true, nil
@@ -993,6 +1029,702 @@ func TestViewerFollowsResize(t *testing.T) {
 		tt.Frame()
 		if want := row.W - minPanes; math.Abs(float64(card.W-want)) > 0.5 {
 			t.Errorf("at %d wide the viewer is %v wide, want %v as the row is %v", w, card.W, want, row.W)
+		}
+	}
+}
+
+// testRead puts text in a file's view as read from its file.
+func (fv *fileView) testRead(text string) {
+	fv.fetched = time.Now()
+	showFileText(fv, text)
+}
+
+// An editor pane shows its file in the editor the viewer shows files in,
+// with its bar's actions; its title's menu copies its path; the text size
+// keys zoom the file while it has the keyboard; and closing it with edits
+// asks first.
+func TestEditorPane(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/main.go", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	if !tt.HasText("main.go") {
+		t.Errorf("no file's name in the header; texts %q", tt.Texts())
+	}
+	if a.terms["b"] != nil {
+		t.Error("an editor pane attached a terminal")
+	}
+	f := a.edits["b"]
+	if f == nil || f.path != "/tmp/main.go" || f.pane != "b" {
+		t.Fatalf("the pane's file is %+v", f)
+	}
+	f.testRead("package main\n")
+	tt.Frame()
+	if f.st == nil {
+		t.Fatal("no editor")
+	}
+	if err := tt.Click("Wrap Lines"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !a.set.WrapLines || !f.st.SoftWrap {
+		t.Error("Wrap Lines left the lines unwrapped")
+	}
+	shot(t, tt, "editor-pane")
+
+	// Its title's menu copies its path, whole or from the session's
+	// folder, and opens it outside kero.
+	for _, c := range []struct{ item, want string }{{"Copy Path", "/tmp/main.go"}, {"Copy Relative Path", "main.go"}} {
+		if err := tt.RightClick("main.go"); err != nil {
+			t.Fatal(err)
+		}
+		if items := tt.Menu(); !slices.Contains(items, "Open in Editor") || !slices.Contains(items, "Show in "+fileManager()) {
+			t.Fatalf("title's menu %q", items)
+		}
+		if err := tt.ChooseMenuItem(c.item); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		if got := tt.Clipboard(); got != c.want {
+			t.Errorf("%s copied %q", c.item, got)
+		}
+	}
+
+	// The text size keys zoom the file while its pane has the keyboard,
+	// and the terminals' text while a terminal has it; the bar's buttons
+	// zoom the file too.
+	term, size := a.set.FontSize, f.st.Font.Size
+	a.setFocus(s, "b")
+	a.run("text.bigger", nil)
+	tt.Frame()
+	if a.prefs.FileZoom != 1 || f.st.Font.Size != size+1 || a.set.FontSize != term {
+		t.Errorf("in the file, Bigger made it %v (zoom %d) and the terminals %v", f.st.Font.Size, a.prefs.FileZoom, a.set.FontSize)
+	}
+	if err := tt.Click("Smaller Text (" + a.keys("text.smaller") + ")"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.prefs.FileZoom != 0 || f.st.Font.Size != size {
+		t.Errorf("Smaller Text left the file at %v", f.st.Font.Size)
+	}
+	a.setFocus(s, "a")
+	a.run("text.bigger", nil)
+	if a.prefs.FileZoom != 0 || a.set.FontSize != term+1 {
+		t.Errorf("in a terminal, Bigger zoomed the file (%d), the terminals to %v", a.prefs.FileZoom, a.set.FontSize)
+	}
+
+	// Its edits are kept as the app quits, as the viewer's are.
+	f.st.Buffer.Edit(editor.Edit{Start: 0, End: 0, Text: "// x\n"})
+	if ts := a.allTargets(); len(ts) != 1 || ts[0].path != "/tmp/main.go" {
+		t.Errorf("texts to keep as the app quits: %+v", ts)
+	}
+	a.closePane(s, "b", true)
+	if a.confirm == nil || s.PaneByID("b") == nil {
+		t.Fatal("closed an editor with edits unasked")
+	}
+	a.confirm.run()
+	if s := a.session("s1"); s.PaneByID("b") != nil || a.edits["b"] != nil {
+		t.Error("the editor stayed as the user closed it")
+	}
+}
+
+// A Markdown file previews as it reads, in place of its text, and back;
+// another file has no preview.
+func TestMarkdownPreview(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/README.md", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	f := a.edits["b"]
+	f.testRead("# Title\n\nSome **bold** text.\n")
+	tt.Frame()
+	if tt.HasText("Title") && !tt.HasText("# Title") {
+		t.Error("the text shows rendered before the preview")
+	}
+	if err := tt.Click("Preview Markdown"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if !f.preview || !tt.HasText("Title") || tt.HasText("Wrap Lines") {
+		t.Errorf("no preview; texts %q", tt.Texts())
+	}
+	shot(t, tt, "markdown-preview")
+
+	// The preview has no editor to take the keyboard; the pane takes it
+	// still, as the pointer moves into it.
+	a.set.FocusFollowsMouse = true
+	ar, _ := tt.Find("fish")
+	br, _ := tt.Find("Title")
+	for _, at := range [][2]float32{{ar.X + 40, 340}, {br.X + 40, br.Y + 40}, {br.X + 60, br.Y + 40}} {
+		tt.Move(at[0], at[1])
+		tt.Advance(16 * time.Millisecond)
+		tt.Frame()
+	}
+	if got := a.focusOf(s); got != "b" || !tt.Focused("Title") {
+		t.Errorf("into the preview, focus %q, want b, with the keyboard", got)
+	}
+	a.set.FocusFollowsMouse = false
+
+	// Without it, a click in the preview focuses the pane.
+	tt.ClickAt(ar.X+40, 340)
+	tt.Frame()
+	if got := a.focusOf(s); got != "a" {
+		t.Fatalf("focus %q before the click, want a", got)
+	}
+	tt.ClickAt(br.X+40, 500) // below the text, in the preview
+	tt.Frame()
+	if got := a.focusOf(s); got != "b" {
+		t.Errorf("clicked in the preview, focus %q, want b", got)
+	}
+
+	if err := tt.Click("Preview Markdown"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if f.preview || !tt.HasText("Wrap Lines") {
+		t.Error("the preview stayed")
+	}
+
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/main.go", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	delete(a.edits, "b")
+	tt.Frame()
+	a.edits["b"].testRead("package main\n")
+	tt.Frame()
+	if tt.HasText("Preview Markdown") {
+		t.Error("a Go file has a Markdown preview")
+	}
+}
+
+// An editor pane of a file not there yet opens empty, as a new file, and
+// its save makes it, through kerod, then writes it.
+func TestEditorNewFile(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/plan.md", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	calls := make(chan string, 4)
+	cl, stop := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "fs.create":
+			calls <- method + " " + string(raw)
+			return nil, nil
+		case "fs.write":
+			var p proto.FSWriteParams
+			json.Unmarshal(raw, &p)
+			calls <- method + " " + p.Hash + " " + p.Text
+			return git.Hash([]byte(p.Text)), nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	defer stop()
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	f := a.edits["b"]
+	if f == nil || !f.fresh {
+		t.Fatalf("the pane's file is %+v", f)
+	}
+	f.absent = true
+	f.testRead("")
+	tt.Frame()
+	if f.st == nil || f.err != "" || f.hash != "" || !tt.HasText("New file") {
+		t.Fatalf("a new file opened as %+v; texts %q", f, tt.Texts())
+	}
+	a.local().cl = cl
+	f.st.Buffer.Edit(editor.Edit{Text: "# Plan\n"})
+	a.saveTargets([]editTarget{a.fileTarget(f)}, nil)
+	next := func() string {
+		select {
+		case c := <-calls:
+			return c
+		case <-time.After(2 * time.Second):
+			return ""
+		}
+	}
+	if got := next(); got != `fs.create {"path":"/tmp/plan.md"}` {
+		t.Errorf("the save called %q first", got)
+	}
+	if got, want := next(), "fs.write "+git.Hash(nil)+" # Plan\n"; got != want {
+		t.Errorf("then %q, want %q", got, want)
+	}
+	for range 50 {
+		tt.Frame()
+		if !f.absent {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if f.absent || f.modified() || tt.HasText("New file") {
+		t.Error("a saved new file still shows as new")
+	}
+}
+
+// A new file's pane, not yet typed in, offers to open a file instead; one
+// typed in doesn't.
+func TestNewFilePaneOpenFile(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/untitled.txt", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	f := &fileView{pane: "b", path: "/tmp/untitled.txt", fresh: true, absent: true, fetched: time.Now(), st: &editor.State{Buffer: editor.NewBuffer("")}}
+	a.edits = map[string]*fileView{"b": f}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	if !tt.HasText("Open File…") {
+		t.Errorf("a new file's pane can't open a file; texts %q", tt.Texts())
+	}
+	shot(t, tt, "new-file-pane")
+	f.st.Buffer.Edit(editor.Edit{Text: "hi"})
+	tt.Frame()
+	if tt.HasText("Open File…") {
+		t.Error("a new file typed in offers to open another in its place")
+	}
+}
+
+// paneCalls makes the local host a kerod that lists one file, main.go, in
+// every folder, and tells the splits and pane.file calls it takes, as
+// "split <pane> <direction> <file>" and "file <pane> <file>".
+func paneCalls(t *testing.T, a *App) <-chan string {
+	t.Helper()
+	calls := make(chan string, 8)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "fs.list":
+			return proto.FSList{Entries: []proto.FSEntry{{Name: "src", Dir: true}, {Name: "main.go"}}}, nil
+		case "split":
+			var p proto.CreateParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			calls <- "split " + p.Split + " " + p.Direction + " " + p.File + p.Dir
+			return nil, errors.New("no panes in a test")
+		case "pane.file":
+			var p proto.FileParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			calls <- "file " + p.ID + " " + p.File
+			return true, nil
+		}
+		return nil, errors.New("unexpected method " + method)
+	})
+	a.local().cl = cl
+	return calls
+}
+
+// nextCall returns the next call paneCalls tells.
+func nextCall(t *testing.T, calls <-chan string) string {
+	t.Helper()
+	select {
+	case c := <-calls:
+		return c
+	case <-time.After(5 * time.Second):
+		t.Fatal("no call came")
+		return ""
+	}
+}
+
+// filesBeside shows the Files tab of /tmp/demo, beside pane a and an
+// editor pane b of its README.md, its root listed, in view.
+func filesBeside(t *testing.T, a *App, view func(*ui.Context)) *ui.Tester {
+	t.Helper()
+	s := &a.st.Sessions[0]
+	s.Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/demo/README.md", Dir: "/tmp/demo", Status: proto.Idle, Progress: -1}
+	a.prefs.Side = sideFiles
+	tt := ui.NewTester(view, 1280, 720)
+	for range 50 {
+		tt.Frame()
+		if tt.HasText("main.go") {
+			return tt
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("the tree listed nothing; texts %q", tt.Texts())
+	return nil
+}
+
+// A file's menu opens it in an editor pane of its own, and shows its
+// history; a folder's opens a terminal in it, and no pane; both open on
+// this machine and copy their paths, from all of the row that shows
+// hovered.
+func TestFilesMenus(t *testing.T) {
+	a := testApp(t)
+	calls := paneCalls(t, a)
+	tt := filesBeside(t, a, a.view)
+	if err := tt.RightClick("src"); err != nil {
+		t.Fatal(err)
+	}
+	items := tt.Menu()
+	for _, want := range []string{"New File…", "New Folder…", "New Terminal Here", "Rename…", "Delete…", "Open in Editor", "Copy Path", "Copy Relative Path"} {
+		if !slices.Contains(items, want) {
+			t.Errorf("a folder's menu has no %q: %q", want, items)
+		}
+	}
+	if slices.Contains(items, "Open in Pane") || slices.Contains(items, "Show History") {
+		t.Errorf("a folder's menu opens it in a pane, or shows its history: %q", items)
+	}
+	if err := tt.ChooseMenuItem("New Terminal Here"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := nextCall(t, calls); got != "split a right /tmp/demo/src" {
+		t.Errorf("New Terminal Here called %q", got)
+	}
+
+	r, ok := tt.Find("main.go")
+	if !ok {
+		t.Fatalf("no main.go; texts %q", tt.Texts())
+	}
+	for _, y := range []float32{r.Y - 2, r.Y + r.H + 2} {
+		tt.RightClickAt(r.X+r.W/2, y)
+		items := tt.Menu()
+		for _, want := range []string{"Open in Default App", "Open in Pane", "Show History", "Open in Editor", "Copy Relative Path", "Rename…"} {
+			if !slices.Contains(items, want) {
+				t.Errorf("a right-click at %v, beside main.go at %v to %v, has no %q: %q", y, r.Y, r.Y+r.H, want, items)
+			}
+		}
+		if slices.Contains(items, "Open in New Pane") || slices.Contains(items, "Preview") {
+			t.Errorf("a file's menu %q", items)
+		}
+		tt.CloseMenu()
+		tt.Frame()
+	}
+	if err := tt.RightClick("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Open in Pane"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := nextCall(t, calls); got != "split a right /tmp/demo/main.go" {
+		t.Errorf("Open in Pane called %q", got)
+	}
+	if err := tt.RightClick("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Copy Relative Path"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := tt.Clipboard(); got != "main.go" {
+		t.Errorf("Copy Relative Path copied %q", got)
+	}
+
+	// A click opens it in the viewer, in no pane.
+	if err := tt.Click("main.go"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if v := a.viewOf(&a.st.Sessions[0]); v == nil || v.kind != sideFiles || v.file == nil || v.file.path != "/tmp/demo/main.go" {
+		t.Errorf("a click opened %+v", v)
+	}
+	select {
+	case c := <-calls:
+		t.Errorf("a click called %q", c)
+	default:
+	}
+}
+
+// A file dragged from the tree onto a pane opens beside it, on the side it
+// is dropped at, or, in the middle of an editor pane, in its place: a
+// terminal's middle is no place for it.
+func TestFilesDragToPane(t *testing.T) {
+	a := testApp(t)
+	calls := paneCalls(t, a)
+	cards := map[string]ui.Rect{}
+	tt := filesBeside(t, a, func(c *ui.Context) {
+		a.view(c)
+		for _, id := range []string{"a", "b"} {
+			cards[id] = a.paneRef("card-" + id).Bounds(c)
+		}
+	})
+	drop := func(x, y float32, label string, want string) {
+		t.Helper()
+		r, ok := tt.Find("main.go")
+		if !ok {
+			t.Fatalf("no main.go; texts %q", tt.Texts())
+		}
+		fx, fy := r.X+r.W/2, r.Y+r.H/2
+		// Pressed again so soon, the file would be double-clicked.
+		tt.Advance(time.Second)
+		tt.Press(fx, fy)
+		tt.Frame()
+		tt.Move(fx-12, fy)
+		tt.Frame()
+		tt.Move(x, y)
+		tt.Frame()
+		if !tt.HasText(label) {
+			t.Errorf("dragged to %v, %v: no %q; texts %q", x, y, label, tt.Texts())
+		}
+		if label != "Open Here" && tt.HasText("Open Here") {
+			t.Errorf("dragged to %v, %v: the file would open in the pane's place", x, y)
+		}
+		tt.Release(x, y)
+		tt.Frame()
+		if got := nextCall(t, calls); got != want {
+			t.Errorf("dropped at %v, %v: called %q, want %q", x, y, got, want)
+		}
+	}
+	b := cards["b"]
+	drop(b.X+b.W/2, b.Y+b.H/2, "Open Here", "file b /tmp/demo/main.go")
+	drop(b.X+b.W-20, b.Y+b.H/2, "Split Right", "split b right /tmp/demo/main.go")
+	t2 := cards["a"]
+	drop(t2.X+t2.W/2, t2.Y+t2.H*0.45, "Split Up", "split a up /tmp/demo/main.go")
+	if v := a.viewOf(&a.st.Sessions[0]); v != nil {
+		t.Errorf("a drag opened the viewer on %+v", v.file)
+	}
+}
+
+// The filter shows what kerod finds in all of the folder, in the folders
+// it is in; a click on a file found opens it in the viewer; Esc, or Clear
+// Filter, shows the whole tree again.
+func TestFilesFilter(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	a.prefs.Side = sideFiles
+	finds := make(chan proto.FSFindParams, 4)
+	cl, stop := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "fs.list":
+			return proto.FSList{Entries: []proto.FSEntry{{Name: "src", Dir: true}, {Name: "main.go"}}}, nil
+		case "fs.find":
+			var p proto.FSFindParams
+			json.Unmarshal(raw, &p)
+			select {
+			case finds <- p:
+			default:
+			}
+			if p.Query == "util" {
+				return proto.FSFind{Entries: []proto.FSFound{{Path: "src/util", Dir: true}, {Path: "src/util/util.go"}, {Path: "lib/util.c"}}}, nil
+			}
+			return proto.FSFind{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	defer stop()
+	a.local().cl = cl
+	tt := ui.NewTester(a.view, 1280, 720)
+	settle := func() {
+		for range 30 {
+			tt.Advance(50 * time.Millisecond)
+			tt.Frame()
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+	settle()
+	if err := tt.Click("Filter"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Type("util")
+	settle()
+	select {
+	case p := <-finds:
+		if p.Dir != "/tmp/demo" || p.Query != "util" {
+			t.Errorf("found with %+v", p)
+		}
+	default:
+		t.Fatal("the filter asked kerod nothing")
+	}
+	// The folder found, which holds a file found, shows once, as its.
+	for _, want := range []string{"src/util", "util.go", "lib", "util.c"} {
+		if !tt.HasText(want) {
+			t.Errorf("the filter shows no %q; texts %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText("main.go") {
+		t.Error("the filter shows main.go")
+	}
+	shot(t, tt, "files-filter")
+
+	// Enter opens the first file found, as the tree shows them.
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if v := a.viewOf(s); v == nil || v.file == nil || v.file.path != "/tmp/demo/src/util/util.go" || v.file.rel != "src/util/util.go" {
+		t.Errorf("Enter opened %+v", v)
+	}
+	if err := tt.Click("util.c"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if v := a.viewOf(s); v == nil || v.file == nil || v.file.path != "/tmp/demo/lib/util.c" || v.file.rel != "lib/util.c" {
+		t.Errorf("a click on util.c opened %+v", v)
+	}
+	if err := tt.Click("Filter"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyEscape)
+	settle()
+	if a.side.files.find.query != "" || !tt.HasText("main.go") {
+		t.Fatalf("Esc left the filter at %q", a.side.files.find.query)
+	}
+
+	if err := tt.Click("Filter"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("zzz")
+	settle()
+	if !tt.HasText("Nothing matches “zzz”") {
+		t.Errorf("no match shows %q", tt.Texts())
+	}
+	if err := tt.Click("Clear Filter"); err != nil {
+		t.Fatal(err)
+	}
+	settle()
+	if a.side.files.find.query != "" || !tt.HasText("main.go") {
+		t.Errorf("Clear Filter left %q", a.side.files.find.query)
+	}
+}
+
+// kero do files.show shows a path in the Files tab: the folders it is in
+// open, and a file in the viewer; a relative path is the tab's folder's,
+// and one outside it says so.
+func TestShowFiles(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[0].Git = &proto.GitInfo{Root: "/tmp/demo", Branch: "main"}
+	cl, stop := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method == "fs.stat" {
+			var p proto.FSStatParams
+			json.Unmarshal(raw, &p)
+			return proto.FSStat{Path: p.Path, Exists: true, Dir: p.Path == "/tmp/demo/src"}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	defer stop()
+	a.local().cl = cl
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	h := a.local()
+	wait := func(ok func() bool) bool {
+		for range 100 {
+			tt.Frame()
+			if ok() {
+				return true
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		return false
+	}
+	a.run("files.show", map[string]string{"path": "src/util/a.go"})
+	if !wait(func() bool { v := a.viewOf(s); return v != nil && v.file != nil }) {
+		t.Fatal("files.show opened nothing")
+	}
+	if v := a.viewOf(s); a.prefs.Side != sideFiles || v.file.path != "/tmp/demo/src/util/a.go" || v.file.rel != "src/util/a.go" {
+		t.Errorf("files.show showed %q, the viewer %q (%q)", a.prefs.Side, v.file.path, v.file.rel)
+	}
+	if fs := &a.side.files; !fs.open[filesKey(h, "/tmp/demo/src")] || !fs.open[filesKey(h, "/tmp/demo/src/util")] {
+		t.Errorf("the folders the file is in stayed closed: %v", fs.open)
+	}
+	a.closeView(s)
+	a.run("files.show", map[string]string{"path": "/tmp/demo/src"})
+	if !wait(func() bool { return a.side.files.open[filesKey(h, "/tmp/demo/src")] }) || a.viewOf(s) != nil {
+		t.Error("files.show of a folder didn't open it, or opened the viewer")
+	}
+	a.run("files.show", map[string]string{"path": "/etc/passwd"})
+	tt.Frame()
+	if !tt.HasText("/etc/passwd") {
+		t.Errorf("a path outside the tree said nothing; texts %q", tt.Texts())
+	}
+}
+
+// The viewer's Zoom widens it over the panes, and Show All Panes puts it
+// back beside them.
+func TestViewerZoom(t *testing.T) {
+	const name = "Trade_Reporting_views_documentation_FI_final.md"
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	fv := &fileView{pane: "a", path: "/tmp/" + name, rel: name, fetched: time.Now()}
+	fv.testRead("text\n")
+	a.openView(s, sideFiles, fv)
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("zsh") {
+		t.Fatalf("the panes don't show beside the viewer; texts %q", tt.Texts())
+	}
+	if err := tt.Click("Zoom Viewer"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if tt.HasText("zsh") || !a.side.wide {
+		t.Error("zoomed, the panes show")
+	}
+	// The file's name shows whole while the viewer has room.
+	if r, ok := tt.Find(name); !ok || r.W < 300 {
+		t.Errorf("zoomed, the header's name is cut to %v; texts %q", r.W, tt.Texts())
+	}
+	shot(t, tt, "viewer-zoom")
+	if err := tt.Click("Show All Panes"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("zsh") || a.side.wide {
+		t.Error("Show All Panes left the viewer zoomed")
+	}
+}
+
+// With the sessions at the window's right, the right sidebar and the
+// viewer take its left.
+func TestSessionsRight(t *testing.T) {
+	a := testApp(t)
+	a.set.SessionsSide = "right"
+	a.prefs.Side = sideChanges
+	s := &a.st.Sessions[0]
+	fv := &fileView{pane: "a", path: "/tmp/notes.txt", rel: "notes.txt", fetched: time.Now()}
+	fv.testRead("notes\n")
+	a.openView(s, sideFiles, fv)
+	var viewer, panes ui.Rect
+	tt := ui.NewTester(func(c *ui.Context) {
+		a.view(c)
+		viewer, panes = a.paneRef("side-card").Bounds(c), a.paneRef("card-a").Bounds(c)
+	}, 1280, 720)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	tab, ok1 := tt.Find("Changes")
+	name, ok2 := tt.Find("demo")
+	if !ok1 || !ok2 {
+		t.Fatalf("no sidebar; texts %q", tt.Texts())
+	}
+	if tab.X > 300 || name.X < 900 {
+		t.Errorf("the tab at %v, the session's name at %v", tab.X, name.X)
+	}
+	if viewer.X > panes.X {
+		t.Errorf("the viewer at %v, right of the panes at %v", viewer.X, panes.X)
+	}
+	shot(t, tt, "sessions-right")
+}
+
+func TestHostJoin(t *testing.T) {
+	for in, want := range map[[2]string]string{
+		{"/tmp/demo", "a.go"}:     "/tmp/demo/a.go",
+		{"/", "etc"}:              "/etc",
+		{`C:\src\kero`, "a.go"}:   `C:\src\kero\a.go`,
+		{`C:\`, "src"}:            `C:\src`,
+		{"C:/src", "a.go"}:        `C:/src\a.go`,
+		{"/home/me/dir", "x y.z"}: "/home/me/dir/x y.z",
+	} {
+		if got := hostJoin(in[0], in[1]); got != want {
+			t.Errorf("hostJoin(%q, %q) = %q, want %q", in[0], in[1], got, want)
+		}
+	}
+}
+
+func TestCommandWords(t *testing.T) {
+	for in, want := range map[string][]string{
+		"":                                  nil,
+		"  ":                                nil,
+		"code":                              {"code"},
+		"code -r":                           {"code", "-r"},
+		`"C:\Program Files\Zed\zed.exe" -n`: {`C:\Program Files\Zed\zed.exe`, "-n"},
+		`subl  --wait`:                      {"subl", "--wait"},
+	} {
+		if got := commandWords(in); !slices.Equal(got, want) {
+			t.Errorf("commandWords(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
