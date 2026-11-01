@@ -58,12 +58,21 @@ kero config check             # 不明なキーと不正な値を報告
 | `window-theme`       | `system`   | アプリの外観: `system`、`light`、`dark`                         |
 | `language`           | `system`   | アプリの言語: `system`、`en`、`ja`、`zh-Hans`                   |
 | `window-translucent` | `true`     | ウインドウからデスクトップを透けて見せる                        |
+| `app-font`           | （空）     | アプリ自身のテキストのフォント（ターミナルのものではない）: 空ならシステムのフォント。Inter、Geist、Mona Sans、Public Sans、IBM Plex Sans、Plus Jakarta Sans、Manrope、Figtree、DM Serif Display、Playfair Display が付属し、インストール済みのフォントならどれでも使えます |
+| `sessions-sidebar`   | `left`     | セッションのサイドバーを置くウインドウの側: `left` または `right`。右サイドバーとビューアは反対側に置きます |
+| `pane-folder`        | `fit`      | ペインのヘッダーにフォルダをどう示すか: `hidden`、`folder`（名前）、`full`（パス）、または幅に収まる限り多くを示す `fit` |
+| `explorer-folder`    | `fit`      | ビューアのヘッダーにフォルダをどう示すか。値は `pane-folder` と同じ |
+| `dim-unfocused-terminals` | `true` | セッションに複数のペインがあるとき、使用中でないターミナルを薄くする |
+| `dim-unfocused-files` | `false` | セッションに複数のペインがあるとき、使用中でないエディタペインを薄くする |
+| `dim-unfocused-web` | `false` | セッションに複数のペインがあるとき、使用中でないブラウザペインを薄くする |
+| `dim-unfocused-explorer` | `false` | ビューアを使用していない間、薄くする |
 
 ## ターミナル
 
 | キー                  | デフォルト | 説明                                                                     |
 | --------------------- | ---------- | ------------------------------------------------------------------------ |
 | `theme`               | `paper`    | ウインドウ、ペイン、ターミナルのテーマ: Kero のテーマ（`petal`、`mist`、`meadow`、`dusk`、`tide`、`apricot`、`aurora`、`dune`、`paper`、`plain`）、任意の Ghostty テーマ、または `light:paper,dark:dusk` のように外観ごとに |
+| `file-theme`          | `terminal` | エディタのペインとビューアのコードの色: ターミナルのテーマには `terminal`、それ以外は `theme` と同じ書き方 |
 | `font-family`         |            | 空欄なら Kero に付属の JetBrains Mono Nerd Font、`monospace` ならシステムのもの、またはインストール済みの任意のファミリー |
 | `font-size`           | `13`       | ポイント単位                                                             |
 | `font-weight`         | `400`      | `100` から `900`                                                         |
@@ -71,7 +80,6 @@ kero config check             # 不明なキーと不正な値を報告
 | `font-ligatures`      | `true`     | フォントが描くとおりに文字をつなげる                                     |
 | `font-thicken`        | `false`    | Ghostty と同じく、線を太くする                                           |
 | `minimum-contrast`    | `3`        | テキストが背景に対して保つ最小のコントラスト。`1`（なし）から `21`。Ghostty と同じく、暗い背景向けの色が明るい背景でも読めるようにする |
-| `dim-unfocused-terminals` | `true` | セッションに複数のペインがあるとき、使用中でないターミナルを薄くする |
 | `cursor-style`        | `block`    | `block`、`bar`、`underline`。プログラムが変更することがある              |
 | `cursor-style-blink`  | `true`     | カーソルを点滅させる                                                     |
 | `macos-option-as-alt` | `false`    | Option でプログラムに Alt（メタ）を送る                                  |
@@ -79,6 +87,8 @@ kero config check             # 不明なキーと不正な値を報告
 | `clipboard-read`      | `ask`      | プログラムによるクリップボードの読み取り（OSC 52）: `ask`、`allow`、`deny` |
 | `right-click-action`  | `context-menu` | `context-menu`、`paste`、`copy-or-paste`                             |
 | `mouse-scroll-multiplier` | `precision:1,discrete:3` | スクロールの量。Ghostty と同じく、`precision:` はトラックパッドのスクロールの倍率、`discrete:` はマウスホイール 1 ノッチでスクロールする行数（Windows では 3 行設定のときの 1 ノッチ）。数値を 1 つだけ書くと両方に適用。`0.01` から `10000` |
+
+独自のテーマは、Ghostty のテーマフォルダにある Ghostty 形式のファイルです: `$XDG_CONFIG_HOME/ghostty/themes`（設定されている場合）、それ以外は Windows で `%LOCALAPPDATA%\ghostty\themes`、その他で `~/.config/ghostty/themes`。設定 › 外観で、Ghostty のテーマのメニューでテーマにポインタを置くとウインドウでプレビューでき、「テーマをカスタマイズ」で使用中のテーマのすべての色を編集して、独自のテーマとしてそこに保存できます。ファイルのテーマはエディタのペインとエクスプローラを彩ります。そこに表示されるコードはファイルのテーマの 16 色を使います: キーワードはマゼンタ、文字列は緑、型は黄、関数は青、コメントは明るい黒。ファイルのテーマは設定 › 外観 › ファイルの色で選びます。既定ではターミナルのテーマと同じです。
 
 ## シェル
 
@@ -104,6 +114,10 @@ kero config check             # 不明なキーと不正な値を報告
 | キー             | デフォルト | 説明                                                |
 | ---------------- | ---------- | --------------------------------------------------- |
 | `remote-control` | `true`     | `kero do` と `kero focus` によるアプリの操作を許可する |
+| `resume-command-claude` |  | Claude Code の会話を再開するコマンド。再開、[検索](./sessions.md#検索)、セッションの復元で使われ、自分のコマンドや関数と同じようにシェルで実行されます（`cc --yolo --resume {session}` など）。中の `{session}` は会話の ID になり、なければ ID は末尾に付きます。空なら `claude --resume {session}` |
+| `resume-command-codex` |  | Codex について同じ。空なら `codex resume {session}` |
+| `resume-command-pi` |  | Pi について同じ。空なら `pi --session {session}` |
+| `resume-command-opencode` |  | OpenCode について同じ。空なら `opencode --session {session}` |
 
 ## ホスト
 
@@ -124,6 +138,23 @@ kero config check             # 不明なキーと不正な値を報告
 | `diff-layout` | `auto`     | 変更タブの差分: `unified`、`split`（左右に並べる）、または広くなると左右に並べる `auto`            |
 | `worktree-base` | `default` | [セッション専用のワークツリー](./changes.md#sessions-in-their-own-worktree)の起点: リポジトリのデフォルトブランチ `default`、または今いるセッションのブランチ `current` |
 | `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
+| `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。シェルで実行され、プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。中の `{session}` はフォークするペインのエージェントの会話の ID になります（`cc -p --resume {session} --fork-session` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
+| `commit-message-prompt` |  | エージェントがコミットメッセージを書く方法。最近のコミットとステージした差分の前に置く指示です。空なら Kero のもの（設定 › Git に表示）。改行は `\n` と書きます |
+| `pr-message-prompt` |  | エージェントが[プルリクエスト](./changes.md#new-pull-request)のタイトルと説明を書く方法。`commit-message-prompt` と同様です |
+| `pr-notify` | `review` | プロジェクトの GitHub リポジトリの新しいプルリクエストのうち、[通知する](./changes.md#pull-request-notifications)もの。`review` はレビューを依頼するもの、`all` は他の人が開いたものすべて、`off` はなし (確認も止まります) |
+| `pr-poll-interval` | `5` | 新しいプルリクエストを確認する間隔 (分) |
+| `review-command` |  | リポジトリのプルリクエストを[レビュー](./changes.md#review)するエージェントのコマンド（`owner/name=codex --full-auto` など）。空なら `claude`。リポジトリごとに繰り返します |
+| `review-prompt` |  | レビューするエージェントへの指示（`owner/name=/code-review {ticket} #{number}` など）。空なら Kero のもの。改行は `\n` と書きます。リポジトリごとに繰り返します |
+| `pr-review-prompt` |  | 自分の `review-prompt` がないリポジトリで、[レビュー](./changes.md#review)するエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
+| `repo-commit-message-prompt` |  | リポジトリ独自の `commit-message-prompt`（`owner/name=Write in Finnish` など）。リポジトリごとに繰り返します |
+| `repo-pr-message-prompt` |  | リポジトリ独自の `pr-message-prompt`。`repo-commit-message-prompt` と同様です |
+
+## ファイル
+
+| キー     | 既定値 | 説明                                                                                                                         |
+| -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `editor` | 空     | **エディタで開く**がファイルのパスを付けて実行するコマンド（`code`、`zed`、`"C:\Tools\editor.exe" -n` など）。空のときは、ファイルはシステムがそのファイルを開くアプリで、フォルダはテキストファイルを開くアプリで開きます |
+| `files-hidden` | `true` | ファイルタブにドットファイルを表示する |
 
 <a id="browser"></a>
 
