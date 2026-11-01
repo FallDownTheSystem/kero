@@ -174,6 +174,9 @@ func TestWrite(t *testing.T) {
 	r := repo(t, map[string]string{"a.txt": "a\n"})
 	full := filepath.Join(r.Root, "a.txt")
 	os.Chmod(full, 0o755)
+	// What of 0o755 the system keeps: on Windows, which has no execute
+	// bits, 0o666.
+	before, _ := os.Stat(full)
 	if err := r.Write("a.txt", Hash([]byte("not it")), "x\n"); err != ErrChanged {
 		t.Errorf("a stale write: %v", err)
 	}
@@ -182,7 +185,7 @@ func TestWrite(t *testing.T) {
 	}
 	b, _ := os.ReadFile(full)
 	fi, _ := os.Stat(full)
-	if string(b) != "b\n" || fi.Mode().Perm() != 0o755 {
+	if string(b) != "b\n" || fi.Mode().Perm() != before.Mode().Perm() {
 		t.Errorf("wrote %q, mode %v", b, fi.Mode())
 	}
 }

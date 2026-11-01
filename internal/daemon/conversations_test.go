@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -146,6 +147,49 @@ func TestResumeConversation(t *testing.T) {
 	}
 	if _, err := d.resumeConversation(proto.ConversationParams{Agent: "claude", ID: "nope"}); err == nil {
 		t.Error("resumed an unknown conversation")
+	}
+}
+
+// A search finds a conversation in its agent's history that Kero never
+// ran, which resumes as one kerod remembers does, and then shows as the
+// session that runs it.
+func TestSearchResumesAConversation(t *testing.T) {
+	d := testDaemon(t)
+	cfg := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", cfg)
+	t.Setenv("CODEX_HOME", t.TempDir())
+	t.Setenv("PI_CODING_AGENT_SESSION_DIR", t.TempDir())
+	dir := d.projects[0].Dir
+	line, _ := json.Marshal(map[string]any{
+		"type": "user", "entrypoint": "cli", "cwd": dir, "timestamp": "2026-10-01T10:00:00Z",
+		"message": map[string]any{"role": "user", "content": "Fix the login redirect"},
+	})
+	if err := os.MkdirAll(filepath.Join(cfg, "projects", "-src"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg, "projects", "-src", "5e2a.jsonl"), append(line, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	d.searchIndex().Search(proto.SearchParams{}, time.Now())
+	d.search.Wait()
+	res := d.searchConversations(proto.SearchParams{Query: "login redirect"})
+	if len(res.Hits) != 1 || res.Hits[0].ID != "5e2a" || res.Hits[0].Dir != dir || res.Hits[0].Session != "" || res.Hits[0].Turns != 1 {
+		t.Fatalf("found %+v", res)
+	}
+	s, err := d.resumeConversation(proto.ConversationParams{Agent: "claude", ID: "5e2a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	if rp := s.Panes[0]; strings.Join(rp.Command, " ") != "claude --resume 5e2a" || rp.Dir != dir || s.Project != d.projects[0].ID {
+		t.Errorf("resumed %+v in %s", rp, s.Project)
+	}
+	res = d.searchConversations(proto.SearchParams{Query: "login"})
+	if len(res.Hits) != 1 || res.Hits[0].Session != s.ID {
+		t.Errorf("running: %+v", res.Hits)
+	}
+	if _, ok := d.convs.find("claude", "5e2a"); !ok {
+		t.Error("kerod doesn't remember it")
 	}
 }
 

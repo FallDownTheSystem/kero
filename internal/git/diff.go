@@ -116,52 +116,7 @@ func (r Repo) Changes(ctx context.Context, rev, now string) ([]File, error) {
 			return nil, err
 		}
 	}
-	out, err := run(ctx, r.Root, nil, "diff", "--no-ext-diff", "--no-textconv", "-M", "-z", "--name-status", rev, now)
-	if err != nil {
-		return nil, err
-	}
-	var files []File
-	byPath := map[string]int{}
-	fields := strings.Split(string(out), "\x00")
-	for i := 0; i+1 < len(fields); i++ {
-		code := fields[i]
-		if code == "" {
-			continue
-		}
-		f := File{Path: fields[i+1]}
-		i++
-		switch code[0] {
-		case 'A':
-			f.Status = "added"
-		case 'D':
-			f.Status = "deleted"
-		case 'R', 'C':
-			if i+1 < len(fields) {
-				f.OldPath, f.Path = f.Path, fields[i+1]
-				i++
-			}
-			f.Status = "renamed"
-			if code[0] == 'C' {
-				f.Status, f.OldPath = "added", ""
-			}
-		case 'T':
-			f.Status = "type"
-		default:
-			f.Status = "modified"
-		}
-		byPath[f.Path] = len(files)
-		files = append(files, f)
-	}
-	out, err = run(ctx, r.Root, nil, "diff", "--no-ext-diff", "--no-textconv", "-M", "-z", "--numstat", rev, now)
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range parseNumstat(out) {
-		if i, ok := byPath[n.path]; ok {
-			files[i].Added, files[i].Removed, files[i].Binary = n.added, n.removed, n.binary
-		}
-	}
-	return files, nil
+	return r.diffFiles(ctx, "-M", rev, now)
 }
 
 // Patch returns the working tree's changes since rev as git diff prints
@@ -184,49 +139,24 @@ func (r Repo) Patch(ctx context.Context, rev, now string, paths ...string) (stri
 // Text is a changed file's text before and now.
 type Text struct {
 	Old, New string
-	// Hash is the file's on disk, to write it back only as it was
-	// (Write).
-	Hash string
+	// Hash is the new side's content's, the file's on disk for the
+	// working tree, to write it back only as it was (Write); Index the
+	// index's, when a side is the index (SetIndex).
+	Hash  string
+	Index string
 	// Binary: either side is no text. Large: too large to show whole;
-	// Patch is then the change, as git diff prints it.
+	// Patch is then the change, as git diff prints it. Mixed: a side's
+	// lines end both in \r\n and in \n.
 	Binary bool
 	Large  bool
 	Patch  string
+	Mixed  bool
 }
 
 // FileText returns a file's text in rev, from oldPath ("" for path), and
 // in the working tree now.
 func (r Repo) FileText(ctx context.Context, rev, path, oldPath string) (Text, error) {
-	full, err := r.local(path)
-	if err != nil {
-		return Text{}, err
-	}
-	if oldPath == "" {
-		oldPath = path
-	}
-	if _, err := r.local(oldPath); err != nil {
-		return Text{}, err
-	}
-	var t Text
-	nb, err := readWorking(full)
-	if err != nil && !os.IsNotExist(err) {
-		return Text{}, err
-	}
-	t.Hash = Hash(nb)
-	ob, err := run(ctx, r.Root, nil, "cat-file", "blob", rev+":"+oldPath)
-	if err != nil {
-		ob = nil // added since
-	}
-	switch {
-	case binary(ob) || binary(nb):
-		t.Binary = true
-	case len(ob) > maxText || len(nb) > maxText:
-		t.Large = true
-		t.Patch, _ = r.Patch(ctx, rev, "", path)
-	default:
-		t.Old, t.New = string(ob), string(nb)
-	}
-	return t, nil
+	return r.Texts(ctx, rev, SideWork, path, oldPath)
 }
 
 // readWorking reads a file of the working tree as git sees it: a symbolic
@@ -253,18 +183,18 @@ func Hash(b []byte) string {
 }
 
 // Changed reports whether a file of the working tree is other than in
-// rev, as git keeps it: one that a diff with rev shows.
+// rev, a tree-ish or SideIndex, as git keeps it: one that a diff with rev
+// shows.
 func (r Repo) Changed(ctx context.Context, rev, path string) (bool, error) {
-	full, err := r.local(path)
+	nb, err := r.side(ctx, SideWork, path)
 	if err != nil {
 		return false, err
 	}
-	nb, err := readWorking(full)
-	if err != nil && !os.IsNotExist(err) {
+	ob, err := r.side(ctx, rev, path)
+	if err != nil {
 		return false, err
 	}
-	ob, err := run(ctx, r.Root, nil, "cat-file", "blob", rev+":"+path)
-	if err != nil {
+	if ob == nil {
 		return nb != nil, nil // not in rev: changed when it is now
 	}
 	return !bytes.Equal(ob, nb), nil

@@ -6,6 +6,8 @@ import (
 )
 
 func TestSplitHost(t *testing.T) {
+	// Outside a pane, as a test run in Kero's terminal is not.
+	t.Setenv("KERO_PANE", "")
 	t.Setenv("KERO_HOST", "")
 	for _, c := range []struct {
 		args []string

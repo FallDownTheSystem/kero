@@ -74,7 +74,7 @@ type Message struct {
 	Result any    `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 
-	Event string `json:"event,omitempty"` // "state", "select", "action", "notice", "browser"
+	Event string `json:"event,omitempty"` // "state", "select", "action", "notice", "browser", "review"
 	State *State `json:"state,omitempty"`
 	// Select asks the app to show a session ("kero focus").
 	Select string `json:"select,omitempty"`
@@ -87,6 +87,9 @@ type Message struct {
 	// Browser asks the app to do something on a browser pane's page
 	// ("kero browser"), which it answers with browser.answer.
 	Browser *BrowserRequest `json:"browser,omitempty"`
+	// Review tells a pull request's draft review changed, for the app to
+	// ask for it anew where it shows it.
+	Review *PRReviewRef `json:"review,omitempty"`
 }
 
 // Notice is a desktop notification a program in a session sent.
@@ -153,14 +156,18 @@ type Project struct {
 }
 
 // Pane is a terminal the daemon keeps running: a shell in a
-// pseudo-terminal, one of a session's; or, with a URL, a browser, which
-// the app shows and the daemon only keeps the place and page of.
+// pseudo-terminal, one of a session's; or, with a URL, a browser, or with
+// a File, an editor, which the app shows and the daemon only keeps the
+// place and page or file of.
 type Pane struct {
 	ID    string `json:"id"`
 	Title string `json:"title,omitempty"` // set by the program (OSC 0/2), or the page
 	// URL is the page a browser pane shows, as the app last told: set,
 	// the pane runs no shell.
-	URL     string   `json:"url,omitempty"`
+	URL string `json:"url,omitempty"`
+	// File is the file an editor pane shows, absolute, of the host: set,
+	// the pane runs no shell.
+	File    string   `json:"file,omitempty"`
 	Dir     string   `json:"dir,omitempty"` // the shell's working directory
 	Command []string `json:"command,omitempty"`
 	// Process is the foreground program, "" while the shell is.
@@ -234,6 +241,8 @@ type GitInfo struct {
 	Files   int `json:"files,omitempty"`
 	Added   int `json:"added,omitempty"`
 	Removed int `json:"removed,omitempty"`
+	// Staged counts the files the index changed since HEAD.
+	Staged int `json:"staged,omitempty"`
 	// State is an operation in progress: merge, rebase, cherry-pick or
 	// revert.
 	State string `json:"state,omitempty"`
@@ -396,6 +405,9 @@ func Lead(panes []Pane, focus string) int {
 // foreground set, else the program, else the shell, else its directory's
 // name.
 func (p *Pane) PaneName() string {
+	if p.Editor() {
+		return DirName(p.File)
+	}
 	if p.Browser() {
 		if t := strings.TrimSpace(p.Title); t != "" {
 			return t
@@ -423,8 +435,15 @@ func (p *Pane) PaneName() string {
 	return "shell"
 }
 
-// Browser reports whether the pane is a browser's, not a terminal's.
+// Browser reports whether the pane is a browser's.
 func (p *Pane) Browser() bool { return p.URL != "" }
+
+// Editor reports whether the pane is a file's editor.
+func (p *Pane) Editor() bool { return p.File != "" }
+
+// Terminal reports whether the pane is a terminal's, a shell's: neither a
+// browser's nor an editor's, which the app shows alone.
+func (p *Pane) Terminal() bool { return !p.Browser() && !p.Editor() }
 
 // WorkDir is where the pane works: the foreground program's directory,
 // else the shell's.
@@ -473,9 +492,9 @@ func (s *Session) DisplayName(from string) string {
 			return p.Agent
 		}
 	}
-	// A session of browsers alone goes by its page: beside a terminal,
-	// a browser names it no more than a shell does.
-	if p.Browser() && !s.hasTerminal() {
+	// A session of browsers or editors alone goes by its page or file:
+	// beside a terminal, one names it no more than a shell does.
+	if !p.Terminal() && !s.hasTerminal() {
 		return p.PaneName()
 	}
 	if p.Dir != "" {
@@ -489,7 +508,7 @@ func (s *Session) DisplayName(from string) string {
 
 func (s *Session) hasTerminal() bool {
 	for i := range s.Panes {
-		if !s.Panes[i].Browser() {
+		if s.Panes[i].Terminal() {
 			return true
 		}
 	}
@@ -713,8 +732,10 @@ type (
 		Dir     string   `json:"dir,omitempty"` // "" the project's, else home
 		Command []string `json:"command,omitempty"`
 		Env     []string `json:"env,omitempty"`
-		// URL makes a browser pane showing it, instead of a shell.
+		// URL makes a browser pane showing it, instead of a shell; File an
+		// editor pane of the file, absolute, of the host.
 		URL   string `json:"url,omitempty"`
+		File  string `json:"file,omitempty"`
 		After string `json:"after,omitempty"` // put it after this session
 		Cols  int    `json:"cols,omitempty"`
 		Rows  int    `json:"rows,omitempty"`
@@ -724,6 +745,11 @@ type (
 		// existing branch no worktree has is checked out as it is.
 		Worktree string `json:"worktree,omitempty"`
 		Base     string `json:"base,omitempty"`
+		// PushRemote and PushBranch are where the worktree's new branch
+		// pushes, as a review's to its pull request's branch: none for a
+		// branch of its own name.
+		PushRemote string `json:"pushRemote,omitempty"`
+		PushBranch string `json:"pushBranch,omitempty"`
 	}
 	IDParams struct {
 		ID string `json:"id"`
@@ -759,9 +785,17 @@ type (
 		Project string `json:"project,omitempty"`
 		Index   int    `json:"index"` // within the project; -1 last
 	}
+	// SendParams type Data into a pane; Paste pastes it, bracketed when the
+	// program asks, so that its newlines do not run it line by line, as
+	// they would an agent's prompt.
+	// SendParams send Data to a pane, as typed or, with Paste, pasted;
+	// with Submit, kerod presses Enter after the paste, as an agent takes
+	// it, and answers Submitted.
 	SendParams struct {
-		ID   string `json:"id"`
-		Data string `json:"data"`
+		ID     string `json:"id"`
+		Data   string `json:"data"`
+		Paste  bool   `json:"paste,omitempty"`
+		Submit bool   `json:"submit,omitempty"`
 	}
 	ReadParams struct {
 		ID         string `json:"id"`
@@ -789,6 +823,12 @@ type (
 		ID    string `json:"id"`
 		URL   string `json:"url"`
 		Title string `json:"title,omitempty"`
+	}
+	// FileParams give an editor pane another file to show (pane.file):
+	// absolute, of the host, as CreateParams' File.
+	FileParams struct {
+		ID   string `json:"id"`
+		File string `json:"file"`
 	}
 	// BrowserParams ask a browser pane's page to do something (browser),
 	// which the app showing it does.
@@ -894,6 +934,44 @@ type (
 		Rows     int    `json:"rows,omitempty"`
 		Archived bool   `json:"archived,omitempty"`
 	}
+	// SearchParams asks for the conversations a query finds in the agents'
+	// histories (conversation.search), the Limit best; Preview asks for
+	// more of each one's messages that it finds, to show it open.
+	SearchParams struct {
+		Query   string `json:"query"`
+		Limit   int    `json:"limit,omitempty"`
+		Preview bool   `json:"preview,omitempty"`
+	}
+	// SearchResult is what a search found: its best Hits, of Matched in
+	// all, among the Indexed conversations, while Indexing reads Done of
+	// Todo histories that changed. Terms are the query's words as found,
+	// in lower case, for the app to mark in the titles.
+	SearchResult struct {
+		Hits     []SearchHit `json:"hits"`
+		Matched  int         `json:"matched"`
+		Indexed  int         `json:"indexed"`
+		Indexing bool        `json:"indexing,omitempty"`
+		Done     int         `json:"done,omitempty"`
+		Todo     int         `json:"todo,omitempty"`
+		Terms    []string    `json:"terms,omitempty"`
+	}
+	// SearchHit is a conversation a search found, as kerod remembers it
+	// when it ran in Kero, with how many times the user wrote in it, and
+	// the messages that have the query's words. Score ranks it among the
+	// hits of every host's search.
+	SearchHit struct {
+		Conversation
+		Turns    int       `json:"turns"`
+		Score    float64   `json:"score"`
+		Snippets []Snippet `json:"snippets,omitempty"`
+	}
+	// Snippet is a part of a message, the user's or the agent's: Marks are
+	// the byte ranges of Text, start and end in turn, that the query found.
+	Snippet struct {
+		User  bool   `json:"user,omitempty"`
+		Text  string `json:"text"`
+		Marks []int  `json:"marks,omitempty"`
+	}
 	// AgentSessionResult is the pane told of, and its session; Away: the
 	// agent runs under none of kero's shells, and so do its commands.
 	AgentSessionResult struct {
@@ -915,7 +993,9 @@ type (
 	}
 
 	// GitParams ask about a pane's worktree, since a base: "turn" (its
-	// Turn), "head" or "branch" (where HEAD left the default branch).
+	// Turn), "head" or "branch" (where HEAD left the default branch); or
+	// of a file, between sides: "staged" (HEAD to the index), "unstaged"
+	// (the index to the working tree), or "rev" (From to To).
 	// Path and OldPath name a file, slash-separated from the worktree's
 	// root, the file of a rename was OldPath in the base.
 	GitParams struct {
@@ -926,6 +1006,9 @@ type (
 		// Known is the hash of the file's text the client has (GitText),
 		// which git.file then sends again only when it changed.
 		Known string `json:"known,omitempty"`
+		// From and To are the sides of base "rev" (GitFile's).
+		From string `json:"from,omitempty"`
+		To   string `json:"to,omitempty"`
 	}
 	// GitChanges are the files changed since a base.
 	GitChanges struct {
@@ -944,25 +1027,39 @@ type (
 		Added   int    `json:"added,omitempty"`
 		Removed int    `json:"removed,omitempty"`
 		Binary  bool   `json:"binary,omitempty"`
+		// From and To are the sides a commit's file is shown between, as
+		// git.file takes them for base "rev": tree-ishes, or none (":none").
+		From string `json:"from,omitempty"`
+		To   string `json:"to,omitempty"`
 	}
 	// GitText is a file's text in the base and now. Same: as Known, so
-	// nothing else is sent.
+	// nothing else is sent. Index is the hash of the index's text, when a
+	// side is the index's; Mixed, that a side's lines end both in \r\n and
+	// in \n, which an edit of a change would make all one.
 	GitText struct {
 		Old    string `json:"old,omitempty"`
 		New    string `json:"new,omitempty"`
 		Hash   string `json:"hash"`
+		Index  string `json:"index,omitempty"`
 		Same   bool   `json:"same,omitempty"`
 		Binary bool   `json:"binary,omitempty"`
 		Large  bool   `json:"large,omitempty"`
 		Patch  string `json:"patch,omitempty"`
+		Mixed  bool   `json:"mixed,omitempty"`
 	}
 	// GitWriteParams write a file of a pane's worktree back as it was in
 	// part (git.revert): Text, when its content still hashes to Hash.
+	// Anyway writes it while an agent works there, as the user said to.
 	GitWriteParams struct {
-		Pane string `json:"pane"`
-		Base string `json:"base"`
-		Path string `json:"path"`
-		Hash string `json:"hash"`
-		Text string `json:"text"`
+		Pane   string `json:"pane"`
+		Base   string `json:"base"`
+		Path   string `json:"path"`
+		Hash   string `json:"hash"`
+		Text   string `json:"text"`
+		Anyway bool   `json:"anyway,omitempty"`
 	}
 )
+
+// Submitted is kerod's answer to a send with Submit, which an older one,
+// pasting alone, answers true to.
+const Submitted = "submitted"

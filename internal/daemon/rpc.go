@@ -197,9 +197,17 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		if pn.term == nil {
-			return nil, fmt.Errorf("pane %s is a browser, which takes no input", pn.info.ID)
+			return nil, fmt.Errorf("pane %s is no terminal, and takes no input", pn.info.ID)
 		}
-		pn.input([]byte(p.Data))
+		if p.Paste {
+			pn.paste(p.Data)
+		} else {
+			pn.input([]byte(p.Data))
+		}
+		if p.Submit {
+			go pn.submit(time.Now())
+			return proto.Submitted, nil
+		}
 		return true, nil
 
 	case "pane.page":
@@ -215,6 +223,21 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		return true, pn.setPage(p.URL, p.Title)
+
+	case "pane.file":
+		var p proto.FileParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		file, err := editorFile(p.File)
+		if err != nil {
+			return nil, err
+		}
+		return true, pn.setFile(file)
 
 	case "browser":
 		var p proto.BrowserParams
@@ -372,7 +395,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return nil, err
 		}
 		as := &proto.AgentSession{Agent: p.Agent, ID: p.Session}
-		if resumeCommand(as) == nil {
+		if !resumable(as) {
 			return nil, fmt.Errorf("no agent session %q of %q", p.Session, p.Agent)
 		}
 		pn, away := d.agentPane(p.PID, p.Agent, p.Dir)
@@ -392,6 +415,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 
 	case "conversations":
 		return d.conversations(), nil
+
+	case "conversation.search":
+		var p proto.SearchParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.searchConversations(p), nil
 
 	case "conversation.resume":
 		var p proto.ConversationParams
@@ -568,12 +598,154 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.gitRevert(p)
 
+	case "git.index", "git.branches", "git.stashes":
+		var p proto.GitParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		switch method {
+		case "git.index":
+			return d.gitIndex(p)
+		case "git.branches":
+			return d.gitBranches(p)
+		}
+		return d.gitStashes(p)
+
+	case "git.op":
+		var p proto.GitOpParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitOp(p)
+
+	case "git.progress", "git.cancel":
+		var p proto.IDParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		if method == "git.cancel" {
+			return gitCancel(p.ID), nil
+		}
+		return gitProgress(p.ID), nil
+
+	case "git.log":
+		var p proto.GitLogParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitLog(p)
+
+	case "git.show":
+		var p proto.GitShowParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitShow(p)
+
+	case "git.rebasePlan":
+		var p proto.GitShowParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitRebasePlan(p)
+
+	case "git.message":
+		var p proto.GitMessageParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitMessage(p)
+
+	case "pr.list":
+		var p proto.PRListParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prList(p)
+
+	case "pr.view":
+		var p proto.PRViewParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prView(p)
+
+	case "pr.review":
+		var p proto.PRReviewParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prReview(p)
+
+	case "pr.thread":
+		var p proto.PRThreadParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return true, d.prThread(p)
+
+	case "pr.drafts":
+		var p proto.PRDraftsParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return repoReviews(p.Slug)
+
+	case "pr.draft":
+		var p proto.PRDraftParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prDraft(p)
+
+	case "pr.create":
+		var p proto.PRCreateParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prCreate(p)
+
+	case "pr.fetch":
+		var p proto.PRFetchParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prFetch(p)
+
+	case "pr.message":
+		var p proto.PRMessageParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prMessage(p)
+
 	case "fs.list":
 		var p proto.FSListParams
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
 		return fsList(p)
+
+	case "fs.find":
+		var p proto.FSFindParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsFind(p)
+
+	case "fs.files":
+		var p proto.FSFilesParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsFiles(p)
+
+	case "fs.search":
+		var p proto.FSSearchParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return fsSearch(p)
 
 	case "fs.stat":
 		var p proto.FSStatParams

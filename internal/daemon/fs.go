@@ -19,7 +19,8 @@ import (
 
 // The methods a client on another machine sees the host's files through:
 // a folder to open a project in, a path a pane printed, an image to
-// preview, a file pasted into a pane. They read and write what the user
+// preview, a file pasted into a pane, a file the Files view shows and
+// saves. They read and write what the user
 // kerod runs as can, as the panes' programs do.
 
 // maxEntries bounds a directory's listing.
@@ -100,6 +101,85 @@ func fsList(p proto.FSListParams) (proto.FSList, error) {
 	return out, nil
 }
 
+const (
+	// maxFound bounds what fs.find finds, and maxWalked the paths it looks
+	// at for it, in a folder too large to look through.
+	maxFound  = 1000
+	maxWalked = 200000
+)
+
+// fsFind looks through a folder for the Files view's filter. A link is
+// found, but never followed, which could go round. A folder git ignores,
+// as node_modules, is found by its name, but not looked into: what is in
+// it would crowd out the rest.
+func fsFind(p proto.FSFindParams) (proto.FSFind, error) {
+	root := hostPath(p.Dir, "")
+	// The folder itself may be a link, which the walk would not go in.
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		root = r
+	}
+	out := proto.FSFind{Entries: []proto.FSFound{}}
+	q := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(p.Query), `\`, "/"))
+	if q == "" {
+		return out, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dirs, _ := git.IgnoredDirs(ctx, root)
+	cancel()
+	ignored := make(map[string]bool, len(dirs))
+	for _, d := range dirs {
+		ignored[d] = true
+	}
+	byPath, walked := strings.Contains(q, "/"), 0
+	err := filepath.WalkDir(root, func(path string, e os.DirEntry, err error) error {
+		switch {
+		case path == root:
+			return err
+		case err != nil:
+			// A folder in it that can't be read is left out.
+			return nil
+		}
+		name := e.Name()
+		if name == ".git" || !p.Hidden && strings.HasPrefix(name, ".") {
+			if e.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if walked++; walked > maxWalked {
+			out.More = true
+			return filepath.SkipAll
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return nil
+		}
+		rel = filepath.ToSlash(rel)
+		hay := name
+		if byPath {
+			hay = rel
+		}
+		if strings.Contains(strings.ToLower(hay), q) {
+			if len(out.Entries) >= maxFound {
+				out.More = true
+				return filepath.SkipAll
+			}
+			dir := e.IsDir()
+			if e.Type()&os.ModeSymlink != 0 {
+				if st, err := os.Stat(path); err == nil {
+					dir = st.IsDir()
+				}
+			}
+			out.Entries = append(out.Entries, proto.FSFound{Path: rel, Dir: dir})
+		}
+		if e.IsDir() && ignored[rel] {
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return out, err
+}
+
 func fsStat(p proto.FSStatParams) proto.FSStat {
 	path := hostPath(p.Path, p.Base)
 	st, err := os.Stat(path)
@@ -135,6 +215,11 @@ func fsRead(p proto.FSReadParams) (proto.FSRead, error) {
 // over whatever it is now, forced, as the user chose to.
 func (d *Daemon) fsWrite(p proto.FSWriteParams) (string, error) {
 	path := hostPath(p.Path, "")
+	// A link is written through, to the file it names, which the write's
+	// rename would otherwise put a file in place of.
+	if full, err := filepath.EvalSymlinks(path); err == nil {
+		path = full
+	}
 	hash := p.Hash
 	if p.Force {
 		b, err := os.ReadFile(path)
