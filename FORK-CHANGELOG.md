@@ -5,6 +5,16 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.2
+
+- An editor pane's buttons are in its header, as the viewer's are,
+  rather than in a bar below the file: Preview Markdown, the text's
+  size, wrapping, Open in Editor, and for a new file Save and Open
+  File…. A dot marks unsaved edits, as in the viewer. In a pane too
+  narrow for them, they're in one **File Actions** menu
+- The merge editor's conflicts left, the way between them, the version
+  to take in all of them and Mark Resolved are in the pane's header too
+
 ## 2.1.31-fork.1
 
 Upstream 2.1.28 to 2.1.31 (CHANGELOG.md): the right sidebar's Changes
