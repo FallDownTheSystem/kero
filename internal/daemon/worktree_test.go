@@ -1,12 +1,15 @@
 package daemon
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
+	"kero/internal/git"
 	"kero/internal/proto"
 )
 
@@ -103,14 +106,174 @@ func TestWorktreeSession(t *testing.T) {
 }
 
 func TestWorktreePath(t *testing.T) {
-	main := filepath.FromSlash("/src/kero")
-	if got := worktreePath(main, "fix/login", ""); got != filepath.FromSlash("/src/kero/.kero/worktrees/fix-login") {
+	// An absolute path: on Windows, one with a drive, as \wt is relative to
+	// the drive of the directory it is used in.
+	abs := func(p string) string {
+		if runtime.GOOS == "windows" {
+			p = "C:" + p
+		}
+		return filepath.FromSlash(p)
+	}
+	main := abs("/src/kero")
+	if got := worktreePath(main, "fix/login", ""); got != abs("/src/kero/.kero/worktrees/fix-login") {
 		t.Error(got)
 	}
-	if got := worktreePath(main, "x", filepath.FromSlash("/wt")); got != filepath.FromSlash("/wt/kero/x") {
+	if got := worktreePath(main, "x", abs("/wt")); got != abs("/wt/kero/x") {
 		t.Error(got)
 	}
-	if got := worktreePath(main, "x", "../trees"); got != filepath.FromSlash("/src/trees/kero/x") {
+	if got := worktreePath(main, "x", "../trees"); got != abs("/src/trees/kero/x") {
 		t.Error(got)
+	}
+}
+
+// A session's worktree gets the main checkout's ignored files that
+// .worktreeinclude lists, but none from another worktree, and keeps a
+// file it checks out.
+func TestWorktreeInclude(t *testing.T) {
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	os.WriteFile(filepath.Join(repo, ".gitignore"), []byte(".claude/settings.local.json\n.env\nCLAUDE.md\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, ".worktreeinclude"), []byte(".claude/settings.local.json\nCLAUDE.md\nb.txt\n"), 0o644)
+	runGit(t, repo, "add", "-A")
+	runGit(t, repo, "commit", "-q", "-m", "include")
+	os.MkdirAll(filepath.Join(repo, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(repo, ".claude", "settings.local.json"), []byte(`{"dev":"on"}`), 0o644)
+	os.WriteFile(filepath.Join(repo, ".env"), []byte("SECRET=1\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "b.txt"), []byte("main's\n"), 0o644)
+	runGit(t, repo, "add", "b.txt")
+	runGit(t, repo, "commit", "-q", "-m", "b")
+	os.WriteFile(filepath.Join(repo, "b.txt"), []byte("changed\n"), 0o644)
+
+	first, err := d.create(proto.CreateParams{Dir: repo, Worktree: "one"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(first.Worktree.Path, "CLAUDE.md"), []byte("one's\n"), 0o644)
+	s, err := d.create(proto.CreateParams{Dir: repo, Worktree: "two"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt := s.Worktree.Path
+	if b, err := os.ReadFile(filepath.Join(wt, ".claude", "settings.local.json")); string(b) != `{"dev":"on"}` {
+		t.Errorf("settings.local.json: %q, %v", b, err)
+	}
+	if _, err := os.Stat(filepath.Join(wt, ".env")); !os.IsNotExist(err) {
+		t.Errorf("copied .env, which .worktreeinclude doesn't list: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wt, "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Errorf("copied another worktree's CLAUDE.md: %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(wt, "b.txt")); string(b) != "main's\n" {
+		t.Errorf("b.txt, tracked, became %q", b)
+	}
+}
+
+// Each review of a pull request checks it out on a branch of its own, as
+// git checks a branch out in one worktree alone: a second review, or the
+// main checkout on the pull request's branch, doesn't keep it from
+// starting. Its commits push to the pull request's branch, and closing it
+// deletes its branch once they're there.
+func TestReviewWorktrees(t *testing.T) {
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	bare := filepath.Join(t.TempDir(), "remote.git")
+	runGit(t, repo, "init", "-q", "--bare", bare)
+	runGit(t, repo, "remote", "add", "origin", bare)
+	runGit(t, repo, "push", "-q", "origin", "main")
+	runGit(t, repo, "switch", "-q", "-c", "fix")
+	os.WriteFile(filepath.Join(repo, "fix.txt"), []byte("fix\n"), 0o644)
+	runGit(t, repo, "add", "-A")
+	runGit(t, repo, "commit", "-q", "-m", "fix")
+	runGit(t, repo, "push", "-q", "-u", "origin", "fix")
+
+	here, err := d.create(proto.CreateParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := func() proto.Session {
+		t.Helper()
+		got, err := d.prFetch(proto.PRFetchParams{Pane: here.Panes[0].ID, Remote: "origin", Number: 7, Head: "fix"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := d.create(proto.CreateParams{Dir: repo, Worktree: got.Branch, Base: got.Base, PushRemote: got.PushRemote, PushBranch: got.PushBranch})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	one, two := review(), review()
+	if one.Worktree.Branch != "review/pr-7" || two.Worktree.Branch != "review/pr-7-2" || one.Worktree.Base != "origin/fix" {
+		t.Fatalf("worktrees %+v and %+v", one.Worktree, two.Worktree)
+	}
+	if _, err := os.Stat(filepath.Join(two.Worktree.Path, "fix.txt")); err != nil {
+		t.Errorf("the review hasn't the pull request's files: %v", err)
+	}
+
+	r, err := git.Open(context.Background(), one.Worktree.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if remote, name, err := r.PushRemote(context.Background(), "review/pr-7"); remote != "origin" || name != "fix" || err != nil {
+		t.Errorf("the review pushes to %s/%s, %v", remote, name, err)
+	}
+	os.WriteFile(filepath.Join(one.Worktree.Path, "review.txt"), []byte("r\n"), 0o644)
+	runGit(t, one.Worktree.Path, "add", "-A")
+	runGit(t, one.Worktree.Path, "commit", "-q", "-m", "review fix")
+	if wc, _ := d.checkWorktree(one.ID); wc.Unpushed != 1 {
+		t.Errorf("%d commits unpushed, not the review's 1", wc.Unpushed)
+	}
+	args, err := r.PushArgs(context.Background(), "review/pr-7", git.PushOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Push(context.Background(), args, nil); err != nil {
+		t.Fatalf("%q: %v", args, err)
+	}
+	runGit(t, repo, "fetch", "-q", "origin")
+	if err := d.closeSession(proto.CloseParams{ID: one.ID, RemoveWorktree: true}); err != nil {
+		t.Fatal(err)
+	}
+	if out, _ := exec.Command("git", "-C", repo, "branch", "--list", "--format=%(refname:short)", "review/*").Output(); strings.TrimSpace(string(out)) != "review/pr-7-2" {
+		t.Errorf("branches left: %q", out)
+	}
+
+	// A session asking for a branch another worktree has gets kero's word
+	// for it, not git's.
+	if _, err := d.create(proto.CreateParams{Dir: repo, Worktree: "fix"}); err == nil || !strings.Contains(err.Error(), "fix is checked out in") {
+		t.Errorf("a worktree of the main checkout's branch: %v", err)
+	}
+}
+
+// A commit message of a repository on GitHub is written with that
+// repository's own prompt, which the app sends with the others', else the
+// prompt of all of them. The command prints which it was given.
+func TestCommitMessageRepoPrompt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("grep")
+	}
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	runGit(t, repo, "remote", "add", "origin", "git@github.com:Me/Demo.git")
+	os.WriteFile(filepath.Join(repo, "b.txt"), []byte("b\n"), 0o644)
+	runGit(t, repo, "add", "b.txt")
+	s, err := d.create(proto.CreateParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	write := func(repos map[string]string) string {
+		t.Helper()
+		m, err := d.gitMessage(proto.GitMessageParams{Pane: s.Panes[0].ID, Command: "grep -oE 'ALL_REPOS|DEMO_OWN|OTHER_REPO'", Prompt: "ALL_REPOS", Repos: repos})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return m.Message
+	}
+	if m := write(map[string]string{"me/demo": "DEMO_OWN", "me/other": "OTHER_REPO"}); !strings.Contains(m, "DEMO_OWN") || strings.Contains(m, "ALL_REPOS") || strings.Contains(m, "OTHER_REPO") {
+		t.Errorf("with demo's own prompt: %q", m)
+	}
+	if m := write(map[string]string{"me/other": "OTHER_REPO"}); !strings.Contains(m, "ALL_REPOS") || strings.Contains(m, "OTHER_REPO") {
+		t.Errorf("with another's prompt alone: %q", m)
 	}
 }

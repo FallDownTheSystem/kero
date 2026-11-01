@@ -7,6 +7,7 @@ package settings
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -40,6 +41,21 @@ type Settings struct {
 	Appearance string `json:"appearance"` // "system", "light" or "dark"
 	Language   string `json:"language"`   // "system", or one of Languages
 	Vibrancy   bool   `json:"vibrancy"`   // the window's material under the wash
+	AppFont    string `json:"appFont"`    // the family of the app's own text, "" the system's
+	// SessionsSide is the window's side the sessions' sidebar takes, "left"
+	// or "right": the Explorer, the side panel of Changes and Files, takes
+	// the other.
+	SessionsSide string `json:"sessionsSide"`
+	// ExplorerFolder is what the Explorer's header shows of its folder:
+	// "hidden", "folder" its name, "full" its path, or "fit" the most of
+	// those that fits; PaneFolder what a pane's header shows of its.
+	ExplorerFolder string `json:"explorerFolder"`
+	PaneFolder     string `json:"paneFolder"`
+	// DimFiles and DimWeb fade the file and browser panes the user is not
+	// in, as DimUnfocused does the terminals; DimExplorer the Explorer.
+	DimFiles    bool `json:"dimUnfocusedFiles"`
+	DimWeb      bool `json:"dimUnfocusedWeb"`
+	DimExplorer bool `json:"dimExplorer"`
 
 	// Terminal
 	FontFamily string  `json:"fontFamily"` // "" the font kero carries; "monospace" the system's
@@ -85,17 +101,58 @@ type Settings struct {
 
 	// Agents
 	RemoteControl bool `json:"remoteControl"` // kero focus and kero do drive the app
+	// ResumeClaude, ResumeCodex, ResumePi and ResumeOpenCode resume each
+	// agent's conversation, in the user's shell, as their launchers and
+	// flags do: SessionPlaceholder in one is the conversation's id. "" for
+	// the agent's own resume (Resume).
+	ResumeClaude   string `json:"resumeClaude"`
+	ResumeCodex    string `json:"resumeCodex"`
+	ResumePi       string `json:"resumePi"`
+	ResumeOpenCode string `json:"resumeOpenCode"`
 
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
 	DiffLayout string `json:"diffLayout"` // the changes panel's diffs: "auto", "unified" or "split"
 	WrapLines  bool   `json:"wrapLines"`  // the viewer's diffs and files wrap long lines
+	// CommitMessageCommand writes a commit message of what is staged,
+	// given the prompt on its stdin, run in the user's shell; {session} in
+	// it is the id of the pane's agent's conversation, to fork. "" for a
+	// fork of that conversation, else a new run of Claude Code's or Codex's.
+	CommitMessageCommand string `json:"commitMessageCommand"`
+	// CommitMessagePrompt and PRMessagePrompt say how a commit message,
+	// and a pull request's title and description, are written; "" for
+	// kerod's own (commitmsg.DefaultCommitPrompt, DefaultPRPrompt).
+	// ReviewPrompt is what the agent reviewing a pull request is asked,
+	// "" for Kero's own. A repository's setup (Reviews) goes over each.
+	CommitMessagePrompt string `json:"commitMessagePrompt"`
+	PRMessagePrompt     string `json:"prMessagePrompt"`
+	ReviewPrompt        string `json:"reviewPrompt"`
+	// Reviews are a repository's own setup, by its repository on GitHub
+	// (OWNER/NAME, in lower case): how the Review view has an agent
+	// review its pull requests, and how its messages are written.
+	Reviews map[string]ReviewSetup `json:"reviews,omitempty"`
+	// PRNotify is which new pull requests of the projects' repositories on
+	// GitHub notify: "review", those the user's review is asked of; "all",
+	// every one another opens; "off", none, which polls no more. They are
+	// polled every PRPollMinutes.
+	PRNotify      string `json:"prNotify"`
+	PRPollMinutes int    `json:"prPollMinutes"`
 	// WorktreeBase is what a session's own worktree branches from:
 	// "default", the repository's default branch, or "current", the
 	// branch of the session the user is in. WorktreeDir is where its
 	// worktrees go, "" for .kero/worktrees in the repository.
 	WorktreeBase string `json:"worktreeBase"`
 	WorktreeDir  string `json:"worktreeDir"`
+
+	// Files
+	Editor string `json:"editor"` // the command Open in Editor runs with a path; "" the app the system opens it with
+	// HiddenFiles shows dotfiles in the Files view.
+	HiddenFiles bool `json:"hiddenFiles"`
+	// FileLightTheme and FileDarkTheme are the colors of code in editor
+	// panes and the Explorer: "terminal" the terminals' theme, else a
+	// theme as LightTheme names one.
+	FileLightTheme string `json:"fileLightTheme"`
+	FileDarkTheme  string `json:"fileDarkTheme"`
 
 	// Browser
 	BlockAds bool     `json:"blockAds"` // in browser panes, with AdLists
@@ -132,6 +189,30 @@ type Host struct {
 	Color string `json:"color,omitempty"`
 }
 
+// SessionPlaceholder is what a resume command has for the id of the
+// conversation it resumes.
+const SessionPlaceholder = "{session}"
+
+// ResumeAgents are the agents whose conversations Kero resumes, in the
+// order Settings shows their commands.
+var ResumeAgents = []string{"claude", "codex", "pi", "opencode"}
+
+// Resume returns the user's command that resumes an agent's
+// conversations, nil for an agent with none to set.
+func (s *Settings) Resume(agent string) *string {
+	switch agent {
+	case "claude":
+		return &s.ResumeClaude
+	case "codex":
+		return &s.ResumeCodex
+	case "pi":
+		return &s.ResumePi
+	case "opencode":
+		return &s.ResumeOpenCode
+	}
+	return nil
+}
+
 // HostColors are the colors a host takes.
 var HostColors = []string{"red", "orange", "amber", "green", "teal", "blue", "purple", "pink"}
 
@@ -161,6 +242,9 @@ func Default() Settings {
 		Appearance:      "system",
 		Language:        "system",
 		Vibrancy:        true,
+		SessionsSide:    "left",
+		ExplorerFolder:  "fit",
+		PaneFolder:      "fit",
 		DimUnfocused:    true,
 		FontSize:        13,
 		LineHeight:      1.22,
@@ -186,6 +270,11 @@ func Default() Settings {
 		GitStatus:       true,
 		DiffLayout:      "auto",
 		WorktreeBase:    "default",
+		PRNotify:        "review",
+		PRPollMinutes:   5,
+		HiddenFiles:     true,
+		FileLightTheme:  "terminal",
+		FileDarkTheme:   "terminal",
 		BlockAds:        true,
 		AdLists:         slices.Clone(adblock.DefaultLists),
 	}
@@ -365,6 +454,19 @@ func target(path string) string {
 	return path
 }
 
+// ReviewSetup is a repository's own setup: how an agent reviews its pull
+// requests, Command starting the agent in a new session ("" for the shell
+// alone), and Prompt what it is asked, its {placeholders} filled in for
+// the pull request; and CommitPrompt and PRPrompt, how its commit
+// messages and pull requests are written. An empty one is the setting's
+// of all repositories.
+type ReviewSetup struct {
+	Command      string `json:"command,omitempty"`
+	Prompt       string `json:"prompt,omitempty"`
+	CommitPrompt string `json:"commitPrompt,omitempty"`
+	PRPrompt     string `json:"prPrompt,omitempty"`
+}
+
 // Clone returns a copy that shares nothing with s.
 func (s Settings) Clone() Settings { return clone(s) }
 
@@ -392,6 +494,7 @@ func clone(s Settings) Settings {
 		}
 		s.Shortcuts = m
 	}
+	s.Reviews = maps.Clone(s.Reviews)
 	return s
 }
 
@@ -457,7 +560,14 @@ func (s *Settings) normalize() {
 	oneOf(&s.RightClick, d.RightClick, "menu", "paste", "copyOrPaste")
 	oneOf(&s.DiffLayout, d.DiffLayout, "auto", "unified", "split")
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
+	oneOf(&s.PRNotify, d.PRNotify, "review", "all", "off")
+	if s.PRPollMinutes < 1 || s.PRPollMinutes > 1440 {
+		s.PRPollMinutes = d.PRPollMinutes
+	}
 	oneOf(&s.AppIcon, d.AppIcon, AppIcons...)
+	oneOf(&s.SessionsSide, d.SessionsSide, "left", "right")
+	oneOf(&s.ExplorerFolder, d.ExplorerFolder, "hidden", "folder", "full", "fit")
+	oneOf(&s.PaneFolder, d.PaneFolder, "hidden", "folder", "full", "fit")
 	if s.FontSize < 8 || s.FontSize > 36 {
 		s.FontSize = d.FontSize
 	}
@@ -480,6 +590,16 @@ func (s *Settings) normalize() {
 		s.Scrollback = d.Scrollback
 	}
 	s.LightTheme, s.DarkTheme = keroTheme(s.LightTheme, d.LightTheme), keroTheme(s.DarkTheme, d.DarkTheme)
+	for _, f := range []*string{&s.FileLightTheme, &s.FileDarkTheme} {
+		switch *f {
+		case "":
+			*f = d.FileLightTheme
+		case "kero":
+			// kero's terminal colors, before kero's themes had names:
+			// plain's now.
+			*f = "plain"
+		}
+	}
 }
 
 // keroTheme is a theme as kero had it before theme took kero's themes by
