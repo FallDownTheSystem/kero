@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.3
+
+- The Files tab shows its folder's whole path above the tree where it
+  fits beside the buttons, else only the folder's name, as a pane's
+  header shows its folder
+
 ## 2.1.31-fork.2
 
 - An editor pane's buttons are in its header, as the viewer's are,
