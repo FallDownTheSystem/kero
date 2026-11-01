@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"kero/internal/proto"
@@ -39,9 +40,10 @@ type savedPane struct {
 	ID      string   `json:"id"`
 	Dir     string   `json:"dir,omitempty"`
 	Command []string `json:"command,omitempty"`
-	// URL and Title are a browser pane's page.
+	// URL and Title are a browser pane's page; File an editor pane's file.
 	URL   string `json:"url,omitempty"`
 	Title string `json:"title,omitempty"`
+	File  string `json:"file,omitempty"`
 	// Agent is the agent's session that ran in it, to resume, and Turn
 	// where its last turn started.
 	Agent   *proto.AgentSession `json:"agent,omitempty"`
@@ -83,7 +85,7 @@ func (d *Daemon) saveState() {
 		ss := savedSession{ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed, Created: s.created, Layout: s.layout, Focus: s.focus, Worktree: s.worktree}
 		for _, p := range s.panes {
 			p.mu.Lock()
-			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL,
+			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL, File: p.info.File,
 				Agent: p.info.AgentSession, Turn: p.info.Turn, Created: p.info.Created, Cols: p.info.Cols, Rows: p.info.Rows}
 			if p.info.Browser() {
 				sp.Title = p.info.Title
@@ -174,12 +176,13 @@ func (d *Daemon) restore() {
 
 // restorePane starts a pane of the last daemon again, under its
 // scrollback, in its directory, with the agent it ran resumed; a browser
-// pane comes back on its page, which the app loads.
+// pane comes back on its page, which the app loads, and an editor pane on
+// its file, which the app reads: one gone since says so.
 func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 	now := time.Now().UnixMilli()
-	if sp.URL != "" {
+	if sp.URL != "" || sp.File != "" {
 		p, _ := newPane(d, sid, proto.Pane{
-			ID: sp.ID, Dir: sp.Dir, URL: sp.URL, Title: sp.Title, Status: proto.Idle, Since: now,
+			ID: sp.ID, Dir: sp.Dir, URL: sp.URL, File: sp.File, Title: sp.Title, Status: proto.Idle, Since: now,
 			Created: sp.Created, Restored: true,
 		})
 		return p
@@ -212,8 +215,34 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 }
 
 // resumeCommand is the command that resumes an agent's session, nil for
-// none.
+// none: the user's (settings' Resume), a line for the shell to run as it
+// runs the user's own commands and functions, else the agent's own.
 func resumeCommand(a *proto.AgentSession) []string {
+	if !resumable(a) {
+		return nil
+	}
+	set := settings.Load()
+	if p := set.Resume(a.Agent); p != nil && strings.TrimSpace(*p) != "" {
+		line := strings.TrimSpace(*p)
+		// {{session}} too, as a template writes it. The id is letters,
+		// digits, - and _ alone (agentSessionRe): nothing for the shell.
+		line = strings.ReplaceAll(line, "{"+settings.SessionPlaceholder+"}", settings.SessionPlaceholder)
+		if strings.Contains(line, settings.SessionPlaceholder) {
+			line = strings.ReplaceAll(line, settings.SessionPlaceholder, a.ID)
+		} else {
+			line += " " + a.ID
+		}
+		return []string{line}
+	}
+	return agentResume(a)
+}
+
+// resumable tells an agent's session that a resume can start: one of an
+// agent Kero resumes, by an id that is safe on a command line.
+func resumable(a *proto.AgentSession) bool { return agentResume(a) != nil }
+
+// agentResume is the agent's own command that resumes its session.
+func agentResume(a *proto.AgentSession) []string {
 	if a == nil || !agentSessionRe.MatchString(a.ID) {
 		return nil
 	}

@@ -26,8 +26,9 @@ const idleHold = 700 * time.Millisecond
 // pane is a shell the daemon keeps running in a pseudo-terminal, with a
 // terminal emulator of its own (libghostty-vt, headless) that keeps its
 // screen and scrollback for the clients that attach later; or a browser
-// (info.URL), which the app shows: it has neither, only its place in its
-// session and the page the app last told.
+// (info.URL) or an editor (info.File), which the app shows: it has
+// neither, only its place in its session and the page the app last told,
+// or its file.
 type pane struct {
 	d   *Daemon
 	sid string // the session's it belongs to
@@ -111,7 +112,7 @@ func (h *headless) Close() error {
 func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 	s := &pane{d: d, sid: sid, info: info, clients: map[*attachment]struct{}{}, changed: make(chan struct{})}
 	s.info.Progress = -1
-	if s.info.Browser() {
+	if !s.info.Terminal() {
 		return s, nil
 	}
 	if s.info.Cols <= 0 || s.info.Rows <= 0 {
@@ -444,6 +445,67 @@ func (s *pane) screen() string {
 
 // input writes what the user typed to the program.
 func (s *pane) input(p []byte) {
+	if proc := s.acted(); proc != nil {
+		proc.Write(p)
+	}
+}
+
+// paste pastes text into the program, as the user's paste keys would:
+// through the terminal, which brackets it as the program asks.
+func (s *pane) paste(text string) {
+	if s.acted() != nil {
+		s.term.Paste(text)
+	}
+}
+
+// How submit waits for a paste: as long as the program draws it, until
+// the screen is quiet submitQuiet, from submitSettle to submitWait after
+// it; and for an agent to start on its prompt before Enter again.
+const (
+	submitSettle = 500 * time.Millisecond
+	submitQuiet  = 300 * time.Millisecond
+	submitWait   = 3 * time.Second
+	enterTries   = 3
+)
+
+var enterWait = 2 * time.Second // a test's shorter
+
+// submit presses Enter after a paste at from, once the program has drawn
+// it, and again while an agent Kero knows stays idle. Claude Code takes
+// what comes soon after a paste for more of it, an Enter a new line that
+// leaves the prompt unsent, and takes longer to draw a long paste on a
+// busy machine. kerod, not the app, does it: the app's window may be
+// hidden, and its pane's status is kerod's own.
+func (s *pane) submit(from time.Time) {
+	for {
+		time.Sleep(50 * time.Millisecond)
+		s.mu.Lock()
+		last, closed := time.UnixMilli(s.info.Activity), s.closed
+		s.mu.Unlock()
+		now := time.Now()
+		if closed {
+			return
+		}
+		if now.Sub(from) >= submitWait || now.Sub(from) >= submitSettle && now.Sub(last) >= submitQuiet {
+			break
+		}
+	}
+	s.input([]byte("\r"))
+	for range enterTries {
+		time.Sleep(enterWait)
+		s.mu.Lock()
+		idle := !s.closed && s.info.Agent != "" && s.info.Status == proto.Idle
+		s.mu.Unlock()
+		if !idle {
+			return
+		}
+		s.input([]byte("\r"))
+	}
+}
+
+// acted is the user acting in the pane, which ends what waited for them,
+// and returns its process, nil for none.
+func (s *pane) acted() *ptyProc {
 	s.mu.Lock()
 	proc := s.proc
 	changed := false
@@ -462,12 +524,10 @@ func (s *pane) input(p []byte) {
 		changed = true
 	}
 	s.mu.Unlock()
-	if proc != nil {
-		proc.Write(p)
-	}
 	if changed {
 		s.d.changed()
 	}
+	return proc
 }
 
 // setPage keeps the page a browser pane shows, as the app told it.
@@ -479,6 +539,24 @@ func (s *pane) setPage(url, title string) error {
 	}
 	changed := s.info.URL != url || s.info.Title != title
 	s.info.URL, s.info.Title = url, title
+	s.mu.Unlock()
+	if changed {
+		s.d.save()
+		s.d.changed()
+	}
+	return nil
+}
+
+// setFile gives an editor pane another file to show, absolute (editorFile),
+// in its folder, as startPane gives it its first.
+func (s *pane) setFile(file string) error {
+	s.mu.Lock()
+	if !s.info.Editor() {
+		s.mu.Unlock()
+		return fmt.Errorf("pane %s is no editor", s.info.ID)
+	}
+	changed := s.info.File != file
+	s.info.File, s.info.Dir = file, filepath.Dir(file)
 	s.mu.Unlock()
 	if changed {
 		s.d.save()
@@ -810,11 +888,11 @@ func (s *pane) history(force bool) []byte {
 }
 
 // readText returns the session's text: the screen, or with scrollback; a
-// browser's is its page's title and URL.
+// browser's is its page's title and URL, an editor's its file.
 func (s *pane) readText(scrollback bool, lines int) string {
 	s.mu.Lock()
 	if s.term == nil {
-		text := strings.TrimSpace(s.info.Title + "\n" + s.info.URL)
+		text := strings.TrimSpace(s.info.Title + "\n" + s.info.URL + s.info.File)
 		s.mu.Unlock()
 		return text + "\n"
 	}

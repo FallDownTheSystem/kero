@@ -128,6 +128,67 @@ type (
 		// asks.
 		Ignored bool `json:"ignored,omitempty"`
 	}
+	// FSFindParams find the files and folders in a directory of the host,
+	// and in all its folders, whose names hold Query, of any case; whose
+	// paths from Dir do, when Query has a slash, as "src/main". Dotfiles
+	// only with Hidden; never .git, nor what is in the folders git ignores.
+	FSFindParams struct {
+		Dir    string `json:"dir"`
+		Query  string `json:"query"`
+		Hidden bool   `json:"hidden,omitempty"`
+	}
+	// FSFind is what was found; More: there is more than it.
+	FSFind struct {
+		Entries []FSFound `json:"entries"`
+		More    bool      `json:"more,omitempty"`
+	}
+	FSFound struct {
+		Path string `json:"path"` // from Dir, with slashes
+		Dir  bool   `json:"dir,omitempty"`
+	}
+	// FSFilesParams list the files of a project of the host, as Go to File
+	// finds them: in a repository, those git tracks and those it would,
+	// not those it ignores; elsewhere, those in Dir and its folders, but
+	// dotfiles unless Hidden.
+	FSFilesParams struct {
+		Dir    string `json:"dir"`
+		Hidden bool   `json:"hidden,omitempty"`
+	}
+	// FSFiles are the files, from Dir, with slashes; More: there are more.
+	FSFiles struct {
+		Paths []string `json:"paths"`
+		More  bool     `json:"more,omitempty"`
+	}
+	// FSSearchParams search the text of a project's files (FSFilesParams)
+	// for Query: of any case unless Case, as a word alone with Word, and
+	// as a regular expression (Go's) with Regex.
+	FSSearchParams struct {
+		Dir    string `json:"dir"`
+		Query  string `json:"query"`
+		Case   bool   `json:"case,omitempty"`
+		Word   bool   `json:"word,omitempty"`
+		Regex  bool   `json:"regex,omitempty"`
+		Hidden bool   `json:"hidden,omitempty"`
+	}
+	// FSSearch is what was found, by file, in the order of their paths;
+	// More: there is more than it, or files were left unsearched.
+	FSSearch struct {
+		Files []FSSearchFile `json:"files"`
+		More  bool           `json:"more,omitempty"`
+	}
+	FSSearchFile struct {
+		Path    string    `json:"path"` // from Dir, with slashes
+		Matches []FSMatch `json:"matches"`
+	}
+	// FSMatch is a line that holds Query: its number, from 1, its text,
+	// cut short around the match when long, and where the match is in
+	// that text, in bytes, Start to End.
+	FSMatch struct {
+		Line  int    `json:"line"`
+		Text  string `json:"text"`
+		Start int    `json:"start"`
+		End   int    `json:"end"`
+	}
 	// FSStatParams ask about a path printed in a pane: relative to Base,
 	// the pane's directory, unless absolute; ~ and ~/… are the home's.
 	FSStatParams struct {

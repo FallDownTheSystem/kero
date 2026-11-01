@@ -5,11 +5,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 // testPane is a pane with no program, whose output the test writes.
@@ -195,6 +197,8 @@ func TestWorkingHeldBeforeIdle(t *testing.T) {
 // A restore resumes Claude Code's and Codex's sessions, and nothing a
 // state file could slip in.
 func TestResumeCommand(t *testing.T) {
+	// The agents' own commands, not the user's.
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
 	for _, c := range []struct {
 		agent, id, want string
 	}{
@@ -214,6 +218,38 @@ func TestResumeCommand(t *testing.T) {
 	}
 	if resumeCommand(nil) != nil {
 		t.Error("resumed nothing")
+	}
+}
+
+// The user's resume command runs in the shell as a line, the id where it
+// says, {session} or {{session}}, else at its end; never one a state file
+// could slip in.
+func TestUserResumeCommand(t *testing.T) {
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
+	set := settings.Load()
+	set.ResumeClaude = "cc --yolo --resume {{session}}"
+	set.ResumeCodex = "cx resume {session} --full-auto"
+	set.ResumePi = "mypi --session"
+	if err := settings.Save(set); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		agent, id string
+		want      []string
+	}{
+		{"claude", "13b997c3", []string{"cc --yolo --resume 13b997c3"}},
+		{"codex", "019a", []string{"cx resume 019a --full-auto"}},
+		{"pi", "0f3c", []string{"mypi --session 0f3c"}},
+		{"opencode", "ses_1", []string{"opencode", "--session", "ses_1"}},
+		{"claude", "x; rm -rf ~", nil},
+	} {
+		if got := resumeCommand(&proto.AgentSession{Agent: c.agent, ID: c.id}); !slices.Equal(got, c.want) {
+			t.Errorf("%s %q: got %q, want %q", c.agent, c.id, got, c.want)
+		}
+	}
+	// As a line, the shell runs it as it is, the user's functions too.
+	if got := shellArgs("pwsh", "", resumeCommand(&proto.AgentSession{Agent: "claude", ID: "13b997c3"})); !strings.Contains(got[len(got)-1], "; cc --yolo --resume 13b997c3;") {
+		t.Errorf("pwsh runs %q", got)
 	}
 }
 
@@ -289,4 +325,54 @@ func TestAgentPane(t *testing.T) {
 	}
 	a.shellPID = os.Getpid()
 	check("under the app server a's Codex started", server.Process.Pid, "", "b", true)
+}
+
+// A prompt sent to be submitted gets Enter after its paste, and again
+// while the agent stays idle, as Claude Code takes an Enter too soon for
+// more of the paste; an agent that went to work gets no more.
+func TestSubmit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("sh")
+	}
+	enterWait = 100 * time.Millisecond
+	t.Cleanup(func() { enterWait = 2 * time.Second })
+	d := testDaemon(t)
+	out := filepath.Join(t.TempDir(), "in")
+	s, err := d.create(proto.CreateParams{Command: []string{"sh", "-c", "stty raw -echo; exec cat > " + out}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	pn := d.findPane(s.Panes[0].ID)
+	enters := func(status proto.Status) int {
+		t.Helper()
+		os.Truncate(out, 0)
+		pn.mu.Lock()
+		pn.info.Agent, pn.info.Status = "claude", status
+		pn.mu.Unlock()
+		pn.paste("review it")
+		pn.submit(time.Now())
+		time.Sleep(200 * time.Millisecond)
+		b, _ := os.ReadFile(out)
+		if !strings.Contains(string(b), "review it") {
+			t.Errorf("the paste didn't come: %q", b)
+		}
+		return strings.Count(string(b), "\r")
+	}
+	// The shell opens the file for cat once stty is done; a fixed wait
+	// was too short on a busy runner.
+	for i := 0; ; i++ {
+		if _, err := os.Stat(out); err == nil {
+			break
+		} else if i == 1000 {
+			t.Fatal("cat never started")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if n := enters(proto.Idle); n != 1+enterTries {
+		t.Errorf("an idle agent got %d Enters", n)
+	}
+	if n := enters(proto.Working); n != 1 {
+		t.Errorf("a working agent got %d Enters", n)
+	}
 }

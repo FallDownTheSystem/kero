@@ -43,6 +43,8 @@ Usage:
       -f, --focus                 show it in the app
       -w, --wait                  wait for cmd to end, exit with its status
       -u, --url <url>             a browser showing url, not a shell
+      --file <path>               an editor of the file, not a shell; a file
+                                  not there yet is made as it is saved
       --worktree <branch>         in a git worktree of its own, on a new
                                   branch from the default branch
       --base <ref>                the branch to start it from instead
@@ -54,6 +56,8 @@ Usage:
       -w, --wait                  wait for cmd to end, exit with its status
       -u, --url <url>             a browser showing url, not a shell, as
                                   a dev server's page: localhost:3000
+      --file <path>               an editor of the file, not a shell; a file
+                                  not there yet is made as it is saved
   kero send <target> <text…>    type text into a pane
       -e                          interpret \n \r \t \e \xHH escapes
       --enter                     press Enter after it
@@ -127,11 +131,25 @@ Usage:
   kero restart <target>         start an exited pane's shell again
   kero notify [target] <message>
                                 flag the pane as needing you
+  kero pr comment <path>[:<line>[-<end>]] <text…|->
+                                draft a review comment on lines of the
+                                pull request's diff, or on the file with
+                                no lines (- reads the text from stdin);
+                                --base: on the base's lines
+  kero pr edit <id> <text…|->   change a draft comment's text
+  kero pr delete <id>           delete a draft comment
+  kero pr summary <text…|->     the review's summary, its body on GitHub
+  kero pr show [--json]         the draft review: summary and comments;
+                                the user posts it from Kero
+      --pr <number>               the pull request, when the review wasn't
+                                  started in this pane from Kero
+      --remote <name>             its repository's remote
   kero report <state> [message] [--kind k] [--progress n] [--app a] [--id i]
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear
   kero do <action> [key=value…]  run an action of the app, as its menus do
-                                (needs Remote Control, in Settings › Agents)
+                                (needs Remote Control, in Settings › Agents),
+                                as kero do files.show path=src/main.go
   kero actions                  list the actions kero do runs
   kero config path|show|edit|check
                                 the configuration file: where it is, every
@@ -171,7 +189,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "pr", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -227,6 +245,19 @@ func Run(args []string) int {
 		return 4
 	}
 	return 1
+}
+
+// hereFile makes a path the user typed absolute, of the shell's folder it
+// is typed in, which kerod and the app have no idea of; on another host
+// (-H) it stays as it is, for kerod there to make of its home.
+func hereFile(path, host string) string {
+	if path == "" || host != "" || filepath.IsAbs(path) || strings.HasPrefix(path, "~") {
+		return path
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
 }
 
 func usageErr(format string, args ...any) error {
@@ -376,7 +407,7 @@ func run(args []string, host string) error {
 	case "new":
 		f, err := parse(args,
 			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout",
-				"u": "url", "url": "url", "worktree": "worktree", "base": "base"},
+				"u": "url", "url": "url", "file": "file", "worktree": "worktree", "base": "base"},
 			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
@@ -387,6 +418,15 @@ func run(args []string, host string) error {
 		}
 		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
 			return usageErr("kero new --url shows a page, and runs no command")
+		}
+		file := hereFile(f.vals["file"], host)
+		if file != "" && (len(command) > 0 || f.set["wait"] || f.vals["url"] != "") {
+			return usageErr("kero new --file shows a file, and runs no command")
+		}
+		// The file is resolved here, in this checkout, not in the worktree
+		// the session would start in.
+		if file != "" && f.vals["worktree"] != "" {
+			return usageErr("kero new --file shows a file of this checkout, not of a new --worktree")
 		}
 		if f.vals["base"] != "" && f.vals["worktree"] == "" {
 			return usageErr("kero new --base starts a --worktree's branch")
@@ -399,7 +439,7 @@ func run(args []string, host string) error {
 		}
 		var s proto.Session
 		if err := c.Call("create", proto.CreateParams{
-			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: f.vals["url"],
+			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: f.vals["url"], File: file,
 			After: os.Getenv("KERO_SESSION"), Worktree: f.vals["worktree"], Base: f.vals["base"],
 		}, &s); err != nil {
 			return err
@@ -420,7 +460,7 @@ func run(args []string, host string) error {
 		return nil
 
 	case "split":
-		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout", "u": "url", "url": "url"},
+		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout", "u": "url", "url": "url", "file": "file"},
 			map[string]string{"right": "right", "down": "down", "left": "left", "up": "up", "json": "json", "f": "focus", "focus": "focus", "wait": "wait", "w": "wait"})
 		if err != nil {
 			return err
@@ -443,9 +483,13 @@ func run(args []string, host string) error {
 		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
 			return usageErr("kero split --url shows a page, and runs no command")
 		}
+		file := hereFile(f.vals["file"], host)
+		if file != "" && (len(command) > 0 || f.set["wait"] || f.vals["url"] != "") {
+			return usageErr("kero split --file shows a file, and runs no command")
+		}
 		var s proto.Session
 		if err := c.Call("split", proto.CreateParams{Split: t.ref(), Direction: dir, Ratio: ratio,
-			Dir: f.vals["dir"], Command: command, URL: f.vals["url"]}, &s); err != nil {
+			Dir: f.vals["dir"], Command: command, URL: f.vals["url"], File: file}, &s); err != nil {
 			return err
 		}
 		if f.set["focus"] {
@@ -790,6 +834,9 @@ func run(args []string, host string) error {
 			if !ok {
 				return usageErr("%q is not key=value", arg)
 			}
+			if k == "path" || k == "dir" {
+				v = hereFile(v, host)
+			}
 			kv[k] = v
 		}
 		var delivered bool
@@ -821,6 +868,8 @@ func run(args []string, host string) error {
 			return err
 		}
 		return c.Call("notify", proto.NotifyParams{ID: t.ref(), Title: f.vals["title"], Body: strings.Join(append(f.pos, f.rest...), " ")}, nil)
+	case "pr":
+		return prCommand(c, args)
 	}
 	return usageErr("unknown command %q (see kero help)", cmd)
 }
@@ -1254,16 +1303,23 @@ func listSessions(st proto.State) {
 		}
 		return s
 	}
-	// A browser's program is the browser, and its place its page.
+	// A browser's program is the browser, and its place its page; an
+	// editor's, the editor and its file.
 	program := func(p proto.Pane) string {
-		if p.Browser() {
+		switch {
+		case p.Browser():
 			return "browser"
+		case p.Editor():
+			return "editor"
 		}
 		return orDash(p.Process)
 	}
 	where := func(p proto.Pane) string {
-		if p.Browser() {
+		switch {
+		case p.Browser():
 			return p.URL
+		case p.Editor():
+			return proto.ShortDir(p.File)
 		}
 		return proto.ShortDir(p.WorkDir())
 	}
