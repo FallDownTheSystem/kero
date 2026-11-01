@@ -714,6 +714,7 @@
   "filesNew": "新規ファイル",
   "filesNewTip": "ファイルはまだありません。保存すると作成されます",
   "paneMore": "その他",
+  "filesActions": "ファイルの操作",
   "actionShowFiles": "ファイルを表示",
   "actionShowChanges": "変更を表示",
   "actionToggleHistory": "履歴の切り替え",

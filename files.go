@@ -9,7 +9,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
 	"github.com/egoist/mygo/ui/markdown"
@@ -139,6 +138,11 @@ type fileView struct {
 	// kero split --file names: absent while it is, it opens empty, and its
 	// save makes it.
 	fresh, absent bool
+	// toolsW is an editor pane's file's buttons' width in its header,
+	// as they last showed all of them, and toolsFold that they show folded
+	// in a menu, the header being too narrow for them (headerRoom).
+	toolsW    float32
+	toolsFold bool
 	// preview shows a Markdown file as it reads, in place of its text,
 	// which md shows it by.
 	preview bool
@@ -781,7 +785,8 @@ func (a *App) fileStatus(c *ui.Context, pal *palette, fv *fileView) {
 	case fv.edits.saving:
 		ui.Spinner(c).Size(12, 12)
 	case fv.modified():
-		ui.Text(c, locales.FilesUnsaved()).FontSize(11.5).TextColor(pal.attention).SingleLine().Shrink(0).Margin(0, 4, 0, 0)
+		// A dot, as the viewer's close button and the tree mark it.
+		ui.Box(c.Key("unsaved")).Size(8, 8).Radius(4).Shrink(0).Margin(0, 8, 0, 4).Background(pal.textMuted).Description(locales.ViewerUnsaved()).Tooltip(locales.ViewerUnsaved())
 	case fv.absent && fv.st != nil:
 		ui.Text(c, locales.FilesNew()).FontSize(11.5).TextColor(pal.textFaint).SingleLine().Shrink(0).Margin(0, 4, 0, 0).Tooltip(locales.FilesNewTip())
 	}
@@ -818,6 +823,50 @@ func (a *App) fileActions(c *ui.Context, pal *palette, fv *fileView) {
 		file := fv.path
 		iconButton(c, "open", openFileIcon, locales.FilesOpenInEditor(), pal, func() { a.openInEditor(file) })
 	}
+}
+
+// fileActionsMenu is fileActions as a menu's items, for an editor pane's
+// header too narrow for their buttons.
+func (a *App) fileActionsMenu(m *ui.Menu, fv *fileView) {
+	if !fv.edits.saving && fv.absent && fv.st != nil && !fv.modified() {
+		if m.Item(locales.FilesSave()).Chosen() {
+			a.saveTargets([]editTarget{a.fileTarget(fv)}, nil)
+		}
+	}
+	if fv.st != nil && markdownFile(fv.path) && m.Item(locales.FilesPreviewMarkdown()).Checked(fv.preview).Chosen() {
+		fv.preview = !fv.preview
+	}
+	if fv.st != nil {
+		if a.menuShortcut(m.Item(locales.FilesSmaller()), "text.smaller").Chosen() {
+			a.zoomFiles(-1, false)
+		}
+		if a.menuShortcut(m.Item(locales.FilesBigger()), "text.bigger").Chosen() {
+			a.zoomFiles(1, false)
+		}
+	}
+	if fv.st != nil && !fv.preview && m.Item(locales.FilesWrap()).Checked(a.prefs.Wrap).Chosen() {
+		a.prefs.Wrap = !a.prefs.Wrap
+		a.savePrefs()
+	}
+	if !a.hostOf(fv.pane).remote() && !fv.gone && !fv.absent && m.Item(locales.FilesOpenInEditor()).Chosen() {
+		a.openInEditor(fv.path)
+	}
+}
+
+// fileActionsButton is the button whose menu has fileActionsMenu's items.
+func (a *App) fileActionsButton(c *ui.Context, pal *palette, fv *fileView, more func(m *ui.Menu)) {
+	b := ui.ButtonBase(c.Key("file-actions")).Size(controlW, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.FilesActions()).Tooltip(locales.FilesActions())
+	if b.Hovered() || b.Pressed() {
+		b.Background(pal.rowHover).TextColor(pal.text)
+	}
+	b.Children(func() { ui.Icon(c, editIcon).Size(15, 15) })
+	b.Menu(func(m *ui.Menu) {
+		if more != nil {
+			more(m)
+			m.Separator()
+		}
+		a.fileActionsMenu(m, fv)
+	})
 }
 
 // wrapButton toggles the wrapping of long lines, which the viewer's
@@ -1086,12 +1135,6 @@ func (a *App) terminalIn(pane, dir string) {
 	if s := a.sessionOfPane(pane); s != nil {
 		a.split(s, proto.CreateParams{Split: a.focusOf(s), Direction: "right", Dir: dir})
 	}
-}
-
-// bottomBar is a bar below an editor pane's file, over which it scrolls.
-func bottomBar(c *ui.Context, key string, pal *palette) ui.Element {
-	return ui.Row(c.Key(key)).Height(stickyH).Shrink(0).Gap(2).AlignItems(ui.Center).
-		Material(glass.ScrollEdge{Hard: true, Bottom: true, Background: pal.card})
 }
 
 // saveTip is the save button's tooltip, with its shortcut.
