@@ -5,6 +5,53 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.1
+
+Upstream 2.1.28 to 2.1.31 (CHANGELOG.md): the right sidebar's Changes
+and Files tabs, files opening in a viewer card beside the panes to read
+and edit, New File, New Folder, Rename and Delete, file icons, the
+changed files' tree beside their diffs with Collapse All, and
+`scrollback-limit` setting the app's copy of a pane's scrollback too.
+
+The fork's features now build on upstream's sidebar and viewer, in
+place of the Explorer:
+
+- The right sidebar has Changes, Files, History and Review tabs, styled
+  as the left one. A file you click in Changes, Files or Search, a
+  pull request, and a new pull request's form open in the viewer beside
+  the panes, which **Zoom Viewer** spreads over them. With
+  `sessions-sidebar = right`, the sidebar and the viewer take the left
+- Files keeps the fork's tools on upstream's tree: the filter, Search,
+  Refresh, hidden files as Settings say, dragging files onto panes,
+  moving in the tree with the arrow keys, and a menu that opens a file in
+  an editor pane, shows its history, opens a terminal in a folder, opens
+  in your editor or another app, shows in File Explorer and copies paths
+- The viewer has the fork's Markdown preview, image view, text zoom and
+  wrap, and **Open in Pane**, which opens the file in an editor pane of
+  its own. Editor panes save as the viewer does, asking before
+  overwriting a file changed on disk, and their unsaved edits outlast a
+  quit
+- Go to File opens the file in the viewer, and Cmd+Enter (Ctrl+Enter) in
+  an editor pane
+- Changed:
+  - A click on a file always opens it in the viewer, so the Files
+    settings for what a double click does (`files-double-click`), where
+    a pane's file goes (`files-pane`) and the preview below the tree
+    (`files-preview`) are gone; the preview below the tree too. Opening
+    a file in a pane always opens a new one, and a file dropped on an
+    editor pane replaces its file. Old settings files with these keys
+    still load
+  - Changes always shows its files as a tree, as upstream's tab does,
+    without the Tree View button; a folder's buttons still stage,
+    unstage and discard its files
+  - Diffs fold and unfold with the viewer's Collapse All and Expand All
+    in place of each section's buttons
+- Not in this release, as the fork stays on MyGo's latest release
+  (0.7.3) while upstream 2.1.31 builds on MyGo commits after it: the
+  new look of the terminal's and the viewer's scroll bars, the scroll
+  bar under wide diff lines, and the fix for pasting text copied from
+  Notepad on Windows
+
 ## 2.1.27-fork.13
 
 - Right-click a file pane's name at the top to copy its path, whole or
