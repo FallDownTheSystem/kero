@@ -234,7 +234,7 @@ func (g *gitFollow) refresh(rs *repoStatus, stamp string, now time.Time) {
 	info := &proto.GitInfo{
 		Root: rs.repo.Root, Branch: st.Branch, Head: st.Head, Upstream: st.Upstream,
 		Ahead: st.Ahead, Behind: st.Behind, Default: rs.repo.DefaultBranch(),
-		Files: st.Files, Added: st.Added, Removed: st.Removed, State: st.State,
+		Files: st.Files, Added: st.Added, Removed: st.Removed, Staged: st.Staged, State: st.State,
 	}
 	if rs.info == nil || *rs.info != *info {
 		rs.info = info
@@ -297,6 +297,32 @@ func (d *Daemon) gitOf(ctx context.Context, ref, base string) (*pane, git.Repo, 
 	return pn, r, rev, name, err
 }
 
+// gitSides returns a pane's worktree and the sides a file's diff of
+// GitParams is between: a base's revision and the working tree, or
+// another pair (proto.GitParams).
+func (d *Daemon) gitSides(ctx context.Context, p proto.GitParams) (git.Repo, string, string, error) {
+	switch p.Base {
+	case "staged", "unstaged", "rev":
+		r, _, _, err := d.paneRepo(ctx, p.Pane)
+		if err != nil {
+			return git.Repo{}, "", "", err
+		}
+		switch p.Base {
+		case "staged":
+			rev, _, err := r.Base(ctx, git.BaseHead, "")
+			return r, rev, git.SideIndex, err
+		case "unstaged":
+			return r, git.SideIndex, git.SideWork, nil
+		}
+		if p.From == "" || p.To == "" || p.To == git.SideWork || p.To == git.SideIndex {
+			return git.Repo{}, "", "", errors.New("a commit's file needs both of its sides")
+		}
+		return r, p.From, p.To, nil
+	}
+	_, r, rev, _, err := d.gitOf(ctx, p.Pane, p.Base)
+	return r, rev, git.SideWork, err
+}
+
 // gitChanges returns the files changed in a pane's worktree since a base.
 func (d *Daemon) gitChanges(p proto.GitParams) (proto.GitChanges, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -320,37 +346,46 @@ func (d *Daemon) gitChanges(p proto.GitParams) (proto.GitChanges, error) {
 func (d *Daemon) gitText(p proto.GitParams) (proto.GitText, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	_, r, rev, _, err := d.gitOf(ctx, p.Pane, p.Base)
+	r, from, to, err := d.gitSides(ctx, p)
 	if err != nil {
 		return proto.GitText{}, err
 	}
-	t, err := r.FileText(ctx, rev, p.Path, p.OldPath)
+	t, err := r.Texts(ctx, from, to, p.Path, p.OldPath)
 	if err != nil {
 		return proto.GitText{}, err
 	}
-	if p.Known != "" && p.Known == t.Hash {
-		return proto.GitText{Hash: t.Hash, Same: true}, nil
+	// The index's text is the old side of a change not staged: the client
+	// knows the text it has by both.
+	known := t.Hash
+	if from == git.SideIndex {
+		known = t.Index + t.Hash
 	}
-	return proto.GitText{Old: t.Old, New: t.New, Hash: t.Hash, Binary: t.Binary, Large: t.Large, Patch: t.Patch}, nil
+	if p.Known != "" && p.Known == known {
+		return proto.GitText{Hash: t.Hash, Index: t.Index, Same: true}, nil
+	}
+	return proto.GitText{Old: t.Old, New: t.New, Hash: t.Hash, Index: t.Index, Binary: t.Binary, Large: t.Large, Patch: t.Patch, Mixed: t.Mixed}, nil
 }
 
 // gitRevert writes a file changed since a base back as it was in part:
 // only while no agent works in its worktree, whose edits it would race,
-// and only a file the base's diff shows, as it was when shown. It returns
-// the hash of what it wrote.
+// unless the user said to anyway, and only a file the base's diff shows,
+// as it was when shown. It returns the hash of what it wrote.
 func (d *Daemon) gitRevert(p proto.GitWriteParams) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	_, r, rev, _, err := d.gitOf(ctx, p.Pane, p.Base)
+	r, rev, to, err := d.gitSides(ctx, proto.GitParams{Pane: p.Pane, Base: p.Base})
 	if err != nil {
 		return "", err
+	}
+	if to != git.SideWork {
+		return "", errors.New("only the working tree's files are written back")
 	}
 	d.mu.Lock()
 	for _, o := range d.panes {
 		o.mu.Lock()
 		busy := o.info.Status == proto.Working && proto.Within(o.info.WorkDir(), r.Root)
 		o.mu.Unlock()
-		if busy {
+		if busy && !p.Anyway {
 			d.mu.Unlock()
 			return "", errors.New("an agent is working in this worktree: wait for it to finish")
 		}

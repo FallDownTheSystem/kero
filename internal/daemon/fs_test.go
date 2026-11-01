@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -30,6 +31,59 @@ func TestHostPath(t *testing.T) {
 		if got := hostPath(in[0], in[1]); got != want {
 			t.Errorf("hostPath(%q, %q) = %q, want %q", in[0], in[1], got, want)
 		}
+	}
+}
+
+// fs.find finds names in all of a folder, of any case, and paths with a
+// slash; never dotfiles unless asked, nor what is in a folder git ignores.
+func TestFSFind(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git")
+	}
+	dir := t.TempDir()
+	for _, f := range []string{"src/Main.go", "src/util/main_test.go", "docs/readme.md", ".env/main.txt", "node_modules/main/index.js"} {
+		os.MkdirAll(filepath.Dir(filepath.Join(dir, f)), 0o755)
+		os.WriteFile(filepath.Join(dir, f), nil, 0o644)
+	}
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("node_modules/\n"), 0o644)
+	if out, err := exec.Command("git", "-C", dir, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	found := func(p proto.FSFindParams) string {
+		t.Helper()
+		p.Dir = dir
+		r, err := fsFind(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, e := range r.Entries {
+			s := e.Path
+			if e.Dir {
+				s += "/"
+			}
+			got = append(got, s)
+		}
+		slices.Sort(got)
+		return strings.Join(got, ",")
+	}
+	if got := found(proto.FSFindParams{Query: "MAIN"}); got != "src/Main.go,src/util/main_test.go" {
+		t.Errorf("main: %s", got)
+	}
+	if got := found(proto.FSFindParams{Query: "node"}); got != "node_modules/" {
+		t.Errorf("an ignored folder: %s", got)
+	}
+	if got := found(proto.FSFindParams{Query: "main", Hidden: true}); !strings.Contains(got, ".env/main.txt") || strings.Contains(got, "index.js") {
+		t.Errorf("main with dotfiles: %s", got)
+	}
+	if got := found(proto.FSFindParams{Query: `util\main`}); got != "src/util/main_test.go" {
+		t.Errorf("a path: %s", got)
+	}
+	if got := found(proto.FSFindParams{Query: " "}); got != "" {
+		t.Errorf("nothing asked: %s", got)
+	}
+	if _, err := fsFind(proto.FSFindParams{Dir: filepath.Join(dir, "none"), Query: "x"}); err == nil {
+		t.Error("found in a folder that is none")
 	}
 }
 
@@ -207,6 +261,20 @@ func TestFSWrite(t *testing.T) {
 		t.Errorf("forced, the file is %q", b)
 	}
 	_ = h
+	// A link is written through, to the file it names.
+	link := filepath.Join(dir, "link.sh")
+	if err := os.Symlink(file, link); err != nil {
+		t.Skip("no symbolic links here:", err)
+	}
+	if _, err := d.fsWrite(proto.FSWriteParams{Path: link, Hash: git.Hash([]byte("echo c\n")), Text: "echo d\n"}); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := os.Lstat(link); st.Mode()&os.ModeSymlink == 0 {
+		t.Error("the write replaced the link")
+	}
+	if b, _ := os.ReadFile(file); string(b) != "echo d\n" {
+		t.Errorf("the linked file is %q", b)
+	}
 }
 
 // fs.create makes a file or a folder, with the folders it is in, but none
