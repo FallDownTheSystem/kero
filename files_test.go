@@ -1460,3 +1460,31 @@ func TestEditorPaneNarrow(t *testing.T) {
 		t.Errorf("widened again, the buttons stay folded; texts %q", tt.Texts())
 	}
 }
+
+// The Files tab's root shows its whole path where it fits beside the
+// buttons, else only its folder's name, as a pane's header fits its folder.
+func TestFilesRootFits(t *testing.T) {
+	const root = "/tmp/projects/clients/acme/services/billing-api"
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	g := &proto.GitInfo{Root: root, Branch: "main", Default: "main"}
+	s.Panes[0].Git, s.Panes[1].Git = g, g
+	a.prefs.Side = sideFiles
+	h := a.hostOf(s.ID)
+	a.side.files.dirs = map[string]*dirList{filesKey(h, root): {entries: []proto.FSEntry{{Name: "main.go"}}}}
+	for _, c := range []struct {
+		width     float32
+		want, not string
+	}{{720, root, ""}, {300, "billing-api", root}} {
+		a.prefs.RightWidth = c.width
+		tt := ui.NewTester(a.view, 1600, 720)
+		for range 3 {
+			tt.Frame()
+			tt.Advance(time.Second)
+		}
+		shot(t, tt, "files-root-"+map[bool]string{true: "wide", false: "narrow"}[c.not == ""])
+		if !tt.HasText(c.want) || c.not != "" && tt.HasText(c.not) {
+			t.Errorf("sidebar %v wide: want %q, not %q; texts %q", c.width, c.want, c.not, tt.Texts())
+		}
+	}
+}
