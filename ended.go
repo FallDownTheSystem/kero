@@ -103,7 +103,7 @@ func (a *App) endedSection(c *ui.Context, pal *palette, key, title string, list 
 		ui.Text(c, title).FontSize(12.5).FontWeight(600).TextColor(pal.textMuted).SingleLine()
 		ui.Textf(c, "%d", len(list)).FontSize(12.5).TextColor(pal.textFaint).FontFeatures("tnum")
 		chev := ui.Icon(c, chevronIcon).Size(11, 11).TextColor(pal.textFaint)
-		chev.Rotate(chev.AnimateTo("turn", 90*b2f(*open), ui.Snappy))
+		chev.Rotate(chev.AnimateTo("turn", 90*b2f(*open), chevronTurn))
 	})
 	if !*open {
 		return

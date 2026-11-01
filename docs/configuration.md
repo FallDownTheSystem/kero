@@ -58,12 +58,21 @@ kero config check             # report unknown keys and bad values
 | `window-theme`       | `system` | The app's appearance: `system`, `light` or `dark`               |
 | `language`           | `system` | The app's language: `system`, `en`, `ja` or `zh-Hans`           |
 | `window-translucent` | `true`   | Let the desktop show through the window                         |
+| `app-font`           | (empty)  | The font of the app's own text, not the terminals': empty for the system's. Kero carries Inter, Geist, Mona Sans, Public Sans, IBM Plex Sans, Plus Jakarta Sans, Manrope, Figtree, DM Serif Display and Playfair Display; any installed font works |
+| `sessions-sidebar`   | `left`   | The side of the window the sessions' sidebar takes: `left` or `right`; the right sidebar and the viewer take the other |
+| `pane-folder`        | `fit`    | What a pane's header shows of its folder: `hidden`, `folder` (its name), `full` (its path), or `fit`, the most of those that fits |
+| `explorer-folder`    | `fit`    | What the viewer's header shows of its folder, as `pane-folder` |
+| `dim-unfocused-terminals` | `true` | Fade the terminals you're not in, when a session has several panes |
+| `dim-unfocused-files` | `false` | Fade the editor panes you're not in, when a session has several panes |
+| `dim-unfocused-web` | `false` | Fade the browser panes you're not in, when a session has several panes |
+| `dim-unfocused-explorer` | `false` | Fade the viewer while you're not in it |
 
 ## Terminal
 
 | Key                   | Default | Description                                                              |
 | --------------------- | ------- | ------------------------------------------------------------------------ |
 | `theme`               | `paper` | The theme of the window, its panes and terminals: one of Kero's (`petal`, `mist`, `meadow`, `dusk`, `tide`, `apricot`, `aurora`, `dune`, `paper` or `plain`), any Ghostty theme, or one for each appearance, as `light:paper,dark:dusk` |
+| `file-theme`          | `terminal` | The colors of code in editor panes and the viewer: `terminal` for the terminals' theme, else as `theme` |
 | `font-family`         |         | Empty for JetBrains Mono Nerd Font, which Kero includes; `monospace` for the system's; or any installed family |
 | `font-size`           | `13`    | In points                                                                |
 | `font-weight`         | `400`   | `100` to `900`                                                           |
@@ -71,7 +80,6 @@ kero config check             # report unknown keys and bad values
 | `font-ligatures`      | `true`  | Join characters the way the font draws them                              |
 | `font-thicken`        | `false` | A heavier stroke, as in Ghostty                                          |
 | `minimum-contrast`    | `3`     | The least contrast text keeps with its background, from `1` (none) to `21`, so that colors meant for a dark background stay readable on a light one, as in Ghostty |
-| `dim-unfocused-terminals` | `true` | Fade the terminals you're not in, when a session has several panes |
 | `cursor-style`        | `block` | `block`, `bar` or `underline`; programs may change it                    |
 | `cursor-style-blink`  | `true`  | Blink the cursor                                                         |
 | `macos-option-as-alt` | `false` | Option sends Alt (Meta) to programs                                      |
@@ -79,6 +87,8 @@ kero config check             # report unknown keys and bad values
 | `clipboard-read`      | `ask`   | Programs reading the clipboard (OSC 52): `ask`, `allow` or `deny`        |
 | `right-click-action`  | `context-menu` | `context-menu`, `paste` or `copy-or-paste`                        |
 | `mouse-scroll-multiplier` | `precision:1,discrete:3` | How far scrolling goes, as in Ghostty: `precision:` scales a touchpad's, `discrete:` is the rows a notch of a mouse wheel scrolls (on Windows, a notch at its 3-line setting); one number sets both, from `0.01` to `10000` |
+
+Your own themes are files in Ghostty's format in Ghostty's themes folder: `$XDG_CONFIG_HOME/ghostty/themes` when that is set, else `%LOCALAPPDATA%\ghostty\themes` on Windows and `~/.config/ghostty/themes` elsewhere. In Settings › Appearance, point at a theme in the Ghostty themes' menus to preview it in the window, and use Customize Theme to edit every color of the theme you use and save the result there as a theme of your own. The file theme colors the editor panes and the viewer, whose code takes its 16 colors: keywords magenta, strings green, types yellow, functions blue, comments bright black. Settings › Appearance › File Colors chooses the file theme, the terminals' by default.
 
 ## Shell
 
@@ -104,6 +114,10 @@ kero config check             # report unknown keys and bad values
 | Key              | Default | Description                                         |
 | ---------------- | ------- | --------------------------------------------------- |
 | `remote-control` | `true`  | Let `kero do` and `kero focus` drive the app        |
+| `resume-command-claude` |  | The command that resumes a Claude Code conversation, as Resume, the [search](./sessions.md#search) and restoring sessions start it, run in your shell as your own commands and functions are, as `cc --yolo --resume {session}`; `{session}` in it is the conversation's ID, else the ID goes at its end; empty for `claude --resume {session}` |
+| `resume-command-codex` |  | The same for Codex; empty for `codex resume {session}` |
+| `resume-command-pi` |  | The same for Pi; empty for `pi --session {session}` |
+| `resume-command-opencode` |  | The same for OpenCode; empty for `opencode --session {session}` |
 
 ## Hosts
 
@@ -124,6 +138,23 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `diff-layout` | `auto`  | Diffs of the Changes tab: `unified`, `split` (side by side), or `auto`, side by side once they're wide |
 | `worktree-base` | `default` | What a [session's own worktree](./changes.md#sessions-in-their-own-worktree) branches from: `default`, the repository's default branch, or `current`, the branch of the session you're in |
 | `worktree-dir` |        | Where sessions' own worktrees go, each under its repository's name; empty for `.kero/worktrees` in the repository |
+| `commit-message-command` |  | The command that [writes a commit message](./changes.md#committing) of what's staged, run in your shell and given the prompt on its stdin, as `llm -m gpt-5`; `{session}` in it is the ID of the pane's agent's conversation, to fork it, as `cc -p --resume {session} --fork-session`; empty for a fork of the conversation of the agent in the pane, else a new run of Claude Code's or Codex's |
+| `commit-message-prompt` |  | How the agent writes a commit message: the instructions before the recent commits and the staged diff; empty for Kero's own, which Settings › Git shows. Write a line break as `\n` |
+| `pr-message-prompt` |  | How the agent writes a [pull request](./changes.md#new-pull-request)'s title and description, as `commit-message-prompt` |
+| `pr-notify` | `review` | Which new pull requests of your projects' GitHub repositories [notify you](./changes.md#pull-request-notifications): `review`, those that ask for your review; `all`, every one someone else opens; `off`, none, which stops checking |
+| `pr-poll-interval` | `5` | How often Kero checks for new pull requests, in minutes |
+| `review-command` |  | The agent command that [reviews](./changes.md#review) a repository's pull requests, as `owner/name=codex --full-auto`; empty for `claude`. Repeat it for each repository |
+| `review-prompt` |  | What the review agent is asked, as `owner/name=/code-review {ticket} #{number}`; empty for Kero's own. Write a line break as `\n`. Repeat it for each repository |
+| `pr-review-prompt` |  | What a [review](./changes.md#review) agent is asked, for every repository without its own `review-prompt`; empty for Kero's own. Write a line break as `\n` |
+| `repo-commit-message-prompt` |  | A repository's own `commit-message-prompt`, as `owner/name=Write in Finnish`. Repeat it for each repository |
+| `repo-pr-message-prompt` |  | A repository's own `pr-message-prompt`, as `repo-commit-message-prompt` |
+
+## Files
+
+| Key      | Default | Description                                                                                                                        |
+| -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `editor` | empty   | The command **Open in Editor** runs with a file's path, as `code`, `zed` or `"C:\Tools\editor.exe" -n`: empty opens a file with the app the system opens it with, and a folder with the app the system opens text files with |
+| `files-hidden` | `true` | Show dotfiles in the Files tab |
 
 ## Browser
 

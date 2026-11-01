@@ -58,12 +58,21 @@ kero config check             # 报告未知的配置项和无效的值
 | `window-theme`       | `system` | 应用外观：`system`、`light` 或 `dark`                            |
 | `language`           | `system` | 应用语言：`system`、`en`、`ja` 或 `zh-Hans`                      |
 | `window-translucent` | `true`   | 让桌面透过窗口显示出来                                          |
+| `app-font`           | （空）   | 应用自身文本的字体，不是终端的：留空为系统字体。Kero 自带 Inter、Geist、Mona Sans、Public Sans、IBM Plex Sans、Plus Jakarta Sans、Manrope、Figtree、DM Serif Display 和 Playfair Display；任何已安装的字体都可以 |
+| `sessions-sidebar`   | `left`   | 会话边栏所在的窗口一侧：`left` 或 `right`；右侧边栏和查看器位于另一侧 |
+| `pane-folder`        | `fit`    | 窗格标题栏如何显示其文件夹：`hidden`、`folder`（名称）、`full`（路径），或 `fit`，在放得下的范围内尽量多显示 |
+| `explorer-folder`    | `fit`    | 查看器的标题栏如何显示其文件夹，取值同 `pane-folder` |
+| `dim-unfocused-terminals` | `true` | 会话有多个窗格时，淡化未聚焦的终端 |
+| `dim-unfocused-files` | `false` | 会话有多个窗格时，淡化未聚焦的编辑器窗格 |
+| `dim-unfocused-web` | `false` | 会话有多个窗格时，淡化未聚焦的浏览器窗格 |
+| `dim-unfocused-explorer` | `false` | 你不在查看器中时，淡化它 |
 
 ## 终端
 
 | 配置项                | 默认值  | 说明                                                                     |
 | --------------------- | ------- | ------------------------------------------------------------------------ |
 | `theme`               | `paper` | 窗口、窗格和终端的主题：Kero 主题（`petal`、`mist`、`meadow`、`dusk`、`tide`、`apricot`、`aurora`、`dune`、`paper` 或 `plain`）、任意 Ghostty 主题，或按外观分别设置，如 `light:paper,dark:dusk` |
+| `file-theme`          | `terminal` | 编辑器窗格和查看器中代码的配色：`terminal` 表示使用终端的主题，否则写法同 `theme` |
 | `font-family`         |         | 留空则使用 Kero 自带的 JetBrains Mono Nerd Font；设为 `monospace` 则使用系统等宽字体；也可以填任何已安装的字体族 |
 | `font-size`           | `13`    | 单位为磅                                                                 |
 | `font-weight`         | `400`   | `100` 到 `900`                                                           |
@@ -71,7 +80,6 @@ kero config check             # 报告未知的配置项和无效的值
 | `font-ligatures`      | `true`  | 按字体的设计连写字符                                                     |
 | `font-thicken`        | `false` | 加粗笔画，同 Ghostty                                                     |
 | `minimum-contrast`    | `3`     | 文字与背景之间保持的最低对比度，从 `1`（不限制）到 `21`，让为深色背景设计的颜色在浅色背景上也清晰可读，同 Ghostty |
-| `dim-unfocused-terminals` | `true` | 会话有多个窗格时，淡化未聚焦的终端                                  |
 | `cursor-style`        | `block` | `block`、`bar` 或 `underline`；程序可以更改它                            |
 | `cursor-style-blink`  | `true`  | 光标闪烁                                                                 |
 | `macos-option-as-alt` | `false` | Option 键向程序发送 Alt（Meta）                                          |
@@ -79,6 +87,8 @@ kero config check             # 报告未知的配置项和无效的值
 | `clipboard-read`      | `ask`   | 程序读取剪贴板（OSC 52）时：`ask`、`allow` 或 `deny`                     |
 | `right-click-action`  | `context-menu` | `context-menu`、`paste` 或 `copy-or-paste`                        |
 | `mouse-scroll-multiplier` | `precision:1,discrete:3` | 滚动的幅度，同 Ghostty：`precision:` 是触控板滚动的倍数，`discrete:` 是鼠标滚轮每一格滚动的行数（Windows 上指系统设为 3 行时的一格）；只写一个数字则同时设置两者，范围 `0.01` 到 `10000` |
+
+你自己的主题是 Ghostty 主题文件夹中 Ghostty 格式的文件：设置了 `$XDG_CONFIG_HOME` 时为 `$XDG_CONFIG_HOME/ghostty/themes`，否则在 Windows 上为 `%LOCALAPPDATA%\ghostty\themes`，在其他系统上为 `~/.config/ghostty/themes`。在“设置 › 外观”中，将指针移到 Ghostty 主题菜单中的主题上，即可在窗口中预览；使用“自定主题”可编辑当前主题的每种颜色，并将结果作为你自己的主题存储在该文件夹中。文件主题为编辑器窗格和查看器配色，其中的代码使用文件主题的 16 种颜色：关键字为品红色，字符串为绿色，类型为黄色，函数为蓝色，注释为明亮的黑色。在“设置 › 外观 › 文件颜色”中选择文件主题，默认与终端相同。
 
 ## Shell
 
@@ -104,6 +114,10 @@ kero config check             # 报告未知的配置项和无效的值
 | 配置项           | 默认值  | 说明                                                |
 | ---------------- | ------- | --------------------------------------------------- |
 | `remote-control` | `true`  | 允许 `kero do` 和 `kero focus` 操控应用             |
+| `resume-command-claude` |  | 恢复 Claude Code 对话的命令，用于恢复、[搜索](./sessions.md#搜索)和恢复会话，像你自己的命令和函数一样在你的 shell 中运行，如 `cc --yolo --resume {session}`；其中的 `{session}` 会换成对话的 ID，没有时 ID 加在末尾；留空则为 `claude --resume {session}` |
+| `resume-command-codex` |  | Codex 的同类命令；留空则为 `codex resume {session}` |
+| `resume-command-pi` |  | Pi 的同类命令；留空则为 `pi --session {session}` |
+| `resume-command-opencode` |  | OpenCode 的同类命令；留空则为 `opencode --session {session}` |
 
 ## 主机
 
@@ -124,6 +138,23 @@ kero config check             # 报告未知的配置项和无效的值
 | `diff-layout` | `auto`  | 改动标签页中的 diff 布局：`unified`、`split`（左右对照）或 `auto`（够宽时左右对照）               |
 | `worktree-base` | `default` | [会话专属工作树](./changes.md#sessions-in-their-own-worktree)的起点：`default` 为仓库的默认分支，`current` 为你所在会话的分支 |
 | `worktree-dir` |        | 会话专属工作树的存放位置，各自放在仓库名之下；留空则放在仓库内的 `.kero/worktrees` |
+| `commit-message-command` |  | 为已暂存的改动[撰写提交信息](./changes.md#committing)的命令，在你的 shell 中运行，提示通过标准输入传入，如 `llm -m gpt-5`；其中的 `{session}` 会换成要分叉的窗格中智能体对话的 ID，如 `cc -p --resume {session} --fork-session`；留空则分叉窗格中智能体的对话，没有对话时新运行 Claude Code 或 Codex |
+| `commit-message-prompt` |  | 智能体撰写提交信息的方式：放在最近的提交和已暂存的差异之前的说明；留空则用 Kero 自己的（显示在 设置 › Git 中）。换行写作 `\n` |
+| `pr-message-prompt` |  | 智能体撰写[拉取请求](./changes.md#new-pull-request)标题和描述的方式，同 `commit-message-prompt` |
+| `pr-notify` | `review` | 项目所在 GitHub 仓库的哪些新拉取请求会[通知你](./changes.md#pull-request-notifications)：`review`，请求你审查的；`all`，别人打开的每一个；`off`，都不通知，此时也停止检查 |
+| `pr-poll-interval` | `5` | Kero 检查新拉取请求的间隔，单位为分钟 |
+| `review-command` |  | [审查](./changes.md#review)仓库拉取请求的智能体命令，如 `owner/name=codex --full-auto`；留空则为 `claude`。每个仓库重复一行 |
+| `review-prompt` |  | 交给审查智能体的提示词，如 `owner/name=/code-review {ticket} #{number}`；留空则用 Kero 自己的。换行写作 `\n`。每个仓库重复一行 |
+| `pr-review-prompt` |  | 没有自己的 `review-prompt` 的仓库中，交给[审查](./changes.md#review)智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
+| `repo-commit-message-prompt` |  | 仓库自己的 `commit-message-prompt`，如 `owner/name=Write in Finnish`。每个仓库重复一行 |
+| `repo-pr-message-prompt` |  | 仓库自己的 `pr-message-prompt`，同 `repo-commit-message-prompt` |
+
+## 文件
+
+| 键       | 默认值 | 说明                                                                                                                  |
+| -------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
+| `editor` | 空     | **在编辑器中打开**运行的命令，后接文件路径，如 `code`、`zed` 或 `"C:\Tools\editor.exe" -n`；留空则用系统打开该文件的应用打开文件，用系统打开文本文件的应用打开文件夹 |
+| `files-hidden` | `true` | 在文件标签页中显示点文件 |
 
 <a id="browser"></a>
 

@@ -50,8 +50,12 @@ func (a *App) run(id string, args map[string]string) {
 		a.openProject()
 	case "palette.open":
 		a.openPalette()
+	case "files.goto":
+		a.openGoToFile()
 	case "conversation.resume":
 		a.openConversations()
+	case "conversation.search":
+		a.focusSearch()
 	case "session.attention":
 		a.jumpToAttention()
 	case "session.next":
@@ -69,16 +73,23 @@ func (a *App) run(id string, args map[string]string) {
 	case "session.close":
 		a.closeSession(a.selected, true)
 	case "find.open":
-		// In the viewer, its file's find bar, or its diff's.
+		// In the viewer, its file's find bar, or its diff's: of Changes,
+		// a commit's or a pull request's.
 		if v := a.viewOf(s); a.side.focused && v != nil {
 			if v.kind == sideFiles && v.file != nil && v.file.st != nil {
 				v.file.st.Find("")
 				break
 			}
-			if f := a.side.changes.focus; v.kind == sideChanges && f != nil && f.d != nil {
+			if f := a.side.changes.focus; v.kind != sideFiles && f != nil && f.d != nil {
 				f.d.Find("")
 				break
 			}
+		}
+		// In the right sidebar, the folder's files: the Search tab, its
+		// field.
+		if a.side.barFocused {
+			a.showSearch("")
+			break
 		}
 		a.openFind()
 	case "find.next":
@@ -113,12 +124,32 @@ func (a *App) run(id string, args map[string]string) {
 		a.toggleSide(sideFiles)
 	case "rightSidebar.toggle":
 		a.toggleRight()
-	case "text.bigger":
-		a.zoom(1, false)
-	case "text.smaller":
-		a.zoom(-1, false)
-	case "text.reset":
-		a.zoom(0, true)
+	case "history.toggle":
+		a.toggleSide(sideHistory)
+	case "review.toggle":
+		a.toggleSide(sideReview)
+	case "search.toggle":
+		a.toggleSearch()
+	case "search.show":
+		a.showSearch(args["query"])
+	case "changes.show":
+		a.showTab(sideChanges)
+	case "files.show":
+		a.showFiles(args["path"])
+	case "history.show":
+		if p := args["path"]; p != "" {
+			a.showHistory(p)
+		} else {
+			a.showTab(sideHistory)
+		}
+	// In a file, its text; else the terminals'.
+	case "text.bigger", "text.smaller", "text.reset":
+		steps := map[string]int{"text.bigger": 1, "text.smaller": -1}[id]
+		if a.filesFocused() {
+			a.zoomFiles(steps, id == "text.reset")
+		} else {
+			a.zoom(steps, id == "text.reset")
+		}
 	case quickAction:
 		a.toggleQuick()
 	}
@@ -155,7 +186,9 @@ var actionTitles = map[string]func() string{
 	"session.newWorktree": locales.ActionNewSessionWorktree,
 	"project.open":        locales.ActionOpenProject,
 	"palette.open":        locales.ActionGoToSession,
+	"files.goto":          locales.ActionGoToFile,
 	"conversation.resume": locales.ActionResumeConversation,
+	"conversation.search": locales.ActionSearchConversations,
 	"session.attention":   locales.ActionJumpToAttention,
 	"session.next":        locales.ActionNextSession,
 	"session.previous":    locales.ActionPreviousSession,
@@ -181,6 +214,13 @@ var actionTitles = map[string]func() string{
 	"changes.toggle":      locales.ActionToggleChanges,
 	"files.toggle":        locales.ActionToggleFiles,
 	"rightSidebar.toggle": locales.ActionToggleRightSidebar,
+	"history.toggle":      locales.ActionToggleHistory,
+	"search.toggle":       locales.ActionToggleSearch,
+	"review.toggle":       locales.ActionToggleReview,
+	"changes.show":        locales.ActionShowChanges,
+	"files.show":          locales.ActionShowFiles,
+	"history.show":        locales.ActionShowHistory,
+	"search.show":         locales.ActionShowSearch,
 	"text.bigger":         locales.ActionBigger,
 	"text.smaller":        locales.ActionSmaller,
 	"text.reset":          locales.ActionActualSize,
@@ -222,7 +262,16 @@ func (a *App) items(menu string, groups ...[]string) []*mygo.MenuItem {
 	return out
 }
 
+// menu is the menu bar, made again as what it shows changes: it keeps its
+// menus (a.bar) for the sidebar's Menus button, which shows them where the
+// window has no menu bar.
 func (a *App) menu() *mygo.Menu {
+	a.bar = a.menuBar()
+	return mygo.NewMenu(a.bar)
+}
+
+// menuBar is the menu bar's menus.
+func (a *App) menuBar() []*mygo.MenuItem {
 	appMenu := []*mygo.MenuItem{{Role: mygo.RoleAbout}, updater.MenuItem(), mygo.Separator(), a.item("settings.open"), a.item("cli.install"),
 		mygo.Separator(), {Role: mygo.RoleHide}, {Role: mygo.RoleHideOthers}, {Role: mygo.RoleUnhide}, mygo.Separator(),
 		{Label: locales.MenuQuitApp(mygo.App.Name()), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
@@ -235,13 +284,13 @@ func (a *App) menu() *mygo.Menu {
 			{Label: locales.MenuQuit(), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 			a.item("app.quitAll")}}
 	}
-	view := append(a.items("View", []string{"sidebar.toggle", "rightSidebar.toggle", "changes.toggle", "files.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{quickAction}),
+	view := append(a.items("View", []string{"sidebar.toggle", "rightSidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle", "review.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{quickAction}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})
-	return mygo.NewMenu([]*mygo.MenuItem{
+	return []*mygo.MenuItem{
 		kero,
 		{Label: locales.MenuSession(), Submenu: a.items("Session",
 			[]string{"session.new", "session.newHome", "session.newWorktree", "project.open"},
-			[]string{"palette.open", "conversation.resume", "session.attention", "session.next", "session.previous"},
+			[]string{"palette.open", "files.goto", "conversation.resume", "conversation.search", "session.attention", "session.next", "session.previous"},
 			[]string{"session.rename", "pane.restart"},
 			[]string{"pane.close", "session.close"})},
 		// The Edit menu's own items, then finding.
@@ -255,7 +304,43 @@ func (a *App) menu() *mygo.Menu {
 			[]string{"pane.next", "pane.previous", "pane.left", "pane.right", "pane.up", "pane.down"})},
 		{Label: locales.MenuView(), Submenu: view},
 		{Role: mygo.RoleWindowMenu},
-	})
+	}
+}
+
+// menuInto adds items, as the menu bar has them, to m: the app's own items,
+// which run as the bar's do, and not the system's (roles), which a popup
+// can't run, but the menus they hold.
+func menuInto(m *ui.Menu, items []*mygo.MenuItem) {
+	sep, shown := false, false
+	for _, it := range items {
+		switch {
+		case it.Type == mygo.MenuItemSeparator:
+			sep = shown
+			continue
+		case it.Hidden, len(it.Submenu) == 0 && (it.Role != "" || it.Click == nil):
+			continue
+		}
+		if sep {
+			m.Separator()
+			sep = false
+		}
+		shown = true
+		if len(it.Submenu) > 0 {
+			label := it.Label
+			switch {
+			case label != "":
+			case it.Role == mygo.RoleEditMenu:
+				label = locales.MenuEdit()
+			default:
+				label = mygo.App.Name()
+			}
+			m.Submenu(label, func(m *ui.Menu) { menuInto(m, it.Submenu) })
+			continue
+		}
+		if m.Item(it.Label).Disabled(it.Disabled).Accelerator(it.Accelerator).Chosen() {
+			it.Click(it, nil)
+		}
+	}
 }
 
 // keys is an action's shortcut as the menus show it, "" when it has none.
@@ -320,7 +405,7 @@ func (a *App) fromMay(id string, args map[string]string) bool {
 	case id == "session.new" || id == "session.newHome":
 		p := args["project"]
 		return p == "" || a.hostOf(p) == h
-	case strings.HasPrefix(id, "pane.") || id == "changes.toggle" || id == "files.toggle" || id == "rightSidebar.toggle":
+	case strings.HasPrefix(id, "pane.") || strings.HasPrefix(id, "changes.") || strings.HasPrefix(id, "files.") || id == "rightSidebar.toggle":
 		return a.session(a.selected) != nil && a.selectedHost() == h
 	case id == quickAction:
 		return false // this machine's screen is no other's to drop on
