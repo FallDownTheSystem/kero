@@ -421,7 +421,7 @@ func quotePath(goos, shell, path string) string {
 // tab into a pane, quoted for its shell, and puts the keyboard there.
 func (a *App) insertPath(sid, id string, d fileDrag) {
 	e := a.terms[id]
-	if e == nil || e.term == nil || a.hostOf(id).name != d.host {
+	if e == nil || e.term == nil || a.hostOf(id) != a.hostOf(d.pane) {
 		return
 	}
 	q := quotePath(runtime.GOOS, a.paneShell(id), d.path)

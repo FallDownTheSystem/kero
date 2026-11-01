@@ -30,13 +30,16 @@ type edited struct {
 
 // editTarget is a text the user edits in the viewer, and its file.
 type editTarget struct {
-	kind   string // sideFiles, or sideChanges for a diff's
-	name   string // as prompts say it
-	pane   string // a pane of the host the file is on
-	path   string // the file, on the host
-	hash   *string
-	buf    *editor.Buffer
-	edits  *edited
+	kind  string // sideFiles, or sideChanges for a diff's
+	name  string // as prompts say it
+	pane  string // a pane of the host the file is on
+	path  string // the file, on the host
+	hash  *string
+	buf   *editor.Buffer
+	edits *edited
+	// absent tells a file there is none of yet, an editor pane's, which
+	// the save makes first.
+	absent *bool
 	reload func() // reads the file anew, for the text shows it as it is
 }
 
@@ -45,7 +48,11 @@ func (t editTarget) dirty() bool { return t.buf != nil && t.buf.Modified() }
 
 // fileTarget is a file of Files the viewer shows.
 func (a *App) fileTarget(fv *fileView) editTarget {
-	t := editTarget{kind: sideFiles, name: pathBase(fv.rel), pane: fv.pane, path: fv.path, hash: &fv.hash, edits: &fv.edits,
+	name := fv.rel
+	if name == "" {
+		name = fv.path
+	}
+	t := editTarget{kind: sideFiles, name: pathBase(name), pane: fv.pane, path: fv.path, hash: &fv.hash, edits: &fv.edits, absent: &fv.absent,
 		reload: func() { fv.fetched = time.Time{} }}
 	if fv.st != nil {
 		t.buf = fv.st.Buffer
@@ -77,6 +84,9 @@ func (a *App) viewTargets(v *sideView) []editTarget {
 		}
 		return ts
 	}
+	if v.kind != sideChanges {
+		return nil
+	}
 	for _, sf := range a.side.changes.files {
 		if t := a.diffTarget(sf); t.dirty() {
 			ts = append(ts, t)
@@ -98,6 +108,11 @@ func (a *App) allTargets() []editTarget {
 	}
 	for _, sf := range a.side.changes.files {
 		if t := a.diffTarget(sf); t.dirty() {
+			ts = append(ts, t)
+		}
+	}
+	for _, fv := range a.edits {
+		if t := a.fileTarget(fv); t.dirty() {
 			ts = append(ts, t)
 		}
 	}
@@ -145,11 +160,24 @@ func (a *App) saveText(t editTarget, force bool, done func(ok bool)) {
 	}
 	text, v := bufferText(t.buf), t.buf.Version()
 	t.edits.saving = true
+	create := t.absent != nil && *t.absent
 	go func() {
 		var written string
-		err := cl.Call("fs.write", proto.FSWriteParams{Path: t.path, Hash: *t.hash, Text: text, Force: force}, &written)
+		hash := *t.hash
+		var err error
+		if create {
+			// Made empty first, unless another program made it meanwhile,
+			// which the write then finds changed.
+			if cerr := cl.Call("fs.create", proto.FSCreateParams{Path: t.path}, nil); cerr == nil {
+				hash = git.Hash(nil)
+			}
+		}
+		err = cl.Call("fs.write", proto.FSWriteParams{Path: t.path, Hash: hash, Text: text, Force: force}, &written)
 		a.update(func() {
 			t.edits.saving = false
+			if create && err == nil {
+				*t.absent = false
+			}
 			switch {
 			case err != nil && strings.Contains(err.Error(), git.ErrChanged.Error()):
 				a.askOverwrite(t, done)

@@ -139,12 +139,12 @@ func TestSidePanel(t *testing.T) {
 	}
 	tt.ClickAt(hdr.X+hdr.W/2, hdr.Y+hdr.H/2)
 	tt.Frame()
-	if !a.fileCollapsed(turnScope, ch.res.Files[0]) {
+	if !a.fileCollapsed(fileKey(turnScope, "", ch.res.Files[0].Path), ch.res.Files[0]) {
 		t.Error("a click didn't fold login.go")
 	}
 	tt.ClickAt(hdr.X+hdr.W/2, hdr.Y+hdr.H/2)
 	tt.Frame()
-	if a.fileCollapsed(turnScope, ch.res.Files[0]) {
+	if a.fileCollapsed(fileKey(turnScope, "", ch.res.Files[0].Path), ch.res.Files[0]) {
 		t.Error("a second click didn't unfold login.go")
 	}
 	tt.SetDark(true)
@@ -376,7 +376,7 @@ func TestStickyHeaderAsFoldShortensList(t *testing.T) {
 	}
 	recording = false
 	stuck = append(stuck, atTop())
-	if !a.fileCollapsed(scope, ch.res.Files[2]) {
+	if !a.fileCollapsed(fileKey(scope, "", ch.res.Files[2].Path), ch.res.Files[2]) {
 		t.Fatal("a click on the header at the top didn't fold c.go")
 	}
 	for i, f := range stuck {
@@ -454,7 +454,7 @@ func TestChangesTree(t *testing.T) {
 	if first, _ := ch.places[scope].Visible(); first == 0 {
 		t.Error("the diffs didn't open scrolled to the file")
 	}
-	if ch.current != "pkg/d1/f12.go" {
+	if ch.current != fileKey(scope, "", "pkg/d1/f12.go") {
 		t.Errorf("after a click on f12.go the tree shows %q as the file there", ch.current)
 	}
 	shot(t, tt, "side-tree-diffs")
@@ -500,7 +500,7 @@ func TestFoldAllFiles(t *testing.T) {
 		tt.Frame()
 	}
 	for _, f := range ch.res.Files {
-		if !a.fileCollapsed(scope, f) {
+		if !a.fileCollapsed(fileKey(scope, "", f.Path), f) {
 			t.Fatalf("%s stayed unfolded", f.Path)
 		}
 	}
@@ -516,7 +516,7 @@ func TestFoldAllFiles(t *testing.T) {
 	}
 	tt.Frame()
 	for _, f := range ch.res.Files {
-		if a.fileCollapsed(scope, f) {
+		if a.fileCollapsed(fileKey(scope, "", f.Path), f) {
 			t.Fatalf("%s stayed folded", f.Path)
 		}
 	}

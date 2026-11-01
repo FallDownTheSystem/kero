@@ -257,34 +257,28 @@ func (a *App) deleteEntry(h *host, it fileItem) {
 }
 
 // entryMenu is a row's menu: opening it in the app the system opens it
-// with and showing it in the file manager, for one of this machine,
-// copying its path, sending that path to the agent in the pane, a new
-// file or folder in its folder, the folder's own for a folder, and the
-// row's rename and delete.
-func (a *App) entryMenu(m *ui.Menu, s *proto.Session, pane string, it fileItem) {
-	h := a.hostOf(pane)
-	if !h.remote() {
+// with, for one of this machine; a file's opens in an editor pane and its
+// history; a new file, folder or terminal in its folder, the folder's own
+// for a folder; the row's rename and delete; then what else opens it on
+// this machine and copies its path (pathItems), and sending that path to
+// the agent in the pane. root is the tab's folder.
+func (a *App) entryMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane string, it fileItem, root string) {
+	if !a.hostOf(pane).remote() {
 		if m.Item(locales.FilesOpenDefault()).Chosen() {
 			openPath(it.path)
 		}
-		if m.Item(locales.FilesRevealIn(fileManager())).Chosen() {
-			revealPath(it.path)
-		}
 		m.Separator()
-	}
-	if m.Item(locales.FilesCopyPath()).Chosen() {
-		a.copyText = it.path
-	}
-	if m.Item(locales.FilesCopyRelPath()).Chosen() {
-		a.copyText = it.rel
-	}
-	m.Separator()
-	if m.Item(locales.FilesSendToAgent()).Chosen() {
-		a.insertPath(s.ID, pane, fileDrag{host: h.name, path: it.path})
 	}
 	dir, rel := it.parent, it.parentRel
 	if it.Dir {
 		dir, rel = it.path, it.rel
+	}
+	if !it.Dir {
+		a.paneItems(m, pane, it.path, 0)
+		if g := a.paneGit(pane); g != nil && g.Root == root && m.Item(locales.FilesShowHistory()).Chosen() {
+			a.showHistory(it.rel)
+		}
+		m.Separator()
 	}
 	if m.Item(locales.FilesNewFile()).Chosen() {
 		a.startCreate(s, pane, dir, rel, false)
@@ -292,11 +286,20 @@ func (a *App) entryMenu(m *ui.Menu, s *proto.Session, pane string, it fileItem) 
 	if m.Item(locales.FilesNewFolder()).Chosen() {
 		a.startCreate(s, pane, dir, rel, true)
 	}
+	if it.Dir && m.Item(locales.FilesNewTerminal()).Chosen() {
+		a.terminalIn(pane, dir)
+	}
 	m.Separator()
 	if m.Item(locales.FilesRename()).Chosen() {
 		a.startRenameEntry(s, pane, it)
 	}
 	if m.Item(locales.FilesDeleteItem()).Chosen() {
 		a.askDelete(pane, it)
+	}
+	m.Separator()
+	a.pathItems(c, m, pane, it.path, it.rel, it.Dir)
+	// Typed in the agent's pane, as dragging the row there does.
+	if m.Item(locales.FilesSendToAgent()).Chosen() {
+		a.insertPath(s.ID, pane, fileDrag{pane: pane, path: it.path, dir: it.Dir})
 	}
 }

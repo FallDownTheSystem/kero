@@ -25,6 +25,8 @@ kero new -n api -d ~/code/api    # セッションを開始し、その ID を�
 kero new -- npm run dev          # コマンドを実行するセッションを開始
 kero split --down -- npm test    # このペインの横にペイン
 kero split --url localhost:3000  # ページを表示するブラウザペイン
+kero split --file src/main.go    # ファイルのエディタペイン
+kero new --file notes/plan.md    # 独立したエディタセッション。保存時にファイルを作成
 kero rename api backend          # セッション名を変更
 kero focus backend               # アプリで表示
 kero close backend               # セッションを終える（ペインを指定するとそのペイン）
@@ -42,6 +44,7 @@ kero restart <pane>              # 終了したペインのシェルを再び開
 | `-f`, `--focus`             | アプリで表示する                                |
 | `-w`, `--wait`              | コマンドの終了を待ち、その終了ステータスで終了する |
 | `-u`, `--url <url>`         | シェルの代わりに、ページを表示するブラウザを開く |
+| `--file <path>`             | シェルの代わりに、ファイルのエディタを開く      |
 | `--worktree <branch>`       | 専用の git ワークツリーで、新しいブランチで開始する（[詳しく](./changes.md#sessions-in-their-own-worktree)） |
 | `--base <ref>`              | ワークツリーのブランチの起点（既定: デフォルトブランチ） |
 
@@ -189,6 +192,22 @@ kero diff review --branch                 # デフォルトブランチ以降
 
 [変更](./changes.md)を参照してください。
 
+## 下書きのレビュー
+
+プルリクエストをレビューするエージェントは、コメントを[下書きのレビュー](./changes.md#draft-reviews)に書き、それを Kero から投稿します。行はプルリクエストのヘッドでのファイルの行 (`--base` ではベースの行) で、プルリクエストの差分の中にある必要があります:
+
+```sh
+kero pr comment src/parse.go:42 "This drops the last token."
+kero pr comment src/parse.go:40-44 -      # 本文は標準入力から
+kero pr comment src/api.go "Split this file?"   # ファイル全体
+kero pr summary "Two bugs in the parser."
+kero pr show                              # 下書きと、各コメントの id
+kero pr edit 3 "Clearer text"
+kero pr delete 3
+```
+
+Kero から始めたレビューでは、ペインがそのプルリクエストを知っています。それ以外では `--pr <番号>` で指定します。
+
 ## 構成とセットアップ
 
 ```sh
@@ -234,7 +253,10 @@ kero actions                     # 一覧を表示
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
+kero do files.show path=src/main.go
 ```
+
+相対パスの `path=` または `dir=` は、`kero do` を実行したディレクトリを基準にします。
 
 ## 終了ステータス
 

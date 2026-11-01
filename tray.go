@@ -82,7 +82,7 @@ func (a *App) applyTray() {
 }
 
 // trayMenu is the icon's menu: the window, Keep computer awake, Settings,
-// updates, and quitting.
+// updates, and quitting, keeping the sessions or ending them.
 func (a *App) trayMenu() *mygo.Menu {
 	// The updater's window in front, as from the menu bar alone, where the
 	// app may not be.
@@ -92,7 +92,7 @@ func (a *App) trayMenu() *mygo.Menu {
 		mygo.App.Focus()
 		click(it, w)
 	}
-	return mygo.NewMenu([]*mygo.MenuItem{
+	items := []*mygo.MenuItem{
 		{Label: locales.TrayOpen(mygo.App.Name()), Click: func(*mygo.MenuItem, *mygo.Window) { a.showWindow() }},
 		{Label: actionTitle(quickAction), Click: func(*mygo.MenuItem, *mygo.Window) { a.update(a.showQuick) }},
 		mygo.Separator(),
@@ -104,7 +104,13 @@ func (a *App) trayMenu() *mygo.Menu {
 		check,
 		mygo.Separator(),
 		{Label: locales.MenuQuitApp(mygo.App.Name()), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
-	})
+		// It asks first, in the window.
+		{Label: actionTitle("app.quitAll"), Click: func(*mygo.MenuItem, *mygo.Window) {
+			a.showWindow()
+			a.update(a.quitAndEnd)
+		}},
+	}
+	return mygo.NewMenu(items)
 }
 
 // showWindow brings the main window to the front, made anew if it was

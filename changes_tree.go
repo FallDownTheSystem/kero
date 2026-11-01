@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -82,14 +83,52 @@ func treeItems(nodes []*treeNode, closed func(dir string) bool) []treeItem {
 	return items
 }
 
-// changesTree is the tree of the files the Changes tab lists.
+// treeCache is the tree of a list's files, and the list it was made of.
+type treeCache struct {
+	of    []proto.GitFile
+	nodes []*treeNode
+}
+
+// sectionTree is the tree of a section's files, made again only as its
+// list changes.
+func (a *App) sectionTree(section string, files []proto.GitFile) []*treeNode {
+	ch := &a.side.changes
+	if ch.trees == nil {
+		ch.trees = map[string]treeCache{}
+	}
+	t, ok := ch.trees[section]
+	if !ok || !slices.Equal(t.of, files) {
+		t = treeCache{of: files, nodes: fileTree(files)}
+		ch.trees[section] = t
+	}
+	return t.nodes
+}
+
+// sideRow is a row of the Changes tab's tree: a section's title, in
+// Uncommitted, or a folder or file of a section.
+type sideRow struct {
+	section string
+	title   bool
+	files   []proto.GitFile // the section's
+	treeItem
+}
+
+// changesTree is the tree of the files the Changes tab lists, in
+// Uncommitted under their sections' titles, with the buttons that stage,
+// unstage and discard them.
 func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *changesFrame) {
 	ch := &a.side.changes
-	res, scope := cf.list, cf.scope
-	if ch.treeOf != res {
-		ch.tree, ch.treeOf = fileTree(res.Files), res
+	scope := cf.scope
+	var rows []sideRow
+	for _, sec := range cf.sections() {
+		if sec.name != "" {
+			rows = append(rows, sideRow{section: sec.name, title: true, files: sec.files})
+		}
+		nodes := a.sectionTree(sec.name, sec.files)
+		for _, it := range treeItems(nodes, func(dir string) bool { return ch.treeClosed[fileKey(scope, sec.name, dir)] }) {
+			rows = append(rows, sideRow{section: sec.name, files: sec.files, treeItem: it})
+		}
 	}
-	items := treeItems(ch.tree, func(dir string) bool { return ch.treeClosed[scope+"|"+dir] })
 
 	// The file there, while the viewer shows the diffs: the one whose diff
 	// is at the top; at the end of the list, where the file chosen last
@@ -97,15 +136,12 @@ func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *cha
 	cur := ""
 	if ls := cf.ls; ls != nil {
 		first, last := ls.Visible()
-		if first >= 0 && first < len(cf.rows) {
-			cur = cf.rows[first].f.Path
+		if first >= 0 && first < len(cf.rows) && !cf.rows[first].title {
+			r := cf.rows[first]
+			cur = fileKey(scope, r.section, r.f.Path)
 		}
-		if ch.picked != "" && ls.AtEnd() {
-			for i, f := range res.Files {
-				if f.Path == ch.picked && cf.heads[i] >= first && cf.heads[i] <= last {
-					cur = f.Path
-				}
-			}
+		if i, ok := cf.heads[ch.picked]; ok && ls.AtEnd() && i >= first && i <= last {
+			cur = ch.picked
 		}
 	}
 
@@ -117,37 +153,86 @@ func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *cha
 		tl = &ui.ListState{}
 		ch.treePlaces[scope] = tl
 	}
-	tl.Key = func(i int) any { return treeKey{items[i].path, items[i].file < 0} }
+	tl.Key = func(i int) any {
+		r := rows[i]
+		if r.title {
+			return [2]string{"title", r.section}
+		}
+		return [2]any{r.section, treeKey{r.path, r.file < 0}}
+	}
 	if cur != ch.current {
 		ch.current = cur
-		for i, it := range items {
-			if it.file >= 0 && it.path == cur {
+		for i, r := range rows {
+			if !r.title && r.file >= 0 && fileKey(scope, r.section, r.path) == cur {
 				tl.ScrollIntoView(i)
 			}
 		}
 	}
-	ui.List(c.Key("tree"), tl, len(items), func(i int) {
-		it := items[i]
-		if it.file < 0 {
-			a.treeFolder(c, pal, it.name, it.path, it.depth, it.open, false, func() {
+	here, ix := cf.here, cf.ix
+	ui.List(c.Key("tree"), tl, len(rows), func(i int) {
+		r := rows[i]
+		if r.title {
+			a.indexTitle(c, pal, here, ix, r.section)
+			return
+		}
+		if r.file < 0 {
+			var tools func()
+			if r.section != "" {
+				dir := r.path
+				tools = func() { a.indexListTools(c, pal, here, r.section, r.files, dir) }
+			}
+			row := a.treeFolder(c, pal, r.name, r.path, r.depth, r.open, false, func() {
 				if ch.treeClosed == nil {
 					ch.treeClosed = map[string]bool{}
 				}
-				ch.treeClosed[scope+"|"+it.path] = it.open
-			})
+				ch.treeClosed[fileKey(scope, r.section, r.path)] = r.open
+			}, tools)
+			if menu := a.ignoreItems(cf, r.section, r.path, true); menu != nil {
+				row.ContextMenu(menu)
+			}
 			return
 		}
-		f := res.Files[it.file]
-		a.treeFile(c, pal, it, f, f.Path == cur, func() {
-			ch.picked = f.Path
+		f := r.files[r.file]
+		key := fileKey(scope, r.section, f.Path)
+		var tools func()
+		if r.section != "" {
+			tools = func() { a.indexTools(c, pal, here, ix, r.section, f) }
+		}
+		row := a.treeFile(c, pal, r.treeItem, f, key == cur, func() {
+			ch.picked = key
 			a.focusViewer()
-			if cf.ls != nil {
-				cf.ls.ScrollTo(cf.heads[it.file], ui.Start)
+			if i, ok := cf.heads[key]; ok && cf.ls != nil {
+				cf.ls.ScrollTo(i, ui.Start)
 				return
 			}
-			ch.reveal = f.Path
+			ch.reveal = key
 			a.openView(s, sideChanges, nil)
-		})
+		}, tools)
+		// Its menu opens it, and adds it to .gitignore; it drags onto a
+		// pane, to open there (paneCard).
+		full := joinRel(cf.list.Root, f.Path)
+		gone := f.Status == "deleted" || cf.list.Root == ""
+		menu := a.ignoreItems(cf, r.section, f.Path, false)
+		pid := cf.pane.ID
+		if !gone || menu != nil {
+			row.ContextMenu(func(m *ui.Menu) {
+				if !gone {
+					a.openItems(m, pid, full, 0)
+				}
+				if menu != nil {
+					if !gone {
+						m.Separator()
+					}
+					menu(m)
+				}
+			})
+		}
+		if !gone {
+			row.Drag(fileDrag{pane: pid, path: full})
+			if row.Dragging() {
+				row.Opacity(0.4)
+			}
+		}
 	}).Grow(1).MinHeight(0).Padding(0, 10, 16, 10)
 }
 
@@ -178,8 +263,9 @@ func treeRow(c *ui.Context, pal *palette, depth int, current bool) ui.Element {
 
 // treeFolder is a folder of a tree, which a click folds or unfolds;
 // faded, it is one git ignores.
-func (a *App) treeFolder(c *ui.Context, pal *palette, name, tip string, depth int, open, faded bool, toggle func()) ui.Element {
+func (a *App) treeFolder(c *ui.Context, pal *palette, name, tip string, depth int, open, faded bool, toggle func(), tools func()) ui.Element {
 	row := treeRow(c, pal, depth, false).Tooltip(tip)
+	hovered := row.Hovered()
 	if faded {
 		row.Opacity(0.55)
 	}
@@ -188,21 +274,28 @@ func (a *App) treeFolder(c *ui.Context, pal *palette, name, tip string, depth in
 	}
 	row.Children(func() {
 		chev := ui.Icon(c, chevronIcon).Size(9, 9).TextColor(pal.textFaint).Shrink(0)
-		chev.Rotate(chev.AnimateTo("turn", 90*b2f(open), ui.Snappy))
+		chev.Rotate(chev.AnimateTo("turn", 90*b2f(open), chevronTurn))
 		fileIconImage(c, pal, name, true, open)
-		ui.Text(c, name).FontSize(12.5).TextColor(pal.textMuted).SingleLine().Ellipsis("…").MinWidth(0)
+		ui.Text(c, name).FontSize(12.5).TextColor(pal.textMuted).SingleLine().Ellipsis("…").MinWidth(0).Grow(1)
+		// Its buttons, as the pointer is over it.
+		if tools != nil && hovered {
+			ui.Row(c.Key("tools")).Height(24).Gap(0).AlignItems(ui.Center).Shrink(0).Margin(0, -6, 0, 0).Children(tools)
+		}
 	})
 	return row
 }
 
 // treeFile is a changed file of the tree: its icon, its name, and its
-// change as a letter in its color at the right, as VS Code shows them.
-func (a *App) treeFile(c *ui.Context, pal *palette, it treeItem, f proto.GitFile, current bool, pick func()) {
+// change as a letter in its color at the right, as VS Code shows them;
+// tools, when set, draws its buttons before the letter, as the pointer is
+// over it.
+func (a *App) treeFile(c *ui.Context, pal *palette, it treeItem, f proto.GitFile, current bool, pick func(), tools func()) ui.Element {
 	tip := f.Path
 	if f.OldPath != "" {
 		tip = f.OldPath + " → " + f.Path
 	}
 	row := treeRow(c, pal, it.depth, current).Tooltip(tip)
+	hovered := row.Hovered()
 	if row.Clicked() {
 		pick()
 	}
@@ -214,7 +307,11 @@ func (a *App) treeFile(c *ui.Context, pal *palette, it treeItem, f proto.GitFile
 			fg = pal.textMuted
 		}
 		ui.Text(c, it.name).FontSize(12.5).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0).Grow(1)
-		letter, col := a.statusLetter(pal, f.Status)
+		if tools != nil && hovered {
+			ui.Row(c.Key("tools")).Height(24).Gap(0).AlignItems(ui.Center).Shrink(0).Children(tools)
+		}
+		letter, col := a.statusLetter(c, pal, f.Status)
 		ui.Text(c, letter).FontSize(10.5).FontWeight(650).TextColor(col).SingleLine().Shrink(0)
 	})
+	return row
 }

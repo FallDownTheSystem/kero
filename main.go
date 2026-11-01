@@ -136,6 +136,7 @@ func runApp() {
 		a.applyGlobalShortcuts()
 		a.idleTime = mygo.Power.IdleTime
 		go a.watchReturn()
+		go a.watchPulls()
 		a.connect()
 		a.syncHosts()
 		go a.watchConfig()

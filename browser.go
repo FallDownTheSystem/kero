@@ -206,6 +206,15 @@ func (a *App) isBrowser(id string) bool {
 	return false
 }
 
+// isTerminal reports whether a pane is a terminal's, as one the app does
+// not know yet is: neither a browser's nor an editor's.
+func (a *App) isTerminal(id string) bool {
+	if s := a.sessionOfPane(id); s != nil {
+		return s.PaneByID(id).Terminal()
+	}
+	return true
+}
+
 // openBrowser opens a browser pane beside the pane the user is in, or the
 // address bar of the browser they are in.
 func (a *App) openBrowser(url string) {
@@ -331,13 +340,15 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			gap.DragWindow()
 			rest.DragWindow()
 		}
-		// The room past the address bar takes the buttons as they show.
-		// The button that shows the right sidebar sits by the pane's own,
+		// The room past the address bar takes the buttons as they show,
+		// folded in a narrow pane, which keeps the address its room. The
+		// buttons of the window's top right corner sit by the pane's own,
 		// as one row of buttons.
+		room := a.headerRoom(c, p, pad, 3*controlW+8+browserAddressRoom, top && right, multi)
 		ui.Row(c.Key("buttons")).AlignItems(ui.Center).Children(func() {
-			a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi)
+			a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold)
 			if top && right {
-				a.showRightButton(c, pal)
+				a.cornerButtons(c, pal, "-h")
 			}
 		})
 		if top && right {

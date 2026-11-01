@@ -12,7 +12,8 @@ Files and History tabs) and its viewer card, rather than beside them:
 - Files tab: a toolbar (New File, New Folder, a filter, Refresh, Collapse
   Folders), hidden files per Settings, a fuller right-click menu (Open in
   Pane, Show History, New Terminal Here, Open With, Show in file manager,
-  copy paths), dragging files onto panes, and `kero do files.show`. A file
+  copy paths), keys to move in the tree, dragging files onto panes, and
+  `kero do files.show`. A file
   opens in upstream's viewer, with Markdown preview, images, zoom and an
   Open in Pane button.
 - Editor panes: a file in a pane of its own, opened from the Files menu,

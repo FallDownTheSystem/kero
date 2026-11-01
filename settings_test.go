@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
+	"kero/internal/commitmsg"
+	"kero/internal/proto"
 	"kero/internal/settings"
 
 	"kero/locales"
@@ -42,13 +45,111 @@ func TestSettingsPages(t *testing.T) {
 	}
 }
 
+// The commit message command's text names its placeholder as it is
+// typed, which the catalog's braces would take for its own.
+func TestCommitMessagePlaceholder(t *testing.T) {
+	for _, loc := range []string{"en", "ja", "zh-Hans"} {
+		if s := locales.In(loc).SetCommitMessageDetail(); !strings.Contains(s, commitmsg.SessionPlaceholder) {
+			t.Errorf("%s: %q", loc, s)
+		}
+	}
+}
+
+// The review setup's text names the placeholders as they are typed.
+func TestReviewPlaceholders(t *testing.T) {
+	for _, loc := range []string{"en", "ja", "zh-Hans"} {
+		s := locales.In(loc).PrsSetupPlaceholders()
+		for _, p := range []string{"{number}", "{url}", "{title}", "{branch}", "{base}", "{author}", "{ticket}"} {
+			if !strings.Contains(s, p) {
+				t.Errorf("%s: no %s in %q", loc, p, s)
+			}
+		}
+	}
+}
+
+// The commit message's prompt shows the default's words until the user
+// changes them, which are kept as the field loses the focus; Reset to
+// Default goes back to the default, kept as none.
+func TestCommitPromptSetting(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "git"
+	tt := ui.NewTester(a.settingsView, 820, 1600)
+	tt.Frame()
+	shot(t, tt, "settings-prompts")
+	if a.ss.prompts[0].text != commitmsg.DefaultCommitPrompt {
+		t.Fatalf("the field has %q", a.ss.prompts[0].text)
+	}
+	if tt.HasText("Reset to Default") {
+		t.Error("Reset to Default shows for the default")
+	}
+	detail, ok := tt.Find(locales.SetCommitPromptDetail())
+	if !ok {
+		t.Fatal("no prompt row")
+	}
+	tt.ClickAt(detail.X+40, detail.Y+detail.H+40)
+	tt.Frame()
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Type("Write it in French.")
+	tt.Frame()
+	if a.set.CommitMessagePrompt != "" {
+		t.Errorf("kept as typed: %q", a.set.CommitMessagePrompt)
+	}
+	if err := tt.Click("Diffs"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if a.set.CommitMessagePrompt != "Write it in French." {
+		t.Fatalf("kept %q", a.set.CommitMessagePrompt)
+	}
+	if err := tt.Click("Reset to Default"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if a.set.CommitMessagePrompt != "" || a.ss.prompts[0].text != commitmsg.DefaultCommitPrompt {
+		t.Errorf("after the reset: %q", a.set.CommitMessagePrompt)
+	}
+}
+
+// Each agent's resume command is typed on the Agents page, and kept as
+// its field loses the focus; its text names its placeholder.
+func TestResumeCommandSetting(t *testing.T) {
+	for _, loc := range []string{"en", "ja", "zh-Hans"} {
+		if s := locales.In(loc).SetResumeCommandsDetail(); !strings.Contains(s, settings.SessionPlaceholder) {
+			t.Errorf("%s: %q", loc, s)
+		}
+	}
+	a := testApp(t)
+	a.ss.page = "agents"
+	tt := ui.NewTester(a.settingsView, 820, 1400)
+	tt.Frame()
+	if err := tt.Click("claude --resume {session}"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("cc --yolo --resume {session}")
+	tt.Frame()
+	if a.set.ResumeClaude != "" {
+		t.Errorf("kept as typed: %q", a.set.ResumeClaude)
+	}
+	if err := tt.Click("codex resume {session}"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	if a.set.ResumeClaude != "cc --yolo --resume {session}" || a.set.ResumeCodex != "" {
+		t.Errorf("Claude Code's %q, Codex's %q", a.set.ResumeClaude, a.set.ResumeCodex)
+	}
+	shot(t, tt, "settings-resume")
+}
+
 // A shortcut is typed into its chip, saved, and takes the keys from the
 // action that had them.
 func TestRecordShortcut(t *testing.T) {
 	a := testApp(t)
 	a.ss.draft = map[string]string{}
 	a.ss.page = "keyboard"
-	tt := ui.NewTester(a.settingsView, 820, 1100)
+	// Tall enough for the shortcuts down to the Pane menu's.
+	tt := ui.NewTester(a.settingsView, 820, 1300)
 	tt.Frame()
 	if err := tt.Click("Shortcut for Split Right"); err != nil {
 		t.Fatal(err)
@@ -130,6 +231,42 @@ func TestThemePerAppearance(t *testing.T) {
 		t.Errorf("saved %q and %q", saved.LightTheme, saved.DarkTheme)
 	}
 	shot(t, tt, "theme-per-appearance")
+}
+
+// Each kind of pane fades or not as its segment of Dim unfocused says, on
+// its own, and the choice is saved.
+func TestDimToggles(t *testing.T) {
+	a := testApp(t)
+	a.ss.page = "appearance"
+	// Tall enough for the whole page, the toggles at its end unscrolled.
+	tt := ui.NewTester(a.settingsView, 820, 1200)
+	tt.Frame()
+	for _, label := range []string{"Dim unfocused: Terminal", "Dim unfocused: Web"} {
+		if err := tt.Click(label); err != nil {
+			t.Fatal(err)
+		}
+		for range 3 {
+			tt.Frame()
+		}
+	}
+	if a.set.DimUnfocused || a.set.DimFiles || !a.set.DimWeb || a.set.DimExplorer {
+		t.Fatalf("terminal %v, files %v, web %v, explorer %v: want web alone", a.set.DimUnfocused, a.set.DimFiles, a.set.DimWeb, a.set.DimExplorer)
+	}
+	if s := settings.Load(); s.DimUnfocused || !s.DimWeb {
+		t.Fatalf("saved terminal %v, web %v", s.DimUnfocused, s.DimWeb)
+	}
+	for _, c := range []struct {
+		p    proto.Pane
+		want bool
+	}{
+		{proto.Pane{}, false},
+		{proto.Pane{File: "/tmp/a.go"}, false},
+		{proto.Pane{URL: "https://example.com"}, true},
+	} {
+		if got := a.dims(&c.p); got != c.want {
+			t.Errorf("%+v dims %v: want %v", c.p, got, c.want)
+		}
+	}
 }
 
 // Dark pages, and the plain background, for a look ($KERO_SHOTS).
@@ -396,7 +533,7 @@ func TestPopupButtons(t *testing.T) {
 		// The theme picker, under Appearance: typing filters, Return
 		// chooses.
 		a.ss.page = "appearance"
-		tt.SetSize(820, 1400) // under both rows of themes
+		tt.SetSize(820, 1900) // under both rows of themes, and the Explorer's settings above them
 		tt.Frame()
 		if err := tt.Click("None"); err != nil {
 			t.Fatal(err)

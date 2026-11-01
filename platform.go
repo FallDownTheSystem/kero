@@ -27,8 +27,72 @@ func fileManager() string {
 // openPath opens a file or folder in the app that opens it.
 func openPath(path string) { mygo.Shell.OpenPath(path) }
 
+// openURL opens a web page in the system's browser; a variable, which
+// tests replace, as no test opens a browser.
+var openURL = func(url string) {
+	allowForeground()
+	mygo.Shell.OpenExternal(url)
+}
+
 // revealPath shows a file in the file manager.
 func revealPath(path string) { mygo.Shell.ShowItemInFolder(path) }
+
+// openInEditor opens a file or folder with editor, a command as the
+// configuration's editor holds it, as "code" or `"C:\Tools\zed.exe" -n`,
+// with the path after its words; an empty one opens a file as openPath
+// does, and a folder in folderEditor.
+func openInEditor(editor, path string) error {
+	words := commandWords(editor)
+	if len(words) == 0 {
+		if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+			if exe := folderEditor(); exe != "" {
+				words = []string{exe}
+			}
+		}
+	}
+	if len(words) == 0 {
+		allowForeground()
+		openPath(path)
+		return nil
+	}
+	cmd := exec.Command(words[0], append(words[1:], path)...)
+	// An editor's launcher is often a script, as VS Code's code.cmd,
+	// whose console would flash up.
+	hideConsole(cmd)
+	allowForeground()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait()
+	return nil
+}
+
+// commandWords splits a command into its words at spaces, but those
+// within double quotes, which go: a Windows path keeps its backslashes.
+func commandWords(s string) []string {
+	var words []string
+	var b strings.Builder
+	quoted, word := false, false
+	for _, r := range s {
+		switch {
+		case r == '"':
+			quoted, word = !quoted, true
+		case (r == ' ' || r == '\t') && !quoted:
+			if word {
+				words = append(words, b.String())
+				b.Reset()
+			}
+			word = false
+		default:
+			b.WriteRune(r)
+			word = true
+		}
+	}
+	if word {
+		words = append(words, b.String())
+	}
+	return words
+}
 
 // openTextFile opens a text file, as the configuration, which has no
 // extension to tell its app by, in the text editor.

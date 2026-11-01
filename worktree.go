@@ -23,15 +23,21 @@ type worktreeAsk struct {
 // newWorktreeSession asks a branch's name for a session in a worktree of
 // its own, of the repository of the session the user is in, else of its
 // host's first project.
-func (a *App) newWorktreeSession() {
-	h := a.selectedHost()
+func (a *App) newWorktreeSession() { a.newWorktreeSessionOn(a.selectedHost(), "", "") }
+
+// newWorktreeSessionOn asks it for a session on h: in project, of the
+// repository at dir, when the user isn't in a session of it; "" for the
+// session the user is in.
+func (a *App) newWorktreeSessionOn(h *host, project, dir string) {
 	if h.cl == nil {
 		a.toast(locales.HostNotConnected(h.label()))
 		return
 	}
-	var p proto.CreateParams
+	p := proto.CreateParams{Project: project, Dir: dir}
 	if cur := a.session(a.selected); cur != nil && a.hostOf(cur.ID) == h {
-		p.Project, p.After, p.Dir = cur.Project, cur.ID, cur.FocusPane().WorkDir()
+		if project == "" || cur.Project == project {
+			p.Project, p.After, p.Dir = cur.Project, cur.ID, cur.FocusPane().WorkDir()
+		}
 		p.Cols, p.Rows = cur.Cols, cur.Rows
 	}
 	if a.set.WorktreeBase == "current" {
