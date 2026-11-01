@@ -10,6 +10,7 @@ require (
 	github.com/ebitengine/purego v0.11.1
 	github.com/egoist/mygo v0.9.1-0.20261114072636-ec96dbe0c477
 	github.com/hashicorp/yamux v0.1.2
+	golang.org/x/net v0.59.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/term v0.47.0
 )
@@ -23,6 +24,7 @@ require (
 	go.digitalxero.dev/rpm v0.3.4 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/image v0.46.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )
+
+replace github.com/egoist/mygo => github.com/FallDownTheSystem/mygo v0.0.0-20261031090941-7a02a93576c0
