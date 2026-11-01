@@ -1,9 +1,10 @@
 // Package git reads what kero shows of git: a worktree's branch and
 // changes, trees of its working tree as it was (snapshots), and its files
-// changed since one. It runs the user's git, and writes nothing to a
-// repository's index or working tree: snapshots go through an index of
-// their own, and every command takes --no-optional-locks, so that an agent
-// committing never finds kero holding index.lock.
+// changed since one. It runs the user's git, and on its own writes nothing
+// to a repository's index or working tree: snapshots go through an index
+// of their own, and every command takes --no-optional-locks, so that an
+// agent committing never finds kero holding index.lock. What it writes at
+// the user's word, as a commit, is in ops.go.
 package git
 
 import (
@@ -72,10 +73,9 @@ func runInput(ctx context.Context, dir string, env []string, stdin []byte, args 
 		if ctx.Err() != nil {
 			return out, fmt.Errorf("git %s: %w", args[0], ctx.Err())
 		}
-		msg := strings.TrimSpace(stderr.String())
-		if i := strings.IndexByte(msg, '\n'); i >= 0 {
-			msg = msg[:i]
-		}
+		// Git prints its progress first, as "Preparing worktree ...", and
+		// the line that says what went wrong after it.
+		msg := (&Error{Output: stderr.String()}).Summary()
 		return out, fmt.Errorf("git %s: %w: %s", args[0], err, msg)
 	}
 	return out, nil
@@ -143,6 +143,8 @@ type Status struct {
 	Files   int
 	Added   int
 	Removed int
+	// Staged counts the files of the index's changes since HEAD.
+	Staged int
 	// State is an operation in progress: "merge", "rebase",
 	// "cherry-pick" or "revert".
 	State string
@@ -180,10 +182,18 @@ func (r Repo) Status(ctx context.Context) (Status, error) {
 					st.Behind = v
 				}
 			}
-		case f[0] == '1' || f[0] == 'u':
+		case f[0] == 'u':
 			st.Files++
+		case f[0] == '1':
+			st.Files++
+			if len(f) > 2 && f[2] != '.' {
+				st.Staged++
+			}
 		case f[0] == '2':
 			st.Files++
+			if len(f) > 2 && f[2] != '.' {
+				st.Staged++
+			}
 			i++ // the path it was renamed from
 		case f[0] == '?':
 			st.Files++
@@ -248,10 +258,8 @@ func countLines(path string) int {
 // goes into: origin's HEAD, else main or master, "" when none of these
 // is. It reads the refs' files, running nothing.
 func (r Repo) DefaultBranch() string {
-	if b, err := os.ReadFile(filepath.Join(r.Common, "refs", "remotes", "origin", "HEAD")); err == nil {
-		if ref, ok := strings.CutPrefix(strings.TrimSpace(string(b)), "ref: refs/remotes/origin/"); ok {
-			return ref
-		}
+	if b := r.remoteHead("origin"); b != "" {
+		return b
 	}
 	for _, name := range []string{"main", "master"} {
 		if r.hasRef("refs/heads/" + name) {
