@@ -25,6 +25,7 @@ import (
 	"kero/internal/adblock"
 	"kero/internal/cli"
 	"kero/internal/client"
+	"kero/internal/commitmsg"
 	"kero/internal/proto"
 	"kero/internal/settings"
 	"kero/internal/shell"
@@ -44,6 +45,8 @@ var settingsPages = []settingsPage{
 	{"general", locales.PageGeneral, glyph("f7-gear-alt"), false},
 	{"appearance", locales.PageAppearance, glyph("f7-paintbrush"), false},
 	{"terminal", locales.PageTerminal, terminalIcon, false},
+	{"files", locales.PageFiles, folderIcon, false},
+	{"git", locales.PageGit, branchIcon, false},
 	{"shell", locales.PageShell, glyph("f7-chevron-left-slash-chevron-right"), false},
 	{"browser", locales.PageBrowser, globeIcon, false},
 	{"notifications", locales.PageNotifications, glyph("f7-bell"), false},
@@ -55,34 +58,45 @@ var settingsPages = []settingsPage{
 
 // settingsState is what the Settings window keeps besides the settings.
 type settingsState struct {
-	page       string
-	recording  string // the action whose shortcut is being typed
-	recordRef  ui.Handle
-	filter     string // the keyboard page's search
-	query      string // the sidebar's search, of every page
-	searchRef  ui.Handle
-	revealed   string // the query and page the search last scrolled to
-	draft      map[string]string
-	envDraft   string
-	shellDraft string
+	page         string
+	recording    string // the action whose shortcut is being typed
+	recordRef    ui.Handle
+	filter       string // the keyboard page's search
+	query        string // the sidebar's search, of every page
+	searchRef    ui.Handle
+	revealed     string // the query and page the search last scrolled to
+	draft        map[string]string
+	envDraft     string
+	shellDraft   string
+	shellEditing bool
 	// featuresDraft is font-feature as the field has it, while
 	// featuresEditing.
 	featuresDraft   string
 	featuresEditing bool
-	shellEditing    bool
-	loginOpen       bool // open at login, as the system says
-	updates         updatePrefs
-	cliPath         string
-	service         string // kerod, as last asked
-	notice          string // a line under the keyboard page, as of a conflict
-	toast           string
-	menus           map[string]*searchMenu     // the search menus', by key
-	problems        []string                   // what the configuration file got wrong
-	scrolls         map[string]*ui.ScrollState // each page's, for its scroll edge
-	host            hostDraft                  // the Hosts page's form
-	hostEdit        hostDraft                  // a host's, as the user edits it
-	tailnet         tailnetLook                // this machine on the tailnet, for the Hosts page
-	confirm         *confirmation              // a question, asked in this window
+	editorDraft     string
+	editorEdit      bool
+	messageDraft    string
+	messageEdit     bool
+	// prompts are the commit message's and the pull request's prompts as
+	// typed, kept while their fields have the focus.
+	prompts [3]promptDraft
+	// resumeDraft is each agent's resume command as typed, and
+	// resumeEdit the agent whose field has the focus.
+	resumeDraft map[string]*string
+	resumeEdit  string
+	loginOpen   bool // open at login, as the system says
+	updates     updatePrefs
+	cliPath     string
+	service     string // kerod, as last asked
+	notice      string // a line under the keyboard page, as of a conflict
+	toast       string
+	menus       map[string]*searchMenu     // the search menus', by key
+	problems    []string                   // what the configuration file got wrong
+	scrolls     map[string]*ui.ScrollState // each page's, for its scroll edge
+	host        hostDraft                  // the Hosts page's form
+	hostEdit    hostDraft                  // a host's, as the user edits it
+	tailnet     tailnetLook                // this machine on the tailnet, for the Hosts page
+	confirm     *confirmation              // a question, asked in this window
 	// preview is the Terminal page's sample terminal, made once
 	// previewLoad, which waits for terminal.Load off the main thread,
 	// gives its result; previewText is its text, for assistive technology.
@@ -92,6 +106,9 @@ type settingsState struct {
 	previewFont  terminal.Font
 	previewTheme terminal.Theme
 	previewError error
+	listed       map[string]*terminal.Theme // the themes the menus listed, by name
+	themeEdit    *themeDraft                // the theme being edited
+	previewing   themePreview               // the themes the page being built previews
 }
 
 // openSettings shows the Settings window, on a page.
@@ -116,6 +133,7 @@ func (a *App) openSettings(page string) {
 		}
 	})
 	a.ss.draft = map[string]string{}
+	a.ss.listed = nil // the theme files may have changed since
 	a.refreshAgents()
 	a.refreshService()
 	a.setWin = mygo.NewWindow(framed(mygo.WindowOptions{
@@ -134,6 +152,10 @@ func (a *App) openSettings(page string) {
 		a.setWin = nil
 		a.setRecording("") // the menus take their shortcuts back
 		a.ss.query = ""
+		// A theme edited and not saved is gone, and the terminals show the
+		// themes chosen again.
+		a.ss.themeEdit = nil
+		a.setPreview(themePreview{})
 	})
 }
 
@@ -267,12 +289,18 @@ func (a *App) settingsView(c *ui.Context) {
 				box := ui.Box(c.Key("page")).Grow(1).MinHeight(0)
 				_, py, over := box.PointerPosition()
 				edgeOn := sc.Y > 0.5 || over && py < headerH
+				// The page previews themes as it is built, none unless it does.
+				a.ss.previewing = themePreview{}
 				box.Children(func() {
 					ui.Scroll(c.Key("page-"+page.id)).Fill().Padding(headerH+16, 24, 28, 24).ScrollbarInsets(headerH, 0, 0).TrackScroll(sc).Children(func() {
 						ui.Column(c).Gap(22).MaxWidth(620).Children(func() {
 							switch page.id {
 							case "general":
 								a.generalPage(c, pal)
+							case "files":
+								a.filesPage(c, pal)
+							case "git":
+								a.gitPage(c, pal)
 							case "appearance":
 								a.appearancePage(c, pal)
 							case "terminal":
@@ -319,6 +347,7 @@ func (a *App) settingsView(c *ui.Context) {
 	if !reflect.DeepEqual(a.set, a.applied) {
 		a.applySettings(a.set)
 	}
+	a.setPreview(a.ss.previewing)
 }
 
 // searchSettings applies the sidebar's search: it shows a page with
@@ -457,6 +486,62 @@ func settingRow(c *ui.Context, pal *palette, label, detail string, control func(
 	})
 }
 
+// promptDraft is a prompt's field as typed, while edit says it has the
+// focus.
+type promptDraft struct {
+	text string
+	edit bool
+}
+
+// promptSetting is a row of a prompt an agent is given, as wide as the
+// group, its field under its label: the default's words show while value
+// is "", which they leave so, and Reset to Default brings them back.
+func promptSetting(c *ui.Context, pal *palette, key, label, detail string, value *string, def string, d *promptDraft) {
+	if groupRows++; groupRows > 1 {
+		ui.Box(c).Height(1).Shrink(0).Background(pal.text.Alpha(0.07))
+	}
+	if !d.edit {
+		d.text = *value
+		if strings.TrimSpace(d.text) == "" {
+			d.text = def
+		}
+	}
+	keep := func() {
+		v := strings.TrimSpace(d.text)
+		if v == strings.TrimSpace(def) {
+			v = ""
+		}
+		*value = v
+	}
+	col := ui.Column(c.Key("row-"+label)).Padding(11, 0).Gap(8).AlignItems(ui.Stretch)
+	col.Children(func() {
+		searchHighlight(c, col, label, pal, 10, -2)
+		ui.Row(c).Gap(16).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
+				ui.Text(c, label).FontSize(13.5).TextColor(pal.text)
+				ui.Text(c, detail).FontSize(12).TextColor(pal.textMuted).LineHeight(1.35)
+			})
+			if *value != "" || strings.TrimSpace(d.text) != strings.TrimSpace(def) {
+				if button(c, key+"-reset", locales.SetResetPrompt(), "", false, pal) {
+					d.text, d.edit, *value = def, false, ""
+				}
+			}
+		})
+		frame := ui.Row(c.Key(key)).AlignItems(ui.Start).Cursor(ui.CursorText)
+		var in ui.Element
+		frame.Children(func() {
+			in = ui.TextAreaBase(c.Key("in"), &d.text).Grow(1).MinWidth(0).MinHeight(90).MaxHeight(260).Padding(8).FontSize(12.5).
+				Label(label)
+		})
+		fieldLook(c, frame, in.Focused(), pal).Padding(0)
+		// Kept as the field loses the focus.
+		if d.edit && !in.Focused() {
+			keep()
+		}
+		d.edit = in.Focused()
+	})
+}
+
 // segmented chooses one of ids into value, as macOS's segmented control
 // shows it: a soft track, the choice a lighter fill raised a hair, thin
 // separators between the others, and labels of one weight.
@@ -508,6 +593,41 @@ func segmentedIn(c *ui.Context, key string, value *string, ids, labels []string,
 	seg.Track.OnChange(func() { *value = ids[i] })
 }
 
+// toggles turns each of ons on or off on its own, as macOS's segmented
+// control that selects any: segmented's look, each segment on filled.
+// Each segment is named for assistive technology after the setting, name,
+// as its label alone does not say what it turns on.
+func toggles(c *ui.Context, key, name string, ons []*bool, labels []string) {
+	pal := paletteFor(c)
+	track, thumb := ui.RGBA(0, 0, 0, 0.06), ui.Hex("#ffffff")
+	if pal.dark {
+		track, thumb = ui.RGBA(255, 255, 255, 0.07), ui.RGBA(255, 255, 255, 0.2)
+	}
+	ui.Row(c.Key(key)).Height(24).Padding(2).Radius(7).Background(track).AlignItems(ui.Center).Children(func() {
+		for n, label := range labels {
+			if n > 0 {
+				// A separator, where neither segment beside it is on.
+				sep := ui.Box(c).Width(1).Height(12).Shrink(0)
+				if !*ons[n] && !*ons[n-1] {
+					sep.Background(pal.text.Alpha(0.14))
+				}
+			}
+			s := ui.ToggleBase(c.Key(label), ons[n]).Label(name+": "+label).FillHeight().Padding(0, 12).Radius(5).Center()
+			if *ons[n] {
+				s.Background(thumb)
+				if pal.dark {
+					s.Shadow(0, 1, 1, 0, ui.RGBA(0, 0, 0, 0.25))
+				} else {
+					s.Shadow(0, 0.5, 1.5, 0, ui.RGBA(0, 0, 0, 0.16)).Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.04))
+				}
+			}
+			s.Children(func() {
+				ui.Text(c, label).FontSize(12.5).SingleLine().TextColor(pal.text)
+			})
+		}
+	})
+}
+
 func (a *App) generalPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	settingsGroup(c, pal, locales.SetSessions(), locales.SetSessionsDetail(a.tip(strings.TrimSuffix(actionTitle("app.quitAll"), "…"), "app.quitAll")), func() {
@@ -542,15 +662,6 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 			toggle(c.Key("session-history"), &s.SessionHistory, pal)
 		})
 	})
-	settingsGroup(c, pal, locales.SetGit(), locales.SetGitDetail(), func() {
-		settingRow(c, pal, locales.SetGitStatus(), locales.SetGitStatusDetail(), func() {
-			toggle(c.Key("git-status"), &s.GitStatus, pal)
-		})
-		settingRow(c, pal, locales.SetDiffLayout(), locales.SetDiffLayoutDetail(), func() {
-			segmented(c, "diff-layout", &s.DiffLayout, []string{"auto", "unified", "split"},
-				[]string{locales.SetDiffAuto(), locales.ChangesUnified(), locales.ChangesSplit()})
-		})
-	})
 	settingsGroup(c, pal, "", "", func() {
 		settingRow(c, pal, locales.AwakeTitle(), locales.AwakeDetail(), func() {
 			popup(c, "keep-awake", &s.KeepAwake, settings.KeepAwakeModes, awakeModeName, 200, pal)
@@ -579,6 +690,81 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		})
 	})
 	a.updatesGroup(c, pal)
+}
+
+// gitPage is Settings › Git: the repositories' status and diffs, how
+// agents write commit messages, and pull requests.
+func (a *App) gitPage(c *ui.Context, pal *palette) {
+	s := &a.set
+	settingsGroup(c, pal, "", "", func() {
+		settingRow(c, pal, locales.SetGitStatus(), locales.SetGitStatusDetail(), func() {
+			toggle(c.Key("git-status"), &s.GitStatus, pal)
+		})
+		settingRow(c, pal, locales.SetDiffLayout(), locales.SetDiffLayoutDetail(), func() {
+			segmented(c, "diff-layout", &s.DiffLayout, []string{"auto", "unified", "split"},
+				[]string{locales.SetDiffAuto(), locales.ChangesUnified(), locales.ChangesSplit()})
+		})
+		settingRow(c, pal, locales.SetCommitMessage(), locales.SetCommitMessageDetail(), func() {
+			if !a.ss.messageEdit {
+				a.ss.messageDraft = s.CommitMessageCommand
+			}
+			in := textField(c, "commit-message", &a.ss.messageDraft, locales.SetCommitMessageAgent(), 220, pal).Font("monospace")
+			a.ss.messageEdit = in.Focused()
+			// Kept as it is submitted, or as the field loses the focus.
+			in.OnSubmit(func() { a.set.CommitMessageCommand = strings.TrimSpace(a.ss.messageDraft) })
+			if !a.ss.messageEdit && strings.TrimSpace(a.ss.messageDraft) != s.CommitMessageCommand {
+				a.set.CommitMessageCommand = strings.TrimSpace(a.ss.messageDraft)
+			}
+		})
+		promptSetting(c, pal, "commit-prompt", locales.SetCommitPrompt(), locales.SetCommitPromptDetail(), &s.CommitMessagePrompt, commitmsg.DefaultCommitPrompt, &a.ss.prompts[0])
+	})
+	settingsGroup(c, pal, locales.SetPullRequests(), "", func() {
+		settingRow(c, pal, locales.SetPRNotify(), locales.SetPRNotifyDetail(), func() {
+			segmented(c, "pr-notify", &s.PRNotify, []string{"review", "all", "off"},
+				[]string{locales.SetPRNotifyReview(), locales.SetPRNotifyAll(), locales.SetPRNotifyOff()})
+		})
+		if s.PRNotify != "off" {
+			settingRow(c, pal, locales.SetPRPoll(), "", func() {
+				every := strconv.Itoa(s.PRPollMinutes)
+				opts := []string{"1", "2", "5", "10", "15", "30", "60"}
+				if !slices.Contains(opts, every) {
+					opts = append(opts, every)
+				}
+				popup(c, "pr-poll", &every, opts, func(v string) string {
+					n, _ := strconv.Atoi(v)
+					return locales.SetPRPollMinutes(n)
+				}, 140, pal)
+				if n, err := strconv.Atoi(every); err == nil {
+					s.PRPollMinutes = n
+				}
+			})
+		}
+		promptSetting(c, pal, "pr-prompt", locales.SetPRPrompt(), locales.SetPRPromptDetail(), &s.PRMessagePrompt, commitmsg.DefaultPRPrompt, &a.ss.prompts[1])
+		promptSetting(c, pal, "review-prompt", locales.SetReviewPrompt(), locales.SetReviewPromptDetail(), &s.ReviewPrompt, DefaultReviewPrompt, &a.ss.prompts[2])
+	})
+}
+
+// filesPage is Settings › Files: the editor files open in, and the Files
+// view.
+func (a *App) filesPage(c *ui.Context, pal *palette) {
+	s := &a.set
+	settingsGroup(c, pal, "", "", func() {
+		settingRow(c, pal, locales.SetEditor(), locales.SetEditorDetail(), func() {
+			if !a.ss.editorEdit {
+				a.ss.editorDraft = s.Editor
+			}
+			in := textField(c, "editor", &a.ss.editorDraft, locales.SetEditorSystem(), 220, pal).Font("monospace")
+			a.ss.editorEdit = in.Focused()
+			// Kept as it is submitted, or as the field loses the focus.
+			in.OnSubmit(func() { a.set.Editor = strings.TrimSpace(a.ss.editorDraft) })
+			if !a.ss.editorEdit && strings.TrimSpace(a.ss.editorDraft) != s.Editor {
+				a.set.Editor = strings.TrimSpace(a.ss.editorDraft)
+			}
+		})
+		settingRow(c, pal, locales.SetHiddenFiles(), locales.SetHiddenFilesDetail(), func() {
+			toggle(c.Key("hidden-files"), &s.HiddenFiles, pal)
+		})
+	})
 }
 
 // browserPage is Settings › Browser: what browser panes block.
@@ -686,6 +872,40 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetTranslucent(), locales.SetTranslucentDetail(), func() {
 			toggle(c.Key("vibrancy"), &s.Vibrancy, pal)
 		})
+		settingRow(c, pal, locales.SetAppFont(), locales.SetAppFontDetail(), func() {
+			// The picker's name for the setting's "": the system's font.
+			family := s.AppFont
+			if family == "" {
+				family = locales.SetFontSystem()
+			}
+			opts := appFontOptions()
+			if !slices.Contains(opts, family) {
+				opts = append([]string{family}, opts...)
+			}
+			a.searchPopup(c, "app-font", family, opts, 240, locales.SetUseFont, nil, pal, func(v string) {
+				if v == locales.SetFontSystem() {
+					v = ""
+				}
+				a.set.AppFont = v
+			})
+		})
+	})
+	settingsGroup(c, pal, locales.SetLayout(), "", func() {
+		settingRow(c, pal, locales.SetSessionsSide(), locales.SetSessionsSideDetail(), func() {
+			segmented(c, "sessions-side", &s.SessionsSide, []string{"left", "right"}, []string{locales.SetSideLeft(), locales.SetSideRight()})
+		})
+		folders := []string{"hidden", "folder", "full", "fit"}
+		folderLabels := []string{locales.SetPathHidden(), locales.SetPathFolder(), locales.SetPathFull(), locales.SetPathFit()}
+		settingRow(c, pal, locales.SetPaneFolder(), locales.SetPaneFolderDetail(), func() {
+			segmented(c, "pane-folder", &s.PaneFolder, folders, folderLabels)
+		})
+		settingRow(c, pal, locales.SetExplorerFolder(), locales.SetExplorerFolderDetail(), func() {
+			segmented(c, "explorer-folder", &s.ExplorerFolder, folders, folderLabels)
+		})
+		settingRow(c, pal, locales.SetDimUnfocused(), locales.SetDimUnfocusedDetail(), func() {
+			toggles(c, "dim-unfocused", locales.SetDimUnfocused(), []*bool{&s.DimUnfocused, &s.DimFiles, &s.DimWeb, &s.DimExplorer},
+				[]string{locales.SetDimTerminal(), locales.SetDimFiles(), locales.SetDimWeb(), locales.SetDimExplorer()})
+		})
 	})
 	ui.Column(c).Gap(8).Children(func() {
 		groupTitle(c, pal, locales.SetBackground())
@@ -703,28 +923,8 @@ func (a *App) appearancePage(c *ui.Context, pal *palette) {
 			})
 		}
 	})
-	// A Ghostty theme in place of kero's: none goes back to kero's default.
-	none := locales.SetThemeNone()
-	themes := append([]string{none}, terminal.GhosttyThemes()...)
-	ghostty := func(key, value string, choose func(string)) {
-		if keroID(value) != "" {
-			value = none
-		}
-		a.searchPopup(c, key, value, themes, 240, nil, pal, func(v string) {
-			if v == none {
-				v = settings.Default().LightTheme
-			}
-			choose(v)
-		})
-	}
-	settingsGroup(c, pal, locales.SetColors(), locales.SetColorsDetail(), func() {
-		settingRow(c, pal, locales.SetLightWindows(), "", func() {
-			ghostty("light", s.LightTheme, func(v string) { a.set.LightTheme = v })
-		})
-		settingRow(c, pal, locales.SetDarkWindows(), "", func() {
-			ghostty("dark", s.DarkTheme, func(v string) { a.set.DarkTheme = v })
-		})
-	})
+	a.colorSettings(c, pal)
+	a.fileColorSettings(c, pal)
 }
 
 // languageName names a language in itself, as "简体中文", so that whoever
@@ -853,9 +1053,28 @@ var otherFonts = sync.OnceValue(func() []string {
 	return opts
 })
 
+// appFontOptions are the families the app font menu offers: the
+// system's, those kero carries, then every other proportional family the
+// machine has.
+func appFontOptions() []string {
+	return append(append([]string{locales.SetFontSystem()}, appFonts...), otherAppFonts()...)
+}
+
+// otherAppFonts are the families of appFontOptions after the system's
+// and kero's, listed once.
+var otherAppFonts = sync.OnceValue(func() []string {
+	var opts []string
+	for _, f := range ui.FontFamilies() {
+		if !f.Monospaced && !f.Registered && !slices.Contains(appFontFamilies, f.Name) {
+			opts = append(opts, f.Name)
+		}
+	}
+	return opts
+})
+
 func (a *App) terminalPage(c *ui.Context, pal *palette) {
 	s := &a.set
-	a.terminalPreview(c, pal)
+	a.terminalPreview(c, pal, a.shownTheme(c.Theme().Dark))
 	settingsGroup(c, pal, locales.SetText(), "", func() {
 		settingRow(c, pal, locales.SetFont(), locales.SetFontDetail(), func() {
 			// The picker's names for the settings' values: "" is kero's
@@ -871,7 +1090,7 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			if !slices.Contains(opts, family) {
 				opts = append([]string{family}, opts...)
 			}
-			a.searchPopup(c, "font", family, opts, 240, locales.SetUseFont, pal, func(v string) {
+			a.searchPopup(c, "font", family, opts, 240, locales.SetUseFont, nil, pal, func(v string) {
 				switch v {
 				case "JetBrains Mono Nerd Font":
 					v = ""
@@ -900,8 +1119,8 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 			ui.Textf(c, "%.2f×", s.LineHeight).FontSize(12.5).TextColor(pal.textMuted).Width(40).FontFeatures("tnum")
 		})
 		settingRow(c, pal, locales.SetWeight(), "", func() {
-			popup(c, "weight", &s.FontWeight, []int{300, 400, 500, 600}, func(w int) string {
-				return map[int]string{300: locales.SetWeightLight(), 400: locales.SetWeightRegular(), 500: locales.SetWeightMedium(), 600: locales.SetWeightSemibold()}[w]
+			popup(c, "weight", &s.FontWeight, []int{300, 350, 400, 500, 600}, func(w int) string {
+				return map[int]string{300: locales.SetWeightLight(), 350: locales.SetWeightSemilight(), 400: locales.SetWeightRegular(), 500: locales.SetWeightMedium(), 600: locales.SetWeightSemibold()}[w]
 			}, 140, pal)
 		})
 		settingRow(c, pal, locales.SetLigatures(), locales.SetLigaturesDetail(), func() {
@@ -912,11 +1131,6 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, locales.SetThicken(), locales.SetThickenDetail(), func() {
 			toggle(c.Key("thicken"), &s.Thicken, pal)
-		})
-	})
-	settingsGroup(c, pal, "", "", func() {
-		settingRow(c, pal, locales.SetDimUnfocused(), locales.SetDimUnfocusedDetail(), func() {
-			toggle(c.Key("dim-unfocused"), &s.DimUnfocused, pal)
 		})
 	})
 	settingsGroup(c, pal, locales.SetCursor(), "", func() {
@@ -965,13 +1179,8 @@ func (a *App) terminalPage(c *ui.Context, pal *palette) {
 }
 
 // terminalPreview uses the terminals' renderer for the font, cell geometry,
-// and colors of the window's appearance.
-func (a *App) terminalPreview(c *ui.Context, pal *palette) {
-	light, dark := a.termThemes()
-	th := light
-	if pal.dark {
-		th = dark
-	}
+// and th's colors.
+func (a *App) terminalPreview(c *ui.Context, pal *palette, th *terminal.Theme) {
 	font := a.termFont()
 	if a.ss.preview == nil && a.ss.previewError == nil {
 		a.makePreview(c, font, th)
@@ -1245,8 +1454,51 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			})
 		}
 	})
+	settingsGroup(c, pal, locales.SetResumeCommands(), locales.SetResumeCommandsDetail(), func() {
+		for _, agent := range settings.ResumeAgents {
+			a.resumeCommandRow(c, pal, agent)
+		}
+	})
 	settingsGroup(c, pal, locales.SetProgramStatus(), locales.SetProgramStatusDetail(), nil)
 	codeBlock(c, pal, "kero report working \"Deploying\" --progress 40\nkero report blocked \"Approve the migration?\" --kind permission\nkero report done \"Deployed\"")
+}
+
+// resumeAgentCommands are the agents' own resume commands, which an empty
+// field of theirs keeps, as kerod's resumeCommand writes them.
+var resumeAgentCommands = map[string]string{
+	"claude":   "claude --resume {session}",
+	"codex":    "codex resume {session}",
+	"pi":       "pi --session {session}",
+	"opencode": "opencode --session {session}",
+}
+
+// resumeCommandRow is the field of the command that resumes an agent's
+// conversations, which it keeps as it is submitted or loses the focus.
+func (a *App) resumeCommandRow(c *ui.Context, pal *palette, agent string) {
+	cmd := a.set.Resume(agent)
+	if a.ss.resumeDraft == nil {
+		a.ss.resumeDraft = map[string]*string{}
+	}
+	draft := a.ss.resumeDraft[agent]
+	if draft == nil {
+		draft = new(string)
+		a.ss.resumeDraft[agent] = draft
+	}
+	if a.ss.resumeEdit != agent {
+		*draft = *cmd
+	}
+	settingRow(c, pal, proto.AgentNames[agent], "", func() {
+		in := textField(c, "resume-"+agent, draft, resumeAgentCommands[agent], 300, pal).Font("monospace")
+		keep := func() { *cmd = strings.TrimSpace(*draft) }
+		in.OnSubmit(keep)
+		switch {
+		case in.Focused():
+			a.ss.resumeEdit = agent
+		case a.ss.resumeEdit == agent:
+			a.ss.resumeEdit = ""
+			keep()
+		}
+	})
 }
 
 // docLink opens a page of Kero's documentation in the browser: the

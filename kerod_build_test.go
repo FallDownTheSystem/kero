@@ -13,6 +13,13 @@ import (
 // code kerod runs, or an update that changes it would leave kerod as it
 // was.
 func TestKerodSource(t *testing.T) {
+	// Kero's module by its path: in a workspace (go.work), as of a MyGo
+	// being worked on beside it, the other modules of the workspace are
+	// main modules too.
+	own, err := exec.Command("go", "list", "-f", "{{.Module.Path}}", ".").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, goos := range []string{"darwin", "linux", "windows"} {
 		cmd := exec.Command("go", "list", "-deps", "-f", "{{if .Module}}{{.Module.Main}} {{.Module.Path}} {{.ImportPath}}{{end}}", "./internal/daemon")
 		cmd.Env = append(cmd.Environ(), "GOOS="+goos)
@@ -22,7 +29,7 @@ func TestKerodSource(t *testing.T) {
 		}
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			f := strings.Fields(line)
-			if f[0] == "true" {
+			if f[0] == "true" && f[1] == strings.TrimSpace(string(own)) {
 				dir := strings.TrimPrefix(f[2], f[1]+"/")
 				if _, err := fs.Stat(kerodSource, dir); err != nil {
 					t.Errorf("%s: kerodSource has no %s", goos, dir)
