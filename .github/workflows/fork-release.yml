@@ -1,0 +1,58 @@
+name: Fork release
+
+# The fork's release (FORK.md): pushing a tag vX.Y.Z-fork.N, of the
+# upstream version X.Y.Z in mygo.json, builds the Windows app, signed with
+# the fork's key, and publishes it, which the fork's builds update to.
+# mygo.json stays upstream's in the repository, so a rebase never meets the
+# fork's version, feed or key there: they are set here, in the runner.
+# Upstream's Release workflow is disabled in the fork, as its v* tags
+# would run it.
+on:
+  push:
+    tags: ["v*-fork.*"]
+
+permissions:
+  contents: write # the release, and the uploads to it
+
+env:
+  # The fork's mygo-update.pub: its private key is the secret
+  # MYGO_UPDATER_PRIVATE_KEY.
+  UPDATES_PUBLIC_KEY: 5mYJ1/05W+MiC0LUkGGc9lyuCDo600ZL4idnU14+kWI=
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the tag against mygo.json's version
+        run: |
+          base="$(jq -r .version mygo.json)"
+          case "$GITHUB_REF_NAME" in
+            "v$base"-fork.[0-9]*) ;;
+            *)
+              echo "::error::$GITHUB_REF_NAME is not v$base-fork.N, of mygo.json's version"
+              exit 1
+              ;;
+          esac
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # What a release is of passes its tests, as upstream's do.
+      - run: go test ./internal/...
+      - name: Install NSIS, for the Windows installer
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: Point the build at the fork's releases
+        run: |
+          jq --arg v "${GITHUB_REF_NAME#v}" --arg repo "$GITHUB_REPOSITORY" --arg key "$UPDATES_PUBLIC_KEY" \
+            '.version = $v | .updates.github = $repo | .updates.publicKey = $key | .updates.changelog = "FORK-CHANGELOG.md"' \
+            mygo.json > "$RUNNER_TEMP/mygo.json"
+          mv "$RUNNER_TEMP/mygo.json" mygo.json
+      - name: Build and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go tool mygo build -platform windows/amd64 -upload
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
