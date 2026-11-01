@@ -683,8 +683,11 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			a.paneChips(c, pal, p, !multi)
 		})
 		// The buttons of the window's top right corner sit by the pane's
-		// own, as one row of buttons.
+		// own, as one row of buttons; an editor pane's file's first.
 		ui.Row(c.Key("buttons")).AlignItems(ui.Center).Children(func() {
+			if p.Editor() {
+				a.editorTools(c, pal, s, p)
+			}
 			a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold)
 			if top && right {
 				a.cornerButtons(c, pal, "-h")
@@ -809,7 +812,10 @@ const (
 	// titleRoom is what a header keeps for its title and folder, which give
 	// up the rest of theirs as the header narrows.
 	titleRoom = 140
-	controlW  = 28 // an icon button's width
+	// editorTitleRoom is what an editor pane's header keeps for its title
+	// beside its file's buttons, which fold into a menu before it has less.
+	editorTitleRoom = 72
+	controlW        = 28 // an icon button's width
 	// browserAddressRoom is what a browser's header keeps for its address.
 	browserAddressRoom = 200
 )
@@ -843,8 +849,24 @@ func (a *App) headerRoom(c *ui.Context, p *proto.Pane, pad, lead float32, contro
 	}
 	var r paneRoom
 	r.controls = full * controlW
-	if w-used < full*controlW+gap {
+	// An editor pane's file's buttons take room too, its title keeping
+	// less of its own (editorTitleRoom): a file's name is short.
+	need := float32(0)
+	if f := a.edits[p.ID]; p.Editor() && f != nil && f.toolsW > 0 {
+		need = f.toolsW - (titleRoom - editorTitleRoom)
+	}
+	if w-used < full*controlW+gap+need {
 		r.fold, r.controls = true, folded*controlW
+	}
+	if f := a.edits[p.ID]; p.Editor() && f != nil {
+		// An editor pane's file's buttons fold into a menu where the
+		// title would have less than its room beside them: as they last
+		// showed all of them, else now.
+		if b := a.paneRef("tools-" + p.ID).Bounds(c).W; b > 0 && !f.toolsFold {
+			f.toolsW = b
+		}
+		f.toolsFold = w-used-gap-r.controls+titleRoom-editorTitleRoom < f.toolsW
+		used += a.paneRef("tools-" + p.ID).Bounds(c).W
 	}
 	used += r.controls + gap
 	r.chip = w - used - gap
@@ -859,6 +881,18 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 	// built again, which the pointer, over the menu, may have left.
 	show = show || a.menuPane == p.ID
 	ctl := ui.Row(c.Key("controls")).Gap(0).AlignItems(ui.Center).Bind(a.paneRef("ctl-" + p.ID))
+	if !show && p.Editor() {
+		// An editor pane's file's buttons, before them, stay where they
+		// are as these show and hide.
+		n := float32(2)
+		if fold {
+			n = 1
+		}
+		if multi {
+			n += 2
+		}
+		ctl.Width(n * controlW)
+	}
 	ctl.Opacity(ctl.Animate("shown", b2f(show), 120*time.Millisecond)).Children(func() {
 		if !show {
 			return

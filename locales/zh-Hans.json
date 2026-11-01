@@ -723,6 +723,7 @@
   "filesNew": "新文件",
   "filesNewTip": "文件尚不存在：保存时创建",
   "paneMore": "更多",
+  "filesActions": "文件操作",
   "actionShowFiles": "显示文件",
   "actionShowChanges": "显示改动",
   "actionToggleHistory": "显示或隐藏历史",

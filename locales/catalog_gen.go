@@ -7346,6 +7346,16 @@ func (msgs Messages) PaneMore() string {
 	return Catalog.Format(msgs.locale, "paneMore", nil)
 }
 
+// FilesActions says "File Actions"
+// in the language the app shows.
+func FilesActions() string { return In(i18n.Locale()).FilesActions() }
+
+// FilesActions says "File Actions"
+// in the language of msgs.
+func (msgs Messages) FilesActions() string {
+	return Catalog.Format(msgs.locale, "filesActions", nil)
+}
+
 // ActionShowFiles says "Show Files"
 // in the language the app shows.
 func ActionShowFiles() string { return In(i18n.Locale()).ActionShowFiles() }

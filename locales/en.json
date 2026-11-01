@@ -1291,6 +1291,7 @@
   "filesNew": "New file",
   "filesNewTip": "The file isn't there yet: saving it makes it",
   "paneMore": "More",
+  "filesActions": "File Actions",
   "actionShowFiles": "Show Files",
   "actionShowChanges": "Show Changes",
   "actionToggleHistory": "Toggle History",
