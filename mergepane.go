@@ -142,28 +142,21 @@ func (a *App) mergeBody(c *ui.Context, pal *palette, f *fileView, pm *paneMerge,
 	}
 }
 
-// mergeBar is an editor pane's bar while it shows the merge editor: how
+// mergeTools are an editor pane's buttons while it shows the merge editor: how
 // many conflicts are left and the way between them, the version to take
 // in all of them, the text instead, the save, and Mark Resolved, which
 // saves first, once none is left.
-func (a *App) mergeBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, f *fileView, pm *paneMerge) {
+func (a *App) mergeTools(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, f *fileView, pm *paneMerge) {
 	m := pm.m
 	left := m.Unresolved()
-	bottomBar(c, "bar", pal).Padding(0, 6, 0, 12).Children(func() {
+	{
 		a.fileStatus(c, pal, f)
-		ui.Text(c, locales.MergeConflictsLeft(left)).FontSize(12).TextColor(pal.textMuted).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
-		ui.Spacer(c)
 		if n := len(m.Conflicts()); n > 1 {
 			iconButton(c, "prev", chevronUpIcon, locales.MergePrevious(), pal, func() { a.stepConflict(pm, -1) })
 			iconButton(c, "next", chevronDownIcon, locales.MergeNext(), pal, func() { a.stepConflict(pm, 1) })
 		}
 		ours, theirs := m.Labels()
-		b := ui.ButtonBase(c.Key("all")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.GitResolve()).Tooltip(locales.GitResolve())
-		if b.Hovered() || b.Pressed() {
-			b.Background(pal.rowHover).TextColor(pal.text)
-		}
-		b.Children(func() { ui.Icon(c, mergeIcon).Size(15, 15) })
-		b.Menu(func(mn *ui.Menu) {
+		resolve := func(mn *ui.Menu) {
 			if mn.Item(locales.MergeUseAll(menuName(ours))).Chosen() {
 				m.ChooseAll(editor.MergeOurs)
 			}
@@ -174,8 +167,19 @@ func (a *App) mergeBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.P
 			if mn.Item(locales.MergeShowText()).Chosen() {
 				pm.text = true
 			}
-		})
-		a.fileActions(c, pal, f)
+		}
+		if f.toolsFold {
+			// Too narrow: the rest in one menu, with the file's actions.
+			a.fileActionsButton(c, pal, f, resolve)
+		} else {
+			b := ui.ButtonBase(c.Key("all")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.GitResolve()).Tooltip(locales.GitResolve())
+			if b.Hovered() || b.Pressed() {
+				b.Background(pal.rowHover).TextColor(pal.text)
+			}
+			b.Children(func() { ui.Icon(c, mergeIcon).Size(15, 15) })
+			b.Menu(resolve)
+			a.fileActions(c, pal, f)
+		}
 		label := locales.GitMarkResolved()
 		if f.modified() {
 			label = locales.GitSaveAndMarkResolved()
@@ -192,7 +196,7 @@ func (a *App) mergeBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.P
 		if mark.Clicked() {
 			a.markMerged(s, p, f)
 		}
-	})
+	}
 }
 
 // stepConflict goes to the conflict before or after the one gone to last,

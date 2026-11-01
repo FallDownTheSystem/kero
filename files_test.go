@@ -1728,3 +1728,48 @@ func TestCommandWords(t *testing.T) {
 		}
 	}
 }
+
+// An editor pane's file's buttons are in its header, as the viewer's are,
+// and in a pane too narrow for them, in one menu, which still acts.
+func TestEditorPaneNarrow(t *testing.T) {
+	a := testApp(t)
+	s := &a.st.Sessions[0]
+	s.Panes[1] = proto.Pane{ID: "b", File: "/tmp/some_long_file_name.md", Dir: "/tmp", Status: proto.Idle, Progress: -1}
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	a.edits["b"].testRead("# Title\n")
+	for range 3 {
+		tt.Frame()
+	}
+	if !tt.HasText("Preview Markdown") || tt.HasText("File Actions") {
+		t.Errorf("a wide editor pane's buttons fold; texts %q", tt.Texts())
+	}
+	tt.SetSize(760, 500)
+	for range 3 {
+		tt.Frame()
+	}
+	shot(t, tt, "editor-narrow")
+	if tt.HasText("Preview Markdown") {
+		t.Errorf("a narrow editor pane's buttons don't fold; texts %q", tt.Texts())
+	}
+	if err := tt.Click("File Actions"); err != nil {
+		t.Fatal(err)
+	}
+	if items := tt.Menu(); !slices.Equal(items, []string{"Preview Markdown", "Smaller Text", "Bigger Text", "Wrap Lines", "Open in Editor"}) {
+		t.Errorf("the folded buttons' menu: %q", items)
+	}
+	if err := tt.ChooseMenuItem("Preview Markdown"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !a.edits["b"].preview {
+		t.Error("Preview Markdown from the menu didn't preview")
+	}
+	tt.SetSize(1280, 720)
+	for range 3 {
+		tt.Frame()
+	}
+	if !tt.HasText("Preview Markdown") {
+		t.Errorf("widened again, the buttons stay folded; texts %q", tt.Texts())
+	}
+}

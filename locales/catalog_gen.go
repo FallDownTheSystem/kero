@@ -7254,16 +7254,6 @@ func (msgs Messages) FilesMoreMatches() string {
 	return Catalog.Format(msgs.locale, "filesMoreMatches", nil)
 }
 
-// FilesWrap says "Wrap Lines"
-// in the language the app shows.
-func FilesWrap() string { return In(i18n.Locale()).FilesWrap() }
-
-// FilesWrap says "Wrap Lines"
-// in the language of msgs.
-func (msgs Messages) FilesWrap() string {
-	return Catalog.Format(msgs.locale, "filesWrap", nil)
-}
-
 // FilesPreviewMarkdown says "Preview Markdown"
 // in the language the app shows.
 func FilesPreviewMarkdown() string { return In(i18n.Locale()).FilesPreviewMarkdown() }
@@ -7384,6 +7374,16 @@ func PaneMore() string { return In(i18n.Locale()).PaneMore() }
 // in the language of msgs.
 func (msgs Messages) PaneMore() string {
 	return Catalog.Format(msgs.locale, "paneMore", nil)
+}
+
+// FilesActions says "File Actions"
+// in the language the app shows.
+func FilesActions() string { return In(i18n.Locale()).FilesActions() }
+
+// FilesActions says "File Actions"
+// in the language of msgs.
+func (msgs Messages) FilesActions() string {
+	return Catalog.Format(msgs.locale, "filesActions", nil)
 }
 
 // ActionShowFiles says "Show Files"
