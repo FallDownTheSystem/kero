@@ -272,7 +272,14 @@ func (a *App) filesSide(c *ui.Context, pal *palette, s *proto.Session) {
 	f := &fs.find
 	filtering := strings.TrimSpace(f.query) != ""
 	ui.Row(c.Key("root")).Height(28).Shrink(0).Padding(0, 10, 0, 16).Gap(0).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, h.shortDir(root)).FontSize(12.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Grow(1).Tooltip(root)
+		// Its path where it fits beside the buttons, else its folder's name,
+		// as a pane's header fits its folder (folderShown); the name cut
+		// short where even that doesn't fit.
+		shown := a.folderShown(c, "fit", h.shortDir(root), proto.DirName(root), "files-root", 12.5, 0, 0)
+		if shown == "" {
+			shown = proto.DirName(root)
+		}
+		ui.Text(c, shown).FontSize(12.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Grow(1).Tooltip(root).Bind(a.paneRef("files-root-dir"))
 		iconButton(c, "new-file", newFileIcon, locales.FilesNewFile(), pal, func() { a.startCreate(s, p.ID, root, "", false) })
 		iconButton(c, "new-folder", newFolderIcon, locales.FilesNewFolder(), pal, func() { a.startCreate(s, p.ID, root, "", true) })
 		iconButton(c, "search", searchIcon, a.tip(locales.SideSearch(), "search.toggle"), pal, func() { a.defer_(func() { a.showSearch("") }) })
