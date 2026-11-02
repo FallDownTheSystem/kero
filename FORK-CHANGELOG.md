@@ -5,6 +5,32 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.4
+
+Built on MyGo 0.7.4, MyGo's latest release, which has the MyGo fixes
+2.1.31-fork.1 lacked, and more:
+
+- The terminal's, the viewer's and the diffs' scroll bars have their
+  new look: their thumbs show while the pointer is over them, with no
+  track under them, and a wide diff's horizontal scroll bar is as high
+  as its lines
+- The mouse wheel scrolls a diff over its separators too, and dragging
+  a selection past an editor's left or right edge scrolls it sideways
+- Text copied from Notepad pastes on Windows again
+- Menus' labels are no longer cut off, at any display scale
+- Windows: no black where a window shrinks, and frameless windows draw
+  up to their edges on Windows 10
+- Making a release's delta update can no longer hang on a large app
+- `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` and
+  `WEBVIEW2_USER_DATA_FOLDER` apply as WebView2's own loader takes them,
+  and the installer's desktop shortcut check box is in the installer's
+  language
+- Changed: the fork's own fixes for reading the clipboard past formats
+  that don't render (as the Photos app's) and for the width of menu
+  items gave way to MyGo's fixes of the same. The first context menu
+  after a start, or after moving to another display scale, may be a
+  little wider than it needs
+
 ## 2.1.31-fork.3
 
 - The Files tab shows its folder's whole path above the tree where it
