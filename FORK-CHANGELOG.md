@@ -5,6 +5,18 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.8
+
+- The branch switcher groups **Worktrees**, **Branches** (in their
+  folders), **Remotes**, **Tags** and **Stashes**, each one folding, under
+  one filter that searches them all
+- Clicking an entry scrolls History's graph to its commit and highlights
+  it, without checking anything out; double-click or Return checks a
+  branch out, or opens a worktree's session
+- **Settings › Git › Hide old branches** hides branches with no commit in
+  that many weeks, unless the filter finds them; a row shows them on
+  demand
+
 ## 2.1.31-fork.7
 
 - History opens a commit's diffs in the viewer, as Changes does: an open
