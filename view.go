@@ -132,6 +132,7 @@ func (a *App) view(c *ui.Context) {
 	// a moment, and goes at once with the panes. With the sessions at the
 	// window's right (settings' SessionsSide), it stands at the left.
 	work := a.workSession()
+	a.side.zoomW = 0
 	rightW := a.rightWidth()
 	// In a window too narrow for it beside the cards, it gets out of their
 	// way, coming back as the window widens, unless shown anyway.
@@ -143,6 +144,13 @@ func (a *App) view(c *ui.Context) {
 	a.side.crowded = winW > 0 && winW-leftW-rightW < minCards
 	if !a.side.crowded {
 		a.side.forced = false
+	}
+	// Zoomed, it takes the cards' room, theirs as the sidebar comes and
+	// goes, a crowded window's too.
+	zoomed := a.side.barWide && work != nil && a.rightShown()
+	if zoomed {
+		a.side.zoomW = max(winW-a.chrome.sideW-a.chrome.mainPad, minSidebar)
+		rightW = a.side.zoomW
 	}
 	right := float32(0)
 	if p := row.AnimateTo("right", b2f(a.rightShown()), sidebarMotion); work != nil {
@@ -180,7 +188,9 @@ func (a *App) view(c *ui.Context) {
 		})
 		// Over the cards and the sidebar both, which would take the
 		// pointer from it on either side of their edge.
-		a.rightHandle(c, right)
+		if !zoomed {
+			a.rightHandle(c, right)
+		}
 	}
 	row.Children(func() {
 		w := a.chrome.sideW
@@ -210,6 +220,17 @@ func (a *App) view(c *ui.Context) {
 			rightBar()
 		} else {
 			sidebar()
+		}
+		if zoomed {
+			// The cards hide behind the zoomed sidebar: only the gap by the
+			// sessions' sidebar stays.
+			ui.Box(c.Key("main-gap")).Width(a.chrome.mainPad).Shrink(0).DragWindow()
+			if !sessionsRight {
+				rightBar()
+			} else {
+				sidebar()
+			}
+			return
 		}
 		main := ui.Column(c).Grow(1).MinWidth(0).DragWindow()
 		if sessionsRight {

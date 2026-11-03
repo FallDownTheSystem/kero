@@ -1254,3 +1254,44 @@ func TestMenuName(t *testing.T) {
 		}
 	}
 }
+
+// The sidebar's Zoom Sidebar hides the panes and takes their room, as Zoom
+// does a pane, and Show All Panes brings them back; its tabs start with
+// Files, then Changes.
+func TestSidebarZoom(t *testing.T) {
+	a := testApp(t)
+	gitCalls(t, a, nil)
+	gitDemo(a)
+	a.prefs.Side = sideHistory
+	tt := ui.NewTester(a.view, 1600, 720)
+	tt.Frame()
+	files, _ := tt.Find("Files")
+	changes, _ := tt.Find("Changes")
+	if files.X >= changes.X {
+		t.Errorf("Files at %v, Changes at %v: Files goes first", files.X, changes.X)
+	}
+	if !tt.HasText("fish") {
+		t.Fatalf("no pane beside the sidebar; texts %q", tt.Texts())
+	}
+	narrow := a.side.barW
+	if err := tt.Click("Zoom Sidebar"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Advance(time.Second)
+	tt.Frame()
+	if tt.HasText("fish") || tt.HasText("zsh") {
+		t.Error("the panes show beside the zoomed sidebar")
+	}
+	if a.side.barW < 1600-a.prefs.SidebarWidth-40 {
+		t.Errorf("zoomed, the sidebar is %v wide, was %v", a.side.barW, narrow)
+	}
+	shot(t, tt, "sidebar-zoomed")
+	if err := tt.Click("Show All Panes"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Advance(time.Second)
+	tt.Frame()
+	if !tt.HasText("fish") || a.side.barW != narrow {
+		t.Errorf("unzoomed, the sidebar is %v wide, was %v; texts %q", a.side.barW, narrow, tt.Texts())
+	}
+}

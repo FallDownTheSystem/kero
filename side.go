@@ -63,6 +63,11 @@ type sideState struct {
 	// wide zooms the viewer: it takes the panes' room, hiding them, as
 	// Zoom does a pane.
 	wide bool
+	// barWide zooms the right sidebar, as wide does the viewer: it takes
+	// the cards' room, the panes' and the viewer's, hiding them; zoomW is
+	// its width so zoomed this frame, 0 while it isn't.
+	barWide bool
+	zoomW   float32
 	// barFocused tells that the sidebar has the keyboard, as it last
 	// built: Find opens Search there.
 	barFocused bool
@@ -292,7 +297,7 @@ func viewKind(tab string) string {
 func (a *App) toggleRight() {
 	if a.rightShown() {
 		a.prefs.Side, a.prefs.SideTab = "", a.prefs.Side
-		a.side.forced = false
+		a.side.forced, a.side.barWide = false, false
 	} else {
 		if a.prefs.Side == "" {
 			a.prefs.Side = a.sideTab()
@@ -335,6 +340,8 @@ func (a *App) openView(s *proto.Session, kind string, f *fileView) {
 		a.side.views[s.ID] = v
 	}
 	v.kind = kind
+	// The viewer the sidebar zoomed over would not show.
+	a.side.barWide = false
 	if f != nil {
 		v.file = f
 	}
@@ -365,6 +372,9 @@ func (a *App) focusViewer() { a.paneRef("side-card").Focus() }
 
 // rightWidth is the sidebar's width, shown.
 func (a *App) rightWidth() float32 {
+	if a.side.zoomW > 0 {
+		return a.side.zoomW
+	}
 	if w := a.prefs.RightWidth; w != 0 {
 		return w
 	}
@@ -453,6 +463,15 @@ func (a *App) rightSidebar(c *ui.Context, pal *palette, s *proto.Session) {
 					a.tabButton(c, pal, t, tab, compact)
 				}
 				ui.Spacer(c)
+				if a.side.barWide {
+					iconButton(c, "zoom-right", unzoomIcon, locales.PaneShowAll(), pal, func() { a.side.barWide = false })
+				} else {
+					iconButton(c, "zoom-right", zoomIcon, locales.SideBarZoom(), pal, func() {
+						a.side.barWide = true
+						// The panes it hides can't keep the keyboard.
+						a.paneRef("side-bar").Focus()
+					})
+				}
 				svg := sidebarRightIcon
 				if left {
 					svg = sidebarIcon

@@ -1253,6 +1253,7 @@
   "setColorCyan": "Cyan",
   "setColorWhite": "White",
   "setColorBright": "Bright {color}",
+  "sideBarZoom": "Zoom Sidebar",
   "sideZoom": "Zoom Viewer",
   "splitTerminal": "Terminal",
   "splitBrowser": "Browser",
