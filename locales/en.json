@@ -2016,5 +2016,31 @@
   "historyWorktreeRemoveDetail": "Its folder {path} goes.",
   "historyOpenInWorktree": "Open {name} in New Worktree",
   "historyViewNone": "No commit open",
-  "historyViewNoneDetail": "Open a commit in History, and click one of its files."
+  "historyViewNoneDetail": "Open a commit in History, and click one of its files.",
+  "gitPickWorktrees": "Worktrees",
+  "gitPickRemotes": "Remotes",
+  "gitPickStashes": "Stashes",
+  "gitPickOlder": "{count, plural, one {Show # branch older than {weeks} weeks} other {Show # branches older than {weeks} weeks}}",
+  "@gitPickOlder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "weeks": {
+        "type": "int"
+      }
+    }
+  },
+  "historyNotListed": "That commit isn't in the history listed.",
+  "setBranchMaxAge": "Hide old branches",
+  "setBranchMaxAgeDetail": "In the branch switcher, unless the filter finds them",
+  "setBranchMaxAgeAll": "Show all",
+  "setBranchMaxAgeWeeks": "{count, plural, one {Older than # week} other {Older than # weeks}}",
+  "@setBranchMaxAgeWeeks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
