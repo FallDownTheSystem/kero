@@ -1451,3 +1451,75 @@ func TestHistoryWorktrees(t *testing.T) {
 		t.Errorf("removed a changed worktree with %+v", p)
 	}
 }
+
+// A file of an open commit opens the viewer on the commit's diffs,
+// scrolled to it, the tree's file showing as there; collapsing the commit
+// in the list leaves the viewer on it.
+func TestHistoryViewer(t *testing.T) {
+	a := testApp(t)
+	g, _ := gitDemo(a)
+	files := []proto.GitFile{
+		{Path: "README.md", Status: "modified", Added: 1, From: "c0", To: "c1"},
+		{Path: "src/a.go", Status: "modified", Added: 2, Removed: 1, From: "c0", To: "c1"},
+		{Path: "src/b.go", Status: "added", Added: 3, From: "c0", To: "c1"},
+	}
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.show":
+			return proto.GitCommitInfo{Hash: "c1", Subject: "Teach a and b", Message: "Teach a and b", Author: "t", Files: files}, nil
+		case "git.file":
+			var p proto.GitParams
+			json.Unmarshal(raw, &p)
+			return proto.GitText{Old: "package x\n", New: "package x\n\n// " + p.Path + "\n", Hash: "h"}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().cl = cl
+	a.prefs.Side = sideHistory
+	hs := &a.side.git.hist
+	hs.key = g.Root + "|0|0||"
+	hs.stamp = gitStamp(g) + "|0"
+	hs.stashAt = hs.stamp
+	hs.wtAt = hs.stamp + "|0"
+	hs.commits = []proto.GitCommit{{Hash: "c1", Time: time.Now().Unix(), Refs: "HEAD -> main", Subject: "Teach a and b"}}
+	hs.graph = []gitgraph.Row{hs.layout.Add(gitgraph.Commit{Hash: "c1"})}
+	tt := ui.NewTester(a.view, 1400, 760)
+	tt.Frame()
+	a.toggleCommit(s1Pane(a), "c1")
+	for range 100 {
+		if tt.Frame(); tt.HasText("a.go") {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !tt.HasText("src") || !tt.HasText("b.go") {
+		t.Fatalf("the commit's tree; texts %q", tt.Texts())
+	}
+	if err := tt.Click("b.go"); err != nil {
+		t.Fatal(err)
+	}
+	s := &a.st.Sessions[0]
+	if v := a.viewOf(s); v == nil || v.kind != sideHistory || hs.view != "c1" || hs.current != histKey("c1", "src/b.go") {
+		t.Fatalf("view %+v, commit %q, current %q", v, hs.view, hs.current)
+	}
+	for range 100 {
+		tt.Frame()
+		if sf := hs.viewCV.files["src/b.go"]; sf != nil && sf.d != nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	tt.Advance(time.Second)
+	tt.Frame()
+	if !tt.HasText("Teach a and b") {
+		t.Errorf("the viewer's title; texts %q", tt.Texts())
+	}
+	shot(t, tt, "history-viewer")
+	a.toggleCommit(s1Pane(a), "c1")
+	tt.Frame()
+	if v := a.viewOf(s); v == nil || v.kind != sideHistory || !tt.HasText("Teach a and b") {
+		t.Error("the viewer left the commit closed in the list")
+	}
+}
+
+func s1Pane(a *App) string { return a.st.Sessions[0].Panes[0].ID }
