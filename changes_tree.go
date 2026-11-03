@@ -109,6 +109,7 @@ func (a *App) sectionTree(section string, files []proto.GitFile) []*treeNode {
 type sideRow struct {
 	section string
 	title   bool
+	bar     bool // the stash's name and button, under its files
 	files   []proto.GitFile // the section's
 	treeItem
 }
@@ -120,13 +121,16 @@ func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *cha
 	ch := &a.side.changes
 	scope := cf.scope
 	var rows []sideRow
-	for _, sec := range cf.sections() {
+	for _, sec := range a.treeSections(cf) {
 		if sec.name != "" {
 			rows = append(rows, sideRow{section: sec.name, title: true, files: sec.files})
 		}
 		nodes := a.sectionTree(sec.name, sec.files)
 		for _, it := range treeItems(nodes, func(dir string) bool { return ch.treeClosed[fileKey(scope, sec.name, dir)] }) {
 			rows = append(rows, sideRow{section: sec.name, files: sec.files, treeItem: it})
+		}
+		if sec.name == baseStash {
+			rows = append(rows, sideRow{section: sec.name, bar: true, files: sec.files})
 		}
 	}
 
@@ -155,8 +159,8 @@ func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *cha
 	}
 	tl.Key = func(i int) any {
 		r := rows[i]
-		if r.title {
-			return [2]string{"title", r.section}
+		if r.title || r.bar {
+			return [3]any{"title", r.section, r.bar}
 		}
 		return [2]any{r.section, treeKey{r.path, r.file < 0}}
 	}
@@ -171,8 +175,12 @@ func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *cha
 	here, ix := cf.here, cf.ix
 	ui.List(c.Key("tree"), tl, len(rows), func(i int) {
 		r := rows[i]
-		if r.title {
-			a.indexTitle(c, pal, here, ix, r.section)
+		switch {
+		case r.title:
+			a.indexTitle(c, pal, here, r.section, r.files, i > 0)
+			return
+		case r.bar:
+			a.stashBar(c, pal, here, scope, r.files)
 			return
 		}
 		if r.file < 0 {
@@ -193,7 +201,8 @@ func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *cha
 			return
 		}
 		f := r.files[r.file]
-		key := fileKey(scope, r.section, f.Path)
+		// A file to stash shows its diff under its own section.
+		key := fileKey(scope, diffSection(ix, r.section, f.Path), f.Path)
 		var tools func()
 		if r.section != "" {
 			tools = func() { a.indexTools(c, pal, here, ix, r.section, f) }
@@ -234,6 +243,19 @@ func (a *App) changesTree(c *ui.Context, pal *palette, s *proto.Session, cf *cha
 			}
 		}
 	}).Grow(1).MinHeight(0).Padding(0, 10, 16, 10)
+}
+
+// diffSection is the section of the viewer a file of the tree's section
+// shows its diff in: its own, or for one to stash, the one git lists it
+// in, not staged first.
+func diffSection(ix *proto.GitIndex, section, path string) string {
+	if section != baseStash || ix == nil {
+		return section
+	}
+	if slices.ContainsFunc(ix.Unstaged, func(f proto.GitFile) bool { return f.Path == path }) {
+		return baseUnstaged
+	}
+	return baseStaged
 }
 
 // treeKey is what a row of a tree is, as its list keeps its state by: a
