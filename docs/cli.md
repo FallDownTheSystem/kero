@@ -211,7 +211,7 @@ kero pr edit 3 "Clearer text"
 kero pr delete 3
 ```
 
-In a review started from Kero, the pane knows its pull request; elsewhere, name it with `--pr <number>`.
+In a review started from Kero, the pane knows its pull request; elsewhere, name it with `--pr <number>`, once the review has a draft: **Start Draft** on the pull request starts one.
 
 ## Configuration and setup
 
