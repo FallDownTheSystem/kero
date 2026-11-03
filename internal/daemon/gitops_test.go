@@ -131,3 +131,68 @@ func TestGitRuns(t *testing.T) {
 		end()
 	}
 }
+
+// The History view's worktrees: each with what removing it would lose,
+// read against the default branch, and removed with its branch through
+// kerod; a stash of chosen files takes them alone.
+func TestGitWorktrees(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git")
+	}
+	p := testPane(t)
+	d := p.d
+	d.log = log.New(io.Discard, "", 0)
+	d.quit = make(chan struct{})
+	d.panes = map[string]*pane{"p": p}
+	d.git = newGitFollow(d)
+	repo := realPath(t, t.TempDir())
+	gitIn(t, repo, "init", "-q", "-b", "main")
+	for _, kv := range [][2]string{{"user.name", "t"}, {"user.email", "t@t"}, {"commit.gpgsign", "false"}, {"core.autocrlf", "false"}} {
+		gitIn(t, repo, "config", kv[0], kv[1])
+	}
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644)
+	gitIn(t, repo, "add", "-A")
+	gitIn(t, repo, "commit", "-q", "-m", "first")
+	p.info.Dir = repo
+	wt := realPath(t, t.TempDir())
+	clean, ahead := filepath.Join(wt, "clean"), filepath.Join(wt, "ahead")
+	gitIn(t, repo, "worktree", "add", "-q", "-b", "clean", clean)
+	gitIn(t, repo, "worktree", "add", "-q", "-b", "ahead", ahead)
+	os.WriteFile(filepath.Join(ahead, "b.txt"), []byte("b\n"), 0o644)
+	gitIn(t, ahead, "add", "-A")
+	gitIn(t, ahead, "commit", "-q", "-m", "ahead")
+	os.WriteFile(filepath.Join(ahead, "c.txt"), []byte("c\n"), 0o644)
+
+	res, err := d.gitWorktrees(proto.GitWorktreesParams{Pane: "p", State: true})
+	if err != nil || len(res.Worktrees) != 3 || res.Default != "main" {
+		t.Fatalf("worktrees %+v, %v", res, err)
+	}
+	by := map[string]proto.GitWorktree{}
+	for _, w := range res.Worktrees {
+		by[w.Branch] = w
+	}
+	if w := by["main"]; !w.Main || !w.State {
+		t.Errorf("main %+v", w)
+	}
+	if w := by["clean"]; w.Main || !w.State || w.Files != 0 || w.Unpushed != 0 || !w.Merged {
+		t.Errorf("clean %+v", w)
+	}
+	if w := by["ahead"]; w.Files != 1 || w.Unpushed != 1 || w.Merged {
+		t.Errorf("ahead %+v", w)
+	}
+	if res, _ := d.gitOp(proto.GitOpParams{Pane: "p", Op: "worktreeRemove", Path: clean, Name: "clean"}); res.Error != "" {
+		t.Fatalf("remove: %+v", res)
+	}
+	if res, _ := d.gitWorktrees(proto.GitWorktreesParams{Pane: "p"}); len(res.Worktrees) != 2 || res.Worktrees[1].State {
+		t.Errorf("after removing, without state %+v", res)
+	}
+
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("A\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "n.txt"), []byte("n\n"), 0o644)
+	if res, _ := d.gitOp(proto.GitOpParams{Pane: "p", Op: "stash", Paths: []string{"n.txt"}, IncludeUntracked: true, Message: "just n"}); res.Error != "" {
+		t.Fatalf("stash: %+v", res)
+	}
+	if out, _ := exec.Command("git", "-C", repo, "status", "--porcelain").Output(); string(out) != " M a.txt\n" {
+		t.Errorf("after stashing n.txt: %q", out)
+	}
+}

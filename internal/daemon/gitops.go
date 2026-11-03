@@ -159,7 +159,7 @@ const (
 func (d *Daemon) gitOp(p proto.GitOpParams) (proto.GitOpResult, error) {
 	timeout := gitOpTimeout
 	switch p.Op {
-	case "commit", "fetch", "pull", "push", "continue", "cherryPick", "revert", "merge", "rebase", "rebaseInteractive":
+	case "commit", "fetch", "pull", "push", "continue", "cherryPick", "revert", "merge", "rebase", "rebaseInteractive", "worktreeRemove":
 		timeout = gitLongTimeout
 	}
 	ctx, progress, done := follow(p.ID, timeout)
@@ -264,7 +264,11 @@ func (d *Daemon) runOp(ctx context.Context, r git.Repo, p proto.GitOpParams, cmd
 	case "renameBranch":
 		return r.RenameBranch(ctx, p.Name, p.To)
 	case "stash":
-		return r.StashPush(ctx, git.StashOptions{Message: p.Message, Untracked: p.IncludeUntracked, Staged: p.Staged})
+		return r.StashPush(ctx, git.StashOptions{Message: p.Message, Untracked: p.IncludeUntracked, Staged: p.Staged, Paths: p.Paths})
+	case "worktreeRemove":
+		return r.RemoveCheckout(ctx, p.Path, p.Force, p.Name)
+	case "worktreePrune":
+		return r.PruneCheckouts(ctx)
 	case "stashApply", "stashPop":
 		return r.StashApply(ctx, p.Index, p.Hash, p.Op == "stashPop")
 	case "stashDrop":
@@ -293,7 +297,11 @@ func opCommand(ctx context.Context, r git.Repo, p proto.GitOpParams) ([]string, 
 		if err != nil {
 			return nil, err
 		}
-		return r.PushArgs(ctx, st.Branch, git.PushOptions{Force: p.Force, Tags: p.Tags})
+		branch := st.Branch
+		if p.Name != "" {
+			branch = p.Name // another worktree's, pushed from this one
+		}
+		return r.PushArgs(ctx, branch, git.PushOptions{Force: p.Force, Tags: p.Tags})
 	}
 	return nil, nil
 }
@@ -316,6 +324,56 @@ func (d *Daemon) gitBranches(p proto.GitParams) (proto.GitBranches, error) {
 			Upstream: b.Upstream, Ahead: b.Ahead, Behind: b.Behind, Gone: b.Gone, Time: b.Time, Subject: b.Subject, Worktree: b.Worktree})
 	}
 	res.Remotes, _ = r.Remotes(ctx)
+	return res, nil
+}
+
+// gitWorktrees returns a pane's repository's worktrees, the main one
+// first, and with p.State what removing each would lose.
+func (d *Daemon) gitWorktrees(p proto.GitWorktreesParams) (proto.GitWorktrees, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	if err != nil {
+		return proto.GitWorktrees{}, err
+	}
+	list, err := r.Checkouts(ctx)
+	if err != nil {
+		return proto.GitWorktrees{}, err
+	}
+	// Merged and pushed read against the default branch, a local one, as
+	// a remote's is among the remotes' already.
+	base := r.DefaultBranch()
+	res := proto.GitWorktrees{Worktrees: make([]proto.GitWorktree, len(list))}
+	if base != "" && r.HasBranch(base) {
+		res.Default = base
+	} else {
+		base = ""
+	}
+	main := r.Main()
+	var wg sync.WaitGroup
+	for i, co := range list {
+		w := proto.GitWorktree{Path: co.Path, Branch: co.Branch, Head: co.Head, Prunable: co.Prunable, Locked: co.Locked,
+			Main: main != "" && filepath.Clean(co.Path) == filepath.Clean(main)}
+		res.Worktrees[i] = w
+		if !p.State || co.Prunable {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			wr, err := git.Open(ctx, co.Path)
+			if err != nil {
+				return
+			}
+			st, err := wr.State(ctx, co.Branch, base)
+			if err != nil {
+				return
+			}
+			w.State, w.Files, w.Unpushed, w.Merged = true, st.Files, st.Unpushed, st.Merged
+			res.Worktrees[i] = w
+		}()
+	}
+	wg.Wait()
 	return res, nil
 }
 

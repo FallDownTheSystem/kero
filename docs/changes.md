@@ -77,6 +77,8 @@ The sync button beside it pulls what the branch is behind, then pushes what it's
 - **Stash All Changes**, **Stash Staged Changes** and **Stash with Message…**.
 - **New Branch…**, **Undo Last Commit**, which keeps its changes staged, and **Refresh**.
 
+To stash some files and keep working on the rest, click a file's, folder's or section's **Add to Stash** button in the Changes tab: they move to a **To Stash** section under the others. Name the stash if you like, and click **Stash N Files**: their changes, staged or not, untracked files too, go into one stash entry, and the other files stay as they are.
+
 A pull, a merge and a rebase stash the changes not committed first, and put them back once they end; when those conflict, they stay in the stash. A fetch, pull or push that needs a password fails with **Run in Terminal**, which runs the same command in a terminal where git can ask for it.
 
 An operation that changes the files while an agent works in the worktree, as a pull or a discard, asks first: **When It's Done** runs it once the agent finishes, **Now** at once. Staging, committing and fetching don't ask.
@@ -84,6 +86,8 @@ An operation that changes the files while an agent works in the worktree, as a p
 ## History
 
 The right sidebar's **History** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Y</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Y</kbd> on Windows and Linux), draws the worktree's commits as a graph: every branch's with **All**, or the branch's, its upstream's and the default branch's with **Branch**. Local branches and the remotes' show apart, so a branch and its remote's at one commit show both. Commits not pushed yet are marked. **Filter** finds commits by their message, author or hash; a file's menu in the Files tab shows the history of that file.
+
+The **Worktrees** section, under the stash, lists the repository's worktrees, each with what removing it would lose: changed files and commits on no remote in orange, or *merged* or *pushed* in green when nothing would be lost. **Push** pushes a worktree's branch, **Open** shows the session working in it or starts one, and **Remove Worktree** asks first: a worktree with changes is removed only when you say **Remove Anyway**, one with commits not pushed keeps its branch, and one with nothing to lose can go with its branch, **Remove with Branch**. A worktree a session was made for closes with the session. Its menu also copies its path, merges its branch into yours, and **Prune Missing Worktrees** forgets those whose folders were deleted. **+** starts a session in a new worktree; a commit's menu opens its branch in one, **Open … in New Worktree**.
 
 A commit's branches, tags and stashes show beside it, in its line's color, each kind with its icon: a branch, a remote's branch (a globe), a branch checked out in another worktree (a folder), a tag, a stash. The branch you're on is bold, with an outline. A stash's menu applies, pops or drops it; a commit whose branch is checked out in another worktree offers **Open Worktree** rather than checking it out. Click a commit to see its files, and a file to see its diff. A file's menu opens it, as the Changes tab's does, or shows its history with **Show File History**. The changes not committed show on top, and the stash under them, to apply, pop or drop. A commit's menu:
 

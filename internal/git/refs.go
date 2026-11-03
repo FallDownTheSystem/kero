@@ -200,14 +200,16 @@ func (r Repo) Stashes(ctx context.Context) ([]Stash, error) {
 }
 
 // StashOptions are what a stash takes: the untracked files too, or what's
-// staged alone, and a message.
+// staged alone, a message, and the files it takes, all when none.
 type StashOptions struct {
 	Message   string
 	Untracked bool
 	Staged    bool
+	Paths     []string
 }
 
-// StashPush stashes the worktree's changes, leaving it as HEAD has it.
+// StashPush stashes the worktree's changes, or those of o.Paths alone,
+// leaving them as HEAD has them.
 func (r Repo) StashPush(ctx context.Context, o StashOptions) (string, error) {
 	args := []string{"stash", "push"}
 	switch {
@@ -219,7 +221,18 @@ func (r Repo) StashPush(ctx context.Context, o StashOptions) (string, error) {
 	if m := strings.TrimSpace(o.Message); m != "" {
 		args = append(args, "-m", m)
 	}
-	return r.write(ctx, "", nil, args...)
+	if len(o.Paths) == 0 {
+		return r.write(ctx, "", nil, args...)
+	}
+	// The paths go on stdin, each literally: a folder of thousands of
+	// files fits no Windows command line, and a stash, unlike staging,
+	// is one entry, which batches would split.
+	var in strings.Builder
+	for _, p := range o.Paths {
+		in.WriteString(literal(p))
+		in.WriteByte(0)
+	}
+	return r.write(ctx, in.String(), nil, append(args, "--pathspec-from-file=-", "--pathspec-file-nul")...)
 }
 
 // ErrStashKept: the stash's changes are back, but not what of them was

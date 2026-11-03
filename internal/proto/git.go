@@ -41,11 +41,13 @@ type (
 	//	createBranch        Name, Rev ("" HEAD), Checkout
 	//	deleteBranch        Name, Force
 	//	renameBranch        Name, To
-	//	stash               Message, IncludeUntracked, Staged
+	//	stash               Message, IncludeUntracked, Staged, Paths (all when none)
 	//	stashApply, stashPop, stashDrop   Index, Hash
 	//	fetch               All, Prune
 	//	pull                Mode: "", merge, rebase or ff-only
-	//	push                Force, Tags
+	//	push                Force, Tags, Name (the branch, "" HEAD's)
+	//	worktreeRemove      Path, Force, Name (its branch to delete too, or "")
+	//	worktreePrune
 	GitOpParams struct {
 		Pane string `json:"pane"`
 		Op   string `json:"op"`
@@ -143,6 +145,37 @@ type (
 
 	GitStashes struct {
 		Stashes []GitStash `json:"stashes"`
+	}
+
+	// GitWorktreesParams ask for a pane's repository's worktrees, with
+	// State what removing each would lose, which takes a git status of
+	// each.
+	GitWorktreesParams struct {
+		Pane  string `json:"pane"`
+		State bool   `json:"state,omitempty"`
+	}
+	GitWorktrees struct {
+		Worktrees []GitWorktree `json:"worktrees"`
+		// Default is the branch Merged is of, "" for none.
+		Default string `json:"default,omitempty"`
+	}
+	// GitWorktree is a worktree of the repository: Main its main checkout,
+	// Prunable one whose folder is gone. With state, Files are its changes
+	// not committed, Unpushed its branch's commits on no remote's branch
+	// nor the default branch, and Merged that the default branch has every
+	// commit of its branch: with neither files nor commits unpushed,
+	// removing it, and its branch, loses nothing.
+	GitWorktree struct {
+		Path     string `json:"path"`
+		Branch   string `json:"branch,omitempty"` // "" when detached
+		Head     string `json:"head,omitempty"`
+		Main     bool   `json:"main,omitempty"`
+		Prunable bool   `json:"prunable,omitempty"`
+		Locked   bool   `json:"locked,omitempty"`
+		State    bool   `json:"state,omitempty"` // Files, Unpushed and Merged were read
+		Files    int    `json:"files,omitempty"`
+		Unpushed int    `json:"unpushed,omitempty"`
+		Merged   bool   `json:"merged,omitempty"`
 	}
 	// GitStash is an entry of the stash: stash@{Index}, as long as it is
 	// still Hash.
