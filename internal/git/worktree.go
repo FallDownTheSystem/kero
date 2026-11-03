@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -39,6 +40,9 @@ type Checkout struct {
 	Path   string
 	Head   string
 	Branch string
+	// Prunable: its folder is gone, which git worktree prune forgets;
+	// Locked: git keeps it, prune or remove, until it's unlocked.
+	Prunable, Locked bool
 }
 
 // Checkouts returns the repository's worktrees, the main one first, but
@@ -69,6 +73,10 @@ func (r Repo) Checkouts(ctx context.Context) ([]Checkout, error) {
 			cur.Branch = strings.TrimPrefix(line, "branch refs/heads/")
 		case line == "bare":
 			bare = true
+		case line == "prunable" || strings.HasPrefix(line, "prunable "):
+			cur.Prunable = true
+		case line == "locked" || strings.HasPrefix(line, "locked "):
+			cur.Locked = true
 		}
 	}
 	flush()
@@ -169,4 +177,34 @@ func RemoveWorktree(ctx context.Context, main, path, branch, base string) error 
 	}
 	_, err := run(ctx, main, nil, "branch", "-D", "--", branch)
 	return err
+}
+
+// RemoveCheckout removes the linked worktree at path, with force the
+// changes it has too, which git otherwise refuses to lose; then, unless
+// branch is "", its branch, as git branch -d does: only when merged, so
+// that no commit goes with it.
+func (r Repo) RemoveCheckout(ctx context.Context, path string, force bool, branch string) (string, error) {
+	if p := filepath.Clean(path); p == filepath.Clean(r.Root) || r.Main() != "" && p == filepath.Clean(r.Main()) {
+		return "", errors.New("the worktree kero works in, or the main one, stays")
+	}
+	args := []string{"worktree", "remove"}
+	if force {
+		args = append(args, "--force")
+	}
+	if out, err := r.write(ctx, "", nil, append(args, "--", path)...); err != nil {
+		return out, err
+	}
+	if branch == "" {
+		return "", nil
+	}
+	out, err := r.DeleteBranch(ctx, branch, false)
+	if err != nil {
+		return out, fmt.Errorf("the worktree is removed, but its branch stays: %w", err)
+	}
+	return out, nil
+}
+
+// PruneCheckouts forgets the worktrees whose folders are gone.
+func (r Repo) PruneCheckouts(ctx context.Context) (string, error) {
+	return r.write(ctx, "", nil, "worktree", "prune")
 }
