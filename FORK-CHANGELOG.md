@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.7
+
+- History opens a commit's diffs in the viewer, as Changes does: an open
+  commit lists its files in their folders, and clicking one shows all of
+  the commit's diffs there, scrolled to it. As you scroll the viewer, the
+  file at its top is highlighted in History
+
 ## 2.1.31-fork.6
 
 - **Stash some files**: in the Changes tab, **Add to Stash** on files,
