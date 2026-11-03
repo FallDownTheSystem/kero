@@ -70,8 +70,21 @@ type historyState struct {
 	remotes      []string
 	busy         bool
 	err          string
-	// opened are the commits shown open, by hash, and their contents.
-	opened  map[string]*commitView
+	// opened are the commits shown open, by hash, and their contents;
+	// closed the folders of their trees the user folded, by histKey.
+	opened map[string]*commitView
+	closed map[string]bool
+	// view is the commit, or stash, whose diffs the viewer shows, by its
+	// hash, viewCV its contents, viewList the viewer's list; current is
+	// the file whose diff is at its top, by histKey, which the list shows
+	// as there, scrolling to it as it changes from shownCur; reveal the
+	// one the viewer scrolls to as it comes.
+	view           string
+	viewCV         *commitView
+	viewList       ui.ListState
+	current        string
+	shownCur       string
+	reveal         string
 	stashes []proto.GitStash
 	stashOn bool // the stash's section is open
 	stashAt string
@@ -94,6 +107,7 @@ type commitView struct {
 	busy  bool
 	err   string
 	files map[string]*sideFile
+	tree  []*treeNode // info's files in their folders, made as it comes
 }
 
 // historyDir is the worktree the History view shows.
@@ -111,7 +125,8 @@ type histRow struct {
 	stash  int // the stash's, of hs.stashes
 	wt     int // the worktree's, of hs.wts
 	f      proto.GitFile
-	hash   string // the open commit's or stash's whose detail or file the row is
+	it     treeItem // the file's or folder's of the commit's tree
+	hash   string   // the open commit's or stash's whose detail or file the row is
 }
 
 const (
@@ -121,7 +136,6 @@ const (
 	rowCommit
 	rowCommitDetail
 	rowFile
-	rowDiff
 	rowMore
 	rowWorktrees
 	rowWorktree
@@ -223,7 +237,13 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 	// The list leaves room at its right, past the rows' times, for the
 	// scroll bar.
 	ls := &hs.list
-	ls.Key = func(i int) any { r := rows[i]; return [3]any{r.kind, r.hash, r.f.Path} }
+	ls.Key = func(i int) any {
+		r := rows[i]
+		if r.it.treeNode != nil {
+			return [4]any{r.kind, r.hash, r.it.path, r.it.file < 0}
+		}
+		return [4]any{r.kind, r.hash, "", false}
+	}
 	ui.List(c.Key("history-"+hs.key), ls, len(rows), func(i int) {
 		r := rows[i]
 		switch r.kind {
@@ -246,11 +266,7 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 		case rowCommitDetail:
 			a.commitDetail(c, pal, r, gw, filtered)
 		case rowFile:
-			a.histFile(c, pal, here, r, gw, filtered)
-		case rowDiff:
-			if cv := hs.opened[r.hash]; cv != nil && cv.files[r.f.Path] != nil {
-				a.histDiff(c, pal, s, r, cv.files[r.f.Path], gw, filtered, width)
-			}
+			a.histFile(c, pal, s, here, r, gw, filtered)
 		case rowMore:
 			ui.Row(c.Key("more")).Height(40).Center().Children(func() {
 				if hs.busy {
@@ -261,7 +277,15 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 			})
 		}
 	}).Grow(1).MinHeight(0).Padding(0, 6, 16, 0)
-	a.syncHistoryFiles(here)
+	// The file the viewer came to, which the list scrolls to.
+	if hs.current != hs.shownCur {
+		hs.shownCur = hs.current
+		for i, r := range rows {
+			if r.kind == rowFile && r.it.file >= 0 && histKey(r.hash, r.f.Path) == hs.current {
+				ls.ScrollIntoView(i)
+			}
+		}
+	}
 }
 
 func b2s(b bool) string {
@@ -272,9 +296,10 @@ func b2s(b bool) string {
 }
 
 // openRows adds the rows an open commit or stash shows below its own: its
-// message, then its files, each with its diff while unfolded.
+// message, then its files in their folders, as the Changes tab's tree.
 func (a *App) openRows(rows []histRow, hash string, commit int) []histRow {
-	cv := a.side.git.hist.opened[hash]
+	hs := &a.side.git.hist
+	cv := hs.opened[hash]
 	if cv == nil {
 		return rows
 	}
@@ -282,11 +307,15 @@ func (a *App) openRows(rows []histRow, hash string, commit int) []histRow {
 	if cv.info == nil {
 		return rows
 	}
-	for _, f := range cv.info.Files {
-		rows = append(rows, histRow{kind: rowFile, commit: commit, hash: hash, f: f})
-		if !a.fileCollapsed(histKey(hash, f.Path), f) {
-			rows = append(rows, histRow{kind: rowDiff, commit: commit, hash: hash, f: f})
+	if cv.tree == nil {
+		cv.tree = fileTree(cv.info.Files)
+	}
+	for _, it := range treeItems(cv.tree, func(dir string) bool { return hs.closed[histKey(hash, dir)] }) {
+		r := histRow{kind: rowFile, commit: commit, hash: hash, it: it}
+		if it.file >= 0 {
+			r.f = cv.info.Files[it.file]
 		}
+		rows = append(rows, r)
 	}
 	return rows
 }
@@ -822,22 +851,21 @@ func (a *App) toggleCommit(pane, hash string) {
 	}()
 }
 
-// syncHistoryFiles asks for the text of the open commits' files unfolded
-// that have none yet, a few at a time.
+// syncHistoryFiles asks for the text of the viewer's commit's files
+// unfolded that have none yet, a few at a time.
 func (a *App) syncHistoryFiles(pane *proto.Pane) {
 	hs := &a.side.git.hist
 	asking := 0
-	for _, cv := range hs.opened {
-		for _, sf := range cv.files {
-			if sf.busy {
-				asking++
-			}
+	cv, hash := hs.viewCV, hs.view
+	if cv == nil || cv.info == nil {
+		return
+	}
+	for _, sf := range cv.files {
+		if sf.busy {
+			asking++
 		}
 	}
-	for hash, cv := range hs.opened {
-		if cv.info == nil {
-			continue
-		}
+	{
 		for _, f := range cv.info.Files {
 			if a.fileCollapsed(histKey(hash, f.Path), f) {
 				continue
@@ -896,43 +924,154 @@ func (a *App) commitDetail(c *ui.Context, pal *palette, r histRow, gw float32, f
 	})
 }
 
-// histFile is an open commit's file's header, which a click folds or
-// unfolds.
-func (a *App) histFile(c *ui.Context, pal *palette, pane *proto.Pane, r histRow, gw float32, filtered bool) {
+// histFile is a file or folder of an open commit's tree, right of the
+// graph: a click on a file opens the viewer on the commit's diffs,
+// scrolled to it, one on a folder folds it; the file whose diff is at the
+// viewer's top shows as there.
+func (a *App) histFile(c *ui.Context, pal *palette, s *proto.Session, pane *proto.Pane, r histRow, gw float32, filtered bool) {
 	hs := &a.side.git.hist
 	colors := a.laneColors(c, pal)
-	ui.Row(c.Key("file")).AlignItems(ui.Stretch).Padding(0, 0, 0, 6).Children(func() {
+	ui.Row(c.Key("file")).AlignItems(ui.Stretch).Padding(0, 6, 0, 6).Children(func() {
 		if !filtered && r.commit >= 0 {
 			gr := hs.graph[r.commit]
 			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, hs.laneStep, gr, colors) })
 		}
 		ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Children(func() {
+			it, hash := r.it, r.hash
+			key := histKey(hash, it.path)
+			if it.file < 0 {
+				a.treeFolder(c, pal, it.name, it.path, it.depth, it.open, false, func() {
+					if hs.closed == nil {
+						hs.closed = map[string]bool{}
+					}
+					hs.closed[key] = it.open
+				}, nil)
+				return
+			}
 			f := r.f
-			menu := func(m *ui.Menu) {
+			viewing := a.viewOf(s) != nil && a.viewOf(s).kind == sideHistory
+			row := a.treeFile(c, pal, it, f, viewing && hs.view == hash && hs.current == key, func() {
+				a.viewCommit(s, hash, key)
+			}, nil)
+			full := joinRel(pane.Git.Root, f.Path)
+			id := pane.ID
+			row.ContextMenu(func(m *ui.Menu) {
+				if f.Status != "deleted" {
+					a.openItems(m, id, full, 0)
+					m.Separator()
+				}
 				if m.Item(locales.HistoryOfFile()).Chosen() {
 					hs.path, hs.query, hs.asked = f.Path, "", ""
 				}
-			}
-			a.fileHeader(c, pal, histKey(r.hash, f.Path), pane.ID, pane.Git.Root, f, flatList, stickyH, nil, nil, menu)
+			})
 		})
 	})
 }
 
-// histDiff is an open commit's file's diff, right of the graph, as its
-// header is, so that the lanes going on past the commit run unbroken by
-// it.
-func (a *App) histDiff(c *ui.Context, pal *palette, s *proto.Session, r histRow, sf *sideFile, gw float32, filtered bool, width float32) {
+// viewCommit opens the viewer on an open commit's, or stash's, diffs,
+// scrolled to the file of key (histKey).
+func (a *App) viewCommit(s *proto.Session, hash, key string) {
 	hs := &a.side.git.hist
-	colors := a.laneColors(c, pal)
-	ui.Row(c.Key("diff")).AlignItems(ui.Stretch).Padding(0, 0, 0, 6).Children(func() {
-		if !filtered && r.commit >= 0 {
-			gr := hs.graph[r.commit]
-			graphBox(c, gw, func(p *ui.Painter, rr ui.Rect) { drawLanes(p, rr, hs.laneStep, gr, colors) })
+	cv := hs.opened[hash]
+	if cv == nil || cv.info == nil {
+		return
+	}
+	if hs.view != hash || hs.viewCV != cv {
+		hs.view, hs.viewCV, hs.viewList = hash, cv, ui.ListState{}
+	}
+	hs.current, hs.reveal = key, key
+	a.openView(s, sideHistory, nil)
+}
+
+// historyViewer is the viewer of a commit's, or a stash's, diffs, which
+// the History tab opened: its files one after the other, each with its
+// header pinned at the top as it scrolls, as Changes' are.
+func (a *App) historyViewer(c *ui.Context, pal *palette, s *proto.Session, width float32) {
+	hs := &a.side.git.hist
+	cv := hs.viewCV
+	here, _ := a.changesPanes(s)
+	title := locales.SideHistory()
+	if cv != nil && cv.info != nil {
+		title = cv.info.Subject
+	}
+	var keys []string
+	var files []proto.GitFile
+	if cv != nil && cv.info != nil {
+		files = cv.info.Files
+		for _, f := range files {
+			keys = append(keys, histKey(hs.view, f.Path))
 		}
-		ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Stretch).Children(func() {
-			a.fileDiff(c, pal, s, sf, width-gw-6)
-		})
+	}
+	a.viewerHeader(c, pal, s, commitIcon, title, false, func() {
+		if cv != nil && cv.info != nil {
+			ui.Text(c, shortHash(cv.info.Hash)).Font(a.termFamily()).FontSize(12).TextColor(pal.textFaint).SingleLine().Shrink(0)
+		}
+	}, func() {
+		if len(keys) > 0 {
+			a.foldAllButton(c, pal, keys, files, nil)
+		}
+		a.wrapButton(c, pal)
+		a.layoutButton(c, pal, width)
 	})
+	if cv == nil || cv.info == nil || here == nil || here.Git == nil {
+		a.sideMessage(c, pal, locales.HistoryViewNone(), locales.HistoryViewNoneDetail())
+		return
+	}
+	a.syncHistoryFiles(here)
+	// A file is two rows: its header, then its diff while unfolded.
+	type viewRow struct {
+		f    proto.GitFile
+		diff bool
+	}
+	var rows []viewRow
+	heads := map[string]int{}
+	for _, f := range files {
+		key := histKey(hs.view, f.Path)
+		heads[key] = len(rows)
+		rows = append(rows, viewRow{f: f})
+		if !a.fileCollapsed(key, f) {
+			rows = append(rows, viewRow{f: f, diff: true})
+		}
+	}
+	ls := &hs.viewList
+	if hs.reveal != "" {
+		if i, ok := heads[hs.reveal]; ok {
+			ls.ScrollTo(i, ui.Start)
+		}
+		hs.reveal = ""
+	} else if first, _ := ls.Visible(); first >= 0 && first < len(rows) {
+		// The file at the top is the one there, which the tab shows.
+		if key := histKey(hs.view, rows[first].f.Path); key != hs.current {
+			hs.current = key
+			c.Invalidate()
+		}
+	}
+	ls.Header = func(i int) bool { return !rows[i].diff }
+	ls.Key = func(i int) any { return [2]any{rows[i].f.Path, rows[i].diff} }
+	pane, root := here.ID, here.Git.Root
+	ui.List(c.Key("commit-"+hs.view), ls, len(rows), func(i int) {
+		r := rows[i]
+		key := histKey(hs.view, r.f.Path)
+		if r.diff {
+			if sf := cv.files[r.f.Path]; sf != nil {
+				ui.Column(c).FillWidth().AlignItems(ui.Stretch).Children(func() { a.fileDiff(c, pal, s, sf, width) })
+			}
+			return
+		}
+		gap := float32(sectionGap)
+		if i+1 < len(rows) && rows[i+1].diff {
+			gap = 0
+		}
+		f := r.f
+		menu := func(m *ui.Menu) {
+			if m.Item(locales.HistoryOfFile()).Chosen() {
+				hs.path, hs.query, hs.asked = f.Path, "", ""
+			}
+		}
+		ui.Column(c).FillWidth().AlignItems(ui.Stretch).Padding(0, 0, gap, 0).Background(pal.card).Children(func() {
+			a.fileHeader(c, pal, key, pane, root, f, flatList, stickyH, func() { ls.ScrollIntoView(i) }, nil, menu)
+		})
+	}).Grow(1).MinWidth(0).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
 }
 
 // stashesRow is the stash's title, which a click opens or closes.
