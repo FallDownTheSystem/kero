@@ -1195,5 +1195,7 @@
   "historyWorktreeRemoveSafe": "フォルダ {path} は削除されます。ブランチ {branch} はプッシュかマージ済みなので、何も失われません。一緒に削除しない限り残ります。",
   "historyWorktreeRemoveBranchDetail": "フォルダ {path} と、ブランチ {branch} が削除されます。ブランチはマージ済みの場合だけ削除されます。",
   "historyWorktreeRemoveDetail": "フォルダ {path} は削除されます。",
-  "historyOpenInWorktree": "{name} を新しいワークツリーで開く"
+  "historyOpenInWorktree": "{name} を新しいワークツリーで開く",
+  "historyViewNone": "コミットが開かれていません",
+  "historyViewNoneDetail": "履歴でコミットを開き、そのファイルをクリックしてください。"
 }

@@ -1195,5 +1195,7 @@
   "historyWorktreeRemoveSafe": "文件夹 {path} 会删除。分支 {branch} 已推送或合并，不会丢失任何内容；除非一起删除，它会保留。",
   "historyWorktreeRemoveBranchDetail": "文件夹 {path} 和分支 {branch} 会删除；git 只在分支已合并时删除它。",
   "historyWorktreeRemoveDetail": "文件夹 {path} 会删除。",
-  "historyOpenInWorktree": "在新工作树中打开 {name}"
+  "historyOpenInWorktree": "在新工作树中打开 {name}",
+  "historyViewNone": "没有打开的提交",
+  "historyViewNoneDetail": "在历史中打开一个提交，然后点击它的文件。"
 }
