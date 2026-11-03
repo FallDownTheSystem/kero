@@ -1523,3 +1523,153 @@ func TestHistoryViewer(t *testing.T) {
 }
 
 func s1Pane(a *App) string { return a.st.Sessions[0].Panes[0].ID }
+
+// The branch switcher groups worktrees, branches in their folders,
+// remotes, tags and the stash, which fold; it hides branches older than
+// the setting allows until asked, or until the filter finds them. A click
+// shows a branch's commit in History, chosen; a double click checks it
+// out.
+func TestBranchPicker(t *testing.T) {
+	a := testApp(t)
+	g, _ := gitDemo(a)
+	g.Files = 0
+	now := time.Now().Unix()
+	old := now - 20*7*24*3600
+	ops := make(chan proto.GitOpParams, 4)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.branches":
+			return proto.GitBranches{Remotes: []string{"origin"}, Branches: []proto.GitBranch{
+				{Name: "main", Current: true, Head: "c3", Time: now},
+				{Name: "release", Head: "c2", Time: now},
+				{Name: "feature/login", Head: "c1", Time: now},
+				{Name: "feature/legacy", Head: "c0", Time: old},
+				{Name: "review/pr-12", Head: "c2", Time: now, Worktree: "/tmp/demo/.kero/worktrees/review-pr-12"},
+				{Name: "origin/main", Remote: true, Head: "c3", Time: now},
+				{Name: "origin/HEAD", Remote: true, Head: "c3", Time: now},
+				{Name: "v1.0", Tag: true, Head: "c1", Time: now},
+			}}, nil
+		case "git.op":
+			var p proto.GitOpParams
+			json.Unmarshal(raw, &p)
+			ops <- p
+			return proto.GitOpResult{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().cl = cl
+	a.set.BranchMaxWeeks = 8
+	a.prefs.Side = sideHistory
+	hs := &a.side.git.hist
+	hs.stashes = []proto.GitStash{{Index: 0, Hash: "s0", Message: "On main: half done", Time: now}}
+	tt := ui.NewTester(a.view, 1400, 800)
+	tt.Frame()
+	if err := tt.Click("Switch Branch"); err != nil {
+		t.Fatal(err)
+	}
+	for range 100 {
+		if tt.Frame(); tt.HasText("Remotes") {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	for _, want := range []string{"Worktrees", "review-pr-12", "Branches", "feature", "main", "release", "Remotes", "origin", "Tags", "Stashes", "Show 1 branch older than 8 weeks"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q; texts %q", want, tt.Texts())
+		}
+	}
+	for _, hidden := range []string{"login", "legacy", "v1.0", "On main: half done", "HEAD"} {
+		if tt.HasText(hidden) {
+			t.Errorf("%q shows, in a folded group or folder, or too old", hidden)
+		}
+	}
+	if err := tt.Click("feature"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("login") || tt.HasText("legacy") {
+		t.Errorf("feature unfolded; texts %q", tt.Texts())
+	}
+	shot(t, tt, "branch-picker")
+
+	// The filter finds the old branch, in its folder.
+	tt.Type("legacy")
+	tt.Frame()
+	if !tt.HasText("legacy") || tt.HasText("release") {
+		t.Errorf("filtered for legacy; texts %q", tt.Texts())
+	}
+	shot(t, tt, "branch-picker-filtered")
+	for range 6 {
+		tt.Key(0, ui.KeyBackspace)
+	}
+	tt.Frame()
+
+	// A click shows the commit; the switcher stays.
+	if err := tt.Click("release"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if hs.chosen != "c2" || hs.find != "c2" && hs.find != "" || a.prefs.Side != sideHistory || !a.side.git.menu.open {
+		t.Errorf("a click: chosen %q, tab %q, open %v", hs.chosen, a.prefs.Side, a.side.git.menu.open)
+	}
+	select {
+	case p := <-ops:
+		t.Errorf("a click ran %+v", p)
+	default:
+	}
+	// A double click checks the branch out, closing the switcher.
+	r, _ := tt.Find("release")
+	tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+	tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+	tt.Frame()
+	if p := nextOp(t, ops); p.Op != "switch" || p.Name != "release" {
+		t.Errorf("a double click ran %+v", p)
+	}
+	if a.side.git.menu.open {
+		t.Error("the switcher stays open after checking out")
+	}
+}
+
+// A commit the branch switcher shows, past the history listed, comes as
+// the list pages in more of it, scrolled to and chosen.
+func TestRevealCommitPages(t *testing.T) {
+	a := testApp(t)
+	g, _ := gitDemo(a)
+	pages := make(chan int, 4)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method != "git.log" {
+			return nil, errors.New("no " + method + " in a test")
+		}
+		var p proto.GitLogParams
+		json.Unmarshal(raw, &p)
+		pages <- p.Skip
+		var res proto.GitLog
+		for i := p.Skip; i < p.Skip+histPage; i++ {
+			res.Commits = append(res.Commits, proto.GitCommit{Hash: "h" + itoa(i), Subject: "commit " + itoa(i), Time: 1})
+		}
+		res.More = p.Skip == 0
+		return res, nil
+	})
+	a.local().cl = cl
+	a.prefs.Side = sideHistory
+	hs := &a.side.git.hist
+	hs.stashAt = gitStamp(g) + "|0"
+	hs.wtAt = hs.stashAt + "|0"
+	tt := ui.NewTester(a.view, 1400, 800)
+	a.revealCommit(g.Root, "h"+itoa(histPage+150), false)
+	for range 200 {
+		tt.Frame()
+		if hs.find == "" && len(hs.commits) > histPage {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	want := "commit " + itoa(histPage+150)
+	if hs.find != "" || !tt.HasText(want) || hs.chosen != "h"+itoa(histPage+150) {
+		t.Fatalf("find %q, %d commits, %q shows %v", hs.find, len(hs.commits), want, tt.HasText(want))
+	}
+	if <-pages != 0 || <-pages != histPage {
+		t.Error("the pages asked for")
+	}
+	shot(t, tt, "reveal-commit")
+}

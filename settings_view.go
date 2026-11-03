@@ -698,6 +698,18 @@ func (a *App) gitPage(c *ui.Context, pal *palette) {
 				a.set.CommitMessageCommand = strings.TrimSpace(a.ss.messageDraft)
 			}
 		})
+		settingRow(c, pal, locales.SetBranchMaxAge(), locales.SetBranchMaxAgeDetail(), func() {
+			weeks := []int{0, 2, 4, 8, 12, 26, 52}
+			if !slices.Contains(weeks, s.BranchMaxWeeks) {
+				weeks = append(weeks, s.BranchMaxWeeks)
+			}
+			popup(c, "branch-age", &s.BranchMaxWeeks, weeks, func(n int) string {
+				if n == 0 {
+					return locales.SetBranchMaxAgeAll()
+				}
+				return locales.SetBranchMaxAgeWeeks(n)
+			}, 140, pal)
+		})
 		promptSetting(c, pal, "commit-prompt", locales.SetCommitPrompt(), locales.SetCommitPromptDetail(), &s.CommitMessagePrompt, commitmsg.DefaultCommitPrompt, &a.ss.prompts[0])
 	})
 	settingsGroup(c, pal, locales.SetPullRequests(), "", func() {

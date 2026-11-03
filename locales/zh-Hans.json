@@ -1188,5 +1188,14 @@
   "historyWorktreeRemoveDetail": "文件夹 {path} 会删除。",
   "historyOpenInWorktree": "在新工作树中打开 {name}",
   "historyViewNone": "没有打开的提交",
-  "historyViewNoneDetail": "在历史中打开一个提交，然后点击它的文件。"
+  "historyViewNoneDetail": "在历史中打开一个提交，然后点击它的文件。",
+  "gitPickWorktrees": "工作树",
+  "gitPickRemotes": "远程",
+  "gitPickStashes": "储藏",
+  "gitPickOlder": "显示 {count} 个超过 {weeks} 周的分支",
+  "historyNotListed": "该提交不在列出的历史中。",
+  "setBranchMaxAge": "隐藏旧分支",
+  "setBranchMaxAgeDetail": "在分支切换器中；筛选找到的仍会显示",
+  "setBranchMaxAgeAll": "全部显示",
+  "setBranchMaxAgeWeeks": "超过 {count} 周"
 }

@@ -1188,5 +1188,14 @@
   "historyWorktreeRemoveDetail": "フォルダ {path} は削除されます。",
   "historyOpenInWorktree": "{name} を新しいワークツリーで開く",
   "historyViewNone": "コミットが開かれていません",
-  "historyViewNoneDetail": "履歴でコミットを開き、そのファイルをクリックしてください。"
+  "historyViewNoneDetail": "履歴でコミットを開き、そのファイルをクリックしてください。",
+  "gitPickWorktrees": "ワークツリー",
+  "gitPickRemotes": "リモート",
+  "gitPickStashes": "スタッシュ",
+  "gitPickOlder": "{weeks} 週間より古い {count} 個のブランチを表示",
+  "historyNotListed": "そのコミットは表示中の履歴にありません。",
+  "setBranchMaxAge": "古いブランチを隠す",
+  "setBranchMaxAgeDetail": "ブランチの切り替えで。フィルタで見つけたものは表示",
+  "setBranchMaxAgeAll": "すべて表示",
+  "setBranchMaxAgeWeeks": "{count} 週間より古い"
 }

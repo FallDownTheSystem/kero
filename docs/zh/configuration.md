@@ -137,6 +137,7 @@ kero config check             # 报告未知的配置项和无效的值
 | ------------- | ------- | ------------------------------------------------------------------------------------------------- |
 | `git-status`  | `true`  | 显示每个会话的分支和[改动](./changes.md)                                                          |
 | `diff-layout` | `auto`  | 改动标签页中的 diff 布局：`unified`、`split`（左右对照）或 `auto`（够宽时左右对照）               |
+| `branch-max-age` | `0` | 在分支切换器中隐藏那么多周没有提交的分支，除非筛选找到它们；`0` 表示不隐藏 |
 | `worktree-base` | `default` | [会话专属工作树](./changes.md#sessions-in-their-own-worktree)的起点：`default` 为仓库的默认分支，`current` 为你所在会话的分支 |
 | `worktree-dir` |        | 会话专属工作树的存放位置，各自放在仓库名之下；留空则放在仓库内的 `.kero/worktrees` |
 | `commit-message-command` |  | 为已暂存的改动[撰写提交信息](./changes.md#committing)的命令，在你的 shell 中运行，提示通过标准输入传入，如 `llm -m gpt-5`；其中的 `{session}` 会换成要分叉的窗格中智能体对话的 ID，如 `cc -p --resume {session} --fork-session`；留空则分叉窗格中智能体的对话，没有对话时新运行 Claude Code 或 Codex |
