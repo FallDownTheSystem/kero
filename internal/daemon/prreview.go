@@ -186,7 +186,7 @@ func (d *Daemon) prReview(p proto.PRReviewParams) (*proto.PRReviewDraft, error) 
 	}
 	need := func() error {
 		if dr == nil {
-			return fmt.Errorf("%s#%d has no draft review: start one from the Review view", t.slug, t.number)
+			return fmt.Errorf("%s#%d has no draft review: ask the user to click Start Draft on it in Kero's Review view", t.slug, t.number)
 		}
 		return nil
 	}
