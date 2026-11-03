@@ -1295,3 +1295,159 @@ func TestSidebarZoom(t *testing.T) {
 		t.Errorf("unzoomed, the sidebar is %v wide, was %v; texts %q", a.side.barW, narrow, tt.Texts())
 	}
 }
+
+// Files chosen to stash, staged or not, leave their sections for one of
+// their own, under them, whose button stashes them alone, by the name
+// typed, untracked ones too.
+func TestStashChosenFiles(t *testing.T) {
+	a := testApp(t)
+	g, ix := gitDemo(a)
+	ops, _ := gitCalls(t, a, ix)
+	s := &a.st.Sessions[0]
+	a.toggleSide(sideChanges)
+	ch := &a.side.changes
+	scope := changesScope(&s.Panes[0], git.BaseHead)
+	ch.base, ch.scope, ch.stamp, ch.fetched = git.BaseHead, scope, gitStamp(g)+"|0", time.Now()
+	ch.res = &proto.GitChanges{Root: g.Root, Files: unionFiles(ix.Staged, ix.Unstaged)}
+	ch.indexes = map[string]*proto.GitIndex{scope: ix}
+	a.closeView(s) // the tree alone, not the diffs, which keep their sections
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	if tt.HasText("To Stash") {
+		t.Fatal("a stash section with nothing chosen")
+	}
+	a.pickStash(scope, ix.Staged, true)        // a.go
+	a.pickStash(scope, ix.Unstaged[:1], true) // b.go
+	tt.Frame()
+	title, ok := tt.Find("To Stash")
+	changes, _ := tt.Find("Changes")
+	if !ok {
+		t.Fatalf("no stash section; texts %q", tt.Texts())
+	}
+	if tt.HasText("Staged Changes") {
+		t.Error("the staged section shows with its one file chosen to stash")
+	}
+	if changes.Y > title.Y {
+		t.Error("the stash's section above the others")
+	}
+	for _, name := range []string{"a.go", "b.go"} {
+		if r, _ := tt.Find(name); r.Y < title.Y {
+			t.Errorf("%s, chosen, lists above the stash's title", name)
+		}
+	}
+	if r, _ := tt.Find("new.txt"); r.Y > title.Y {
+		t.Error("new.txt, not chosen, went to the stash's section")
+	}
+	ch.stashName[scope] = "half done"
+	tt.Frame()
+	shot(t, tt, "stash-chosen")
+	if err := tt.Click("Stash 2 Files"); err != nil {
+		t.Fatal(err)
+	}
+	p := nextOp(t, ops)
+	if p.Op != "stash" || !slices.Equal(p.Paths, []string{"a.go", "b.go"}) || p.Message != "half done" || p.IncludeUntracked {
+		t.Errorf("stashed %+v", p)
+	}
+	tt.Frame()
+	if len(ch.toStash[scope]) != 0 || ch.stashName[scope] != "" {
+		t.Error("the stash's files stay chosen once stashed")
+	}
+
+	a.pickStash(scope, ix.Unstaged, true)
+	tt.Frame()
+	if err := tt.Click("Stash 2 Files"); err != nil {
+		t.Fatal(err)
+	}
+	if p := nextOp(t, ops); !p.IncludeUntracked || !slices.Equal(p.Paths, []string{"b.go", "new.txt"}) {
+		t.Errorf("an untracked file stashed with %+v", p)
+	}
+}
+
+// The History view lists the worktrees, with what removing each would
+// lose; Remove asks first, and with nothing to lose offers to delete the
+// branch too.
+func TestHistoryWorktrees(t *testing.T) {
+	a := testApp(t)
+	g, _ := gitDemo(a)
+	ops := make(chan proto.GitOpParams, 4)
+	asked := make(chan bool, 4)
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.worktrees":
+			var p proto.GitWorktreesParams
+			json.Unmarshal(raw, &p)
+			asked <- p.State
+			return proto.GitWorktrees{Default: "main", Worktrees: []proto.GitWorktree{
+				{Path: "/tmp/demo", Branch: "main", Main: true, State: p.State},
+				{Path: "/tmp/demo/.kero/worktrees/review-pr-12", Branch: "review/pr-12", State: p.State, Merged: true},
+				{Path: "/tmp/demo/.kero/worktrees/fix-login", Branch: "fix/login", State: p.State, Files: 2, Unpushed: 3},
+				{Path: "/tmp/old", Branch: "old", Prunable: true},
+			}}, nil
+		case "git.op":
+			var p proto.GitOpParams
+			json.Unmarshal(raw, &p)
+			ops <- p
+			return proto.GitOpResult{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().cl = cl
+	a.prefs.Side = sideHistory
+	hs := &a.side.git.hist
+	hs.key = g.Root + "|0|0||"
+	hs.stamp = gitStamp(g) + "|0"
+	hs.stashAt = hs.stamp
+	hs.commits = []proto.GitCommit{{Hash: "c3", Time: time.Now().Unix(), Refs: "HEAD -> main", Subject: "Latest"}}
+	hs.graph = []gitgraph.Row{hs.layout.Add(gitgraph.Commit{Hash: "c3"})}
+	tt := ui.NewTester(a.view, 1280, 720)
+	wait := func(state bool) {
+		t.Helper()
+		for range 100 {
+			tt.Frame()
+			if len(hs.wts) > 0 && hs.wts[1].State == state {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		t.Fatalf("worktrees %+v", hs.wts)
+	}
+	wait(false)
+	if !tt.HasText("Worktrees: 4") || tt.HasText("review/pr-12") {
+		t.Fatalf("the worktrees' title, closed; texts %q", tt.Texts())
+	}
+	if err := tt.Click("Worktrees: 4"); err != nil {
+		t.Fatal(err)
+	}
+	wait(true)
+	for _, want := range []string{"review/pr-12", "merged", "fix/login", "2 changed · 3 unpushed", "missing", "Prune Missing Worktrees"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q; texts %q", want, tt.Texts())
+		}
+	}
+	shot(t, tt, "history-worktrees")
+
+	// Merged: removing it loses nothing, and may take its branch.
+	a.removeWorktree(&a.st.Sessions[0].Panes[0], hs.wts[1], false)
+	if a.confirm == nil || a.confirm.destroy || a.confirm.alt != "Remove with Branch" {
+		t.Fatalf("confirmation %+v", a.confirm)
+	}
+	a.confirm.altRun()
+	if p := nextOp(t, ops); p.Op != "worktreeRemove" || p.Path != hs.wts[1].Path || p.Name != "review/pr-12" || p.Force {
+		t.Errorf("removed with %+v", p)
+	}
+	for range 100 { // the operation ends, as a frame takes its result
+		if tt.Frame(); a.side.git.op == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	// Changed files: only forced, and its branch stays.
+	a.removeWorktree(&a.st.Sessions[0].Panes[0], hs.wts[2], true)
+	if a.confirm == nil || !a.confirm.destroy {
+		t.Fatalf("confirmation %+v", a.confirm)
+	}
+	a.confirm.run()
+	if p := nextOp(t, ops); !p.Force || p.Name != "" {
+		t.Errorf("removed a changed worktree with %+v", p)
+	}
+}

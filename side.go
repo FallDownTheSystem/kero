@@ -138,6 +138,11 @@ type changesState struct {
 	// the lists show moved at once.
 	indexes map[string]*proto.GitIndex
 	moves   []*indexMove
+	// toStash are the files of Uncommitted the user chose to stash, by
+	// scope and path, which the tree lists in a section of their own
+	// (treeSections); stashName the name typed for the stash, by scope.
+	toStash   map[string]map[string]bool
+	stashName map[string]string
 	// tree is the tree of the files of treeOf, the list it was made of
 	// (changes_tree.go); treeClosed the folders the user folded in it, by
 	// scope and path; treePlaces its places, by scope. picked is the file
@@ -199,6 +204,7 @@ func (sf *sideFile) onDisk() bool {
 const (
 	baseStaged   = "staged"
 	baseUnstaged = "unstaged"
+	baseStash    = "stash" // the tree's section of the files to stash, no side of a diff
 	baseRev      = "rev"
 )
 

@@ -11669,3 +11669,267 @@ func SetPRPollMinutes(count int) string { return In(i18n.Locale()).SetPRPollMinu
 func (msgs Messages) SetPRPollMinutes(count int) string {
 	return Catalog.Format(msgs.locale, "setPRPollMinutes", map[string]any{"count": count})
 }
+
+// GitToStash says "To Stash"
+// in the language the app shows.
+func GitToStash() string { return In(i18n.Locale()).GitToStash() }
+
+// GitToStash says "To Stash"
+// in the language of msgs.
+func (msgs Messages) GitToStash() string {
+	return Catalog.Format(msgs.locale, "gitToStash", nil)
+}
+
+// GitAddToStash says "Add to Stash"
+// in the language the app shows.
+func GitAddToStash() string { return In(i18n.Locale()).GitAddToStash() }
+
+// GitAddToStash says "Add to Stash"
+// in the language of msgs.
+func (msgs Messages) GitAddToStash() string {
+	return Catalog.Format(msgs.locale, "gitAddToStash", nil)
+}
+
+// GitRemoveFromStash says "Remove from Stash"
+// in the language the app shows.
+func GitRemoveFromStash() string { return In(i18n.Locale()).GitRemoveFromStash() }
+
+// GitRemoveFromStash says "Remove from Stash"
+// in the language of msgs.
+func (msgs Messages) GitRemoveFromStash() string {
+	return Catalog.Format(msgs.locale, "gitRemoveFromStash", nil)
+}
+
+// GitStashName says "Stash name (optional)"
+// in the language the app shows.
+func GitStashName() string { return In(i18n.Locale()).GitStashName() }
+
+// GitStashName says "Stash name (optional)"
+// in the language of msgs.
+func (msgs Messages) GitStashName() string {
+	return Catalog.Format(msgs.locale, "gitStashName", nil)
+}
+
+// GitStashFiles says "{count, plural, one {Stash # File} other {Stash # Files}}"
+// in the language the app shows.
+func GitStashFiles(count int) string { return In(i18n.Locale()).GitStashFiles(count) }
+
+// GitStashFiles says "{count, plural, one {Stash # File} other {Stash # Files}}"
+// in the language of msgs.
+func (msgs Messages) GitStashFiles(count int) string {
+	return Catalog.Format(msgs.locale, "gitStashFiles", map[string]any{"count": count})
+}
+
+// GitPushBranch says "Push {name}"
+// in the language the app shows.
+func GitPushBranch(name string) string { return In(i18n.Locale()).GitPushBranch(name) }
+
+// GitPushBranch says "Push {name}"
+// in the language of msgs.
+func (msgs Messages) GitPushBranch(name string) string {
+	return Catalog.Format(msgs.locale, "gitPushBranch", map[string]any{"name": name})
+}
+
+// HistoryWorktrees says "{count, plural, one {Worktrees: #} other {Worktrees: #}}"
+// in the language the app shows.
+func HistoryWorktrees(count int) string { return In(i18n.Locale()).HistoryWorktrees(count) }
+
+// HistoryWorktrees says "{count, plural, one {Worktrees: #} other {Worktrees: #}}"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktrees(count int) string {
+	return Catalog.Format(msgs.locale, "historyWorktrees", map[string]any{"count": count})
+}
+
+// HistoryWorktreesPrune says "Prune Missing Worktrees"
+// in the language the app shows.
+func HistoryWorktreesPrune() string { return In(i18n.Locale()).HistoryWorktreesPrune() }
+
+// HistoryWorktreesPrune says "Prune Missing Worktrees"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreesPrune() string {
+	return Catalog.Format(msgs.locale, "historyWorktreesPrune", nil)
+}
+
+// HistoryDetached says "detached at {hash}"
+// in the language the app shows.
+func HistoryDetached(hash string) string { return In(i18n.Locale()).HistoryDetached(hash) }
+
+// HistoryDetached says "detached at {hash}"
+// in the language of msgs.
+func (msgs Messages) HistoryDetached(hash string) string {
+	return Catalog.Format(msgs.locale, "historyDetached", map[string]any{"hash": hash})
+}
+
+// HistoryWorktreeGone says "missing"
+// in the language the app shows.
+func HistoryWorktreeGone() string { return In(i18n.Locale()).HistoryWorktreeGone() }
+
+// HistoryWorktreeGone says "missing"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeGone() string {
+	return Catalog.Format(msgs.locale, "historyWorktreeGone", nil)
+}
+
+// HistoryWorktreeMain says "main"
+// in the language the app shows.
+func HistoryWorktreeMain() string { return In(i18n.Locale()).HistoryWorktreeMain() }
+
+// HistoryWorktreeMain says "main"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeMain() string {
+	return Catalog.Format(msgs.locale, "historyWorktreeMain", nil)
+}
+
+// HistoryWorktreeUnpushed says "{count} unpushed"
+// in the language the app shows.
+func HistoryWorktreeUnpushed(count int) string {
+	return In(i18n.Locale()).HistoryWorktreeUnpushed(count)
+}
+
+// HistoryWorktreeUnpushed says "{count} unpushed"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeUnpushed(count int) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeUnpushed", map[string]any{"count": count})
+}
+
+// HistoryWorktreeChanged says "{count} changed"
+// in the language the app shows.
+func HistoryWorktreeChanged(count int) string { return In(i18n.Locale()).HistoryWorktreeChanged(count) }
+
+// HistoryWorktreeChanged says "{count} changed"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeChanged(count int) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeChanged", map[string]any{"count": count})
+}
+
+// HistoryWorktreeMerged says "merged"
+// in the language the app shows.
+func HistoryWorktreeMerged() string { return In(i18n.Locale()).HistoryWorktreeMerged() }
+
+// HistoryWorktreeMerged says "merged"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeMerged() string {
+	return Catalog.Format(msgs.locale, "historyWorktreeMerged", nil)
+}
+
+// HistoryWorktreePushed says "pushed"
+// in the language the app shows.
+func HistoryWorktreePushed() string { return In(i18n.Locale()).HistoryWorktreePushed() }
+
+// HistoryWorktreePushed says "pushed"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreePushed() string {
+	return Catalog.Format(msgs.locale, "historyWorktreePushed", nil)
+}
+
+// HistoryWorktreeOpen says "Open in Session"
+// in the language the app shows.
+func HistoryWorktreeOpen() string { return In(i18n.Locale()).HistoryWorktreeOpen() }
+
+// HistoryWorktreeOpen says "Open in Session"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeOpen() string {
+	return Catalog.Format(msgs.locale, "historyWorktreeOpen", nil)
+}
+
+// HistoryWorktreeRemoveBranch says "Remove with Branch"
+// in the language the app shows.
+func HistoryWorktreeRemoveBranch() string { return In(i18n.Locale()).HistoryWorktreeRemoveBranch() }
+
+// HistoryWorktreeRemoveBranch says "Remove with Branch"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeRemoveBranch() string {
+	return Catalog.Format(msgs.locale, "historyWorktreeRemoveBranch", nil)
+}
+
+// HistoryWorktreeInUse says "Close {names} first: it works in this worktree."
+// in the language the app shows.
+func HistoryWorktreeInUse(names string) string { return In(i18n.Locale()).HistoryWorktreeInUse(names) }
+
+// HistoryWorktreeInUse says "Close {names} first: it works in this worktree."
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeInUse(names string) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeInUse", map[string]any{"names": names})
+}
+
+// HistoryWorktreeRemoveTitle says "Remove the worktree of {name}?"
+// in the language the app shows.
+func HistoryWorktreeRemoveTitle(name string) string {
+	return In(i18n.Locale()).HistoryWorktreeRemoveTitle(name)
+}
+
+// HistoryWorktreeRemoveTitle says "Remove the worktree of {name}?"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeRemoveTitle(name string) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeRemoveTitle", map[string]any{"name": name})
+}
+
+// HistoryWorktreeRemoveDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost. Its branch stays, with its comm…"
+// in the language the app shows.
+func HistoryWorktreeRemoveDirty(count int, path string) string {
+	return In(i18n.Locale()).HistoryWorktreeRemoveDirty(count, path)
+}
+
+// HistoryWorktreeRemoveDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost. Its branch stays, with its comm…"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeRemoveDirty(count int, path string) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeRemoveDirty", map[string]any{"count": count, "path": path})
+}
+
+// HistoryWorktreeRemoveUnpushed says "{count, plural, one {# commit of {branch} is} other {# commits of {branch} are}} on no remote. Its folder goes, its b…"
+// in the language the app shows.
+func HistoryWorktreeRemoveUnpushed(count int, branch string) string {
+	return In(i18n.Locale()).HistoryWorktreeRemoveUnpushed(count, branch)
+}
+
+// HistoryWorktreeRemoveUnpushed says "{count, plural, one {# commit of {branch} is} other {# commits of {branch} are}} on no remote. Its folder goes, its b…"
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeRemoveUnpushed(count int, branch string) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeRemoveUnpushed", map[string]any{"count": count, "branch": branch})
+}
+
+// HistoryWorktreeRemoveSafe says "Its folder {path} goes. Its branch {branch} is pushed or merged, so nothing is lost; it stays unless you remove it too."
+// in the language the app shows.
+func HistoryWorktreeRemoveSafe(path string, branch string) string {
+	return In(i18n.Locale()).HistoryWorktreeRemoveSafe(path, branch)
+}
+
+// HistoryWorktreeRemoveSafe says "Its folder {path} goes. Its branch {branch} is pushed or merged, so nothing is lost; it stays unless you remove it too."
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeRemoveSafe(path string, branch string) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeRemoveSafe", map[string]any{"path": path, "branch": branch})
+}
+
+// HistoryWorktreeRemoveBranchDetail says "Its folder {path} goes, and its branch {branch}, which git deletes only if it's merged."
+// in the language the app shows.
+func HistoryWorktreeRemoveBranchDetail(path string, branch string) string {
+	return In(i18n.Locale()).HistoryWorktreeRemoveBranchDetail(path, branch)
+}
+
+// HistoryWorktreeRemoveBranchDetail says "Its folder {path} goes, and its branch {branch}, which git deletes only if it's merged."
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeRemoveBranchDetail(path string, branch string) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeRemoveBranchDetail", map[string]any{"path": path, "branch": branch})
+}
+
+// HistoryWorktreeRemoveDetail says "Its folder {path} goes."
+// in the language the app shows.
+func HistoryWorktreeRemoveDetail(path string) string {
+	return In(i18n.Locale()).HistoryWorktreeRemoveDetail(path)
+}
+
+// HistoryWorktreeRemoveDetail says "Its folder {path} goes."
+// in the language of msgs.
+func (msgs Messages) HistoryWorktreeRemoveDetail(path string) string {
+	return Catalog.Format(msgs.locale, "historyWorktreeRemoveDetail", map[string]any{"path": path})
+}
+
+// HistoryOpenInWorktree says "Open {name} in New Worktree"
+// in the language the app shows.
+func HistoryOpenInWorktree(name string) string { return In(i18n.Locale()).HistoryOpenInWorktree(name) }
+
+// HistoryOpenInWorktree says "Open {name} in New Worktree"
+// in the language of msgs.
+func (msgs Messages) HistoryOpenInWorktree(name string) string {
+	return Catalog.Format(msgs.locale, "historyOpenInWorktree", map[string]any{"name": name})
+}

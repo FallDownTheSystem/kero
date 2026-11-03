@@ -166,3 +166,54 @@ func TestIncluded(t *testing.T) {
 		t.Errorf("key's mode: %v, %v", fi, err)
 	}
 }
+
+// Removing a worktree refuses to lose its changes unless forced, and
+// deletes its branch only when merged, keeping one with commits of its
+// own; a worktree whose folder is gone lists as prunable until pruned;
+// the main one stays.
+func TestRemoveCheckout(t *testing.T) {
+	ctx := context.Background()
+	r := opsRepo(t, map[string]string{"a.txt": "a\n"})
+	add := func(branch string) string {
+		path := filepath.Join(r.Root, ".kero", "worktrees", branch)
+		if err := r.AddWorktree(ctx, path, branch, "main"); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	done, own, dirty, gone := add("done"), add("own"), add("dirty"), add("gone")
+	write(t, filepath.Join(own, "o.txt"), "o\n")
+	gitIn(t, own, "add", ".")
+	gitIn(t, own, "commit", "-qm", "own work")
+	write(t, filepath.Join(dirty, "a.txt"), "changed\n")
+	os.RemoveAll(gone)
+
+	if _, err := r.RemoveCheckout(ctx, r.Root, true, ""); err == nil {
+		t.Error("removed the main worktree")
+	}
+	if _, err := r.RemoveCheckout(ctx, done, false, "done"); err != nil || r.HasBranch("done") {
+		t.Errorf("a merged worktree: %v, branch kept %v", err, r.HasBranch("done"))
+	}
+	if _, err := r.RemoveCheckout(ctx, own, false, "own"); err == nil || !r.HasBranch("own") {
+		t.Errorf("a branch of its own commits was deleted: %v", err)
+	}
+	if _, err := os.Stat(own); !os.IsNotExist(err) {
+		t.Errorf("the worktree of the branch kept stays: %v", err)
+	}
+	if _, err := r.RemoveCheckout(ctx, dirty, false, ""); err == nil {
+		t.Error("removed a worktree with changes unforced")
+	}
+	if _, err := r.RemoveCheckout(ctx, dirty, true, ""); err != nil {
+		t.Errorf("forced: %v", err)
+	}
+	cos, _ := r.Checkouts(ctx)
+	if len(cos) != 2 || !cos[1].Prunable || filepath.Base(cos[1].Path) != "gone" {
+		t.Fatalf("checkouts %+v", cos)
+	}
+	if _, err := r.PruneCheckouts(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if cos, _ := r.Checkouts(ctx); len(cos) != 1 {
+		t.Errorf("after pruning %+v", cos)
+	}
+}
