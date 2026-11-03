@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.9
+
+- **Start Draft**, in a pull request's review bar, starts a draft review
+  without launching an agent or a worktree, so any agent can add comments
+  to it with `kero pr comment --pr <number>`
+
 ## 2.1.31-fork.8
 
 - The branch switcher groups **Worktrees**, **Branches** (in their
