@@ -641,6 +641,7 @@
   "setColorCyan": "青色",
   "setColorWhite": "白色",
   "setColorBright": "明亮的{color}",
+  "sideBarZoom": "放大侧边栏",
   "sideZoom": "放大查看器",
   "splitTerminal": "终端",
   "splitBrowser": "浏览器",
