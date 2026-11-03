@@ -2002,5 +2002,7 @@
   "historyWorktreeRemoveSafe": "Its folder {path} goes. Its branch {branch} is pushed or merged, so nothing is lost; it stays unless you remove it too.",
   "historyWorktreeRemoveBranchDetail": "Its folder {path} goes, and its branch {branch}, which git deletes only if it's merged.",
   "historyWorktreeRemoveDetail": "Its folder {path} goes.",
-  "historyOpenInWorktree": "Open {name} in New Worktree"
+  "historyOpenInWorktree": "Open {name} in New Worktree",
+  "historyViewNone": "No commit open",
+  "historyViewNoneDetail": "Open a commit in History, and click one of its files."
 }

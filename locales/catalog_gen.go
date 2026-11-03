@@ -12043,3 +12043,23 @@ func HistoryOpenInWorktree(name string) string { return In(i18n.Locale()).Histor
 func (msgs Messages) HistoryOpenInWorktree(name string) string {
 	return Catalog.Format(msgs.locale, "historyOpenInWorktree", map[string]any{"name": name})
 }
+
+// HistoryViewNone says "No commit open"
+// in the language the app shows.
+func HistoryViewNone() string { return In(i18n.Locale()).HistoryViewNone() }
+
+// HistoryViewNone says "No commit open"
+// in the language of msgs.
+func (msgs Messages) HistoryViewNone() string {
+	return Catalog.Format(msgs.locale, "historyViewNone", nil)
+}
+
+// HistoryViewNoneDetail says "Open a commit in History, and click one of its files."
+// in the language the app shows.
+func HistoryViewNoneDetail() string { return In(i18n.Locale()).HistoryViewNoneDetail() }
+
+// HistoryViewNoneDetail says "Open a commit in History, and click one of its files."
+// in the language of msgs.
+func (msgs Messages) HistoryViewNoneDetail() string {
+	return Catalog.Format(msgs.locale, "historyViewNoneDetail", nil)
+}
