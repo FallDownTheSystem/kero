@@ -283,14 +283,10 @@ func (a *App) toggleSide(tab string) {
 }
 
 // viewKind is the kind of what a tab opens in the viewer: Search's files
-// open as Files' do; History opens nothing there, showing its commits'
-// diffs in the tab.
+// open as Files' do.
 func viewKind(tab string) string {
-	switch tab {
-	case sideSearch:
+	if tab == sideSearch {
 		return sideFiles
-	case sideHistory:
-		return ""
 	}
 	return tab
 }
@@ -642,6 +638,8 @@ func (a *App) viewerCard(c *ui.Context, pal *palette, s *proto.Session, v *sideV
 			a.fileViewer(c, pal, s, v.file)
 		case v.kind == sideReview:
 			a.prViewer(c, pal, s, width)
+		case v.kind == sideHistory:
+			a.historyViewer(c, pal, s, width)
 		default:
 			a.changesViewer(c, pal, s, width)
 		}
@@ -1121,19 +1119,7 @@ func (a *App) changesViewer(c *ui.Context, pal *palette, s *proto.Session, width
 			})
 		}
 		a.wrapButton(c, pal)
-		split := a.diffSplit(width)
-		layoutIcon, layoutTip := splitRightIcon, locales.ChangesSplit()
-		if split {
-			layoutIcon, layoutTip = splitDownIcon, locales.ChangesUnified()
-		}
-		iconButton(c, "layout", layoutIcon, layoutTip, pal, func() {
-			set := a.set
-			set.DiffLayout = "split"
-			if split {
-				set.DiffLayout = "unified"
-			}
-			a.applySettings(set)
-		})
+		a.layoutButton(c, pal, width)
 	})
 	if a.changesNone(c, pal, cf) {
 		return
@@ -1235,6 +1221,24 @@ func (a *App) changesViewer(c *ui.Context, pal *palette, s *proto.Session, width
 				}, tools, a.ignoreItems(cf, r.section, r.f.Path, false))
 			})
 		}).Grow(1).MinWidth(0).MinHeight(0).Padding(0, 0, 16, 0).ScrollbarInsets(stickyH, 0, 0, 0)
+	})
+}
+
+// layoutButton switches the diffs of a viewer width wide between side by
+// side and one column.
+func (a *App) layoutButton(c *ui.Context, pal *palette, width float32) {
+	split := a.diffSplit(width)
+	layoutIcon, layoutTip := splitRightIcon, locales.ChangesSplit()
+	if split {
+		layoutIcon, layoutTip = splitDownIcon, locales.ChangesUnified()
+	}
+	iconButton(c, "layout", layoutIcon, layoutTip, pal, func() {
+		set := a.set
+		set.DiffLayout = "split"
+		if split {
+			set.DiffLayout = "unified"
+		}
+		a.applySettings(set)
 	})
 }
 
@@ -1369,7 +1373,7 @@ func (a *App) fileCollapsed(key string, f proto.GitFile) bool {
 	if v, ok := a.side.changes.collapsed[key]; ok {
 		return v
 	}
-	for _, list := range []string{"commit|", "prv|", "pr|"} {
+	for _, list := range []string{"prv|", "pr|"} {
 		if strings.HasPrefix(key, list) {
 			return true
 		}
