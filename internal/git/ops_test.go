@@ -766,3 +766,35 @@ func TestCommitMessageAndFirstUndo(t *testing.T) {
 		t.Errorf("staged after unstaging all with no commit: %s", paths(staged))
 	}
 }
+
+// Stashing chosen files takes their changes, staged or not, and an
+// untracked one, and leaves the others' as they were; a path is a path,
+// not a pattern.
+func TestStashPaths(t *testing.T) {
+	ctx := context.Background()
+	r := opsRepo(t, map[string]string{"a.txt": "a\n", "f[ab]": "1\n", "fa": "x\n", "keep.txt": "k\n"})
+	write(t, filepath.Join(r.Root, "a.txt"), "A\n")
+	gitIn(t, r.Root, "add", "a.txt")
+	write(t, filepath.Join(r.Root, "f[ab]"), "2\n")
+	write(t, filepath.Join(r.Root, "fa"), "X\n")
+	write(t, filepath.Join(r.Root, "keep.txt"), "K\n")
+	write(t, filepath.Join(r.Root, "new", "n.txt"), "n\n")
+	if _, err := r.StashPush(ctx, StashOptions{Message: "two files", Untracked: true, Paths: []string{"a.txt", "f[ab]", "new/n.txt"}}); err != nil {
+		t.Fatal(err)
+	}
+	if out := gitIn(t, r.Root, "status", "--porcelain", "--untracked-files=all"); out != " M fa\n M keep.txt\n" {
+		t.Errorf("left %q", out)
+	}
+	list, err := r.Stashes(ctx)
+	if err != nil || len(list) != 1 || !strings.Contains(list[0].Message, "two files") {
+		t.Fatalf("stash %+v, %v", list, err)
+	}
+	if _, err := r.StashApply(ctx, 0, list[0].Hash, true); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{"a.txt": "A\n", "f[ab]": "2\n", "new/n.txt": "n\n"} {
+		if b, _ := os.ReadFile(filepath.Join(r.Root, name)); string(b) != want {
+			t.Errorf("%s came back %q", name, b)
+		}
+	}
+}

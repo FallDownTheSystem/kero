@@ -75,6 +75,13 @@ type historyState struct {
 	stashes []proto.GitStash
 	stashOn bool // the stash's section is open
 	stashAt string
+	// wts are the repository's worktrees, the main one first, with what
+	// removing each would lose while their section, wtOn, is open;
+	// wtDefault the branch Merged is of; wtAt what they were fetched at.
+	wts       []proto.GitWorktree
+	wtDefault string
+	wtOn      bool
+	wtAt      string
 	list    ui.ListState
 }
 
@@ -102,6 +109,7 @@ type histRow struct {
 	kind   int
 	commit int // the commit's, of hs.commits, for rowCommit and the rows it opens
 	stash  int // the stash's, of hs.stashes
+	wt     int // the worktree's, of hs.wts
 	f      proto.GitFile
 	hash   string // the open commit's or stash's whose detail or file the row is
 }
@@ -115,6 +123,8 @@ const (
 	rowFile
 	rowDiff
 	rowMore
+	rowWorktrees
+	rowWorktree
 )
 
 func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width float32) {
@@ -150,6 +160,9 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 	if hs.stashAt != stamp {
 		a.fetchStashes(here.ID, stamp)
 	}
+	if at := stamp + "|" + b2s(hs.wtOn); hs.wtAt != at {
+		a.fetchWorktrees(here.ID, at)
+	}
 
 	filtered := hs.asked != "" || hs.path != ""
 	var rows []histRow
@@ -160,6 +173,14 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 				for i, st := range hs.stashes {
 					rows = append(rows, histRow{kind: rowStash, stash: i, hash: st.Hash})
 					rows = a.openRows(rows, st.Hash, -1)
+				}
+			}
+		}
+		if len(hs.wts) > 0 {
+			rows = append(rows, histRow{kind: rowWorktrees})
+			if hs.wtOn {
+				for i, w := range hs.wts {
+					rows = append(rows, histRow{kind: rowWorktree, wt: i, hash: w.Path})
 				}
 			}
 		}
@@ -210,6 +231,10 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 			a.stashesRow(c, pal)
 		case rowStash:
 			a.stashRow(c, pal, here, hs.stashes[r.stash])
+		case rowWorktrees:
+			a.worktreesRow(c, pal, s, here)
+		case rowWorktree:
+			a.worktreeRow(c, pal, s, here, hs.wts[r.wt])
 		case rowUncommitted:
 			a.uncommittedRow(c, pal, g, gw)
 		case rowCommit:
@@ -1103,6 +1128,19 @@ func (a *App) commitMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *prot
 	}
 	if m.Item(locales.GitNewBranchHere()).Chosen() {
 		a.askNewBranch(id, root, cm.Hash, short)
+	}
+	// A branch not checked out anywhere opens in a worktree of its own,
+	// a remote's as the local branch of its name.
+	for _, b := range targets {
+		if b.Current || !m.Item(locales.HistoryOpenInWorktree(menuName(b.Name))).Chosen() {
+			continue
+		}
+		name, base := b.Name, ""
+		if b.Remote {
+			_, name, _ = strings.Cut(b.Name, "/")
+			base = b.Name
+		}
+		a.create(a.hostOf(id), proto.CreateParams{Project: s.Project, After: s.ID, Dir: root, Cols: s.Cols, Rows: s.Rows, Worktree: name, Base: base}, s.Project)
 	}
 	if m.Item(locales.GitSessionHere()).Chosen() {
 		h := a.hostOf(id)
