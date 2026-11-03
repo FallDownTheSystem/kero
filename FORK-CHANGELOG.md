@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.10
+
+- The Review tab keeps showing the pull requests it last fetched for a
+  repository and filter while it refreshes them, instead of emptying the
+  list; a refresh that fails keeps the list and says why
+
 ## 2.1.31-fork.9
 
 - **Start Draft**, in a pull request's review bar, starts a draft review
