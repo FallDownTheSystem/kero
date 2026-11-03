@@ -14,6 +14,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/commitmsg"
+	"kero/internal/github"
 	"kero/internal/proto"
 	"kero/internal/settings"
 )
@@ -62,6 +63,56 @@ func noBrowser(t *testing.T) <-chan string {
 	openURL = func(u string) { opened <- u }
 	t.Cleanup(func() { openURL = old })
 	return opened
+}
+
+// A list the tab comes back to shows as last fetched while it is fetched
+// anew; a refresh that fails leaves it as it was.
+func TestPullsKeepList(t *testing.T) {
+	a := testApp(t)
+	gitDemo(a)
+	hold := make(chan struct{})
+	release := sync.OnceFunc(func() { close(hold) })
+	var mu sync.Mutex
+	calls := 0
+	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
+		if method != "pr.list" {
+			return nil, nil
+		}
+		var p proto.PRListParams
+		json.Unmarshal(raw, &p)
+		mu.Lock()
+		calls++
+		n := calls
+		mu.Unlock()
+		switch {
+		case p.Filter == github.FilterMine:
+			return proto.PRList{Repos: demoPulls().Repos, Remote: "origin"}, nil
+		case n > 1:
+			<-hold
+			return nil, errors.New("gh: rate limited")
+		}
+		return demoPulls(), nil
+	})
+	// After the fake kerod's own, which waits for its calls.
+	t.Cleanup(release)
+	a.prefs.Side = sideReview
+	tt := ui.NewTester(a.view, 1280, 720)
+	frameUntil(t, tt, "list", func() bool { return tt.HasText("Fix the parser") })
+	ps := &a.side.pulls
+	ps.filter = github.FilterMine
+	frameUntil(t, tt, "mine", func() bool { return !ps.busy && !tt.HasText("Fix the parser") })
+	ps.filter = github.FilterAll
+	tt.Frame()
+	if !ps.busy || !tt.HasText("Fix the parser") {
+		t.Fatalf("busy %v; texts %q", ps.busy, tt.Texts())
+	}
+	release()
+	frameUntil(t, tt, "the failed refresh", func() bool { return !ps.busy })
+	tt.Frame()
+	shot(t, tt, "pulls-kept")
+	if !tt.HasText("Fix the parser") || !tt.HasText("gh: rate limited") {
+		t.Errorf("texts %q", tt.Texts())
+	}
 }
 
 // A pull request's Review, from its menu, fetches its branch and starts the
