@@ -5,6 +5,20 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.6
+
+- **Stash some files**: in the Changes tab, **Add to Stash** on files,
+  folders or a section moves them to a **To Stash** section; name the
+  stash if you like and click **Stash N Files**. The other files stay
+  as they are
+- **Worktrees in History**: a Worktrees section lists every worktree
+  with what removing it would lose (changed files, commits on no
+  remote) or that it's merged or pushed. Open it in a session, push its
+  branch, merge it into yours, or remove it, with its branch when
+  nothing would be lost. **Prune** forgets worktrees whose folders are
+  gone, **+** starts a session in a new one, and a commit's menu opens
+  any branch in a new worktree
+
 ## 2.1.31-fork.5
 
 - **Zoom Sidebar**, beside the right sidebar's hide button, hides the
