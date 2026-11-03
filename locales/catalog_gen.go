@@ -11710,6 +11710,46 @@ func (msgs Messages) PrsDiscard() string {
 	return Catalog.Format(msgs.locale, "prsDiscard", nil)
 }
 
+// PrsStartDraft says "Start Draft"
+// in the language the app shows.
+func PrsStartDraft() string { return In(i18n.Locale()).PrsStartDraft() }
+
+// PrsStartDraft says "Start Draft"
+// in the language of msgs.
+func (msgs Messages) PrsStartDraft() string {
+	return Catalog.Format(msgs.locale, "prsStartDraft", nil)
+}
+
+// PrsStartingDraft says "Starting…"
+// in the language the app shows.
+func PrsStartingDraft() string { return In(i18n.Locale()).PrsStartingDraft() }
+
+// PrsStartingDraft says "Starting…"
+// in the language of msgs.
+func (msgs Messages) PrsStartingDraft() string {
+	return Catalog.Format(msgs.locale, "prsStartingDraft", nil)
+}
+
+// PrsStartDraftTip says "Start a draft review without an agent, for comments added here or with kero pr --pr"
+// in the language the app shows.
+func PrsStartDraftTip() string { return In(i18n.Locale()).PrsStartDraftTip() }
+
+// PrsStartDraftTip says "Start a draft review without an agent, for comments added here or with kero pr --pr"
+// in the language of msgs.
+func (msgs Messages) PrsStartDraftTip() string {
+	return Catalog.Format(msgs.locale, "prsStartDraftTip", nil)
+}
+
+// PrsDraftHint says "Agents add comments with kero pr comment --pr {number}."
+// in the language the app shows.
+func PrsDraftHint(number int) string { return In(i18n.Locale()).PrsDraftHint(number) }
+
+// PrsDraftHint says "Agents add comments with kero pr comment --pr {number}."
+// in the language of msgs.
+func (msgs Messages) PrsDraftHint(number int) string {
+	return Catalog.Format(msgs.locale, "prsDraftHint", map[string]any{"number": number})
+}
+
 // PrsDraftOld says "The pull request changed after the review began. The comments stay on the older commit."
 // in the language the app shows.
 func PrsDraftOld() string { return In(i18n.Locale()).PrsDraftOld() }

@@ -997,6 +997,50 @@ func TestPRReviewWithoutComments(t *testing.T) {
 	frameUntil(t, tt, "posted", func() bool { return !g.review.posting })
 }
 
+// Start Draft starts a draft with no agent, which then says how an agent
+// of the user's adds to it.
+func TestPRStartDraft(t *testing.T) {
+	a := testApp(t)
+	gitDemo(a)
+	view := proto.PRView{PullRequest: demoPulls().PRs[0], Repo: demoPulls().Repos[0], State: "OPEN", HeadOID: "h1", MergeBase: "mb", Viewer: "me"}
+	ops := make(chan proto.PRReviewParams, 8)
+	review := draftServer(ops)
+	pullsCalls(t, a, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "pr.view":
+			return view, nil
+		case "pr.review":
+			return review(raw)
+		}
+		return nil, nil
+	})
+	a.prefs.Side = sideReview
+	tt := ui.NewTester(a.view, 1280, 720)
+	frameUntil(t, tt, "list", func() bool { return tt.HasText("Fix the parser") })
+	if err := tt.Click("Fix the parser"); err != nil {
+		t.Fatal(err)
+	}
+	g := a.side.pulls.page
+	frameUntil(t, tt, "the review's bar", func() bool { return g.res != nil && tt.HasText("Start Draft") })
+	if err := tt.Click("Start Draft"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case p := <-ops:
+		if p.Op != "start" || p.Number != 7 || p.Agent != "" {
+			t.Errorf("started %+v", p)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("no draft started")
+	}
+	frameUntil(t, tt, "the draft", func() bool { return g.review.draft != nil })
+	tt.Frame()
+	shot(t, tt, "pr-start-draft")
+	if !tt.HasText("Agents add comments with kero pr comment --pr 7.") || tt.HasText("Start Draft") {
+		t.Errorf("texts %q", tt.Texts())
+	}
+}
+
 // A comment on a file, from its header, shows above its diff, and goes to
 // the draft as the file's; one posted on a file shows there too, not as
 // outdated; the jump goes to them before the file's lines.
