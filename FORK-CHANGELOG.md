@@ -5,6 +5,15 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.31-fork.5
+
+- **Zoom Sidebar**, beside the right sidebar's hide button, hides the
+  panes and gives the sidebar their room, for History's graph and the
+  Review list, as Zoom Explorer did before the rebase; **Show All Panes**
+  brings them back
+- The right sidebar's Files tab comes before Changes again
+- History's diffs fit line numbers of five digits and more
+
 ## 2.1.31-fork.4
 
 Built on MyGo 0.7.4, MyGo's latest release, which has the MyGo fixes
