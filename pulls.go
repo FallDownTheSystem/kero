@@ -39,7 +39,10 @@ type pullsState struct {
 	gen     int
 	filter  string // github.Filter*
 	remote  string // the remote asked for, "" for the branch's push remote
-	list    ui.ListState
+	// cache is each list fetched, by its key, which shows at once as the
+	// tab comes back to it, while it is fetched anew.
+	cache map[string]pullsCached
+	list  ui.ListState
 	// drafts are the draft reviews of the list's repository, by their
 	// pull requests' numbers, of draftsKey's host and repository.
 	drafts    map[int]proto.PRReviewDraft
@@ -48,6 +51,23 @@ type pullsState struct {
 	// shown in the list's place while set.
 	form *prForm
 	page *prPage
+}
+
+// pullsCached is a list as last fetched.
+type pullsCached struct {
+	res     *proto.PRList
+	fetched time.Time
+}
+
+// use makes key the list shown: as last fetched, if it ever was, which
+// a fetch under way for another list no longer replaces.
+func (ps *pullsState) use(key string) {
+	if ps.key == key {
+		return
+	}
+	e := ps.cache[key]
+	ps.key, ps.res, ps.fetched, ps.err, ps.busy = key, e.res, e.fetched, "", false
+	ps.gen++
 }
 
 // prForm is a pull request being made, of a pane's branch.
@@ -132,15 +152,12 @@ func (a *App) pullsView(c *ui.Context, pal *palette, s *proto.Session, width flo
 	}
 	h := a.hostOf(pane.ID)
 	key := pullsKey(h, pane.Git.Root, ps.remote, ps.filter)
-	switch {
-	case ps.busy && ps.key == key:
-	case ps.key != key, c.Now().Sub(ps.fetched) > pullsRefresh:
+	// The list as last fetched shows until the fetch replaces it: a list
+	// come back to is fetched anew, the one shown every pullsRefresh.
+	if ps.key != key || !ps.busy && c.Now().Sub(ps.fetched) > pullsRefresh {
 		a.fetchPulls(pane, key)
 	}
 	res := ps.res
-	if ps.key != key {
-		res = nil
-	}
 
 	ui.Column(c.Key("pulls-bar")).Shrink(0).Padding(2, 12, 8, 12).Gap(8).AlignItems(ui.Stretch).Children(func() {
 		ui.Row(c).Height(28).Gap(4).AlignItems(ui.Center).Children(func() {
@@ -178,6 +195,11 @@ func (a *App) pullsView(c *ui.Context, pal *palette, s *proto.Session, width flo
 	case len(res.PRs) == 0:
 		a.sideMessage(c, pal, locales.PrsNone(), locales.PrsNoneDetail(pullsSlug(res)))
 		return
+	}
+	// A refresh that failed leaves the list as it was, and says why.
+	if ps.err != "" {
+		_, removed, _ := a.diffColors(c, pal)
+		ui.Text(c, ps.err).FontSize(12).TextColor(removed).LineHeight(1.35).Padding(0, 12, 6, 12).Selectable()
 	}
 	ls := &ps.list
 	ls.Key = func(i int) any { return res.PRs[i].Number }
@@ -244,23 +266,27 @@ func (a *App) fetchPulls(pane *proto.Pane, key string) {
 	if cl == nil {
 		return
 	}
+	ps.use(key)
 	ps.gen++
 	gen := ps.gen
-	if ps.key != key {
-		ps.res, ps.err = nil, ""
-	}
-	ps.key, ps.busy, ps.fetched = key, true, time.Now()
+	ps.busy, ps.fetched = true, time.Now()
 	p := proto.PRListParams{Pane: pane.ID, Remote: ps.remote, Filter: ps.filter}
 	go func() {
 		var res proto.PRList
 		err := cl.Call("pr.list", p, &res)
 		a.update(func() {
+			if err == nil {
+				if ps.cache == nil {
+					ps.cache = map[string]pullsCached{}
+				}
+				ps.cache[key] = pullsCached{&res, time.Now()}
+			}
 			if ps.gen != gen {
 				return
 			}
 			ps.busy = false
 			if err != nil {
-				ps.res, ps.err = nil, err.Error()
+				ps.err = err.Error()
 				return
 			}
 			ps.res, ps.err = &res, ""
