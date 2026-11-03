@@ -30,6 +30,12 @@ type branchMenu struct {
 	busy   bool
 	err    string
 	at     ui.Rect
+	// folds are the groups and folders the user opened or folded, by
+	// pickRow.key; older the groups showing the branches hidden as old;
+	// scrollHi that the row the arrows are on is to scroll into view.
+	folds    map[string]bool
+	older    map[string]bool
+	scrollHi bool
 }
 
 // gitBar is a worktree's bar, of the pane the view is of.
@@ -251,6 +257,8 @@ func (a *App) openBranches(pane, root string, at ui.Rect) {
 		m.list = nil
 	}
 	m.open, m.query, m.hi, m.reveal, m.pane, m.root, m.at, m.err = true, "", 0, true, pane, root, at, ""
+	// The stash, which History lists as it shows.
+	a.fetchStashes(pane, a.side.git.hist.stashAt)
 	cl := a.hostOf(pane).cl
 	if cl == nil || m.busy {
 		return
@@ -273,56 +281,180 @@ func (a *App) openBranches(pane, root string, at ui.Rect) {
 	}()
 }
 
-// branchRow is a row of the branch switcher: a branch, or the branch the
-// query names, to make.
-type branchRow struct {
+// The branch switcher lists, under a filter, the repository's worktrees,
+// its branches in their folders, its remotes' and its tags, and the
+// stash, each a group that folds. A click shows the commit in History's
+// graph, chosen; a double click, or Return, checks a branch out, or opens
+// a worktree's session. Local and remote branches with no commit in
+// settings' BranchMaxWeeks hide until asked for, or a filter finds them.
+
+// Kinds of the switcher's rows.
+const (
+	pickGroup = iota
+	pickFolder
+	pickBranch
+	pickWorktree
+	pickStash
+	pickCreate
+	pickOlder
+)
+
+// pickRow is a row of the switcher: a group's title, a folder of
+// branches, a branch, a worktree, an entry of the stash, the branch the
+// filter names, to make, or the row that shows the branches hidden as
+// old, of group.
+type pickRow struct {
+	kind   int
+	group  string // pickGroups' id
+	key    string // what folds a group or folder, by group and folder
+	name   string
+	depth  int
+	open   bool
+	count  int // a group's rows, or the branches hidden as old
 	b      *proto.GitBranch
-	create string
-	label  string // the section it starts, "" for none
+	st     *proto.GitStash
+	remote bool // a folder that is a remote
 }
 
-// branchRows are the switcher's rows, as the query filters them: local
-// branches, then the remotes' that no local branch has the name of, then
-// the tags.
-func branchRows(list *proto.GitBranches, query string) []branchRow {
-	q := strings.ToLower(strings.TrimSpace(query))
-	var rows []branchRow
+// The switcher's groups, in their order.
+const (
+	groupWorktrees = "worktrees"
+	groupLocal     = "local"
+	groupRemote    = "remote"
+	groupTags      = "tags"
+	groupStash     = "stash"
+)
+
+// groupOpen tells that a group of the switcher shows its rows: as the
+// user left it, else Tags and the stash folded, the rest open.
+func (m *branchMenu) groupOpen(group string) bool {
+	if v, ok := m.folds[group]; ok {
+		return v
+	}
+	return group != groupTags && group != groupStash
+}
+
+// pickRows are the switcher's rows, as the filter, the groups' and the
+// folders' folds and the age the branches shown have at most (weeks, 0
+// for any) have them.
+func pickRows(m *branchMenu, stashes []proto.GitStash, weeks int, now time.Time) []pickRow {
+	list := m.list
+	q := strings.ToLower(strings.TrimSpace(m.query))
+	match := func(s ...string) bool {
+		if q == "" {
+			return true
+		}
+		for _, x := range s {
+			if strings.Contains(strings.ToLower(x), q) {
+				return true
+			}
+		}
+		return false
+	}
+	var rows []pickRow
 	exact := false
-	local := map[string]bool{}
 	for i := range list.Branches {
 		b := &list.Branches[i]
-		if !b.Remote && !b.Tag {
-			local[b.Name] = true
-			exact = exact || strings.ToLower(b.Name) == q
-		}
+		exact = exact || !b.Remote && !b.Tag && strings.ToLower(b.Name) == q
 	}
 	if q != "" && !exact {
-		rows = append(rows, branchRow{create: strings.TrimSpace(query)})
+		rows = append(rows, pickRow{kind: pickCreate, name: strings.TrimSpace(m.query)})
 	}
-	sections := []struct {
-		label       string
-		remote, tag bool
-	}{{locales.GitBranches(), false, false}, {locales.GitRemoteBranches(), true, false}, {locales.GitTags(), false, true}}
-	for _, sec := range sections {
-		remote := sec.remote
-		first := true
-		for i := range list.Branches {
-			b := &list.Branches[i]
-			if b.Remote != remote || b.Tag != sec.tag || q != "" && !strings.Contains(strings.ToLower(b.Name), q) {
-				continue
-			}
-			if remote {
-				if _, name, ok := strings.Cut(b.Name, "/"); ok && local[name] {
-					continue
-				}
-			}
-			r := branchRow{b: b}
-			if first {
-				r.label, first = sec.label, false
-			}
-			rows = append(rows, r)
+	// A branch too old to list, unless the filter looks for it, or it's
+	// checked out.
+	old := func(b *proto.GitBranch) bool {
+		return weeks > 0 && q == "" && !b.Current && b.Worktree == "" && b.Time > 0 &&
+			now.Sub(time.Unix(b.Time, 0)) > time.Duration(weeks)*7*24*time.Hour
+	}
+	// group adds a group of n entries, its rows items while open.
+	group := func(id, title string, n int, items []pickRow) {
+		if len(items) == 0 {
+			return
+		}
+		open := q != "" || m.groupOpen(id)
+		rows = append(rows, pickRow{kind: pickGroup, group: id, key: id, name: title, open: open, count: n})
+		if open {
+			rows = append(rows, items...)
 		}
 	}
+	// branches lays branches out in their folders, split at slashes, as
+	// the user left them folded, all open while the filter finds them.
+	branches := func(id string, list []*proto.GitBranch, remote bool) []pickRow {
+		files := make([]proto.GitFile, len(list))
+		for i, b := range list {
+			files[i].Path = b.Name
+		}
+		var out []pickRow
+		closed := func(dir string) bool { return q == "" && !m.folds[id+"/"+dir] }
+		for _, it := range treeItems(fileTree(files), closed) {
+			r := pickRow{group: id, key: id + "/" + it.path, name: it.name, depth: it.depth + 1, open: it.open}
+			if it.file < 0 {
+				r.kind, r.remote = pickFolder, remote && it.depth == 0
+			} else {
+				r.kind, r.b = pickBranch, list[it.file]
+			}
+			out = append(out, r)
+		}
+		return out
+	}
+
+	var wts, local, remote, tags []*proto.GitBranch
+	hidden := map[string]int{}
+	for i := range list.Branches {
+		b := &list.Branches[i]
+		switch {
+		case b.Tag:
+			if match(b.Name) {
+				tags = append(tags, b)
+			}
+			continue
+		case !b.Remote && b.Worktree != "" && match(b.Name, proto.DirName(b.Worktree)):
+			wts = append(wts, b)
+		}
+		if !match(b.Name) || b.Remote && strings.HasSuffix(b.Name, "/HEAD") {
+			continue
+		}
+		id := groupLocal
+		if b.Remote {
+			id = groupRemote
+		}
+		if old(b) && !m.older[id] {
+			hidden[id]++
+			continue
+		}
+		if b.Remote {
+			remote = append(remote, b)
+		} else {
+			local = append(local, b)
+		}
+	}
+	var items []pickRow
+	for _, b := range wts {
+		items = append(items, pickRow{kind: pickWorktree, group: groupWorktrees, name: proto.DirName(b.Worktree), depth: 1, b: b})
+	}
+	group(groupWorktrees, locales.GitPickWorktrees(), len(wts), items)
+	for _, g := range []struct {
+		id, title string
+		list      []*proto.GitBranch
+	}{{groupLocal, locales.GitBranches(), local}, {groupRemote, locales.GitPickRemotes(), remote}} {
+		items := branches(g.id, g.list, g.id == groupRemote)
+		if n := hidden[g.id]; n > 0 {
+			items = append(items, pickRow{kind: pickOlder, group: g.id, name: locales.GitPickOlder(n, weeks), depth: 1, count: n})
+		}
+		group(g.id, g.title, len(g.list)+hidden[g.id], items)
+	}
+	items = nil
+	for _, b := range tags {
+		items = append(items, pickRow{kind: pickBranch, group: groupTags, name: b.Name, depth: 1, b: b})
+	}
+	group(groupTags, locales.GitTags(), len(items), items)
+	items = nil
+	for i := range stashes {
+		if st := &stashes[i]; match(st.Message) {
+			items = append(items, pickRow{kind: pickStash, group: groupStash, name: st.Message, depth: 1, st: st})
+		}
+	}
+	group(groupStash, locales.GitPickStashes(), len(items), items)
 	return rows
 }
 
@@ -344,27 +476,61 @@ func (a *App) branchPopover(c *ui.Context, pal *palette, s *proto.Session, pane 
 		})
 	}
 	_, h := c.Size()
-	listH := max(menuItemH*4, min(380, h-trig.Bounds().Y-trig.Bounds().H-120))
+	listH := max(menuItemH*4, min(520, h-trig.Bounds().Y-trig.Bounds().H-120))
 	ui.PopoverBase(c.Key("branch-menu"), trig, &m.open, func(panel ui.Element) {
-		menuPanel(panel, pal).Margin(4, 0, 0, 0).Width(330)
-		var rows []branchRow
+		menuPanel(panel, pal).Margin(4, 0, 0, 0).Width(380)
+		var rows []pickRow
 		if m.list != nil {
-			rows = branchRows(m.list, m.query)
+			rows = pickRows(m, a.side.git.hist.stashes, a.set.BranchMaxWeeks, time.Now())
 		}
 		m.hi = min(max(m.hi, 0), max(len(rows)-1, 0))
-		pick := func(i int) {
+		// act does what a row does: a click (choose), or a double click
+		// and Return, which check a branch out.
+		act := func(i int, choose bool) {
 			if i < 0 || i >= len(rows) {
 				return
 			}
-			m.open = false
 			r := rows[i]
-			if r.create != "" {
-				name := r.create
+			switch r.kind {
+			case pickGroup, pickFolder:
+				if m.folds == nil {
+					m.folds = map[string]bool{}
+				}
+				m.folds[r.key] = !r.open
+			case pickOlder:
+				if m.older == nil {
+					m.older = map[string]bool{}
+				}
+				m.older[r.group] = true
+			case pickCreate:
+				m.open = false
+				name := r.name
 				a.defer_(func() { a.createBranch(pane.ID, pane.Git.Root, name, "") })
-				return
+			// A click shows the commit, the switcher staying open to show
+			// another; what acts closes it.
+			case pickStash:
+				a.revealCommit(pane.Git.Root, r.st.Hash, true)
+				m.open = choose && m.open
+			case pickWorktree:
+				if choose {
+					a.revealCommit(pane.Git.Root, r.b.Head, false)
+				} else {
+					m.open = false
+					a.openWorktree(pane.ID, r.b.Worktree)
+				}
+			case pickBranch:
+				b := *r.b
+				switch {
+				case choose:
+					a.revealCommit(pane.Git.Root, b.Head, false)
+				case b.Tag:
+					m.open = false
+					a.revealCommit(pane.Git.Root, b.Head, false)
+				default:
+					m.open = false
+					a.defer_(func() { a.switchBranch(s, pane, b, "") })
+				}
 			}
-			b := *r.b
-			a.defer_(func() { a.switchBranch(s, pane, b, "") })
 		}
 		var in ui.Element
 		frame := ui.Row(c.Key("search")).Margin(3, 3, menuPad+3, 3).Cursor(ui.CursorText)
@@ -378,7 +544,7 @@ func (a *App) branchPopover(c *ui.Context, pal *palette, s *proto.Session, pane 
 		in.OnShortcut(0, ui.KeyDown, func() { m.hi, m.reveal = min(m.hi+1, len(rows)-1), true })
 		in.OnShortcut(0, ui.KeyUp, func() { m.hi, m.reveal = max(m.hi-1, 0), true })
 		in.OnShortcut(0, ui.KeyEscape, func() { m.open = false })
-		in.OnSubmit(func() { pick(m.hi) })
+		in.OnSubmit(func() { act(m.hi, false) })
 		switch {
 		case m.list == nil && m.err != "":
 			ui.Text(c, m.err).FontSize(12.5).TextColor(pal.textMuted).Padding(6, 12)
@@ -394,73 +560,137 @@ func (a *App) branchPopover(c *ui.Context, pal *palette, s *proto.Session, pane 
 		m.reveal = false
 		now := time.Now()
 		ui.Scroll(c.Key("rows")).MaxHeight(listH).Children(func() {
+			m.scrollHi = reveal
 			for i, r := range rows {
-				if r.label != "" {
-					ui.Text(c, r.label).FontSize(11.5).FontWeight(600).TextColor(pal.textFaint).Padding(6, 10, 2, 10)
-				}
-				key, label := "new", locales.GitCreateNamed(r.create)
-				if r.b != nil {
-					key, label = r.b.Name, r.b.Name
-				}
-				row := ui.Row(c.Key(key)).Label(label)
-				if row.Hovered() && m.hi != i {
-					m.hi = i
-					c.After(0)
-				}
-				if row.Clicked() {
-					pick(i)
-				}
-				hi := i == m.hi
-				row.Height(menuItemH+2).Padding(0, 10, 0, 6).Gap(6).Radius(7).AlignItems(ui.Center)
-				fg, faint := pal.text, pal.textFaint
-				if hi {
-					row.Background(pal.accent)
-					fg, faint = ui.Hex("#ffffff"), ui.Hex("#ffffff").Alpha(0.75)
-				}
-				if r.b != nil && r.b.Worktree != "" && !r.b.Current {
-					// Checked out in another worktree, where git won't let
-					// it be checked out again.
-					row.Tooltip(locales.GitBranchInWorktree(a.hostOf(pane.ID).shortDir(r.b.Worktree)))
-				}
-				b := r.b
-				if b != nil {
-					row.ContextMenu(func(mm *ui.Menu) { a.branchMenuItems(mm, s, pane, *b) })
-				}
-				row.TextColor(fg).Children(func() {
-					switch {
-					case b == nil:
-						ui.Icon(c, plusIcon).Size(12, 12).Shrink(0)
-					case b.Current:
-						ui.Icon(c, checkIcon).Size(12, 12).Shrink(0)
-					default:
-						ui.Box(c).Size(12, 12).Shrink(0)
-					}
-					ui.Text(c, label).FontSize(13).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
-					if b == nil {
-						return
-					}
-					ui.Spacer(c)
-					var bits []string
-					if b.Ahead > 0 {
-						bits = append(bits, "↑"+itoa(b.Ahead))
-					}
-					if b.Behind > 0 {
-						bits = append(bits, "↓"+itoa(b.Behind))
-					}
-					if b.Gone {
-						bits = append(bits, locales.GitGone())
-					}
-					if b.Worktree != "" && !b.Current {
-						bits = append(bits, locales.GitInWorktree())
-					}
-					bits = append(bits, ago(b.Time*1000, now))
-					ui.Text(c, strings.Join(bits, " · ")).FontSize(11.5).FontFeatures("tnum").TextColor(faint).SingleLine().Shrink(0)
-				})
-				if reveal && hi {
-					row.ScrollIntoView()
-				}
+				a.pickRowView(c, pal, s, pane, m, r, i, now, act)
 			}
 		})
+	})
+}
+
+// pickRowView is a row of the switcher; act does what it does, chosen by
+// a click, else by a double click.
+func (a *App) pickRowView(c *ui.Context, pal *palette, s *proto.Session, pane *proto.Pane, m *branchMenu, r pickRow, i int, now time.Time, act func(int, bool)) {
+	key := r.key
+	switch {
+	case r.b != nil:
+		key = r.group + "|" + r.b.Name
+	case r.st != nil:
+		key = "stash|" + r.st.Hash
+	case key == "":
+		key = r.group + "|" + itoa(r.kind)
+	}
+	// The filter keeps the keyboard as rows are clicked.
+	row := ui.Row(c.Key(key)).Label(r.name).KeepFocus()
+	if row.Hovered() && m.hi != i {
+		m.hi = i
+		c.After(0)
+	}
+	switch {
+	case row.DoubleClicked():
+		if r.kind == pickBranch || r.kind == pickWorktree {
+			act(i, false)
+		}
+	case row.Clicked():
+		act(i, true)
+	}
+	hi := i == m.hi
+	row.Height(menuItemH+2).Padding(0, 10, 0, 6+14*float32(r.depth)).Gap(6).Radius(7).AlignItems(ui.Center)
+	fg, faint := pal.text, pal.textFaint
+	if hi {
+		row.Background(pal.accent)
+		fg, faint = ui.Hex("#ffffff"), ui.Hex("#ffffff").Alpha(0.75)
+	}
+	b := r.b
+	if b != nil && b.Worktree != "" && !b.Current {
+		// Checked out in another worktree, where git won't let it be
+		// checked out again.
+		row.Tooltip(locales.GitBranchInWorktree(a.hostOf(pane.ID).shortDir(b.Worktree)))
+	}
+	if b != nil && !b.Tag {
+		row.ContextMenu(func(mm *ui.Menu) { a.branchMenuItems(mm, s, pane, *b) })
+	}
+	if r.st != nil {
+		st := *r.st
+		row.ContextMenu(func(mm *ui.Menu) { a.stashMenu(mm, pane, st) })
+	}
+	if m.scrollHi && hi {
+		m.scrollHi = false
+		row.ScrollIntoView()
+	}
+	row.TextColor(fg).Children(func() {
+		chevron := func(open bool) {
+			chev := ui.Icon(c, chevronIcon).Size(9, 9).TextColor(faint).Shrink(0)
+			chev.Rotate(chev.AnimateTo("turn", 90*b2f(open), chevronTurn))
+		}
+		var icon *ui.SVG
+		weight := 400
+		switch r.kind {
+		case pickGroup:
+			chevron(r.open)
+			weight = 650
+		case pickFolder:
+			chevron(r.open)
+			icon = folderIcon
+			if r.remote {
+				icon = globeIcon
+			}
+		case pickBranch:
+			icon = branchIcon
+			if b.Tag {
+				icon = tagIcon
+			}
+		case pickWorktree:
+			icon = folderIcon
+		case pickStash:
+			icon = archiveIcon
+		case pickCreate:
+			icon = plusIcon
+		}
+		if icon != nil {
+			ui.Icon(c, icon).Size(12, 12).TextColor(faint).Shrink(0)
+		}
+		label := r.name
+		if r.kind == pickCreate {
+			label = locales.GitCreateNamed(r.name)
+		}
+		if b != nil && b.Current {
+			weight = 700
+		}
+		col := fg
+		if r.kind == pickOlder {
+			col = faint
+		}
+		ui.Text(c, label).FontSize(13).FontWeight(weight).TextColor(col).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+		ui.Spacer(c)
+		var bits []string
+		switch {
+		case r.kind == pickGroup:
+			bits = append(bits, itoa(r.count))
+		case r.kind == pickWorktree:
+			bits = append(bits, b.Name)
+		case r.kind == pickStash:
+			bits = append(bits, ago(r.st.Time*1000, now))
+		case b != nil && !b.Tag:
+			if b.Ahead > 0 {
+				bits = append(bits, "↑"+itoa(b.Ahead))
+			}
+			if b.Behind > 0 {
+				bits = append(bits, "↓"+itoa(b.Behind))
+			}
+			if b.Gone {
+				bits = append(bits, locales.GitGone())
+			}
+			if b.Worktree != "" && !b.Current {
+				bits = append(bits, locales.GitInWorktree())
+			}
+			if b.Time > 0 {
+				bits = append(bits, ago(b.Time*1000, now))
+			}
+		}
+		if len(bits) > 0 {
+			ui.Text(c, strings.Join(bits, " · ")).FontSize(11.5).FontFeatures("tnum").TextColor(faint).SingleLine().Ellipsis("…").Shrink(2).MinWidth(0)
+		}
 	})
 }
 

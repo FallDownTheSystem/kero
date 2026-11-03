@@ -85,6 +85,12 @@ type historyState struct {
 	current        string
 	shownCur       string
 	reveal         string
+	// find is the commit, or stash, the list is to scroll to, as the
+	// branch switcher asks, paging in more of the log until it comes;
+	// chosen the one shown chosen.
+	find    string
+	findKey string
+	chosen  string
 	stashes []proto.GitStash
 	stashOn bool // the stash's section is open
 	stashAt string
@@ -277,6 +283,27 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 			})
 		}
 	}).Grow(1).MinHeight(0).Padding(0, 6, 16, 0)
+	// The commit the branch switcher asked for, once it's listed.
+	if hs.find != "" {
+		found := false
+		for i, r := range rows {
+			if (r.kind == rowCommit || r.kind == rowStash) && r.hash == hs.find {
+				ls.ScrollTo(i, ui.Center)
+				found = true
+				break
+			}
+		}
+		switch {
+		case found || hs.key != hs.findKey:
+			hs.find = ""
+		case hs.busy:
+		case hs.more && !filtered:
+			a.fetchHistory(here.ID, hs.key, hs.stamp, len(hs.commits))
+		default:
+			hs.find = ""
+			a.toast(locales.HistoryNotListed())
+		}
+	}
 	// The file the viewer came to, which the list scrolls to.
 	if hs.current != hs.shownCur {
 		hs.shownCur = hs.current
@@ -520,14 +547,19 @@ func (a *App) commitRow(c *ui.Context, pal *palette, s *proto.Session, pane *pro
 	} else {
 		row.Height(commitRowH).AlignItems(ui.Center)
 	}
-	if open {
+	switch {
+	case hs.chosen == cm.Hash:
+		row.Background(pal.rowSelected)
+		chosen(row, pal)
+	case open:
 		row.Background(pal.rowHover.Alpha(0.6))
-	} else if row.Hovered() {
+	case row.Hovered():
 		row.Background(pal.rowHover.Alpha(0.5))
 	}
 	when := time.Unix(cm.Time, 0)
 	wideTooltip(c, row, cm.Author+"\n"+cm.Email+"\n"+when.Format("2006-01-02 15:04")+"\n"+shortHash(cm.Hash))
 	if row.Clicked() {
+		hs.chosen = cm.Hash
 		a.toggleCommit(pane.ID, cm.Hash)
 	}
 	row.ContextMenu(func(m *ui.Menu) { a.commitMenu(c, m, s, pane, cm) })
@@ -966,6 +998,25 @@ func (a *App) histFile(c *ui.Context, pal *palette, s *proto.Session, pane *prot
 			})
 		})
 	})
+}
+
+// revealCommit shows a commit, or with stash an entry of the stash, in
+// History's list, chosen, scrolling to it: every branch's, unfiltered, as
+// what the branch switcher shows may be on another branch than this one.
+func (a *App) revealCommit(root, hash string, stash bool) {
+	hs := &a.side.git.hist
+	if hash == "" {
+		return
+	}
+	hs.scope, hs.query, hs.asked, hs.path = "", "", "", ""
+	if stash {
+		hs.stashOn = true
+	}
+	hs.find, hs.chosen = hash, hash
+	// The list's key as historyView makes it, all branches, no filter:
+	// a find for another list's is dropped.
+	hs.findKey = strings.Join([]string{root, b2s(false), b2s(hs.first), "", ""}, "|")
+	a.showTab(sideHistory)
 }
 
 // viewCommit opens the viewer on an open commit's, or stash's, diffs,

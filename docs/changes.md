@@ -67,7 +67,7 @@ Write the message in the box under the list, and click **Commit**, or press <kbd
 
 ## Branches, syncing and stashes
 
-The bar above the list names the worktree's branch. Click it to switch branches: type to filter them, or to name a new branch, and press <kbd>Return</kbd> (<kbd>Enter</kbd>). A branch's menu there switches to it, makes a branch from it, opens it in a session of its own worktree, renames or deletes it, merges it into yours, or rebases yours onto it. Switching with changes not committed asks to stash them first, or to take them along.
+The bar above the list names the worktree's branch. Click it for the branch switcher: its groups, **Worktrees**, **Branches** in their folders, **Remotes**, **Tags** and **Stashes**, fold, and the filter above them finds what's in any of them, or names a new branch. Click an entry to show its commit in History's graph, chosen, the switcher staying open; double-click a branch, or press <kbd>Return</kbd> (<kbd>Enter</kbd>), to check it out, or a worktree to open its session. With **Settings › Git › Hide old branches**, branches with no commit in that many weeks wait behind **Show … older**, unless the filter finds them. A branch's menu there switches to it, makes a branch from it, opens it in a session of its own worktree, renames or deletes it, merges it into yours, or rebases yours onto it. Switching with changes not committed asks to stash them first, or to take them along.
 
 The sync button beside it pulls what the branch is behind, then pushes what it's ahead, or publishes a branch with no upstream. The **⋯** menu has the rest:
 
