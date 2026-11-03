@@ -33,6 +33,7 @@ func settingsIndex() []searchEntry {
 		{"general", locales.SetSessionHistory(), "session-history ended sessions archived resume claude codex conversation"},
 		{"git", locales.SetGitStatus(), "git-status branch changes diff repository worktree"},
 		{"git", locales.SetDiffLayout(), "diff-layout diff unified split side by side changes"},
+		{"git", locales.SetBranchMaxAge(), "branch-max-age branch switcher old stale hide weeks age filter"},
 		{"git", locales.SetCommitMessage(), "commit-message-command commit message ai agent claude codex llm write generate"},
 		{"git", locales.SetPRNotify(), "pr-notify pull request pr github gh notification notify review requested new poll"},
 		{"git", locales.SetPRPoll(), "pr-poll-interval pull request pr github poll check interval minutes"},

@@ -11953,3 +11953,93 @@ func HistoryViewNoneDetail() string { return In(i18n.Locale()).HistoryViewNoneDe
 func (msgs Messages) HistoryViewNoneDetail() string {
 	return Catalog.Format(msgs.locale, "historyViewNoneDetail", nil)
 }
+
+// GitPickWorktrees says "Worktrees"
+// in the language the app shows.
+func GitPickWorktrees() string { return In(i18n.Locale()).GitPickWorktrees() }
+
+// GitPickWorktrees says "Worktrees"
+// in the language of msgs.
+func (msgs Messages) GitPickWorktrees() string {
+	return Catalog.Format(msgs.locale, "gitPickWorktrees", nil)
+}
+
+// GitPickRemotes says "Remotes"
+// in the language the app shows.
+func GitPickRemotes() string { return In(i18n.Locale()).GitPickRemotes() }
+
+// GitPickRemotes says "Remotes"
+// in the language of msgs.
+func (msgs Messages) GitPickRemotes() string {
+	return Catalog.Format(msgs.locale, "gitPickRemotes", nil)
+}
+
+// GitPickStashes says "Stashes"
+// in the language the app shows.
+func GitPickStashes() string { return In(i18n.Locale()).GitPickStashes() }
+
+// GitPickStashes says "Stashes"
+// in the language of msgs.
+func (msgs Messages) GitPickStashes() string {
+	return Catalog.Format(msgs.locale, "gitPickStashes", nil)
+}
+
+// GitPickOlder says "{count, plural, one {Show # branch older than {weeks} weeks} other {Show # branches older than {weeks} weeks}}"
+// in the language the app shows.
+func GitPickOlder(count int, weeks int) string { return In(i18n.Locale()).GitPickOlder(count, weeks) }
+
+// GitPickOlder says "{count, plural, one {Show # branch older than {weeks} weeks} other {Show # branches older than {weeks} weeks}}"
+// in the language of msgs.
+func (msgs Messages) GitPickOlder(count int, weeks int) string {
+	return Catalog.Format(msgs.locale, "gitPickOlder", map[string]any{"count": count, "weeks": weeks})
+}
+
+// HistoryNotListed says "That commit isn't in the history listed."
+// in the language the app shows.
+func HistoryNotListed() string { return In(i18n.Locale()).HistoryNotListed() }
+
+// HistoryNotListed says "That commit isn't in the history listed."
+// in the language of msgs.
+func (msgs Messages) HistoryNotListed() string {
+	return Catalog.Format(msgs.locale, "historyNotListed", nil)
+}
+
+// SetBranchMaxAge says "Hide old branches"
+// in the language the app shows.
+func SetBranchMaxAge() string { return In(i18n.Locale()).SetBranchMaxAge() }
+
+// SetBranchMaxAge says "Hide old branches"
+// in the language of msgs.
+func (msgs Messages) SetBranchMaxAge() string {
+	return Catalog.Format(msgs.locale, "setBranchMaxAge", nil)
+}
+
+// SetBranchMaxAgeDetail says "In the branch switcher, unless the filter finds them"
+// in the language the app shows.
+func SetBranchMaxAgeDetail() string { return In(i18n.Locale()).SetBranchMaxAgeDetail() }
+
+// SetBranchMaxAgeDetail says "In the branch switcher, unless the filter finds them"
+// in the language of msgs.
+func (msgs Messages) SetBranchMaxAgeDetail() string {
+	return Catalog.Format(msgs.locale, "setBranchMaxAgeDetail", nil)
+}
+
+// SetBranchMaxAgeAll says "Show all"
+// in the language the app shows.
+func SetBranchMaxAgeAll() string { return In(i18n.Locale()).SetBranchMaxAgeAll() }
+
+// SetBranchMaxAgeAll says "Show all"
+// in the language of msgs.
+func (msgs Messages) SetBranchMaxAgeAll() string {
+	return Catalog.Format(msgs.locale, "setBranchMaxAgeAll", nil)
+}
+
+// SetBranchMaxAgeWeeks says "{count, plural, one {Older than # week} other {Older than # weeks}}"
+// in the language the app shows.
+func SetBranchMaxAgeWeeks(count int) string { return In(i18n.Locale()).SetBranchMaxAgeWeeks(count) }
+
+// SetBranchMaxAgeWeeks says "{count, plural, one {Older than # week} other {Older than # weeks}}"
+// in the language of msgs.
+func (msgs Messages) SetBranchMaxAgeWeeks(count int) string {
+	return Catalog.Format(msgs.locale, "setBranchMaxAgeWeeks", map[string]any{"count": count})
+}
