@@ -1903,6 +1903,17 @@
   "prsDiscardTitle": "Discard the draft review?",
   "prsDiscardDetail": "Its comments and summary are deleted. Nothing was posted to GitHub.",
   "prsDiscard": "Discard",
+  "prsStartDraft": "Start Draft",
+  "prsStartingDraft": "Starting…",
+  "prsStartDraftTip": "Start a draft review without an agent, for comments added here or with kero pr --pr",
+  "prsDraftHint": "Agents add comments with kero pr comment --pr {number}.",
+  "@prsDraftHint": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "prsDraftOld": "The pull request changed after the review began. The comments stay on the older commit.",
   "prsSummary": "Summary (Markdown), the review's text on GitHub",
   "prsEventComment": "Comment",
