@@ -1947,5 +1947,72 @@
         "type": "int"
       }
     }
-  }
+  },
+  "gitToStash": "To Stash",
+  "gitAddToStash": "Add to Stash",
+  "gitRemoveFromStash": "Remove from Stash",
+  "gitStashName": "Stash name (optional)",
+  "gitStashFiles": "{count, plural, one {Stash # File} other {Stash # Files}}",
+  "@gitStashFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitPushBranch": "Push {name}",
+  "historyWorktrees": "{count, plural, one {Worktrees: #} other {Worktrees: #}}",
+  "@historyWorktrees": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWorktreesPrune": "Prune Missing Worktrees",
+  "historyDetached": "detached at {hash}",
+  "historyWorktreeGone": "missing",
+  "historyWorktreeMain": "main",
+  "historyWorktreeUnpushed": "{count} unpushed",
+  "@historyWorktreeUnpushed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWorktreeChanged": "{count} changed",
+  "@historyWorktreeChanged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWorktreeMerged": "merged",
+  "historyWorktreePushed": "pushed",
+  "historyWorktreeOpen": "Open in Session",
+  "historyWorktreeRemoveBranch": "Remove with Branch",
+  "historyWorktreeInUse": "Close {names} first: it works in this worktree.",
+  "historyWorktreeRemoveTitle": "Remove the worktree of {name}?",
+  "historyWorktreeRemoveDirty": "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost. Its branch stays, with its commits.",
+  "@historyWorktreeRemoveDirty": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWorktreeRemoveUnpushed": "{count, plural, one {# commit of {branch} is} other {# commits of {branch} are}} on no remote. Its folder goes, its branch stays with them: push it to keep them safe.",
+  "@historyWorktreeRemoveUnpushed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWorktreeRemoveSafe": "Its folder {path} goes. Its branch {branch} is pushed or merged, so nothing is lost; it stays unless you remove it too.",
+  "historyWorktreeRemoveBranchDetail": "Its folder {path} goes, and its branch {branch}, which git deletes only if it's merged.",
+  "historyWorktreeRemoveDetail": "Its folder {path} goes.",
+  "historyOpenInWorktree": "Open {name} in New Worktree"
 }

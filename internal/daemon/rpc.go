@@ -611,6 +611,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.gitStashes(p)
 
+	case "git.worktrees":
+		var p proto.GitWorktreesParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitWorktrees(p)
+
 	case "git.op":
 		var p proto.GitOpParams
 		if err := decode(&p); err != nil {

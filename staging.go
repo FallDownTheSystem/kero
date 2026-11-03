@@ -24,22 +24,29 @@ import (
 // for what isn't.
 func (a *App) sectionColor(c *ui.Context, pal *palette, section string) ui.Color {
 	added, _, modified := a.diffColors(c, pal)
-	if section == baseStaged {
+	switch section {
+	case baseStaged:
 		return added
+	case baseStash:
+		return pal.accent
 	}
 	return modified
 }
 
-// indexTitle is a section's title, with the buttons for all of its files.
-func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, ix *proto.GitIndex, section string) {
-	list, title, icon := ix.Unstaged, locales.GitChanges(), diffIcon
-	if section == baseStaged {
-		list, title, icon = ix.Staged, locales.GitStagedChanges(), checkIcon
+// indexTitle is a section's title, with the buttons for all of its
+// files, list; apart from the section above it, unless the first.
+func (a *App) indexTitle(c *ui.Context, pal *palette, pane *proto.Pane, section string, list []proto.GitFile, apart bool) {
+	title, icon := locales.GitChanges(), diffIcon
+	switch section {
+	case baseStaged:
+		title, icon = locales.GitStagedChanges(), checkIcon
+	case baseStash:
+		title, icon = locales.GitToStash(), archiveIcon
 	}
 	col := a.sectionColor(c, pal, section)
 	top := float32(4)
-	if section == baseStaged && len(ix.Unstaged) > 0 {
-		top = 14 // apart from the files above it, not staged
+	if apart {
+		top = 14 // apart from the files above it, of another section
 	}
 	band := ui.Row(c.Key("title")).Height(28).Margin(top, 0, 4, 0).Padding(0, 4, 0, 10).Radius(6).Gap(7).AlignItems(ui.Center).Background(col.Alpha(0.1))
 	band.Draw(func(p *ui.Painter, r ui.Rect) { p.Fill(ui.Rect{X: r.X, Y: r.Y, W: 3, H: r.H}, col, 0) })
@@ -89,6 +96,12 @@ func (a *App) indexListTools(c *ui.Context, pal *palette, pane *proto.Pane, sect
 	if dir != "" {
 		unstage, discard, stage = locales.GitUnstage(), locales.GitDiscard(), locales.GitStage()
 	}
+	scope := changesScope(pane, git.BaseHead)
+	if section == baseStash {
+		iconButton(c, "unstash-all", closeIcon, locales.GitRemoveFromStash(), pal, func() { a.pickStash(scope, list, false) })
+		return
+	}
+	iconButton(c, "stash-all", archiveIcon, locales.GitAddToStash(), pal, func() { a.pickStash(scope, list, true) })
 	if section == baseStaged {
 		iconButton(c, "unstage-all", minusIcon, unstage, pal, func() {
 			a.moveFiles(pane, section, list, proto.GitOpParams{Op: "unstage", Paths: paths(list)}, locales.GitUnstage())
@@ -216,6 +229,15 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 		paths = append(paths, f.OldPath)
 	}
 	name := path.Base(f.Path)
+	scope := changesScope(pane, git.BaseHead)
+	switch {
+	case section == baseStash:
+		iconButton(c, "unstash", closeIcon, locales.GitRemoveFromStash(), pal, func() { a.pickStash(scope, []proto.GitFile{f}, false) })
+		return
+	case f.Status != "conflict":
+		// Git stashes no file in conflict.
+		iconButton(c, "to-stash", archiveIcon, locales.GitAddToStash(), pal, func() { a.pickStash(scope, []proto.GitFile{f}, true) })
+	}
 	switch {
 	case section == baseStaged:
 		iconButton(c, "unstage", minusIcon, locales.GitUnstage(), pal, func() {
@@ -262,6 +284,109 @@ func (a *App) indexTools(c *ui.Context, pal *palette, pane *proto.Pane, ix *prot
 			a.moveFiles(pane, section, []proto.GitFile{f}, proto.GitOpParams{Op: "stage", Paths: paths}, locales.GitStage())
 		})
 	}
+}
+
+// pickStash adds files of Uncommitted to those to stash, or takes them
+// out, as their buttons in the tree do; a file in conflict, which git
+// stashes not, stays.
+func (a *App) pickStash(scope string, files []proto.GitFile, add bool) {
+	ch := &a.side.changes
+	if ch.toStash == nil {
+		ch.toStash = map[string]map[string]bool{}
+	}
+	set := ch.toStash[scope]
+	if set == nil {
+		set = map[string]bool{}
+		ch.toStash[scope] = set
+	}
+	for _, f := range files {
+		switch {
+		case !add:
+			delete(set, f.Path)
+		case f.Status != "conflict":
+			set[f.Path] = true
+		}
+	}
+}
+
+// treeSections are the sections of the Changes tab's tree: the frame's,
+// with the files chosen to stash out of theirs and in a section of their
+// own, under the others. A file staged and not shows in it once; one
+// that is no longer changed drops out of it.
+func (a *App) treeSections(cf *changesFrame) []changeSection {
+	secs := cf.sections()
+	set := a.side.changes.toStash[cf.scope]
+	if cf.ix == nil || len(set) == 0 {
+		return secs
+	}
+	var picked []proto.GitFile
+	seen := map[string]bool{}
+	out := make([]changeSection, 0, len(secs)+1)
+	for _, sec := range secs {
+		var rest []proto.GitFile
+		for _, f := range sec.files {
+			if !set[f.Path] {
+				rest = append(rest, f)
+				continue
+			}
+			if !seen[f.Path] {
+				seen[f.Path] = true
+				picked = append(picked, f)
+			}
+		}
+		if len(rest) > 0 {
+			out = append(out, changeSection{sec.name, rest})
+		}
+	}
+	if !cf.held {
+		for p := range set {
+			if !seen[p] {
+				delete(set, p)
+			}
+		}
+	}
+	if len(picked) == 0 {
+		return out
+	}
+	slices.SortFunc(picked, func(a, b proto.GitFile) int { return strings.Compare(a.Path, b.Path) })
+	return append(out, changeSection{baseStash, picked})
+}
+
+// stashBar is what stashes the files chosen to stash, under them: the
+// stash's name, which may be left out, and its button, which stashes
+// their changes, staged and not, untracked files too, leaving the others'
+// as they are.
+func (a *App) stashBar(c *ui.Context, pal *palette, pane *proto.Pane, scope string, files []proto.GitFile) {
+	ch := &a.side.changes
+	if ch.stashName == nil {
+		ch.stashName = map[string]string{}
+	}
+	name := ch.stashName[scope]
+	stash := false
+	ui.Row(c.Key("stash-bar")).Gap(6).AlignItems(ui.Center).Padding(6, 0, 4, 10).Children(func() {
+		in := textField(c, "stash-name", &name, locales.GitStashName(), 0, pal)
+		stash = in.Submitted()
+		stash = fieldButton(c, "stash", locales.GitStashFiles(len(files)), true, pal) || stash
+	})
+	ch.stashName[scope] = name
+	if !stash || len(files) == 0 {
+		return
+	}
+	p := proto.GitOpParams{Op: "stash", Message: strings.TrimSpace(name)}
+	for _, f := range files {
+		p.Paths = append(p.Paths, f.Path)
+		if f.OldPath != "" {
+			p.Paths = append(p.Paths, f.OldPath)
+		}
+		p.IncludeUntracked = p.IncludeUntracked || f.Status == "untracked"
+	}
+	id, root := pane.ID, pane.Git.Root
+	a.guarded(id, root, locales.GitStash(), func() {
+		a.runGit(id, root, p, locales.GitStash(), func(string) {
+			delete(ch.toStash, scope)
+			delete(ch.stashName, scope)
+		})
+	})
 }
 
 // ignore adds a file, or a folder by its path ending in a slash, to its
