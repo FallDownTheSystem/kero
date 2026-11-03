@@ -6634,6 +6634,16 @@ func (msgs Messages) SetColorBright(color string) string {
 	return Catalog.Format(msgs.locale, "setColorBright", map[string]any{"color": color})
 }
 
+// SideBarZoom says "Zoom Sidebar"
+// in the language the app shows.
+func SideBarZoom() string { return In(i18n.Locale()).SideBarZoom() }
+
+// SideBarZoom says "Zoom Sidebar"
+// in the language of msgs.
+func (msgs Messages) SideBarZoom() string {
+	return Catalog.Format(msgs.locale, "sideBarZoom", nil)
+}
+
 // SideZoom says "Zoom Viewer"
 // in the language the app shows.
 func SideZoom() string { return In(i18n.Locale()).SideZoom() }

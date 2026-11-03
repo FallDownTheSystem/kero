@@ -652,6 +652,7 @@
   "setColorCyan": "シアン",
   "setColorWhite": "白",
   "setColorBright": "明るい{color}",
+  "sideBarZoom": "サイドバーを拡大",
   "sideZoom": "ビューアを拡大",
   "splitTerminal": "ターミナル",
   "splitBrowser": "ブラウザ",
