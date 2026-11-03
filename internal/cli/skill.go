@@ -109,7 +109,8 @@ comments only on lines of the diff, a change and the three lines around
 it: kero pr comment says which lines a file has when it refuses one. A
 path with no lines comments on the whole file. The
 user's own comments show in kero pr show too; don't remove them. Outside a
-review the user started in your pane, name the pull request: --pr 123.
+review the user started in your pane, name the pull request: --pr 123;
+with no draft yet, ask the user to click Start Draft on it in Kero.
 
 ## Tell the user
 

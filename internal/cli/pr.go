@@ -112,7 +112,7 @@ func prCommand(c *client.Client, args []string) error {
 	}
 	switch {
 	case dr == nil:
-		return fmt.Errorf("no draft review: start one from Kero's Review view")
+		return fmt.Errorf("no draft review: ask the user to click Start Draft on the pull request in Kero's Review view")
 	case sub == "show" && f.set["json"]:
 		b, _ := json.MarshalIndent(dr, "", "  ")
 		fmt.Println(string(b))

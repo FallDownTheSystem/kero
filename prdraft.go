@@ -28,6 +28,7 @@ type prDraftState struct {
 	summaryEdit bool
 	event       string // a github.Event*
 	posting     bool
+	starting    bool // Start Draft is fetching the pull request
 	err         string
 }
 
@@ -79,7 +80,7 @@ func (a *App) fetchDraftReview(g *prPage) { a.callReview(g, g.reviewParams("get"
 // applyDraft shows dr, nil for none: its comments in the page's review,
 // those being edited kept as they are.
 func (a *App) applyDraft(g *prPage, dr *proto.PRReviewDraft) {
-	g.review.draft = dr
+	g.review.draft, g.review.starting = dr, false
 	if !g.review.summaryEdit {
 		g.review.summary = ""
 		if dr != nil {
@@ -222,7 +223,25 @@ func (a *App) prDraftBar(c *ui.Context, pal *palette, g *prPage, width float32) 
 			ui.Icon(c, commentIcon).Size(12, 12).TextColor(pal.accent).Shrink(0)
 			ui.Text(c, locales.PrsDraftReview(n)).FontSize(12.5).FontWeight(600).TextColor(pal.text).SingleLine().MinWidth(0)
 			ui.Spacer(c)
+			// A draft with no agent behind it, for an agent of the user's,
+			// or Kero, to add comments to with kero pr --pr.
 			if dr == nil {
+				label := locales.PrsStartDraft()
+				if st.starting {
+					label = locales.PrsStartingDraft()
+				}
+				b := ui.ButtonBase(c.Key("draft-start")).Height(24).Padding(0, 10).Radius(6).AlignItems(ui.Center).TextColor(pal.text).
+					Label(label).Tooltip(locales.PrsStartDraftTip()).InsetShadow(0, 0, 0, 1, pal.text.Alpha(0.14))
+				if st.starting {
+					b.TextColor(pal.textMuted)
+				} else if b.Hovered() || b.Pressed() {
+					b.Background(pal.rowHover)
+				}
+				b.Children(func() { ui.Text(c, label).FontSize(12).SingleLine() })
+				if b.Clicked() && !st.starting && !st.posting {
+					st.starting = true
+					a.callReview(g, g.reviewParams("start"), nil)
+				}
 				return
 			}
 			b := ui.ButtonBase(c.Key("draft-menu")).Size(24, 24).Radius(6).Center().TextColor(pal.textMuted).Label(locales.PrsDraftOptions()).Tooltip(locales.PrsDraftOptions())
@@ -239,6 +258,10 @@ func (a *App) prDraftBar(c *ui.Context, pal *palette, g *prPage, width float32) 
 		})
 		if dr != nil && dr.Head != "" && g.res.HeadOID != "" && dr.Head != g.res.HeadOID {
 			ui.Text(c, locales.PrsDraftOld()).FontSize(12).TextColor(pal.attention).LineHeight(1.35)
+		}
+		// How an agent of the user's adds to a draft none writes yet.
+		if dr != nil && n == 0 && dr.Agent == "" {
+			ui.Text(c, locales.PrsDraftHint(g.pr.Number)).FontSize(12).TextColor(pal.textMuted).LineHeight(1.35).Selectable()
 		}
 		frame := ui.Row(c.Key("summary")).AlignItems(ui.Start).Cursor(ui.CursorText)
 		var in ui.Element
