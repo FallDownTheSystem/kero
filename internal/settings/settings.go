@@ -133,6 +133,10 @@ type Settings struct {
 	// worktrees go, "" for .kero/worktrees in the repository.
 	WorktreeBase string `json:"worktreeBase"`
 	WorktreeDir  string `json:"worktreeDir"`
+	// BranchMaxWeeks hides from the branch switcher the branches with no
+	// commit in that many weeks, unless its filter finds them; 0 hides
+	// none.
+	BranchMaxWeeks int `json:"branchMaxWeeks"`
 
 	// Files
 	Editor string `json:"editor"` // the command Open in Editor runs with a path; "" the app the system opens it with
@@ -492,6 +496,7 @@ func (s *Settings) normalize() {
 	oneOf(&s.Clipboard, d.Clipboard, "ask", "allow", "deny")
 	oneOf(&s.RightClick, d.RightClick, "menu", "paste", "copyOrPaste")
 	oneOf(&s.DiffLayout, d.DiffLayout, "auto", "unified", "split")
+	s.BranchMaxWeeks = max(s.BranchMaxWeeks, 0)
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
 	oneOf(&s.PRNotify, d.PRNotify, "review", "all", "off")
 	if s.PRPollMinutes < 1 || s.PRPollMinutes > 1440 {
