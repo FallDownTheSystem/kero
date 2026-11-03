@@ -410,12 +410,12 @@ func (a *App) rightSidebar(c *ui.Context, pal *palette, s *proto.Session) {
 	// The tabs, labeled while they fit, else the chosen one's label alone,
 	// else their icons: the button that hides the sidebar takes its room.
 	tabs := []sideTabInfo{
-		{sideChanges, diffIcon, locales.SideChanges()},
 		{sideFiles, folderIcon, locales.SideFiles()},
+		{sideChanges, diffIcon, locales.SideChanges()},
 		{sideHistory, historyIcon, locales.SideHistory()},
 		{sideReview, prIcon, locales.SideReview()},
 	}
-	full, chosenOnly := float32(controlW+12), float32(controlW+12)
+	full, chosenOnly := float32(2*controlW+12), float32(2*controlW+12)
 	for _, t := range tabs {
 		lw, _ := c.MeasureText(0, ui.Span{Text: t.label, Size: 13, Weight: 500})
 		full += lw + 20 + 2
