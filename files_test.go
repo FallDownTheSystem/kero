@@ -188,8 +188,9 @@ func TestFilesTab(t *testing.T) {
 	}
 }
 
-// Close takes the viewer while it has the keyboard, as a click in the tree
-// gives it, not the pane beside it; else the pane, viewer or not.
+// Close takes the viewer while it, or the Files tree a click on a file
+// leaves the keyboard in (to move in it), has the keyboard, not the pane
+// beside it; else the pane, viewer or not.
 func TestCloseInViewer(t *testing.T) {
 	a := testApp(t)
 	s := &a.st.Sessions[0]
@@ -213,8 +214,8 @@ func TestCloseInViewer(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		v := a.viewOf(s)
-		if v == nil || !a.side.focused {
-			t.Fatalf("a click on main.go left viewer %+v, focused %v", v, a.side.focused)
+		if v == nil || !a.side.files.focused {
+			t.Fatalf("a click on main.go left viewer %+v, tree focused %v", v, a.side.files.focused)
 		}
 		return v
 	}
@@ -249,13 +250,13 @@ func TestCloseInViewer(t *testing.T) {
 		t.Fatalf("Don't Save left viewer %+v, %d panes of %d", a.viewOf(s), len(s.Panes), panes)
 	}
 
-	// Without edits it closes at once, the keyboard back with the pane.
+	// Without edits it closes at once, the keyboard left in the tree.
 	open()
 	a.run("pane.close", nil)
 	tt.Frame()
 	tt.Frame()
-	if a.viewOf(s) != nil || a.side.focused || len(s.Panes) != panes {
-		t.Fatalf("Close left viewer %+v, focused %v, %d panes of %d", a.viewOf(s), a.side.focused, len(s.Panes), panes)
+	if a.viewOf(s) != nil || a.side.focused || !a.side.files.focused || len(s.Panes) != panes {
+		t.Fatalf("Close left viewer %+v, focused %v, tree focused %v, %d panes of %d", a.viewOf(s), a.side.focused, a.side.files.focused, len(s.Panes), panes)
 	}
 
 	// kero do means the pane, wherever the keyboard is.
@@ -277,8 +278,8 @@ func TestCloseInViewer(t *testing.T) {
 	}
 	tt.Frame()
 	tt.Frame()
-	if a.side.focused {
-		t.Fatal("the viewer kept the keyboard")
+	if a.side.focused || a.side.files.focused {
+		t.Fatalf("the viewer kept the keyboard: viewer %v, tree %v", a.side.focused, a.side.files.focused)
 	}
 	a.run("pane.close", nil)
 	tt.Frame()
@@ -356,7 +357,7 @@ func TestCloseAfterBranchChip(t *testing.T) {
 	s.Panes[0].Process, s.Panes[1].Process = "", ""
 	a.prefs.Side = sideFiles
 	panes := len(s.Panes)
-	tt := ui.NewTester(a.view, 1280, 720)
+	tt := ui.NewTester(a.view, 1600, 720)
 	tt.Frame()
 	tt.Advance(time.Second)
 	tt.Frame()
