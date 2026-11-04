@@ -5,6 +5,23 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.32-fork.1
+
+Upstream 2.1.32 (CHANGELOG.md): **Close Pane** (<kbd>Ctrl</kbd>
+<kbd>Shift</kbd> <kbd>W</kbd>) with the keyboard in the viewer closes the
+viewer, asking first to save its edits, instead of the pane beside it,
+and opening a diff or the branch's changes gives the viewer the keyboard;
+`kero ls --all` lists every host's sessions; Kero keeps its agent skill
+and the Pi and OpenCode plugins current as it starts; Codex's hook runs
+from every Windows shell, including a Kero installed under a path with
+spaces; filter list rules with `$~document` block every other kind of
+request. MyGo is unchanged (the fork's 0.7.4).
+
+- A file clicked in the Files tab still leaves the keyboard in the tree,
+  to move in it with the arrow keys, rather than giving it to the viewer
+  as upstream does; **Close Pane** there closes the viewer too, not the
+  pane beside it
+
 ## 2.1.31-fork.10
 
 - The Review tab keeps showing the pull requests it last fetched for a
