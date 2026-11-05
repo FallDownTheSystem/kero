@@ -5,6 +5,29 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.33-fork.1
+
+Upstream 2.1.33 (CHANGELOG.md): **Keep computer awake** (Settings ›
+General, the tray menu, the command palette), always or while agents
+work; each session in the sidebar starts with its program's icon, and a
+split session's count of panes lists them; **View › Toggle Dark Mode**
+(<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>L</kbd>); **Open in Default App**
+in the Files tab's menu; **Font features** (`font-feature`) in
+Settings › Terminal; OMP (oh-my-pi) as a coding agent; the terminal is a
+text field to dictation apps; a second **Close Pane** while the viewer
+asks to save its edits no longer closes the pane beside it; the browser's
+address bar opens a bracketed public IPv6 address. MyGo is unchanged (the
+fork's 0.7.4), so the fixes upstream took from MyGo's later, unreleased
+commits wait for its next release, among them the Windows UI Automation
+provider's server-side flag, which dictation apps may rely on to see the
+terminal's text.
+
+- The Files tab's menu has upstream's **Open in Default App** first, above
+  the fork's Open in Pane, Show History, Open in Editor, Open With and
+  Show in Explorer
+- **Close Pane** with the keyboard in the Files tree still closes the
+  viewer, and waits, as upstream's does, while the viewer asks to save
+
 ## 2.1.32-fork.1
 
 Upstream 2.1.32 (CHANGELOG.md): **Close Pane** (<kbd>Ctrl</kbd>
