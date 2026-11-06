@@ -206,6 +206,29 @@ type (
 		Slug   string `json:"slug"`
 		Number int    `json:"number"`
 	}
+	// PRWorktreesParams ask for the worktrees reviews checked pull
+	// requests out in, of Pane's repository, which pr.worktrees answers
+	// with, as []ReviewWorktree.
+	PRWorktreesParams struct {
+		Pane string `json:"pane"`
+	}
+	// ReviewWorktree is a worktree a review checked pull request Number
+	// out in, on Branch, a review/pr-<number> one: Files are its changed
+	// files, untracked ones too, which removing it would lose.
+	ReviewWorktree struct {
+		Number int    `json:"number"`
+		Path   string `json:"path"`
+		Branch string `json:"branch"`
+		Files  int    `json:"files"`
+	}
+	// PRWorktreeRemoveParams remove a review's worktree at Path, of Pane's
+	// repository, that no session works in; one with changed files only
+	// with Force.
+	PRWorktreeRemoveParams struct {
+		Pane  string `json:"pane"`
+		Path  string `json:"path"`
+		Force bool   `json:"force,omitempty"`
+	}
 
 	// PRReviewParams act on a pull request's draft review, by Op:
 	//
@@ -249,7 +272,9 @@ type (
 	}
 	// PRReviewDraft is a pull request's review being written, at Head, of
 	// the changes since MergeBase: kept by kerod until it is posted or
-	// discarded. Agent is the pane of the agent that writes it.
+	// discarded. Agent is the pane of the agent that writes it, and
+	// Session that pane's session, which outlives the pane: drafts kept
+	// from before kerod named it have Agent alone.
 	PRReviewDraft struct {
 		Repo      string           `json:"repo"` // its slug
 		Remote    string           `json:"remote"`
@@ -258,6 +283,7 @@ type (
 		Head      string           `json:"head"`
 		MergeBase string           `json:"mergeBase"`
 		Agent     string           `json:"agent,omitempty"`
+		Session   string           `json:"session,omitempty"`
 		Summary   string           `json:"summary,omitempty"`
 		Comments  []PRDraftComment `json:"comments"`
 		Updated   int64            `json:"updated"`

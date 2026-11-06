@@ -176,6 +176,15 @@
   "newSessionIn": "New Session in {project}",
   "sessionRename": "Rename",
   "sessionMarkRead": "Mark as Read",
+  "sessionReview": "Review",
+  "sessionReviewTip": "Reviews {repo}#{number}",
+  "@sessionReviewTip": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "sessionMoveToProject": "Move to Project",
   "sessionCopyId": "Copy Session ID",
   "sessionCopyDirectory": "Copy Directory",
@@ -1767,7 +1776,6 @@
     }
   },
   "prsFetchFailed": "Couldn't fetch the pull request: {error}",
-  "prsAgentLate": "The agent isn't ready. Kero copied the prompt: paste it to the agent.",
   "prsReviewStarted": "Reviewing #{number} in the background. The list shows when the review is ready.",
   "@prsReviewStarted": {
     "placeholders": {
@@ -1776,6 +1784,59 @@
       }
     }
   },
+  "prsReviewHasAgent": "An agent is reviewing #{number} already.",
+  "@prsReviewHasAgent": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsReviewHasWorktree": "An earlier review of #{number} left its worktree.",
+  "@prsReviewHasWorktree": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsReviewExistingDetail": "Kero starts the agent in a new session, in the earlier review's worktree, {path}.",
+  "prsUseExisting": "Its Worktree",
+  "prsUseNew": "New Worktree",
+  "prsAgents": "Review Agents",
+  "prsAgent": "Agent",
+  "prsOpenAgent": "Open Review Agent",
+  "prsAgentOptions": "Review Agent Options",
+  "prsAgentClosed": "Session closed · {branch}",
+  "prsAgentChanged": "{count, plural, one {# changed file} other {# changed files}}",
+  "@prsAgentChanged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsOpenPage": "Show Pull Request",
+  "prsReviewAgain": "Review Again in Its Worktree…",
+  "prsRemoveWorktreeItem": "Remove Worktree…",
+  "prsRemoveWorktreeTitle": "Remove the worktree of #{number}?",
+  "@prsRemoveWorktreeTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsRemoveWorktreeDetail": "Its folder {path} goes. Its branch {branch} goes too, unless it has commits that aren't on a remote.",
+  "prsRemoveWorktreeDirty": "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost.",
+  "@prsRemoveWorktreeDirty": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsRemoveWorktreeFailed": "Couldn't remove the worktree: {error}",
   "prsReviewing": "Reviewing",
   "prsReviewReady": "Review Ready",
   "prsInReview": "In Review",
@@ -1800,6 +1861,7 @@
   "prsSetupTitle": "Repository Setup for {repo}",
   "prsSetupDetail": "How agents review this repository's pull requests and write its commit messages and pull requests. Kero saves this setup for this repository only.",
   "prsSetupCommand": "Agent command",
+  "prsSetupCommandHint": "Kero gives the agent the prompt as one argument: in place of '{prompt}' in the command, else after it. The pull request's placeholders work in the command too.",
   "prsSetupPrompt": "Review prompt",
   "prsUseDefault": "Reset to Default",
   "prsSetupPlaceholders": "Kero replaces '{number}', '{url}', '{title}', '{branch}', '{base}', '{author}' and '{ticket}' with the pull request's values. '{ticket}' is the first issue key, such as PROJ-123, in the title, the description or the branch.",
