@@ -5,6 +5,16 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.3
+
+- In the New Session dialog, right-click an existing worktree to remove
+  it, or remove it with its branch; Kero says first what removing it
+  would lose, as changed files or commits on no remote
+- A question asked over a dialog shows on top of it
+- A question's buttons go onto a second line when a long name, as a
+  branch's, leaves no room for them on one, instead of running past the
+  dialog's edge
+
 ## 2.1.34-fork.2
 
 - A project's + opens the New Session dialog: an agent session (the
