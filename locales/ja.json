@@ -1124,7 +1124,7 @@
   "prsRemoveWorktreeTitle": "#{number} のワークツリーを削除しますか？",
   "prsRemoveWorktreeDetail": "フォルダ {path} を削除します。ブランチ {branch} も、リモートにないコミットがなければ削除します。",
   "prsRemoveWorktreeDirty": "{path} の変更されたファイル {count} 件は失われます。",
-  "prsRemoveWorktreeFailed": "ワークツリーを削除できません: {error}",
+  "worktreeRemoveFailed": "ワークツリーを削除できません: {error}",
   "prsReviewing": "レビュー中",
   "prsReviewReady": "レビュー完了",
   "prsInReview": "レビュー中",

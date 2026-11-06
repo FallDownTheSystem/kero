@@ -1019,7 +1019,7 @@ func (a *App) prSetupView(c *ui.Context, pal *palette) {
 				ui.Text(c, locales.PrsSetupGlobal()).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4)
 			})
 		})
-		ui.Row(c).Gap(8).Justify(ui.End).Margin(14, 0, 0, 0).Children(func() {
+		dialogButtons(c, func() {
 			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				w.open = false
 			}

@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -639,6 +640,79 @@ func TestNewSessionDialog(t *testing.T) {
 	tt.Frame()
 	if p := wait(); p.Dir != "/tmp/wt/feat" || p.Worktree != "" || len(p.Command) == 0 {
 		t.Errorf("the worktree's row started %+v", p)
+	}
+}
+
+// An existing worktree's menu removes it, asking over the dialog as what
+// it would lose decides, by the dialog's folder, then lists them anew.
+func TestNewSessionRemoveWorktree(t *testing.T) {
+	a := testApp(t)
+	ops := make(chan proto.GitOpParams, 2)
+	var mu sync.Mutex
+	gone := false
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.branches":
+			return proto.GitBranches{Branches: []proto.GitBranch{{Name: "main", Current: true, Worktree: "/tmp"}}}, nil
+		case "git.worktrees":
+			var p proto.GitWorktreesParams
+			json.Unmarshal(raw, &p)
+			mu.Lock()
+			defer mu.Unlock()
+			if gone {
+				return proto.GitWorktrees{Worktrees: []proto.GitWorktree{}}, nil
+			}
+			wt := proto.GitWorktree{Path: "/tmp/wt/worktree-agent-a0cfdfaef04b22c52", Branch: "worktree-agent-a0cfdfaef04b22c52"}
+			if p.State {
+				wt.State, wt.Unpushed = true, 1
+			}
+			return proto.GitWorktrees{Worktrees: []proto.GitWorktree{wt}}, nil
+		case "git.op":
+			var p proto.GitOpParams
+			json.Unmarshal(raw, &p)
+			mu.Lock()
+			gone = true
+			mu.Unlock()
+			ops <- p
+			return proto.GitOpResult{}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().conn, a.local().cl = connReady, cl
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	a.askNewSession(a.local(), "", "/tmp", true)
+	w := a.newAsk
+	frameUntil(t, tt, "the worktree's state", func() bool {
+		return w.trees != nil && len(w.trees.Worktrees) == 1 && w.trees.Worktrees[0].State
+	})
+	if err := tt.RightClick("worktree-agent-a0cfdfaef04b22c52"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	if err := tt.ChooseMenuItem("Remove Worktree…"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	tt.Frame()
+	cf := a.confirm
+	if cf == nil || !strings.Contains(cf.detail, "1 commit") || cf.alt != "" {
+		t.Fatalf("asked %+v", cf)
+	}
+	shot(t, tt, "new-session-remove")
+	// Return answers the question, which is over the dialog, not the
+	// dialog, which would start a session.
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	select {
+	case p := <-ops:
+		if p.Op != "worktreeRemove" || p.Dir != "/tmp" || p.Pane != "" || p.Path != "/tmp/wt/worktree-agent-a0cfdfaef04b22c52" || p.Force || p.Name != "" {
+			t.Errorf("removed %+v", p)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no removal")
+	}
+	frameUntil(t, tt, "the list anew", func() bool { return w.trees != nil && len(w.trees.Worktrees) == 0 })
+	if a.newAsk != w {
+		t.Error("the dialog closed")
 	}
 }
 

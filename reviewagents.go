@@ -295,7 +295,7 @@ func (a *App) askRemoveReviewWorktree(pane string, ra reviewAgent) {
 			p := proto.PRWorktreeRemoveParams{Pane: pane, Path: ra.path, Force: force}
 			a.callOn(h, "pr.worktree.remove", p, func(err error) {
 				if err != nil {
-					a.toast(locales.PrsRemoveWorktreeFailed(err.Error()))
+					a.toast(locales.WorktreeRemoveFailed(err.Error()))
 				}
 				a.refetchReviewWorktrees()
 			})

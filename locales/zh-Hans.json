@@ -1124,7 +1124,7 @@
   "prsRemoveWorktreeTitle": "删除 #{number} 的工作树？",
   "prsRemoveWorktreeDetail": "会删除文件夹 {path}。分支 {branch} 若没有未推送到远程的提交，也会删除。",
   "prsRemoveWorktreeDirty": "{path} 中 {count} 个有改动的文件将会丢失。",
-  "prsRemoveWorktreeFailed": "无法删除工作树：{error}",
+  "worktreeRemoveFailed": "无法删除工作树：{error}",
   "prsReviewing": "审查中",
   "prsReviewReady": "审查完成",
   "prsInReview": "审查中",
