@@ -730,6 +730,20 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.prFetch(p)
 
+	case "pr.worktrees":
+		var p proto.PRWorktreesParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.reviewWorktrees(p)
+
+	case "pr.worktree.remove":
+		var p proto.PRWorktreeRemoveParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return true, d.removeReviewWorktree(p)
+
 	case "pr.message":
 		var p proto.PRMessageParams
 		if err := decode(&p); err != nil {

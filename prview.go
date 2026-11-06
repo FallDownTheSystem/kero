@@ -132,6 +132,9 @@ func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *pr
 		iconButton(c, "refresh", reloadIcon, locales.PrsRefresh(), pal, func() { a.fetchPRPage(g) })
 		iconButton(c, "open", linkIcon, locales.PrsOpen(), pal, func() { openURL(g.pr.URL) })
 		pr := g.pr
+		if ag, _ := a.prAgent(a.hostOf(pane.ID), g.repoSlug(), pr.Number); ag.session != nil {
+			a.agentButton(c, pal, ag.session)
+		}
 		a.reviewButton(c, pal, func(mode string) { a.askReview(s, pane, g.remote, g.slug, pr, mode) })
 	})
 	if ps.page == nil {

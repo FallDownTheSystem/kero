@@ -116,8 +116,9 @@ func TestPullsKeepList(t *testing.T) {
 }
 
 // A pull request's Review, from its menu, fetches its branch and starts the
-// repository's review agent in a session of a new worktree of it, which is
-// sent the repository's prompt, filled in, once the agent is ready.
+// repository's review agent in a session of a new worktree of it, marked
+// as the pull request's review, with the repository's prompt, filled in,
+// as its argument; the Review view lists the session, and goes to it.
 func TestPullsReview(t *testing.T) {
 	a := testApp(t)
 	gitDemo(a)
@@ -151,7 +152,10 @@ func TestPullsReview(t *testing.T) {
 			var p proto.CreateParams
 			json.Unmarshal(raw, &p)
 			creates <- p
-			return proto.Session{ID: "s2", Project: "p1", Name: "#7", Panes: []proto.Pane{{ID: "r1", Dir: "/tmp/demo-fix", Status: proto.Working, Progress: -1}}}, nil
+			return proto.Session{ID: "s2", Project: "p1", Name: "#7", Review: p.Review,
+				Worktree: &proto.Worktree{Path: "/tmp/demo/.kero/worktrees/review-pr-7", Branch: "review/pr-7", Main: "/tmp/demo"},
+				Pane:     proto.Pane{Status: proto.Working, Progress: -1},
+				Panes:    []proto.Pane{{ID: "r1", Dir: "/tmp/demo-fix", Status: proto.Working, Progress: -1}}}, nil
 		case "send":
 			var p proto.SendParams
 			json.Unmarshal(raw, &p)
@@ -209,10 +213,17 @@ func TestPullsReview(t *testing.T) {
 		}
 		break
 	}
-	if cp.Worktree != "review/pr-7" || cp.Base != "origin/fix" || cp.PushRemote != "origin" || cp.PushBranch != "fix" || cp.Dir != "/tmp/demo" || len(cp.Command) != 2 || cp.Command[0] != "codex" {
+	if cp.Worktree != "review/pr-7" || cp.Base != "origin/fix" || cp.PushRemote != "origin" || cp.PushBranch != "fix" || cp.Dir != "/tmp/demo" {
 		t.Fatalf("created %+v", cp)
 	}
-	frameUntil(t, tt, "launch", func() bool { return len(a.launches) == 1 })
+	// The agent starts on the prompt, its last argument, and the session
+	// is the pull request's review.
+	if want := []string{"codex", "--full-auto", "/code-review KERO-12 #7 of fix by ann"}; !slices.Equal(cp.Command, want) {
+		t.Errorf("command %q, want %q", cp.Command, want)
+	}
+	if cp.Review == nil || cp.Review.Slug != "me/demo" || cp.Review.Number != 7 {
+		t.Errorf("review %+v", cp.Review)
+	}
 	select {
 	case p := <-starts:
 		if p.Agent != "r1" || p.Number != 7 || p.Remote != "origin" {
@@ -238,28 +249,23 @@ func TestPullsReview(t *testing.T) {
 	frameUntil(t, tt, "the draft's pill", func() bool { _, ok := tt.Find("Reviewing"); return ok })
 	shot(t, tt, "pulls-reviewing")
 
-	// Not while the agent works.
+	// The review session shows above the list, and on the pull request's
+	// row, which goes to it.
+	for _, want := range []string{"Review Agents", "Agent", "review/pr-7"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q; texts %q", want, tt.Texts())
+		}
+	}
+	// Kero types nothing: the prompt went as the agent's argument.
 	tt.Advance(3 * time.Second)
 	tt.Frame()
-	if len(sends) > 0 || len(a.launches) != 1 {
-		t.Fatal("the prompt went to a busy pane")
-	}
-	p := a.paneByID("r1")
-	p.Agent, p.Status, p.Activity = "codex", proto.Idle, time.Now().UnixMilli()
-	tt.Advance(2 * time.Second)
-	tt.Frame()
-	select {
-	case s := <-sends:
-		if s.ID != "r1" || !s.Paste || !s.Submit || s.Data != "/code-review KERO-12 #7 of fix by ann" {
-			t.Errorf("sent %+v", s)
-		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("the prompt wasn't sent")
-	}
-	if len(a.launches) != 0 {
-		t.Error("the launch stays")
+	if len(sends) > 0 {
+		t.Fatal("the prompt was typed into the agent")
 	}
 	// The agent idle, the review is ready.
+	for _, p := range []*proto.Pane{a.paneByID("r1"), &a.session("s2").Pane} {
+		p.Agent, p.Status, p.Activity = "codex", proto.Idle, time.Now().UnixMilli()
+	}
 	frameUntil(t, tt, "Review Ready", func() bool { _, ok := tt.Find("Review Ready"); return ok })
 	shot(t, tt, "pulls-ready")
 
@@ -269,8 +275,43 @@ func TestPullsReview(t *testing.T) {
 	mu.Unlock()
 	a.event(a.local(), a.local().cl, proto.Message{Event: "review", Review: &proto.PRReviewRef{Slug: "me/demo", Number: 7}})
 	frameUntil(t, tt, "Review back", func() bool { _, ok := tt.Find("Review Ready"); return !ok })
+	if err := tt.Click("Agent"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if a.selected != "s2" {
+		t.Errorf("Agent went to %q", a.selected)
+	}
+	// Its session gone, Review is back on the row.
+	a.st.Sessions = slices.DeleteFunc(a.st.Sessions, func(s proto.Session) bool { return s.ID == "s2" })
+	a.selectSession("s1")
+	frameUntil(t, tt, "Review back", func() bool { _, ok := tt.Find("Agent"); return !ok })
 	if _, ok := tt.Find("Review"); !ok {
 		t.Errorf("no Review; texts %q", tt.Texts())
+	}
+}
+
+// A review's command takes its prompt as one argument, in place of
+// {prompt}, else last, whatever quotes and newlines the prompt has; the
+// pull request's placeholders fill the command's words in.
+func TestReviewArgs(t *testing.T) {
+	pr := proto.PullRequest{Number: 7, Title: "Fix the \"parser\"", Head: "fix", Base: "main", Author: "ann"}
+	prompt := "Review #7, \"Fix the parser\".\n\nThen don't post."
+	for _, tc := range []struct {
+		command string
+		want    []string
+	}{
+		{"", []string{"claude", prompt}},
+		{"claude", []string{"claude", prompt}},
+		{"cc --model opus", []string{"cc", "--model", "opus", prompt}},
+		{`codex exec "{prompt}" --full-auto`, []string{"codex", "exec", prompt, "--full-auto"}},
+		{"agent --prompt={prompt}", []string{"agent", "--prompt=" + prompt}},
+		{`claude -n "PR {number} by {author}" --`, []string{"claude", "-n", "PR 7 by ann", "--", prompt}},
+		{"claude --title {title}", []string{"claude", "--title", "Fix the \"parser\"", prompt}},
+	} {
+		if got := reviewArgs(tc.command, prompt, pr, ""); !slices.Equal(got, tc.want) {
+			t.Errorf("reviewArgs(%q) = %q, want %q", tc.command, got, tc.want)
+		}
 	}
 }
 

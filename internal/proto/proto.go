@@ -329,6 +329,9 @@ type Session struct {
 	// Worktree is the linked git worktree kero made for the session to
 	// work in, nil for none.
 	Worktree *Worktree `json:"worktree,omitempty"`
+	// Review is the pull request the session was started to review, from
+	// the Review view; nil for any other session.
+	Review *PRReviewRef `json:"review,omitempty"`
 }
 
 // Worktree is a linked git worktree kero made for a session: Path checks
@@ -769,6 +772,9 @@ type (
 		// branch of its own name.
 		PushRemote string `json:"pushRemote,omitempty"`
 		PushBranch string `json:"pushBranch,omitempty"`
+		// Review marks the session as the review of a pull request
+		// (Session.Review).
+		Review *PRReviewRef `json:"review,omitempty"`
 	}
 	IDParams struct {
 		ID string `json:"id"`

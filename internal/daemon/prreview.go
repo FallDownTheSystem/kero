@@ -94,20 +94,39 @@ func allReviews() ([]proto.PRReviewDraft, error) {
 	return all, nil
 }
 
-// agentReview returns the draft the agent in pane writes, nil for none.
-func agentReview(pane string) (*proto.PRReviewDraft, error) {
+// agentReview returns the draft the agent in pane writes, nil for none:
+// one started for the pane, or for its session, sid, or the one of the
+// pull request the session was started to review, ref.
+func agentReview(pane, sid string, ref *proto.PRReviewRef) (*proto.PRReviewDraft, error) {
 	all, err := allReviews()
 	if err != nil {
 		return nil, err
 	}
 	var found *proto.PRReviewDraft
 	for i, dr := range all {
-		// The latest, should the pane have reviewed several.
-		if dr.Agent == pane && (found == nil || dr.Updated > found.Updated) {
+		mine := dr.Agent == pane || sid != "" && dr.Session == sid ||
+			ref != nil && dr.Number == ref.Number && strings.EqualFold(dr.Repo, ref.Slug)
+		// The latest, should the session have reviewed several.
+		if mine && (found == nil || dr.Updated > found.Updated) {
 			found = &all[i]
 		}
 	}
 	return found, nil
+}
+
+// paneSession returns the id of the session of the pane ref names, and
+// the pull request it was started to review; "" and nil for none.
+func (d *Daemon) paneSession(ref string) (string, *proto.PRReviewRef) {
+	pn := d.findPane(ref)
+	if pn == nil {
+		return "", nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if s := d.sessionOfLocked(pn); s != nil {
+		return s.id, s.review
+	}
+	return "", nil
 }
 
 // repoReviews returns the drafts of a repository's pull requests, which
@@ -153,7 +172,12 @@ func (d *Daemon) reviewTargetOf(ctx context.Context, p proto.PRReviewParams) (re
 	}
 	remote, number := p.Remote, p.Number
 	if number <= 0 {
-		dr, err := agentReview(p.Pane)
+		pane := p.Pane
+		if pn := d.findPane(p.Pane); pn != nil {
+			pane = pn.info.ID
+		}
+		sid, ref := d.paneSession(p.Pane)
+		dr, err := agentReview(pane, sid, ref)
 		if err != nil {
 			return t, err
 		}
@@ -287,6 +311,7 @@ func (d *Daemon) startReview(ctx context.Context, t reviewTarget, dr *proto.PRRe
 	dr.Remote, dr.Title, dr.Head, dr.MergeBase = t.remote, dt.Title, dt.HeadOID, v.MergeBase
 	if agent != "" {
 		dr.Agent = agent
+		dr.Session, _ = d.paneSession(agent)
 	}
 	return dr, nil
 }
@@ -437,6 +462,96 @@ func inHunks(hs []hunk, c proto.PRDraftComment) error {
 		return fmt.Errorf("%s has no lines of %s in the diff to comment on", c.Path, where)
 	}
 	return fmt.Errorf("%s:%d isn't in the pull request's diff, which GitHub takes comments on alone; lines of %s you can comment on: %s", c.Path, c.Line, where, strings.Join(ranges, ", "))
+}
+
+// reviewBranchRe is a branch reviewBranch names, of its pull request's
+// number.
+var reviewBranchRe = regexp.MustCompile(`^review/pr-([0-9]+)(?:-[0-9]+)?$`)
+
+// reviewWorktrees returns the worktrees of a pane's repository that
+// reviews checked pull requests out in, as their branches tell, which
+// stay after their sessions close unless the user removes them.
+func (d *Daemon) reviewWorktrees(p proto.PRWorktreesParams) ([]proto.ReviewWorktree, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	if err != nil {
+		return nil, err
+	}
+	cos, err := r.Checkouts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := []proto.ReviewWorktree{}
+	for _, co := range cos {
+		m := reviewBranchRe.FindStringSubmatch(co.Branch)
+		if m == nil {
+			continue
+		}
+		n, _ := strconv.Atoi(m[1])
+		wt := proto.ReviewWorktree{Number: n, Path: co.Path, Branch: co.Branch}
+		if wr, err := git.Open(ctx, co.Path); err == nil {
+			if st, err := wr.Status(ctx); err == nil {
+				wt.Files = st.Files
+			}
+		}
+		out = append(out, wt)
+	}
+	return out, nil
+}
+
+// removeReviewWorktree removes a review's worktree that no session works
+// in, refusing, without p.Force, one with changes it would lose. Its
+// branch goes too once every commit of it is on a remote, as a review's
+// that pushed nothing of its own is.
+func (d *Daemon) removeReviewWorktree(p proto.PRWorktreeRemoveParams) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	if err != nil {
+		return err
+	}
+	main := r.Main()
+	if main == "" {
+		return errors.New("the repository has no main checkout")
+	}
+	cos, err := r.Checkouts(ctx)
+	if err != nil {
+		return err
+	}
+	i := slices.IndexFunc(cos, func(co git.Checkout) bool { return samePath(co.Path, p.Path) })
+	if i < 0 || !reviewBranchRe.MatchString(cos[i].Branch) {
+		return fmt.Errorf("%s is no review's worktree", proto.ShortDir(p.Path))
+	}
+	co := cos[i]
+	d.mu.Lock()
+	shared := d.worktreeSharedLocked(nil, co.Path)
+	d.mu.Unlock()
+	if shared {
+		return errors.New("a session works in the worktree: close it first")
+	}
+	wr, err := git.Open(ctx, co.Path)
+	if err != nil {
+		return err
+	}
+	st, err := wr.State(ctx, co.Branch, "")
+	if err != nil {
+		return err
+	}
+	if st.Files > 0 && !p.Force {
+		return fmt.Errorf("the worktree has %d changed files", st.Files)
+	}
+	// RemoveWorktree deletes the branch when its base has every commit of
+	// it: the branch itself, as base, once nothing of it is unpushed.
+	base := ""
+	if st.Unpushed == 0 {
+		base = "refs/heads/" + co.Branch
+	}
+	if err := git.RemoveWorktree(ctx, main, co.Path, co.Branch, base); err != nil {
+		return err
+	}
+	d.log.Printf("review worktree %s removed", co.Path)
+	return nil
 }
 
 // postOf is the review a draft posts, with event, COMMENT when "".

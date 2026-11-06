@@ -176,21 +176,22 @@ func (a *App) askAboutComment(g *prPage, cm *reviewComment) {
 		a.toast(locales.ReviewNoAgent())
 		return
 	}
-	s := a.sessionOfPane(dr.Agent)
-	if s == nil {
+	s, p := a.draftSession(*dr), a.draftAgent(*dr)
+	if s == nil || p == nil {
 		a.toast(locales.ReviewNoAgent())
 		return
 	}
-	cl := a.hostOf(dr.Agent).cl
+	agent := p.ID
+	cl := a.hostOf(agent).cl
 	if cl == nil {
 		return
 	}
 	text := locales.ReviewAskText(cm.id, commentPlace(cm)) + " "
-	go cl.Call("send", proto.SendParams{ID: dr.Agent, Data: text, Paste: true}, nil)
+	go cl.Call("send", proto.SendParams{ID: agent, Data: text, Paste: true}, nil)
 	if a.focus == nil {
 		a.focus = map[string]string{}
 	}
-	a.focus[s.ID] = dr.Agent
+	a.focus[s.ID] = agent
 	a.selectSession(s.ID)
 	a.focusTerminal()
 }

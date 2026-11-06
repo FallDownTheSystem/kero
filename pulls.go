@@ -47,6 +47,12 @@ type pullsState struct {
 	// pull requests' numbers, of draftsKey's host and repository.
 	drafts    map[int]proto.PRReviewDraft
 	draftsKey string
+	// worktrees are the review worktrees of the list's repository, of
+	// worktreesKey's host and repository, as worktreesPane's kerod listed
+	// them (reviewagents.go).
+	worktrees     []proto.ReviewWorktree
+	worktreesKey  string
+	worktreesPane string
 	// form is the New Pull Request form, and page a pull request's page,
 	// shown in the list's place while set.
 	form *prForm
@@ -182,6 +188,9 @@ func (a *App) pullsView(c *ui.Context, pal *palette, s *proto.Session, width flo
 		})
 	})
 
+	if res != nil && res.Error == "" {
+		a.reviewAgentsView(c, pal, s, pane, res)
+	}
 	switch {
 	case ps.err != "" && res == nil:
 		a.sideMessage(c, pal, locales.PrsCantList(), ps.err)
@@ -291,6 +300,7 @@ func (a *App) fetchPulls(pane *proto.Pane, key string) {
 			}
 			ps.res, ps.err = &res, ""
 			a.fetchDrafts(a.hostOf(p.Pane), pullsSlug(&res))
+			a.fetchReviewWorktrees(a.hostOf(p.Pane), p.Pane, pullsSlug(&res))
 		})
 	}()
 }
@@ -333,14 +343,40 @@ func (a *App) listDraft(h *host, res *proto.PRList, number int) (proto.PRReviewD
 	return dr, ok && (len(dr.Comments) > 0 || strings.TrimSpace(dr.Summary) != "" || a.reviewing(dr))
 }
 
-// reviewing tells a draft whose agent works on it: busy, or not yet sent
-// its prompt.
+// reviewing tells a draft whose agent works on it.
 func (a *App) reviewing(dr proto.PRReviewDraft) bool {
-	p := a.paneByID(dr.Agent)
-	if p == nil {
-		return false
+	p := a.draftAgent(dr)
+	return p != nil && p.Status == proto.Working
+}
+
+// draftSession is the session of a draft's agent: the one kerod bound it
+// to, else, for a draft from before kerod did, its pane's; nil once it
+// closed.
+func (a *App) draftSession(dr proto.PRReviewDraft) *proto.Session {
+	if s := a.session(dr.Session); s != nil {
+		return s
 	}
-	return p.Status == proto.Working || slices.ContainsFunc(a.launches, func(l *agentLaunch) bool { return l.pane == dr.Agent })
+	if dr.Agent != "" {
+		return a.sessionOfPane(dr.Agent)
+	}
+	return nil
+}
+
+// draftAgent is the pane of a draft's agent: its own, while its session
+// has it, else the session's pane that runs an agent, else the one the
+// user was in last; nil once the session closed.
+func (a *App) draftAgent(dr proto.PRReviewDraft) *proto.Pane {
+	s := a.draftSession(dr)
+	if s == nil {
+		return nil
+	}
+	if p := s.PaneByID(dr.Agent); p != nil {
+		return p
+	}
+	if i := slices.IndexFunc(s.Panes, func(p proto.Pane) bool { return p.Agent != "" }); i >= 0 {
+		return &s.Panes[i]
+	}
+	return s.FocusPane()
 }
 
 // pullRow is an open pull request: its number and title, its author, its
@@ -363,7 +399,15 @@ func (a *App) pullRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto
 	}
 	slug := pullsSlug(res)
 	launch := func(mode string) { a.askReview(s, pane, res.Remote, slug, pr, mode) }
+	agent, _ := a.prAgent(a.hostOf(pane.ID), slug, pr.Number)
 	row.ContextMenu(func(m *ui.Menu) {
+		if agent.session != nil {
+			id := agent.session.ID
+			if m.Item(locales.PrsOpenAgent()).Chosen() {
+				a.selectSession(id)
+			}
+			m.Separator()
+		}
 		reviewItems(m, launch)
 		m.Separator()
 		if m.Item(locales.PrsOpen()).Chosen() {
@@ -403,7 +447,10 @@ func (a *App) pullRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto
 		if row.Hovered() {
 			iconButton(c, "open", linkIcon, locales.PrsOpen(), pal, func() { openURL(pr.URL) })
 		}
-		if !drafted {
+		switch {
+		case agent.session != nil:
+			a.agentButton(c, pal, agent.session)
+		case !drafted:
 			a.reviewButton(c, pal, launch)
 		}
 	})
@@ -559,15 +606,36 @@ type prReview struct {
 	asksTicket   bool // the prompt has {ticket}, which nothing named
 	prompt       string
 	edited       bool // the user changed the prompt, which the ticket no longer fills in
+	// agent is the session of a review of the pull request already under
+	// way, "" for none; worktree a review's worktree of it, which where
+	// says whether the review works in (reviewExisting), or in a new one.
+	agent    string
+	worktree string
+	where    string
 }
+
+// reviewExisting is a review in the worktree of an earlier one, as
+// prReview.where says.
+const reviewExisting = "existing"
 
 // askReview opens the review's prompt, filled in, for the user to start.
 func (a *App) askReview(s *proto.Session, pane *proto.Pane, remote, slug string, pr proto.PullRequest, mode string) {
 	setup := a.reviewSetup(slug)
 	ticket := prTicket(pr)
-	a.prReview = &prReview{open: true, mode: mode, session: s.ID, pane: pane.ID, remote: remote, slug: slug, pr: pr,
+	w := &prReview{open: true, mode: mode, session: s.ID, pane: pane.ID, remote: remote, slug: slug, pr: pr,
 		template: setup.Prompt, ticket: ticket, asksTicket: strings.Contains(setup.Prompt, "{ticket}") && ticket == "",
-		prompt: fillReview(setup.Prompt, pr, ticket)}
+		prompt: fillReview(setup.Prompt, pr, ticket), where: reviewWorktree}
+	// A review of it already: its agent to go to, and its worktree to
+	// review in again, rather than check the pull request out anew.
+	if ra, ok := a.prAgent(a.hostOf(pane.ID), slug, pr.Number); ok && mode == reviewWorktree {
+		if ra.session != nil {
+			w.agent = ra.session.ID
+		}
+		if ra.path != "" {
+			w.worktree, w.where = ra.path, reviewExisting
+		}
+	}
+	a.prReview = w
 }
 
 // prReviewView is the review's prompt, before it starts.
@@ -584,7 +652,13 @@ func (a *App) prReviewView(c *ui.Context, pal *palette) {
 		ui.Text(c, title).FontSize(15).FontWeight(650).TextColor(pal.text)
 		where := map[string]string{reviewWorktree: locales.PrsReviewWorktreeDetail(), reviewHere: locales.PrsReviewHereDetail(), reviewSession: locales.PrsReviewSessionDetail()}[w.mode]
 		ui.Text(c, w.pr.Title).FontSize(13).FontWeight(550).TextColor(pal.textMuted).SingleLine().Ellipsis("…")
+		if w.where == reviewExisting {
+			where = locales.PrsReviewExistingDetail(a.hostOf(w.pane).shortDir(w.worktree))
+		}
 		ui.Text(c, where).FontSize(12.5).TextColor(pal.textFaint).LineHeight(1.4)
+		if w.agent != "" || w.worktree != "" {
+			a.existingReview(c, pal, w)
+		}
 		if w.asksTicket {
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Margin(6, 0, 0, 0).Children(func() {
 				ui.Text(c, locales.PrsTicket()).FontSize(12.5).TextColor(pal.textMuted).Shrink(0)
@@ -637,6 +711,28 @@ func (a *App) prReviewView(c *ui.Context, pal *palette) {
 	}
 }
 
+// existingReview says, in a review's dialog, that the pull request has a
+// review already: Open Agent goes to its session, and, of its worktree,
+// the choice to review in it or in a new one.
+func (a *App) existingReview(c *ui.Context, pal *palette, w *prReview) {
+	ui.Row(c.Key("existing")).Gap(8).AlignItems(ui.Center).Margin(6, 0, 0, 0).Padding(8, 10).Radius(8).Background(pal.accent.Alpha(0.08)).Children(func() {
+		say := locales.PrsReviewHasWorktree(w.pr.Number)
+		if w.agent != "" {
+			say = locales.PrsReviewHasAgent(w.pr.Number)
+		}
+		ui.Text(c, say).FontSize(12.5).TextColor(pal.textMuted).LineHeight(1.35).Grow(1).MinWidth(0)
+		if w.agent != "" && sizedButton(c, "open-agent", locales.PrsOpenAgent(), "", false, 26, 6, pal) {
+			w.open = false
+			a.selectSession(w.agent)
+		}
+	})
+	if w.worktree != "" {
+		ui.Row(c.Key("where")).Margin(4, 0, 0, 0).Children(func() {
+			segmented(c, "where", &w.where, []string{reviewExisting, reviewWorktree}, []string{locales.PrsUseExisting(), locales.PrsUseNew()})
+		})
+	}
+}
+
 // startReview has an agent review the pull request, where w.mode says.
 func (a *App) startReview(w *prReview) {
 	s := a.session(w.session)
@@ -678,7 +774,9 @@ func (a *App) startReview(w *prReview) {
 	}
 	setup := a.reviewSetup(w.slug)
 	p := proto.CreateParams{Project: s.Project, After: s.ID, Dir: pane.Git.Root, Cols: s.Cols, Rows: s.Rows,
-		Name: "#" + strconv.Itoa(w.pr.Number), Command: commitmsg.Words(setup.Command)}
+		Name:    "#" + strconv.Itoa(w.pr.Number),
+		Command: reviewArgs(setup.Command, prompt, w.pr, strings.TrimSpace(w.ticket)),
+		Review:  &proto.PRReviewRef{Slug: w.slug, Number: w.pr.Number}}
 	// The new session works in the background, the user where they were:
 	// the list marks the pull request while its draft review is written,
 	// and once it is ready.
@@ -686,12 +784,15 @@ func (a *App) startReview(w *prReview) {
 		if len(ns.Panes) == 0 {
 			return
 		}
-		agent := ns.Panes[0].ID
-		draft(agent, nil)
-		a.watchLaunch(h, agent, prompt)
+		draft(ns.Panes[0].ID, nil)
 		a.toast(locales.PrsReviewStarted(w.pr.Number))
 	}
-	if w.mode == reviewSession {
+	switch {
+	case w.mode == reviewSession:
+		a.createThen(h, p, s.Project, false, then)
+		return
+	case w.where == reviewExisting && w.worktree != "":
+		p.Dir = w.worktree
 		a.createThen(h, p, s.Project, false, then)
 		return
 	}
@@ -723,99 +824,34 @@ func (a *App) paneByID(id string) *proto.Pane {
 	return nil
 }
 
-// agentLaunch is a prompt waiting for the agent a new session starts:
-// pasted in once the agent is up and quiet.
-type agentLaunch struct {
-	host     *host
-	pane     string
-	prompt   string
-	started  time.Time
-	deadline time.Time
-	late     bool // past its deadline, its prompt for the clipboard
-}
+// promptPlaceholder in a review's command is where its prompt goes.
+const promptPlaceholder = "{prompt}"
 
-// launchWait is how long a launch waits for its agent before it gives up,
-// and leaves the prompt on the clipboard.
-const launchWait = 90 * time.Second
-
-func (a *App) watchLaunch(h *host, pane, prompt string) {
-	now := time.Now()
-	a.launches = append(a.launches, &agentLaunch{host: h, pane: pane, prompt: prompt, started: now, deadline: now.Add(launchWait)})
-	if a.launchStop == nil {
-		stop := make(chan struct{})
-		a.launchStop = stop
-		go func() {
-			for {
-				select {
-				case <-stop:
-					return
-				case <-time.After(time.Second):
-				}
-				a.update(func() {
-					a.checkLaunches(time.Now())
-					if len(a.launches) == 0 && a.launchStop == stop {
-						close(stop)
-						a.launchStop = nil
-					}
-				})
-			}
-		}()
+// reviewArgs is the command that starts a review's agent, its prompt an
+// argument of its own: in place of {prompt}, else last, as Claude Code,
+// Codex and the commands that wrap them take a first prompt. An argument
+// starts the agent on the prompt as it starts, where one typed into it
+// waits on it to be ready, and may be lost. The prompt never goes through
+// the command's split, as its quotes and newlines are its own. The pull
+// request's placeholders fill each word of the command in.
+func reviewArgs(command, prompt string, pr proto.PullRequest, ticket string) []string {
+	words := commitmsg.Words(command)
+	if len(words) == 0 {
+		words = []string{defaultReviewCommand}
 	}
-}
-
-// pollLaunches checks the launches as the view draws, and gives a late
-// one's prompt to the clipboard. A ticker of watchLaunch's checks them
-// too, while the window draws nothing, hidden or minimized: the review
-// goes on in the background.
-func (a *App) pollLaunches(c *ui.Context) {
-	if len(a.launches) == 0 {
-		return
-	}
-	a.checkLaunches(c.Now())
-	keep := a.launches[:0]
-	for _, l := range a.launches {
-		if !l.late {
-			keep = append(keep, l)
-			continue
+	args := make([]string, 0, len(words)+1)
+	placed := false
+	for _, w := range words {
+		w = fillReview(w, pr, ticket)
+		if strings.Contains(w, promptPlaceholder) {
+			w, placed = strings.ReplaceAll(w, promptPlaceholder, prompt), true
 		}
-		c.WriteClipboard(l.prompt)
-		a.toast(locales.PrsAgentLate())
+		args = append(args, w)
 	}
-	a.launches = keep
-	if len(keep) > 0 {
-		c.After(300 * time.Millisecond)
+	if !placed {
+		args = append(args, prompt)
 	}
-}
-
-// checkLaunches pastes each launch's prompt once its agent is ready: the
-// pane runs an agent Kero knows, which is idle and has drawn nothing for
-// a moment; else, of an agent Kero doesn't know, once the program it runs
-// has drawn and gone quiet a while. One past its deadline is late.
-func (a *App) checkLaunches(now time.Time) {
-	keep := a.launches[:0]
-	for _, l := range a.launches {
-		p := a.paneByID(l.pane)
-		var quiet time.Duration
-		drew := false
-		if p != nil && p.Activity > 0 {
-			last := time.UnixMilli(p.Activity)
-			quiet, drew = now.Sub(last), last.After(l.started)
-		}
-		switch {
-		case l.late:
-			keep = append(keep, l)
-		case p == nil && now.After(l.deadline):
-		case p != nil && p.Agent != "" && p.Status == proto.Idle && drew && quiet > 1200*time.Millisecond,
-			p != nil && p.Agent == "" && now.Sub(l.started) > 8*time.Second && drew && quiet > 2*time.Second:
-			a.sendPrompt(l.pane, l.prompt)
-		case now.After(l.deadline):
-			l.late = true
-			keep = append(keep, l)
-		default:
-			keep = append(keep, l)
-		}
-	}
-	a.launches = keep
+	return args
 }
 
 // sendPrompt pastes a prompt in an agent's pane, then Enter, as Send to
@@ -974,6 +1010,7 @@ func (a *App) prSetupView(c *ui.Context, pal *palette) {
 				ui.Row(c).Children(func() {
 					textField(c, "command", &w.command, defaultReviewCommand, 0, pal).Font("monospace").Grow(1)
 				})
+				ui.Text(c, locales.PrsSetupCommandHint()).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4)
 				global := a.globalPrompts()
 				setupPrompt(c, pal, "prompt", locales.PrsSetupPrompt(), &w.prompts[0], global[0], 150, &save)
 				ui.Text(c, locales.PrsSetupPlaceholders()).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4)

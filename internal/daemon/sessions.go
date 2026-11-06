@@ -24,6 +24,7 @@ type session struct {
 	layout            *proto.Layout
 	focus, zoomed     string
 	worktree          *proto.Worktree // made for it (proto.Session.Worktree)
+	review            *proto.PRReviewRef
 }
 
 // state returns what the subscribers see.
@@ -53,7 +54,7 @@ func (d *Daemon) stateLocked() proto.State {
 func (d *Daemon) sessionInfo(s *session) proto.Session {
 	info := proto.Session{
 		ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed,
-		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree,
+		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree, Review: s.review,
 		Panes: make([]proto.Pane, 0, len(s.panes)),
 	}
 	// Panes in the layout's order: left to right, top to bottom.
@@ -327,7 +328,7 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 		}
 		dir = wt.Path
 	}
-	s := &session{id: newID(), project: project, name: strings.TrimSpace(p.Name), created: time.Now().UnixMilli(), worktree: wt}
+	s := &session{id: newID(), project: project, name: strings.TrimSpace(p.Name), created: time.Now().UnixMilli(), worktree: wt, review: p.Review}
 	pn, err := d.startPane(s.id, p, dir)
 	if err != nil {
 		return proto.Session{}, err

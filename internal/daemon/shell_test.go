@@ -103,6 +103,37 @@ func TestCommandTellsExit(t *testing.T) {
 	}
 }
 
+// An argument reaches the command a shell runs as it was, as a review's
+// prompt does, with its newlines and every kind of quote.
+func TestShellQuoteArgument(t *testing.T) {
+	arg := "Review #7, \"Fix the parser\" ($x, `y`).\n\nDon't, don’t ‘post’ \\ it; % & | < >"
+	for _, name := range []string{"pwsh", "powershell", "bash"} {
+		t.Run(name, func(t *testing.T) {
+			shell, err := exec.LookPath(name)
+			if err != nil {
+				t.Skip(name, "not installed")
+			}
+			var cmd *exec.Cmd
+			switch name {
+			case "bash":
+				if runtime.GOOS == "windows" {
+					t.Skip("Windows' bash may be WSL's")
+				}
+				cmd = exec.Command(shell, "-c", "printf %s "+shellQuote(name, arg))
+			default:
+				cmd = exec.Command(shell, "-NoProfile", "-NonInteractive", "-Command", "& { param($a) [Console]::Out.Write($a) } "+shellQuote(name, arg))
+			}
+			out, err := cmd.Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.ReplaceAll(string(out), "\r\n", "\n"); got != arg {
+				t.Errorf("got %q, want %q", got, arg)
+			}
+		})
+	}
+}
+
 func testEnv(t *testing.T) []string {
 	if runtime.GOOS != "windows" {
 		return []string{"HOME=" + t.TempDir(), "TERM=xterm-256color"}
