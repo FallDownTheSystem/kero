@@ -444,7 +444,7 @@ func confirmDialog(c *ui.Context, pal *palette, pending **confirmation) bool {
 		floating(panel.Width(width).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(cf.title)
 		ui.Text(c, cf.title).FontSize(15).FontWeight(650).TextColor(pal.text)
 		ui.Text(c, cf.detail).FontSize(13).TextColor(pal.textMuted).LineHeight(1.4)
-		ui.Row(c).Gap(8).Justify(ui.End).Margin(14, 0, 0, 0).Children(func() {
+		dialogButtons(c, func() {
 			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				cf.open = false
 			}

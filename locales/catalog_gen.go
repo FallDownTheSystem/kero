@@ -11446,16 +11446,14 @@ func (msgs Messages) PrsRemoveWorktreeDirty(count int, path string) string {
 	return Catalog.Format(msgs.locale, "prsRemoveWorktreeDirty", map[string]any{"count": count, "path": path})
 }
 
-// PrsRemoveWorktreeFailed says "Couldn't remove the worktree: {error}"
+// WorktreeRemoveFailed says "Couldn't remove the worktree: {error}"
 // in the language the app shows.
-func PrsRemoveWorktreeFailed(error string) string {
-	return In(i18n.Locale()).PrsRemoveWorktreeFailed(error)
-}
+func WorktreeRemoveFailed(error string) string { return In(i18n.Locale()).WorktreeRemoveFailed(error) }
 
-// PrsRemoveWorktreeFailed says "Couldn't remove the worktree: {error}"
+// WorktreeRemoveFailed says "Couldn't remove the worktree: {error}"
 // in the language of msgs.
-func (msgs Messages) PrsRemoveWorktreeFailed(error string) string {
-	return Catalog.Format(msgs.locale, "prsRemoveWorktreeFailed", map[string]any{"error": error})
+func (msgs Messages) WorktreeRemoveFailed(error string) string {
+	return Catalog.Format(msgs.locale, "worktreeRemoveFailed", map[string]any{"error": error})
 }
 
 // PrsReviewing says "Reviewing"

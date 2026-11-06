@@ -2,6 +2,7 @@ package main
 
 import (
 	"cmp"
+	"errors"
 	"slices"
 	"strconv"
 	"strings"
@@ -54,6 +55,9 @@ type newSessionAsk struct {
 	choice    string
 	newBranch string
 	trees     *proto.GitWorktrees
+	// loads counts the loads of the branches and worktrees, of which the
+	// last alone fills them in, as a removal loads them anew.
+	loads int
 	// gitErr is why the folder has no worktree options: no repository.
 	gitErr string
 }
@@ -113,6 +117,8 @@ func (a *App) loadNewSession(w *newSessionAsk) {
 		return
 	}
 	cl, dir := w.host.cl, w.dir
+	w.loads++
+	n := w.loads
 	go func() {
 		var bs proto.GitBranches
 		var trees proto.GitWorktrees
@@ -121,24 +127,75 @@ func (a *App) loadNewSession(w *newSessionAsk) {
 			err = cl.Call("git.worktrees", proto.GitWorktreesParams{Dir: dir}, &trees)
 		}
 		a.update(func() {
+			if w.loads != n {
+				return
+			}
 			if err != nil {
 				w.gitErr = err.Error()
 				return
 			}
-			// The linked worktrees a session may start in, the one used last
-			// first: not the main checkout, which is the project's folder,
-			// nor one whose folder is gone.
-			trees.Worktrees = slices.DeleteFunc(trees.Worktrees, func(t proto.GitWorktree) bool { return t.Main || t.Prunable })
-			slices.SortStableFunc(trees.Worktrees, func(x, y proto.GitWorktree) int { return cmp.Compare(y.Used, x.Used) })
 			bs.Branches = slices.DeleteFunc(bs.Branches, func(b proto.GitBranch) bool { return b.Tag })
-			w.branches.list, w.trees = &bs, &trees
+			w.branches.list, w.trees = &bs, dialogTrees(trees)
 			for i := range bs.Branches {
 				if b := &bs.Branches[i]; b.Current && w.sel.name == "" {
 					w.pickBranch(branchRow{b: b})
 				}
 			}
 		})
+		if err != nil {
+			return
+		}
+		// What removing each would lose, for its menu's Remove to ask by,
+		// after the list, which reading it would hold up.
+		var st proto.GitWorktrees
+		if cl.Call("git.worktrees", proto.GitWorktreesParams{Dir: dir, State: true}, &st) == nil {
+			a.update(func() {
+				if w.loads == n {
+					w.trees = dialogTrees(st)
+				}
+			})
+		}
 	}()
+}
+
+// dialogTrees are the linked worktrees a session may start in, the one
+// used last first: not the main checkout, which is the project's folder,
+// nor one whose folder is gone.
+func dialogTrees(trees proto.GitWorktrees) *proto.GitWorktrees {
+	trees.Worktrees = slices.DeleteFunc(trees.Worktrees, func(t proto.GitWorktree) bool { return t.Main || t.Prunable })
+	slices.SortStableFunc(trees.Worktrees, func(x, y proto.GitWorktree) int { return cmp.Compare(y.Used, x.Used) })
+	return &trees
+}
+
+// removeDialogWorktree removes one of the dialog's worktrees, as
+// askRemoveWorktree asks, in the dialog's folder's repository, then lists
+// them anew.
+func (a *App) removeDialogWorktree(w *newSessionAsk, t proto.GitWorktree, branch bool) {
+	h := w.host
+	run := func(p proto.GitOpParams) {
+		cl := h.cl
+		if cl == nil {
+			a.toast(locales.HostNotConnected(h.label()))
+			return
+		}
+		p.Dir = w.dir
+		go func() {
+			var res proto.GitOpResult
+			err := cl.Call("git.op", p, &res)
+			a.update(func() {
+				if err == nil && res.Error != "" {
+					err = errors.New(res.Error)
+				}
+				if err != nil {
+					a.toast(locales.WorktreeRemoveFailed(err.Error()))
+				}
+				if a.newAsk == w {
+					a.loadNewSession(w)
+				}
+			})
+		}()
+	}
+	a.askRemoveWorktree(h, t, branch, run, nil)
 }
 
 // pickBranch chooses a row of the branch list.
@@ -294,7 +351,7 @@ func (a *App) newSessionView(c *ui.Context, pal *palette) {
 			})
 		})
 		_, ok := w.params("")
-		ui.Row(c).Gap(8).Justify(ui.End).Margin(14, 0, 0, 0).Children(func() {
+		dialogButtons(c, func() {
 			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				w.open = false
 			}
@@ -453,6 +510,9 @@ func (a *App) worktreeFields(c *ui.Context, pal *palette, w *newSessionAsk, star
 			if row.Clicked() {
 				*there = t.Path
 			}
+			row.ContextMenu(func(m *ui.Menu) {
+				removeWorktreeItems(m, t, func(branch bool) { a.removeDialogWorktree(w, t, branch) })
+			})
 		}
 	})
 }

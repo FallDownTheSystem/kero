@@ -37,7 +37,7 @@ The **+** beside a project's name in the sidebar, and **New Session** in the pro
 
 For an agent or a terminal, **In a worktree** starts the session in a [git worktree of its own](./changes.md#sessions-in-their-own-worktree). **Branch** is the project folder's branch as the dialog opens: click it to pick another, the most recent first, or type a name no branch has to make that branch. Git checks a branch out in one worktree alone, and the project's folder has its own branch checked out already, so a branch checked out elsewhere asks where the session goes: **Open in that worktree**, or **New branch from** it, in a new worktree, under a name Kero suggests and you can change.
 
-**Existing worktrees** lists the repository's other worktrees, the one used last first, with the sessions working in each. Click one to start the session there.
+**Existing worktrees** lists the repository's other worktrees, the one used last first, with the sessions working in each. Click one to start the session there. Right-click one to remove it, or remove it with its branch: Kero first says what removing it would lose, as changed files or commits on no remote.
 
 ### Where a new session starts
 
