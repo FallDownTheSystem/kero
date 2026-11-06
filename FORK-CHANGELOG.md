@@ -5,7 +5,7 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
-## Unreleased
+## 2.1.34-fork.2
 
 - A project's + opens the New Session dialog: an agent session (the
   default), a terminal, a new file or a browser. An agent or a terminal
