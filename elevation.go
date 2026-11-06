@@ -33,10 +33,13 @@ func paned(e ui.Element, pal *palette) ui.Element {
 
 // chosen lifts the chosen row of a list, the sidebars', a hair: an even
 // ring a shade darker than what is under it, and a faint shadow close
-// under it, as Rex's rows, lighter than a card's. In the dark, as raised.
+// under it, as Rex's rows, lighter than a card's. In the dark, as raised,
+// but its lit edge is drawn by inner shadows, not a border: a border takes
+// room, and would move the chosen row's content a pixel off its
+// neighbours', as a history row's graph off the lanes above and below.
 func chosen(e ui.Element, pal *palette) ui.Element {
 	if pal.dark {
-		return raised(e, pal)
+		return darkShadow(e.InsetShadow(0, 0, 0, 1, pal.text.Alpha(0.06)).InsetShadow(0, 1, 0, 0, pal.text.Alpha(0.12)))
 	}
 	return e.Shadow(0, 0, 0, 0.5, ui.RGBA(0, 0, 0, 0.06)).Shadow(0, 0.5, 2, 0, ui.RGBA(0, 0, 0, 0.05))
 }

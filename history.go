@@ -282,7 +282,7 @@ func (a *App) historyView(c *ui.Context, pal *palette, s *proto.Session, width f
 				}
 			})
 		}
-	}).Grow(1).MinHeight(0).Padding(0, 6, 16, 0)
+	}).Grow(1).MinHeight(0).Padding(0, 6, 16, 6)
 	// The commit the branch switcher asked for, once it's listed.
 	if hs.find != "" {
 		found := false

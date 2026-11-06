@@ -670,11 +670,6 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	}
 	row := ui.Row(c.Key(s.ID)).Height(h).Padding(0, 10, 0, rowInset).Gap(10).AlignItems(ui.Center).Radius(8).Margin(0, 0, 1, 0)
 	hovered := row.Hovered()
-	if pal.dark {
-		// Room for the chosen row's edge in every row, so that choosing
-		// one moves no text.
-		row.Border(1, ui.Transparent)
-	}
 	bg := ui.Transparent
 	switch {
 	case selected:
@@ -849,9 +844,6 @@ func (a *App) paneRow(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pa
 		row.Background(pal.rowSelected)
 	case row.Hovered():
 		row.Background(pal.rowHover)
-	}
-	if pal.dark {
-		row.Border(1, ui.Transparent)
 	}
 	if h.remote() && h.conn != connReady {
 		row.Opacity(0.55)
