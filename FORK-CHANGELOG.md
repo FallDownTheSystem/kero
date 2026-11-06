@@ -5,6 +5,15 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.4
+
+- A question widens to keep its buttons on one line, as one with a long
+  branch's name; they wrap only in a window too narrow for that
+- Clearer wording across the fork's dialogs, warnings, settings and
+  tooltips: removing a worktree says what it deletes and how to keep
+  unpushed commits, the interactive rebase's message editor confirms
+  with Use Message, and the Start Draft tip names `kero pr comment`
+
 ## 2.1.34-fork.3
 
 - In the New Session dialog, right-click an existing worktree to remove
