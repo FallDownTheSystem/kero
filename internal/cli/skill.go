@@ -48,6 +48,17 @@ has served.
     kero do files.show path=src/main.go       # show it in the side panel's Files view
     kero do changes.show                      # show the worktree's changes
 
+## Show the user a document
+
+    kero split --file plans/plan.md --preview # Markdown, rendered as it reads
+    kero split --url .backlog/pages/brief.html # a local HTML page, scripts from CDNs too
+    kero do pane.preview off                  # the plan's text, to edit; on: rendered again
+
+The pane follows the file: rewrite it, and the pane shows the new one,
+unless the user has unsaved edits in it. Running the same kero split again
+focuses the pane that shows the file instead of opening another, and says
+so on stderr.
+
 ## Drive it
 
     kero send <target> "some text" --enter    # type, then press Enter

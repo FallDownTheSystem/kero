@@ -21,6 +21,7 @@
   "actionNewBrowser": "新規ブラウザペイン",
   "actionOpenLocation": "場所を開く…",
   "actionZoomPane": "ペインを拡大",
+  "actionTogglePreview": "Markdownプレビューの切り替え",
   "actionFind": "検索…",
   "actionFindNext": "次を検索",
   "actionFindPrevious": "前を検索",

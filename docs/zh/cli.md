@@ -26,6 +26,8 @@ kero new -- npm run dev          # 新建一个运行某条命令的会话
 kero split --down -- npm test    # 在当前窗格旁新建一个窗格
 kero split --url localhost:3000  # 新建一个显示网页的浏览器窗格
 kero split --file src/main.go    # 新建一个文件的编辑器窗格
+kero split --file plan.md --preview   # 按渲染后的样子显示 Markdown 文件
+kero split --url docs/brief.html # 本地 HTML 页面
 kero new --file notes/plan.md    # 新建独立的编辑器会话；保存时创建文件
 kero rename api backend          # 重命名会话
 kero focus backend               # 在 app 中显示它
@@ -43,8 +45,9 @@ kero restart <pane>              # 重新启动已退出窗格的 shell
 | `-d`, `--dir <dir>`         | 在该目录启动（默认为当前目录）                  |
 | `-f`, `--focus`             | 在 app 中显示它                                 |
 | `-w`, `--wait`              | 等待它的命令结束，并以该命令的退出码退出        |
-| `-u`, `--url <url>`         | 打开显示该网页的浏览器，而不是 shell            |
+| `-u`, `--url <url>`         | 打开显示该网页的浏览器，而不是 shell；本地文件的路径则显示该文件 |
 | `--file <path>`             | 打开该文件的编辑器，而不是 shell                |
+| `--preview`                 | 对 `--file` 的 Markdown 文件，按渲染后的样子显示，而不是文本 |
 | `--worktree <branch>`       | 在专属的 git 工作树中、以新分支启动（[详情](./changes.md#sessions-in-their-own-worktree)） |
 | `--base <ref>`              | 工作树分支的起点（默认：默认分支）              |
 
@@ -256,6 +259,13 @@ kero do files.show path=src/main.go
 ```
 
 相对路径的 `path=` 或 `dir=` 是相对于运行 `kero do` 时所在的文件夹。
+
+`kero do pane.preview` 按渲染后的样子显示编辑器窗格的 Markdown 文件，或回到文本：`on`、`off`，都不写则切换。它作用于 `pane=` 指定的窗格，否则作用于会话中 Markdown 文件的编辑器窗格。它和 `kero split --preview` 一样设置 kerod 保存的窗格状态，因此既不需要远程控制，也不需要打开应用。
+
+```sh
+kero do pane.preview on
+kero do pane.preview off pane=4f2a
+```
 
 ## 退出码
 

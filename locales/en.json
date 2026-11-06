@@ -21,6 +21,7 @@
   "actionNewBrowser": "New Browser Pane",
   "actionOpenLocation": "Open Location…",
   "actionZoomPane": "Zoom Pane",
+  "actionTogglePreview": "Toggle Markdown Preview",
   "actionFind": "Find…",
   "actionFindNext": "Find Next",
   "actionFindPrevious": "Find Previous",

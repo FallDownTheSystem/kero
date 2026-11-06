@@ -246,6 +246,16 @@ func (msgs Messages) ActionZoomPane() string {
 	return Catalog.Format(msgs.locale, "actionZoomPane", nil)
 }
 
+// ActionTogglePreview says "Toggle Markdown Preview"
+// in the language the app shows.
+func ActionTogglePreview() string { return In(i18n.Locale()).ActionTogglePreview() }
+
+// ActionTogglePreview says "Toggle Markdown Preview"
+// in the language of msgs.
+func (msgs Messages) ActionTogglePreview() string {
+	return Catalog.Format(msgs.locale, "actionTogglePreview", nil)
+}
+
 // ActionFind says "Find…"
 // in the language the app shows.
 func ActionFind() string { return In(i18n.Locale()).ActionFind() }

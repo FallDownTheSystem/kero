@@ -5,6 +5,22 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## Unreleased
+
+- Agents show you documents: `kero split --file plan.md --preview` (and
+  `kero new`) opens a Markdown file previewed, `kero do pane.preview
+  on|off` turns an editor pane's preview on or off, and **Pane › Toggle
+  Markdown Preview** does it from the menu; the pane keeps its preview
+  when Kero restarts
+- `kero split --url` takes a path to a local HTML page, as
+  `.backlog/pages/brief.html`, and shows it from the disk, its scripts
+  from CDNs too
+- Editor panes show their file again as another program rewrites it,
+  unless they have unsaved edits; browser panes of a local page reload it
+  as it changes
+- `kero split` of a file or local page a pane of the session already
+  shows focuses that pane instead of splitting again, and says so
+
 ## 2.1.34-fork.1
 
 Upstream 2.1.34 (CHANGELOG.md): **reorder projects** in the sidebar by

@@ -1,6 +1,10 @@
 package proto
 
-import "testing"
+import (
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func TestBrowserURL(t *testing.T) {
 	for in, want := range map[string]string{
@@ -52,6 +56,39 @@ func TestIsAddress(t *testing.T) {
 	} {
 		if got := IsAddress(in); got != want {
 			t.Errorf("IsAddress(%q) = %v", in, got)
+		}
+	}
+}
+
+// A local file's URL goes back to its path, a Windows drive's too; other
+// URLs, and a share's file, name no local file.
+func TestFileURL(t *testing.T) {
+	for path, want := range map[string]string{
+		"/tmp/a b.html":                   "file:///tmp/a%20b.html",
+		`C:\Users\me\.backlog\brief.html`: "file:///C:/Users/me/.backlog/brief.html",
+	} {
+		if got := FileURL(path); got != want {
+			t.Errorf("FileURL(%q) = %q, want %q", path, got, want)
+		}
+		got, ok := URLFile(want)
+		if slash := func(p string) string { return strings.ReplaceAll(p, `\`, "/") }; !ok || slash(got) != slash(path) {
+			t.Errorf("URLFile(%q) = %q, %v", want, got, ok)
+		}
+	}
+	if got, ok := URLFile("file://localhost/C:/x/a.html"); !ok || filepath.ToSlash(got) != "C:/x/a.html" {
+		t.Errorf("a localhost file URL names %q, %v", got, ok)
+	}
+	for _, raw := range []string{"https://kero.sh/a.html", "file://server/share/a.html", "about:blank", "localhost:3000"} {
+		if got, ok := URLFile(raw); ok {
+			t.Errorf("URLFile(%q) = %q", raw, got)
+		}
+	}
+}
+
+func TestMarkdownFile(t *testing.T) {
+	for name, want := range map[string]bool{"plan.md": true, `C:\x\README.MD`: true, "a.markdown": true, "a.mdx": false, "md": false, "a.html": false} {
+		if got := MarkdownFile(name); got != want {
+			t.Errorf("MarkdownFile(%q) = %v", name, got)
 		}
 	}
 }

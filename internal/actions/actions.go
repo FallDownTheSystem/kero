@@ -53,6 +53,9 @@ var All = []Action{
 	{ID: "pane.browser", Title: "New Browser Pane", Menu: "Pane", Keys: "CmdOrCtrl+Shift+B", Remote: true},
 	{ID: "browser.address", Title: "Open Location…", Menu: "Pane", Keys: "CmdOrCtrl+L"},
 	{ID: "pane.zoom", Title: "Zoom Pane", Menu: "Pane", Keys: "CmdOrCtrl+Shift+Enter", Remote: true},
+	// kero do pane.preview sets the pane's preview through kerod (on, off,
+	// pane=), and so needs neither the app open nor Remote Control.
+	{ID: "pane.preview", Title: "Toggle Markdown Preview", Menu: "Pane", Remote: true},
 	{ID: "pane.next", Title: "Next Pane", Menu: "Pane", Keys: "CmdOrCtrl+]", Remote: true},
 	{ID: "pane.previous", Title: "Previous Pane", Menu: "Pane", Keys: "CmdOrCtrl+[", Remote: true},
 	{ID: "pane.left", Title: "Pane Left", Menu: "Pane", Keys: "CmdOrCtrl+Alt+Left", Remote: true},

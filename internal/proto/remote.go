@@ -200,6 +200,9 @@ type (
 		Exists bool   `json:"exists"`
 		Dir    bool   `json:"dir,omitempty"`
 		Size   int64  `json:"size,omitempty"`
+		// Mod is when the file last changed, in Unix nanoseconds, which an
+		// editor pane follows it by; 0 from a kerod of before it.
+		Mod int64 `json:"mod,omitempty"`
 	}
 	// FSReadParams read a file of the host, of at most Max bytes.
 	FSReadParams struct {

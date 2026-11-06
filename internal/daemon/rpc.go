@@ -239,6 +239,17 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return true, pn.setFile(file)
 
+	case "pane.preview":
+		var p proto.PreviewParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return true, pn.setPreview(p.Preview)
+
 	case "browser":
 		var p proto.BrowserParams
 		if err := decode(&p); err != nil {

@@ -38,10 +38,13 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 | `-r`, `--ratio <0..1>`                | The new pane's share of the space (default 0.5) |
 | `-d`, `--dir <dir>`                   | Start it in another directory                  |
 | `-w`, `--wait`                        | Wait for its command to end, and exit with its status |
-| `-u`, `--url <url>`                   | Open a browser showing the page instead of a shell |
+| `-u`, `--url <url>`                   | Open a browser showing the page instead of a shell; a path to a local file shows that file |
 | `--file <path>`                       | Open an editor of the file instead of a shell  |
+| `--preview`                           | With `--file` of a Markdown file, show it as it reads rather than its text |
 
 Run inside Kero, `kero split` splits the pane it runs in. Elsewhere, name a target: `kero split my-session --down`.
+
+A file, or a local page, that a pane of the session already shows isn't split again: `kero split` focuses that pane instead, with `--preview` its preview, prints its id, and says so on stderr. An agent showing you the plan it rewrote finds it where it was.
 
 ## Editor panes
 
@@ -60,7 +63,16 @@ Right-click a pane's split button, right or down, and choose **New File** for an
 
 Right-click the file's name at the top of the pane to copy its path, whole or relative to the session's folder, open it in your editor or another app, show it in your file manager, or see its history.
 
-Its header has the file's buttons, as the viewer's does: save, wrap long lines, and open it in your editor, with a dot while it has unsaved edits. In a pane too narrow for them, they're in its **File Actions** menu. A Markdown file has **Preview Markdown** too, which shows it as it reads, its images beside it included, until you click it again to edit its text. **Smaller Text** and **Bigger Text** zoom the text of every file, and their Markdown previews, apart from the terminals'; with a file focused, <kbd>⌘</kbd> <kbd>=</kbd>, <kbd>⌘</kbd> <kbd>-</kbd> and <kbd>⌘</kbd> <kbd>0</kbd> (<kbd>Ctrl</kbd> on Windows and Linux) do the same.
+Its header has the file's buttons, as the viewer's does: save, wrap long lines, and open it in your editor, with a dot while it has unsaved edits. In a pane too narrow for them, they're in its **File Actions** menu. A Markdown file has **Preview Markdown** too, which shows it as it reads, its images beside it included, until you click it again to edit its text; **Pane › Toggle Markdown Preview** does the same for the pane you're in. The pane keeps its preview when Kero restarts. **Smaller Text** and **Bigger Text** zoom the text of every file, and their Markdown previews, apart from the terminals'; with a file focused, <kbd>⌘</kbd> <kbd>=</kbd>, <kbd>⌘</kbd> <kbd>-</kbd> and <kbd>⌘</kbd> <kbd>0</kbd> (<kbd>Ctrl</kbd> on Windows and Linux) do the same.
+
+An agent opens a Markdown file previewed, or turns its preview on or off:
+
+```sh
+kero split --file plans/plan.md --preview
+kero do pane.preview off
+```
+
+The pane follows its file: when another program, such as an agent, writes it, the pane shows what it wrote, unless you have unsaved edits in it, which stay; saving them then asks whether to overwrite.
 
 ## Browser panes
 
@@ -78,7 +90,10 @@ From a shell, or an agent, open one with `--url`:
 ```sh
 kero split --url localhost:5173
 kero new --url https://github.com/egoist/kero/pulls
+kero split --url .backlog/pages/brief.html
 ```
+
+A path to a file of this machine, relative to the folder you run `kero split` in, or a `file:///` URL, shows a local page: its pictures and stylesheets beside it load from the disk, and scripts from CDNs from the web. As the file changes on disk, the page reloads. A script of the page's own folder loaded as a module (`<script type="module">`), or fetched, doesn't load from a local page: browsers allow those only from a server.
 
 An agent can then use the page as you would, with `kero browser`: click, type, read its text, wait for it and take a screenshot. See [Command Line](./cli.md#browsing).
 

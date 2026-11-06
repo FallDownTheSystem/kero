@@ -167,7 +167,11 @@ type Pane struct {
 	URL string `json:"url,omitempty"`
 	// File is the file an editor pane shows, absolute, of the host: set,
 	// the pane runs no shell.
-	File    string   `json:"file,omitempty"`
+	File string `json:"file,omitempty"`
+	// Preview shows an editor pane's Markdown file as it reads, in place
+	// of its text: kerod keeps it, for kero split --preview and kero do
+	// pane.preview to set, and a restore to bring back.
+	Preview bool     `json:"preview,omitempty"`
 	Dir     string   `json:"dir,omitempty"` // the shell's working directory
 	Command []string `json:"command,omitempty"`
 	// Process is the foreground program, "" while the shell is.
@@ -573,6 +577,17 @@ func DirName(dir string) string {
 	return dir
 }
 
+// MarkdownFile tells a file of Markdown, which previews, by its name.
+func MarkdownFile(name string) bool {
+	name = strings.ToLower(name)
+	for _, ext := range []string{".md", ".markdown", ".mdown", ".mkd"} {
+		if strings.HasSuffix(name, ext) {
+			return true
+		}
+	}
+	return false
+}
+
 func looksLikePath(t string) bool {
 	return strings.HasPrefix(t, "/") || strings.HasPrefix(t, "~") || strings.Contains(t, "@") && strings.Contains(t, ":") ||
 		windowsPath(t) || consoleTitle(t)
@@ -734,11 +749,15 @@ type (
 		Env     []string `json:"env,omitempty"`
 		// URL makes a browser pane showing it, instead of a shell; File an
 		// editor pane of the file, absolute, of the host.
-		URL   string `json:"url,omitempty"`
-		File  string `json:"file,omitempty"`
-		After string `json:"after,omitempty"` // put it after this session
-		Cols  int    `json:"cols,omitempty"`
-		Rows  int    `json:"rows,omitempty"`
+		// Preview shows File, of Markdown, as it reads (Pane's Preview).
+		// A split of a File or a URL of a local file a pane of the
+		// session shows already focuses that pane instead.
+		URL     string `json:"url,omitempty"`
+		File    string `json:"file,omitempty"`
+		Preview bool   `json:"preview,omitempty"`
+		After   string `json:"after,omitempty"` // put it after this session
+		Cols    int    `json:"cols,omitempty"`
+		Rows    int    `json:"rows,omitempty"`
 		// Worktree starts the session in a linked git worktree of its own
 		// of Dir's repository, on a new branch of this name from Base: the
 		// repository's default branch when "", "HEAD" for Dir's. An
@@ -829,6 +848,12 @@ type (
 	FileParams struct {
 		ID   string `json:"id"`
 		File string `json:"file"`
+	}
+	// PreviewParams show an editor pane's Markdown file as it reads, or
+	// its text again (pane.preview).
+	PreviewParams struct {
+		ID      string `json:"id"`
+		Preview bool   `json:"preview"`
 	}
 	// BrowserParams ask a browser pane's page to do something (browser),
 	// which the app showing it does.

@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -137,6 +138,96 @@ func TestEditorPane(t *testing.T) {
 	}
 	if err := r.removeSession(r.sessions[0].id); err != nil {
 		t.Fatal(err)
+	}
+	d.removeSession(s.ID)
+}
+
+// An editor pane of Markdown previews it as asked, as it opens or later,
+// and as a restore brings it back; another file has no preview.
+func TestEditorPreview(t *testing.T) {
+	d := testDaemon(t)
+	dir := t.TempDir()
+	plan, code := filepath.Join(dir, "plan.md"), filepath.Join(dir, "main.go")
+	if _, err := d.create(proto.CreateParams{File: code, Preview: true}); err == nil {
+		t.Error("a preview of a Go file")
+	}
+	if _, err := d.create(proto.CreateParams{URL: "localhost:3000", Preview: true}); err == nil {
+		t.Error("a preview of a page")
+	}
+	s, err := d.create(proto.CreateParams{File: plan, Preview: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Panes[0].Preview {
+		t.Fatalf("panes %+v", s.Panes)
+	}
+	cli := &controlConn{done: make(chan struct{})}
+	raw, _ := json.Marshal(proto.PreviewParams{ID: s.Panes[0].ID, Preview: false})
+	if _, err := d.call(cli, "pane.preview", raw); err != nil {
+		t.Fatal(err)
+	}
+	p := d.findPane(s.Panes[0].ID)
+	if p.info.Preview {
+		t.Error("pane.preview off left the preview")
+	}
+	p.setPreview(true)
+	d.saveState()
+	r := testDaemon(t)
+	r.dir = d.dir
+	r.restore()
+	if len(r.sessions) != 1 || !r.sessions[0].panes[0].info.Preview {
+		t.Errorf("restored no preview")
+	}
+	p.setFile(code)
+	if p.setPreview(true) == nil {
+		t.Error("previewed a Go file")
+	}
+}
+
+// A split of a file, or of a page of a local file, a pane of the session
+// shows already focuses that pane, previewing it as asked, rather than
+// split again; another file or page splits.
+func TestSplitShowsAgain(t *testing.T) {
+	d := testDaemon(t)
+	dir := t.TempDir()
+	plan, brief := filepath.Join(dir, "plan.md"), filepath.Join(dir, "brief.html")
+	os.WriteFile(brief, []byte("<p>brief"), 0o644)
+	s, err := d.create(proto.CreateParams{File: filepath.Join(dir, "main.go")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	split := func(p proto.CreateParams) proto.Session {
+		t.Helper()
+		p.Split = s.ID
+		got, err := d.create(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	first := split(proto.CreateParams{File: plan})
+	page := split(proto.CreateParams{URL: proto.FileURL(brief)})
+	if len(page.Panes) != 3 {
+		t.Fatalf("panes %+v", page.Panes)
+	}
+	// Back to the plan, written in another case on Windows.
+	again := plan
+	if runtime.GOOS == "windows" {
+		again = strings.ToUpper(plan)
+	}
+	got := split(proto.CreateParams{File: again, Preview: true})
+	if len(got.Panes) != 3 || got.Focus != first.Focus {
+		t.Fatalf("the plan again split: focus %s, panes %+v", got.Focus, got.Panes)
+	}
+	if p := got.PaneByID(first.Focus); !p.Preview {
+		t.Error("the plan shown again shows no preview")
+	}
+	got = split(proto.CreateParams{URL: proto.FileURL(brief)})
+	if len(got.Panes) != 3 || got.Focus != page.Focus {
+		t.Errorf("the page again split: focus %s, panes %d", got.Focus, len(got.Panes))
+	}
+	if got = split(proto.CreateParams{File: filepath.Join(dir, "other.md")}); len(got.Panes) != 4 {
+		t.Errorf("another file shown in a pane of %d", len(got.Panes))
 	}
 	d.removeSession(s.ID)
 }
