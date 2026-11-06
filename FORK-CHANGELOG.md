@@ -7,6 +7,25 @@ top of it.
 
 ## Unreleased
 
+- A project's + opens the New Session dialog: an agent session (the
+  default), a terminal, a new file or a browser. An agent or a terminal
+  can start in a worktree, on a branch you pick or name; a branch
+  checked out elsewhere offers that worktree or a new branch from it, and
+  the repository's existing worktrees are a click away. New Session in
+  Worktree…, and New Worktree in History, open the same dialog
+- Settings › Agents lists the agent commands the dialog offers (`agent`,
+  such as `cc` or `codex --full-auto`) and the one it chooses first
+  (`default-agent`, `claude` unless set)
+- Review with Agent starts the agent with its prompt, instead of typing
+  the prompt in once the agent looks ready, which sometimes left it
+  unsent; `{prompt}` in a repository's review command puts it where the
+  agent wants it
+- The Review view lists its review agents, with their status and their
+  pull request, to open, stop or clean up; review sessions carry a
+  Review badge in the sidebar, and a pull request with an agent shows an
+  Agent button
+- Reviewing a pull request again offers its existing agent, or a new
+  review in its worktree
 - Agents show you documents: `kero split --file plan.md --preview` (and
   `kero new`) opens a Markdown file previewed, `kero do pane.preview
   on|off` turns an editor pane's preview on or off, and **Pane › Toggle

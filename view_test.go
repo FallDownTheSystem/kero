@@ -494,10 +494,10 @@ func TestMenusButton(t *testing.T) {
 	}
 	tt.Frame()
 	// Of the repository of the session the user is in.
-	if a.wtAsk == nil || a.wtAsk.p.After != a.selected {
-		t.Fatalf("New Session in Worktree… asked %+v", a.wtAsk)
+	if a.newAsk == nil || !a.newAsk.worktree || a.newAsk.p.After != a.selected {
+		t.Fatalf("New Session in Worktree… asked %+v", a.newAsk)
 	}
-	a.wtAsk = nil
+	a.newAsk = nil
 	tt.Frame()
 
 	pr := a.st.Projects[0]
@@ -511,8 +511,201 @@ func TestMenusButton(t *testing.T) {
 		t.Fatalf("%v; menu %q", err, tt.Menu())
 	}
 	tt.Frame()
-	if a.wtAsk == nil || a.wtAsk.p.Project != pr.ID || a.wtAsk.p.Dir != pr.Dir {
-		t.Errorf("the project's New Session in Worktree… asked %+v", a.wtAsk)
+	if w := a.newAsk; w == nil || !w.worktree || w.p.Project != pr.ID || w.dir != pr.Dir {
+		t.Errorf("the project's New Session in Worktree… asked %+v", a.newAsk)
+	}
+}
+
+// A project's New Session opens the dialog on an agent session of the
+// default agent, which Return starts in the project; with the worktree
+// option, the folder's branch, checked out there, waits for a choice, and
+// an existing worktree's row starts the session in it.
+func TestNewSessionDialog(t *testing.T) {
+	a := testApp(t)
+	a.set.Agents, a.set.DefaultAgent = []string{"claude", "cc --yolo"}, "cc --yolo"
+	created := make(chan proto.CreateParams, 2)
+	n := 0
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.branches":
+			return proto.GitBranches{Branches: []proto.GitBranch{
+				{Name: "main", Current: true, Worktree: "/tmp"},
+				{Name: "feat", Worktree: "/tmp/wt/feat"},
+				{Name: "v1", Tag: true},
+			}}, nil
+		case "git.worktrees":
+			return proto.GitWorktrees{Worktrees: []proto.GitWorktree{{Path: "/tmp/wt/feat", Branch: "feat", Sessions: 1}}}, nil
+		case "create":
+			var p proto.CreateParams
+			if err := json.Unmarshal(raw, &p); err != nil {
+				return nil, err
+			}
+			created <- p
+			n++
+			return proto.Session{ID: fmt.Sprint("new", n), Project: p.Project, Panes: []proto.Pane{{ID: "c", Dir: "/tmp"}}, Focus: "c"}, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().conn, a.local().cl = connReady, cl
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	pr := a.st.Projects[0]
+	open := func(item string) *newSessionAsk {
+		t.Helper()
+		if err := tt.RightClick(pr.Name); err != nil {
+			t.Fatalf("%v; texts %q", err, tt.Texts())
+		}
+		tt.Frame()
+		if err := tt.ChooseMenuItem(item); err != nil {
+			t.Fatalf("%v; menu %q", err, tt.Menu())
+		}
+		tt.Frame()
+		w := a.newAsk
+		if w == nil {
+			t.Fatalf("%s opened no dialog", item)
+		}
+		// The branches come.
+		for i := 0; i < 100 && w.branches.list == nil && w.gitErr == ""; i++ {
+			time.Sleep(10 * time.Millisecond)
+			tt.Frame()
+		}
+		return w
+	}
+	wait := func() proto.CreateParams {
+		t.Helper()
+		select {
+		case p := <-created:
+			return p
+		case <-time.After(2 * time.Second):
+			t.Fatal("no session started")
+		}
+		return proto.CreateParams{}
+	}
+
+	w := open("New Session")
+	if w.kind != kindAgent || w.agent != "cc --yolo" || w.worktree || !tt.HasText("Agent") {
+		t.Fatalf("the dialog opened on %q of %q, worktree %v; texts %q", w.kind, w.agent, w.worktree, tt.Texts())
+	}
+	if !slices.ContainsFunc(w.branches.list.Branches, func(b proto.GitBranch) bool { return b.Name == "main" }) ||
+		slices.ContainsFunc(w.branches.list.Branches, func(b proto.GitBranch) bool { return b.Tag }) {
+		t.Errorf("branches %+v", w.branches.list.Branches)
+	}
+	shot(t, tt, "new-session")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if p := wait(); !slices.Equal(p.Command, []string{"cc", "--yolo"}) || p.Project != pr.ID || p.After != "s1" || p.Worktree != "" {
+		t.Errorf("Return started %+v", p)
+	}
+	if a.newAsk != nil {
+		t.Error("the dialog stayed")
+	}
+
+	w = open("New Session in Worktree…")
+	if w.sel.name != "main" || w.sel.worktree != "/tmp" || !tt.HasText("Open in that worktree") {
+		t.Fatalf("chose %+v; texts %q", w.sel, tt.Texts())
+	}
+	shot(t, tt, "new-session-worktree")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if a.newAsk == nil {
+		t.Fatal("started a session on a branch checked out in the main folder")
+	}
+	// The branch list, the switcher's, names a new branch; Escape closes
+	// it alone.
+	if err := tt.Click("main"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if !w.branches.open || !tt.HasText("feat") {
+		t.Fatalf("no branch list; texts %q", tt.Texts())
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if w.branches.open || a.newAsk == nil {
+		t.Fatalf("Escape left the list open %v, the dialog %v", w.branches.open, a.newAsk != nil)
+	}
+	tt.Click("main")
+	tt.Frame()
+	tt.Type("topic")
+	tt.Frame()
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if w.sel.name != "topic" || !w.sel.create || !tt.HasText("Kero makes the branch topic from the default branch") {
+		t.Fatalf("chose %+v; texts %q", w.sel, tt.Texts())
+	}
+	if err := tt.Click("feat"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if p := wait(); p.Dir != "/tmp/wt/feat" || p.Worktree != "" || len(p.Command) == 0 {
+		t.Errorf("the worktree's row started %+v", p)
+	}
+}
+
+// A branch checked out in another worktree, as git checks a branch out in
+// one alone, starts the session in that worktree, or in a new one on a new
+// branch from it, of a name no branch has; another branch is checked out
+// as it is, a remote's as its local branch, and one the user names is made
+// from the dialog's base.
+func TestNewSessionBranch(t *testing.T) {
+	list := &proto.GitBranches{Branches: []proto.GitBranch{
+		{Name: "main", Current: true, Worktree: "/src/app"},
+		{Name: "main-2"},
+		{Name: "fix", Worktree: "/src/wt/fix"},
+		{Name: "origin/feat", Remote: true},
+	}}
+	w := &newSessionAsk{kind: kindTerminal, worktree: true, dir: "/src/app", base: "HEAD", p: proto.CreateParams{Project: "p1"}}
+	w.branches.list = list
+	row := func(name string) branchRow {
+		for i := range list.Branches {
+			if list.Branches[i].Name == name {
+				return branchRow{b: &list.Branches[i]}
+			}
+		}
+		t.Fatalf("no branch %s", name)
+		return branchRow{}
+	}
+
+	w.pickBranch(row("main"))
+	if _, ok := w.params(""); ok {
+		t.Error("starts on a branch in use, unasked")
+	}
+	if w.newBranch != "main-3" {
+		t.Errorf("the new branch's name %q, want one no branch has", w.newBranch)
+	}
+	w.choice = "open"
+	if p, ok := w.params(""); !ok || p.Dir != "/src/app" || p.Worktree != "" {
+		t.Errorf("open there: %+v %v", p, ok)
+	}
+	w.choice = "new"
+	if p, ok := w.params(""); !ok || p.Dir != "/src/app" || p.Worktree != "main-3" || p.Base != "main" {
+		t.Errorf("a new branch: %+v %v", p, ok)
+	}
+	w.newBranch = "main-2"
+	if _, ok := w.params(""); ok {
+		t.Error("makes a branch there is")
+	}
+
+	w.pickBranch(row("main-2"))
+	if p, ok := w.params(""); !ok || p.Worktree != "main-2" || p.Base != "" || w.choice != "" {
+		t.Errorf("a free branch: %+v %v", p, ok)
+	}
+	w.pickBranch(row("origin/feat"))
+	if p, ok := w.params(""); !ok || p.Worktree != "feat" || p.Base != "origin/feat" || !w.sel.is(&list.Branches[3]) {
+		t.Errorf("a remote's branch: %+v %v", p, ok)
+	}
+	w.pickBranch(branchRow{create: "topic"})
+	if p, ok := w.params(""); !ok || p.Worktree != "topic" || p.Base != "HEAD" || p.Dir != "/src/app" {
+		t.Errorf("a branch named: %+v %v", p, ok)
+	}
+	if p, ok := w.params("/src/wt/fix"); !ok || p.Dir != "/src/wt/fix" || p.Worktree != "" {
+		t.Errorf("an existing worktree: %+v %v", p, ok)
+	}
+
+	// Without the option, or for a browser, the session goes in the folder.
+	w.kind = kindBrowser
+	if p, ok := w.params(""); !ok || p.Worktree != "" || p.Dir != "" || p.URL != proto.BlankURL {
+		t.Errorf("a browser: %+v %v", p, ok)
 	}
 }
 

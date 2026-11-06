@@ -30,6 +30,33 @@ func TestFileTheme(t *testing.T) {
 	}
 }
 
+// The agents a new session may start are claude alone, and it the default,
+// until the file names others; the list drops blanks and repeats, and the
+// default joins it, first, when the list lacks it.
+func TestAgents(t *testing.T) {
+	s, probs := parse("")
+	if len(probs) != 0 || !reflect.DeepEqual(s.Agents, []string{"claude"}) || s.DefaultAgent != "claude" {
+		t.Fatalf("defaults %q %q, problems %q", s.Agents, s.DefaultAgent, probs)
+	}
+	s, probs = parse("agent = cc\nagent = \nagent = codex --full-auto\nagent = cc\ndefault-agent = codex --full-auto\n")
+	if len(probs) != 0 || !reflect.DeepEqual(s.Agents, []string{"cc", "codex --full-auto"}) || s.DefaultAgent != "codex --full-auto" {
+		t.Fatalf("parsed %q %q, problems %q", s.Agents, s.DefaultAgent, probs)
+	}
+	if got := s.AgentCommands(); !reflect.DeepEqual(got, []string{"cc", "codex --full-auto"}) {
+		t.Errorf("commands %q", got)
+	}
+	if out := format(s, ""); !strings.Contains(out, "agent = cc\nagent = codex --full-auto\n") || !strings.Contains(out, "default-agent = codex --full-auto") {
+		t.Errorf("written %q", out)
+	}
+	s, _ = parse("agent = cc\n")
+	if s.DefaultAgent != "claude" || !reflect.DeepEqual(s.AgentCommands(), []string{"claude", "cc"}) {
+		t.Errorf("a list without the default: %q, %q", s.DefaultAgent, s.AgentCommands())
+	}
+	if out := format(Default(), ""); strings.Contains(out, "agent") {
+		t.Errorf("the defaults written: %q", out)
+	}
+}
+
 func TestFormatKeepsTheUsersFile(t *testing.T) {
 	file := `# my kero
 font-size = 14

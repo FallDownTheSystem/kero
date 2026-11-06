@@ -966,13 +966,21 @@ func (a *App) splitMenu(m *ui.Menu, sid, pid, dir, action string) {
 // pane's of the app shows; and gives its path to fn.
 func (a *App) untitled(sid, pid string, fn func(path string)) {
 	s := a.session(sid)
-	cl := a.hostOf(sid).cl
-	if s == nil || cl == nil {
+	if s == nil {
 		return
 	}
 	dir := ""
 	if p := s.PaneByID(pid); p != nil {
 		dir = p.WorkDir()
+	}
+	a.untitledIn(a.hostOf(sid), dir, fn)
+}
+
+// untitledIn finds a name for a new file in dir, of h, as untitled does.
+func (a *App) untitledIn(h *host, dir string, fn func(path string)) {
+	cl := h.cl
+	if cl == nil {
+		return
 	}
 	if dir == "" {
 		a.toast(locales.FilesNoFolder())

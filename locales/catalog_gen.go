@@ -5998,44 +5998,326 @@ func (msgs Messages) BrowserAddress() string {
 	return Catalog.Format(msgs.locale, "browserAddress", nil)
 }
 
-// WorktreeTitle says "New Session in Worktree"
+// NewSessionKind says "Kind of session"
 // in the language the app shows.
-func WorktreeTitle() string { return In(i18n.Locale()).WorktreeTitle() }
+func NewSessionKind() string { return In(i18n.Locale()).NewSessionKind() }
 
-// WorktreeTitle says "New Session in Worktree"
+// NewSessionKind says "Kind of session"
 // in the language of msgs.
-func (msgs Messages) WorktreeTitle() string {
-	return Catalog.Format(msgs.locale, "worktreeTitle", nil)
+func (msgs Messages) NewSessionKind() string {
+	return Catalog.Format(msgs.locale, "newSessionKind", nil)
 }
 
-// WorktreeDetailDefault says "Kero checks out a new branch from the default branch in a folder of its own, so the session’s agent works apart fro…"
+// NewSessionAgent says "Agent"
 // in the language the app shows.
-func WorktreeDetailDefault() string { return In(i18n.Locale()).WorktreeDetailDefault() }
+func NewSessionAgent() string { return In(i18n.Locale()).NewSessionAgent() }
 
-// WorktreeDetailDefault says "Kero checks out a new branch from the default branch in a folder of its own, so the session’s agent works apart fro…"
+// NewSessionAgent says "Agent"
 // in the language of msgs.
-func (msgs Messages) WorktreeDetailDefault() string {
-	return Catalog.Format(msgs.locale, "worktreeDetailDefault", nil)
+func (msgs Messages) NewSessionAgent() string {
+	return Catalog.Format(msgs.locale, "newSessionAgent", nil)
 }
 
-// WorktreeDetailCurrent says "Kero checks out a new branch from the current branch in a folder of its own, so the session’s agent works apart fro…"
+// NewSessionTerminal says "Terminal"
 // in the language the app shows.
-func WorktreeDetailCurrent() string { return In(i18n.Locale()).WorktreeDetailCurrent() }
+func NewSessionTerminal() string { return In(i18n.Locale()).NewSessionTerminal() }
 
-// WorktreeDetailCurrent says "Kero checks out a new branch from the current branch in a folder of its own, so the session’s agent works apart fro…"
+// NewSessionTerminal says "Terminal"
 // in the language of msgs.
-func (msgs Messages) WorktreeDetailCurrent() string {
-	return Catalog.Format(msgs.locale, "worktreeDetailCurrent", nil)
+func (msgs Messages) NewSessionTerminal() string {
+	return Catalog.Format(msgs.locale, "newSessionTerminal", nil)
 }
 
-// WorktreeBranch says "Branch name"
+// NewSessionFile says "New File"
 // in the language the app shows.
-func WorktreeBranch() string { return In(i18n.Locale()).WorktreeBranch() }
+func NewSessionFile() string { return In(i18n.Locale()).NewSessionFile() }
 
-// WorktreeBranch says "Branch name"
+// NewSessionFile says "New File"
 // in the language of msgs.
-func (msgs Messages) WorktreeBranch() string {
-	return Catalog.Format(msgs.locale, "worktreeBranch", nil)
+func (msgs Messages) NewSessionFile() string {
+	return Catalog.Format(msgs.locale, "newSessionFile", nil)
+}
+
+// NewSessionBrowser says "Browser"
+// in the language the app shows.
+func NewSessionBrowser() string { return In(i18n.Locale()).NewSessionBrowser() }
+
+// NewSessionBrowser says "Browser"
+// in the language of msgs.
+func (msgs Messages) NewSessionBrowser() string {
+	return Catalog.Format(msgs.locale, "newSessionBrowser", nil)
+}
+
+// NewSessionAgentDetail says "A terminal with the agent already running in it."
+// in the language the app shows.
+func NewSessionAgentDetail() string { return In(i18n.Locale()).NewSessionAgentDetail() }
+
+// NewSessionAgentDetail says "A terminal with the agent already running in it."
+// in the language of msgs.
+func (msgs Messages) NewSessionAgentDetail() string {
+	return Catalog.Format(msgs.locale, "newSessionAgentDetail", nil)
+}
+
+// NewSessionTerminalDetail says "A terminal with your shell."
+// in the language the app shows.
+func NewSessionTerminalDetail() string { return In(i18n.Locale()).NewSessionTerminalDetail() }
+
+// NewSessionTerminalDetail says "A terminal with your shell."
+// in the language of msgs.
+func (msgs Messages) NewSessionTerminalDetail() string {
+	return Catalog.Format(msgs.locale, "newSessionTerminalDetail", nil)
+}
+
+// NewSessionFileDetail says "An editor on a new file in {folder}, which its first save makes."
+// in the language the app shows.
+func NewSessionFileDetail(folder string) string {
+	return In(i18n.Locale()).NewSessionFileDetail(folder)
+}
+
+// NewSessionFileDetail says "An editor on a new file in {folder}, which its first save makes."
+// in the language of msgs.
+func (msgs Messages) NewSessionFileDetail(folder string) string {
+	return Catalog.Format(msgs.locale, "newSessionFileDetail", map[string]any{"folder": folder})
+}
+
+// NewSessionBrowserDetail says "A browser on a blank page."
+// in the language the app shows.
+func NewSessionBrowserDetail() string { return In(i18n.Locale()).NewSessionBrowserDetail() }
+
+// NewSessionBrowserDetail says "A browser on a blank page."
+// in the language of msgs.
+func (msgs Messages) NewSessionBrowserDetail() string {
+	return Catalog.Format(msgs.locale, "newSessionBrowserDetail", nil)
+}
+
+// NewSessionAgentCommand says "Agent"
+// in the language the app shows.
+func NewSessionAgentCommand() string { return In(i18n.Locale()).NewSessionAgentCommand() }
+
+// NewSessionAgentCommand says "Agent"
+// in the language of msgs.
+func (msgs Messages) NewSessionAgentCommand() string {
+	return Catalog.Format(msgs.locale, "newSessionAgentCommand", nil)
+}
+
+// NewSessionWorktree says "In a worktree"
+// in the language the app shows.
+func NewSessionWorktree() string { return In(i18n.Locale()).NewSessionWorktree() }
+
+// NewSessionWorktree says "In a worktree"
+// in the language of msgs.
+func (msgs Messages) NewSessionWorktree() string {
+	return Catalog.Format(msgs.locale, "newSessionWorktree", nil)
+}
+
+// NewSessionBranch says "Branch"
+// in the language the app shows.
+func NewSessionBranch() string { return In(i18n.Locale()).NewSessionBranch() }
+
+// NewSessionBranch says "Branch"
+// in the language of msgs.
+func (msgs Messages) NewSessionBranch() string {
+	return Catalog.Format(msgs.locale, "newSessionBranch", nil)
+}
+
+// NewSessionPickBranch says "Choose a branch"
+// in the language the app shows.
+func NewSessionPickBranch() string { return In(i18n.Locale()).NewSessionPickBranch() }
+
+// NewSessionPickBranch says "Choose a branch"
+// in the language of msgs.
+func (msgs Messages) NewSessionPickBranch() string {
+	return Catalog.Format(msgs.locale, "newSessionPickBranch", nil)
+}
+
+// NewSessionDefaultBranch says "the default branch"
+// in the language the app shows.
+func NewSessionDefaultBranch() string { return In(i18n.Locale()).NewSessionDefaultBranch() }
+
+// NewSessionDefaultBranch says "the default branch"
+// in the language of msgs.
+func (msgs Messages) NewSessionDefaultBranch() string {
+	return Catalog.Format(msgs.locale, "newSessionDefaultBranch", nil)
+}
+
+// NewSessionBranchNew says "Kero makes the branch {branch} from {base}, in a folder of its own."
+// in the language the app shows.
+func NewSessionBranchNew(branch string, base string) string {
+	return In(i18n.Locale()).NewSessionBranchNew(branch, base)
+}
+
+// NewSessionBranchNew says "Kero makes the branch {branch} from {base}, in a folder of its own."
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchNew(branch string, base string) string {
+	return Catalog.Format(msgs.locale, "newSessionBranchNew", map[string]any{"branch": branch, "base": base})
+}
+
+// NewSessionBranchAsIs says "Kero checks {branch} out as it is, in a folder of its own."
+// in the language the app shows.
+func NewSessionBranchAsIs(branch string) string {
+	return In(i18n.Locale()).NewSessionBranchAsIs(branch)
+}
+
+// NewSessionBranchAsIs says "Kero checks {branch} out as it is, in a folder of its own."
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchAsIs(branch string) string {
+	return Catalog.Format(msgs.locale, "newSessionBranchAsIs", map[string]any{"branch": branch})
+}
+
+// NewSessionBranchInUse says "{branch} is checked out in {path}, and git checks a branch out in one worktree alone."
+// in the language the app shows.
+func NewSessionBranchInUse(branch string, path string) string {
+	return In(i18n.Locale()).NewSessionBranchInUse(branch, path)
+}
+
+// NewSessionBranchInUse says "{branch} is checked out in {path}, and git checks a branch out in one worktree alone."
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchInUse(branch string, path string) string {
+	return Catalog.Format(msgs.locale, "newSessionBranchInUse", map[string]any{"branch": branch, "path": path})
+}
+
+// NewSessionBranchInUseChoice says "Where the session goes"
+// in the language the app shows.
+func NewSessionBranchInUseChoice() string { return In(i18n.Locale()).NewSessionBranchInUseChoice() }
+
+// NewSessionBranchInUseChoice says "Where the session goes"
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchInUseChoice() string {
+	return Catalog.Format(msgs.locale, "newSessionBranchInUseChoice", nil)
+}
+
+// NewSessionOpenThere says "Open in that worktree"
+// in the language the app shows.
+func NewSessionOpenThere() string { return In(i18n.Locale()).NewSessionOpenThere() }
+
+// NewSessionOpenThere says "Open in that worktree"
+// in the language of msgs.
+func (msgs Messages) NewSessionOpenThere() string {
+	return Catalog.Format(msgs.locale, "newSessionOpenThere", nil)
+}
+
+// NewSessionNewBranchFrom says "New branch from {branch}"
+// in the language the app shows.
+func NewSessionNewBranchFrom(branch string) string {
+	return In(i18n.Locale()).NewSessionNewBranchFrom(branch)
+}
+
+// NewSessionNewBranchFrom says "New branch from {branch}"
+// in the language of msgs.
+func (msgs Messages) NewSessionNewBranchFrom(branch string) string {
+	return Catalog.Format(msgs.locale, "newSessionNewBranchFrom", map[string]any{"branch": branch})
+}
+
+// NewSessionBranchExists says "{branch} is a branch already."
+// in the language the app shows.
+func NewSessionBranchExists(branch string) string {
+	return In(i18n.Locale()).NewSessionBranchExists(branch)
+}
+
+// NewSessionBranchExists says "{branch} is a branch already."
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchExists(branch string) string {
+	return Catalog.Format(msgs.locale, "newSessionBranchExists", map[string]any{"branch": branch})
+}
+
+// NewSessionWorktrees says "Existing worktrees"
+// in the language the app shows.
+func NewSessionWorktrees() string { return In(i18n.Locale()).NewSessionWorktrees() }
+
+// NewSessionWorktrees says "Existing worktrees"
+// in the language of msgs.
+func (msgs Messages) NewSessionWorktrees() string {
+	return Catalog.Format(msgs.locale, "newSessionWorktrees", nil)
+}
+
+// NewSessionOpenIn says "Start the session in the worktree of {branch}"
+// in the language the app shows.
+func NewSessionOpenIn(branch string) string { return In(i18n.Locale()).NewSessionOpenIn(branch) }
+
+// NewSessionOpenIn says "Start the session in the worktree of {branch}"
+// in the language of msgs.
+func (msgs Messages) NewSessionOpenIn(branch string) string {
+	return Catalog.Format(msgs.locale, "newSessionOpenIn", map[string]any{"branch": branch})
+}
+
+// NewSessionDetached says "detached at {commit}"
+// in the language the app shows.
+func NewSessionDetached(commit string) string { return In(i18n.Locale()).NewSessionDetached(commit) }
+
+// NewSessionDetached says "detached at {commit}"
+// in the language of msgs.
+func (msgs Messages) NewSessionDetached(commit string) string {
+	return Catalog.Format(msgs.locale, "newSessionDetached", map[string]any{"commit": commit})
+}
+
+// NewSessionRunning says "{count, plural, one {# session} other {# sessions}}"
+// in the language the app shows.
+func NewSessionRunning(count int) string { return In(i18n.Locale()).NewSessionRunning(count) }
+
+// NewSessionRunning says "{count, plural, one {# session} other {# sessions}}"
+// in the language of msgs.
+func (msgs Messages) NewSessionRunning(count int) string {
+	return Catalog.Format(msgs.locale, "newSessionRunning", map[string]any{"count": count})
+}
+
+// NewSessionStart says "Start"
+// in the language the app shows.
+func NewSessionStart() string { return In(i18n.Locale()).NewSessionStart() }
+
+// NewSessionStart says "Start"
+// in the language of msgs.
+func (msgs Messages) NewSessionStart() string {
+	return Catalog.Format(msgs.locale, "newSessionStart", nil)
+}
+
+// SetAgentCommands says "Agents"
+// in the language the app shows.
+func SetAgentCommands() string { return In(i18n.Locale()).SetAgentCommands() }
+
+// SetAgentCommands says "Agents"
+// in the language of msgs.
+func (msgs Messages) SetAgentCommands() string {
+	return Catalog.Format(msgs.locale, "setAgentCommands", nil)
+}
+
+// SetAgentCommandsDetail says "The commands a new agent session may start, run in your shell, so that aliases and flags work, as cc or codex --full-…"
+// in the language the app shows.
+func SetAgentCommandsDetail() string { return In(i18n.Locale()).SetAgentCommandsDetail() }
+
+// SetAgentCommandsDetail says "The commands a new agent session may start, run in your shell, so that aliases and flags work, as cc or codex --full-…"
+// in the language of msgs.
+func (msgs Messages) SetAgentCommandsDetail() string {
+	return Catalog.Format(msgs.locale, "setAgentCommandsDetail", nil)
+}
+
+// SetDefaultAgent says "Default agent"
+// in the language the app shows.
+func SetDefaultAgent() string { return In(i18n.Locale()).SetDefaultAgent() }
+
+// SetDefaultAgent says "Default agent"
+// in the language of msgs.
+func (msgs Messages) SetDefaultAgent() string {
+	return Catalog.Format(msgs.locale, "setDefaultAgent", nil)
+}
+
+// SetDefaultAgentDetail says "The one the New Session dialog has chosen."
+// in the language the app shows.
+func SetDefaultAgentDetail() string { return In(i18n.Locale()).SetDefaultAgentDetail() }
+
+// SetDefaultAgentDetail says "The one the New Session dialog has chosen."
+// in the language of msgs.
+func (msgs Messages) SetDefaultAgentDetail() string {
+	return Catalog.Format(msgs.locale, "setDefaultAgentDetail", nil)
+}
+
+// SetAgentCommand says "command"
+// in the language the app shows.
+func SetAgentCommand() string { return In(i18n.Locale()).SetAgentCommand() }
+
+// SetAgentCommand says "command"
+// in the language of msgs.
+func (msgs Messages) SetAgentCommand() string {
+	return Catalog.Format(msgs.locale, "setAgentCommand", nil)
 }
 
 // WorktreeCreate says "Create"

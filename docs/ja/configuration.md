@@ -121,6 +121,8 @@ kero config check             # 不明なキー、不正な値、agents.toml の
 | キー             | デフォルト | 説明                                                |
 | ---------------- | ---------- | --------------------------------------------------- |
 | `remote-control` | `true`     | `kero do` と `kero focus` によるアプリの操作を許可する |
+| `agent`          | `claude`   | [新規セッションのダイアログ](./sessions.md#new-session-dialog)のエージェントセッションで起動できるコマンド。自分のコマンドや関数と同じようにシェルで実行されます（`cc` や `codex --full-auto` など）。エージェントごとに繰り返して指定する |
+| `default-agent`  | `claude`   | 新規セッションのダイアログを開いたときに選ばれているエージェント |
 | `resume-command-claude` |  | Claude Code の会話を再開するコマンド。再開、[検索](./sessions.md#検索)、セッションの復元で使われ、自分のコマンドや関数と同じようにシェルで実行されます（`cc --yolo --resume {session}` など）。中の `{session}` は会話の ID になり、なければ ID は末尾に付きます。空なら `claude --resume {session}` |
 | `resume-command-codex` |  | Codex について同じ。空なら `codex resume {session}` |
 | `resume-command-pi` |  | Pi について同じ。空なら `pi --session {session}` |
@@ -144,8 +146,7 @@ kero config check             # 不明なキー、不正な値、agents.toml の
 | `git-status`  | `true`     | 各セッションのブランチと[変更](./changes.md)を表示する                                            |
 | `diff-layout` | `auto`     | 変更タブの差分: `unified`、`split`（左右に並べる）、または広くなると左右に並べる `auto`            |
 | `branch-max-age` | `0` | ブランチの切り替えで、その週数コミットのないブランチを隠します（フィルタで見つけたものは表示）。`0` で隠しません |
-| `worktree-base` | `default` | [セッション専用のワークツリー](./changes.md#sessions-in-their-own-worktree)の起点: リポジトリのデフォルトブランチ `default`、または今いるセッションのブランチ `current` |
-| `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
+| `worktree-base` | `default` | [セッション専用のワークツリー](./changes.md#sessions-in-their-own-worktree)で名前を付けて作る新しいブランチの起点: リポジトリのデフォルトブランチ `default`、またはプロジェクトのフォルダのブランチ `current` || `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
 | `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。シェルで実行され、プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。中の `{session}` はフォークするペインのエージェントの会話の ID になります（`cc -p --resume {session} --fork-session` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
 | `commit-message-prompt` |  | エージェントがコミットメッセージを書く方法。最近のコミットとステージした差分の前に置く指示です。空なら Kero のもの（設定 › Git に表示）。改行は `\n` と書きます |
 | `pr-message-prompt` |  | エージェントが[プルリクエスト](./changes.md#new-pull-request)のタイトルと説明を書く方法。`commit-message-prompt` と同様です |

@@ -98,6 +98,8 @@ func settingsIndex() []searchEntry {
 		{"agents", "Claude Code", "skill agents install"},
 		{"agents", "Codex, OpenCode, Pi", "skill agents install"},
 		{"agents", locales.SetProgramStatus(), "osc 7501 report progress"},
+		{"agents", locales.SetAgentCommands(), "agent commands new session claude cc codex launcher flags alias"},
+		{"agents", locales.SetDefaultAgent(), "default-agent agent new session claude codex"},
 		{"agents", locales.SetResumeCommands(), "resume-command claude codex pi opencode launcher cc yolo flags conversation restore"},
 
 		{"hosts", locales.SetHosts(), "host hosts remote server ssh tailscale tailnet wsl machine linux devbox -H kero hosts"},

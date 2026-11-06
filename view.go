@@ -265,7 +265,7 @@ func (a *App) view(c *ui.Context) {
 	a.pickerView(c, pal)
 	a.rebaseView(c, pal)
 	a.confirmView(c, pal)
-	a.worktreeView(c, pal)
+	a.newSessionView(c, pal)
 	a.prReviewView(c, pal)
 	a.prSetupView(c, pal)
 	// A preview that showed no more fades in anew next time.
@@ -555,10 +555,10 @@ func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving boo
 	pointerTooltip(c, hdr, "tip-project-"+key, g.host.shortDir(g.project.Dir))
 	hdr.ContextMenu(func(m *ui.Menu) {
 		if m.Item(locales.ActionNewSession()).Chosen() {
-			a.newSessionOn(g.host, id)
+			a.askNewSession(g.host, id, "", false)
 		}
 		if m.Item(locales.ActionNewSessionWorktree()).Chosen() {
-			a.newWorktreeSessionOn(g.host, id, g.project.Dir)
+			a.askNewSession(g.host, id, "", true)
 		}
 		label := locales.SidebarCollapse()
 		if collapsed {
@@ -639,7 +639,7 @@ func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving boo
 			}
 			b.Children(func() { ui.Icon(c, plusIcon).Size(13, 13) })
 			if b.Clicked() {
-				a.newSessionOn(g.host, id)
+				a.askNewSession(g.host, id, "", false)
 			}
 		}
 	})

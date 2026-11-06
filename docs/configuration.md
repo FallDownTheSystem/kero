@@ -121,6 +121,8 @@ Your own themes are files in Ghostty's format in Ghostty's themes folder: `$XDG_
 | Key              | Default | Description                                         |
 | ---------------- | ------- | --------------------------------------------------- |
 | `remote-control` | `true`  | Let `kero do` and `kero focus` drive the app        |
+| `agent`          | `claude` | A command an agent session of the [New Session dialog](./sessions.md#new-session-dialog) may start, run in your shell as your own commands and functions are, as `cc` or `codex --full-auto`. Repeat it for each agent |
+| `default-agent`  | `claude` | The agent the New Session dialog has chosen as it opens |
 | `resume-command-claude` |  | The command that resumes a Claude Code conversation, as Resume, the [search](./sessions.md#search) and restoring sessions start it, run in your shell as your own commands and functions are, as `cc --yolo --resume {session}`; `{session}` in it is the conversation's ID, else the ID goes at its end; empty for `claude --resume {session}` |
 | `resume-command-codex` |  | The same for Codex; empty for `codex resume {session}` |
 | `resume-command-pi` |  | The same for Pi; empty for `pi --session {session}` |
@@ -144,7 +146,7 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `git-status`  | `true`  | Show each session's branch and [changes](./changes.md)                                            |
 | `diff-layout` | `auto`  | Diffs of the Changes tab: `unified`, `split` (side by side), or `auto`, side by side once they're wide |
 | `branch-max-age` | `0` | Hide from the branch switcher the branches with no commit in that many weeks, unless its filter finds them; `0` hides none |
-| `worktree-base` | `default` | What a [session's own worktree](./changes.md#sessions-in-their-own-worktree) branches from: `default`, the repository's default branch, or `current`, the branch of the session you're in |
+| `worktree-base` | `default` | What a [session's own worktree](./changes.md#sessions-in-their-own-worktree) branches from, for a new branch you name: `default`, the repository's default branch, or `current`, the branch of the project's folder |
 | `worktree-dir` |        | Where sessions' own worktrees go, each under its repository's name; empty for `.kero/worktrees` in the repository |
 | `commit-message-command` |  | The command that [writes a commit message](./changes.md#committing) of what's staged, run in your shell and given the prompt on its stdin, as `llm -m gpt-5`; `{session}` in it is the ID of the pane's agent's conversation, to fork it, as `cc -p --resume {session} --fork-session`; empty for a fork of the conversation of the agent in the pane, else a new run of Claude Code's or Codex's |
 | `commit-message-prompt` |  | How the agent writes a commit message: the instructions before the recent commits and the staged diff; empty for Kero's own, which Settings › Git shows. Write a line break as `\n` |

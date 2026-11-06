@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"kero/internal/git"
 	"kero/internal/proto"
@@ -103,6 +104,68 @@ func TestWorktreeSession(t *testing.T) {
 		t.Errorf("removed a worktree another session works in: %v", err)
 	}
 	d.removeSession(other.ID)
+}
+
+// git.worktrees, asked by a folder, lists its repository's worktrees with
+// when each was last used and the sessions working in each;
+// git.branches, asked by a folder, tells where each branch is checked
+// out, the main checkout's too.
+func TestGitWorktreesOfFolder(t *testing.T) {
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	d.projects = []proto.Project{{ID: "pr", Name: "repo", Dir: repo}}
+	old := filepath.Join(repo, "..", filepath.Base(repo)+"-old")
+	runGit(t, repo, "worktree", "add", "-q", "-b", "old", old)
+	t.Cleanup(func() { os.RemoveAll(old) })
+	// Used long ago, by its reflog's time.
+	past := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(filepath.Join(repo, ".git", "worktrees", filepath.Base(old), "logs", "HEAD"), past, past); err != nil {
+		t.Fatal(err)
+	}
+	s, err := d.create(proto.CreateParams{Dir: repo, Worktree: "new"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.removeSession(s.ID)
+
+	res, err := d.gitWorktrees(proto.GitWorktreesParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Worktrees) != 3 {
+		t.Fatalf("worktrees %+v", res.Worktrees)
+	}
+	byBranch := map[string]proto.GitWorktree{}
+	for _, w := range res.Worktrees {
+		byBranch[w.Branch] = w
+	}
+	if mn := byBranch["main"]; !mn.Main || !sameDir(mn.Path, repo) {
+		t.Errorf("the main checkout %+v", mn)
+	}
+	if nw := byBranch["new"]; nw.Main || !sameDir(nw.Path, s.Worktree.Path) || nw.Sessions != 1 || nw.Head == "" || nw.Used == 0 {
+		t.Errorf("the session's worktree %+v", nw)
+	}
+	if ol := byBranch["old"]; ol.Main || !sameDir(ol.Path, old) || ol.Sessions != 0 || ol.Used/1000 != past.Unix() {
+		t.Errorf("the worktree used long ago %+v, used at %d", ol, past.UnixMilli())
+	}
+	if _, err := d.gitWorktrees(proto.GitWorktreesParams{Dir: t.TempDir()}); err == nil || !strings.Contains(err.Error(), "no git repository") {
+		t.Errorf("outside a repository: %v", err)
+	}
+
+	bs, err := d.gitBranches(proto.GitParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	where := map[string]string{}
+	for _, b := range bs.Branches {
+		where[b.Name] = b.Worktree
+		if b.Name == "main" && !b.Current {
+			t.Error("main isn't the folder's current branch")
+		}
+	}
+	if !sameDir(where["main"], repo) || !sameDir(where["old"], old) || !sameDir(where["new"], s.Worktree.Path) {
+		t.Errorf("branches checked out at %q", where)
+	}
 }
 
 func TestWorktreePath(t *testing.T) {
