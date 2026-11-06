@@ -147,11 +147,13 @@ type (
 		Stashes []GitStash `json:"stashes"`
 	}
 
-	// GitWorktreesParams ask for a pane's repository's worktrees, with
-	// State what removing each would lose, which takes a git status of
-	// each.
+	// GitWorktreesParams ask for a pane's repository's worktrees, or with
+	// no pane, those of the repository holding Dir (a project with no
+	// session has no pane), with State what removing each would lose,
+	// which takes a git status of each.
 	GitWorktreesParams struct {
 		Pane  string `json:"pane"`
+		Dir   string `json:"dir,omitempty"`
 		State bool   `json:"state,omitempty"`
 	}
 	GitWorktrees struct {
@@ -164,11 +166,15 @@ type (
 	// not committed, Unpushed its branch's commits on no remote's branch
 	// nor the default branch, and Merged that the default branch has every
 	// commit of its branch: with neither files nor commits unpushed,
-	// removing it, and its branch, loses nothing.
+	// removing it, and its branch, loses nothing. Used is when HEAD last
+	// moved in it, in milliseconds, and Sessions how many sessions have a
+	// pane working in it.
 	GitWorktree struct {
 		Path     string `json:"path"`
 		Branch   string `json:"branch,omitempty"` // "" when detached
 		Head     string `json:"head,omitempty"`
+		Used     int64  `json:"used,omitempty"`
+		Sessions int    `json:"sessions,omitempty"`
 		Main     bool   `json:"main,omitempty"`
 		Prunable bool   `json:"prunable,omitempty"`
 		Locked   bool   `json:"locked,omitempty"`

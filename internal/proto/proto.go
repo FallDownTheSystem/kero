@@ -1040,6 +1040,10 @@ type (
 		// From and To are the sides of base "rev" (GitFile's).
 		From string `json:"from,omitempty"`
 		To   string `json:"to,omitempty"`
+		// Dir is a folder of the repository to ask of in place of a
+		// pane, for git.branches and git.worktrees: a project with no
+		// session has no pane.
+		Dir string `json:"dir,omitempty"`
 	}
 	// GitChanges are the files changed since a base.
 	GitChanges struct {
