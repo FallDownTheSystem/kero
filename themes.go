@@ -33,8 +33,11 @@ type themeCache struct {
 // themePreview holds the themes Settings shows in place of the settings'
 // while the user looks through them or edits one, the terminals' and the
 // files': nil for none. The terminals' color the whole window, as their
-// looks (lookOf).
-type themePreview struct{ light, dark, fileLight, fileDark *terminal.Theme }
+// looks (lookOf), lit by their glows, none for the theme's accent.
+type themePreview struct {
+	light, dark, fileLight, fileDark *terminal.Theme
+	lightGlow, darkGlow              ui.Color
+}
 
 // chosenThemes returns the terminals' themes the settings name, whatever
 // Settings previews.
@@ -256,10 +259,13 @@ func (a *App) pushThemes() {
 func (a *App) setPreview(p themePreview) {
 	terms := !sameTheme(a.preview.light, p.light) || !sameTheme(a.preview.dark, p.dark)
 	files := !sameTheme(a.preview.fileLight, p.fileLight) || !sameTheme(a.preview.fileDark, p.fileDark)
-	if !terms && !files {
+	glows := a.preview.lightGlow != p.lightGlow || a.preview.darkGlow != p.darkGlow
+	if !terms && !files && !glows {
 		return
 	}
-	a.preview = themePreview{cloneTheme(p.light), cloneTheme(p.dark), cloneTheme(p.fileLight), cloneTheme(p.fileDark)}
+	// New copies, as the window's looks are of the previewed themes'
+	// addresses (App.looks), which a glow changes too.
+	a.preview = themePreview{cloneTheme(p.light), cloneTheme(p.dark), cloneTheme(p.fileLight), cloneTheme(p.fileDark), p.lightGlow, p.darkGlow}
 	if terms {
 		a.pushThemes()
 	}
@@ -353,7 +359,7 @@ func (a *App) colorSettings(c *ui.Context, pal *palette) {
 	none := locales.SetThemeNone()
 	names := append([]string{none}, terminal.GhosttyThemes()...)
 	want := &a.ss.previewing
-	row := func(slot, label string, value *string, dark bool, preview **terminal.Theme) {
+	row := func(slot, label string, value *string, dark bool, preview **terminal.Theme, previewGlow *ui.Color) {
 		theme := func(o string) *terminal.Theme {
 			if o == none {
 				o = settings.Default().LightTheme
@@ -377,14 +383,14 @@ func (a *App) colorSettings(c *ui.Context, pal *palette) {
 				*value = v
 			})
 			if lit != "" && lit != shown {
-				*preview = theme(lit)
+				*preview, *previewGlow = theme(lit), themeGlow(lit)
 			}
 			iconButton(c, slot+"-edit", editIcon, locales.SetCustomizeTheme(), pal, func() { a.editTheme(slot) })
 		})
 	}
 	settingsGroup(c, pal, locales.SetColors(), locales.SetColorsDetail(proto.ShortDir(ghosttyThemesDir())), func() {
-		row("light", locales.SetLightWindows(), &a.set.LightTheme, false, &want.light)
-		row("dark", locales.SetDarkWindows(), &a.set.DarkTheme, true, &want.dark)
+		row("light", locales.SetLightWindows(), &a.set.LightTheme, false, &want.light, &want.lightGlow)
+		row("dark", locales.SetDarkWindows(), &a.set.DarkTheme, true, &want.dark, &want.darkGlow)
 	})
 	if d := a.ss.themeEdit; d != nil {
 		a.themeEditor(c, pal, d)
@@ -392,9 +398,9 @@ func (a *App) colorSettings(c *ui.Context, pal *palette) {
 	if d := a.ss.themeEdit; d != nil {
 		th := d.th
 		if d.slot == "light" {
-			want.light = &th
+			want.light, want.lightGlow = &th, d.glow
 		} else {
-			want.dark = &th
+			want.dark, want.darkGlow = &th, d.glow
 		}
 	}
 }
@@ -501,7 +507,8 @@ type themeDraft struct {
 	base     string // the theme it started from
 	name     string
 	th       terminal.Theme
-	checked  string // the name problem and replaces are of
+	glow     ui.Color // the background's glow, from the top right
+	checked  string   // the name problem and replaces are of
 	problem  string // why the name can't be saved, "" when it can
 	replaces bool   // a theme of the user's has the name
 }
@@ -514,7 +521,10 @@ func (a *App) editTheme(slot string) {
 	if slot == "dark" {
 		name, th = a.set.DarkTheme, *dark
 	}
-	d := &themeDraft{slot: slot, base: name, th: editable(th)}
+	d := &themeDraft{slot: slot, base: name, th: editable(th), glow: themeGlow(name)}
+	if d.glow.A == 0 {
+		d.glow = themeAccent(&th)
+	}
 	switch {
 	case keroID(name) != "":
 		// "Paper Light", as kero names its themes.
@@ -604,12 +614,55 @@ func themeColors(th *terminal.Theme) []*ui.Color {
 	return cs
 }
 
+// glowLine starts the line of a theme of the user's that gives the
+// background's glow. Ghostty has no such key and warns of keys it doesn't
+// know, so the line is a comment to it, which kero alone reads.
+const glowLine = "# kero-glow:"
+
+// themeGlow is the glow a theme of the user's gives its background
+// (glowLine), none when it gives none or isn't the user's.
+func themeGlow(name string) ui.Color {
+	if !userTheme(name) {
+		return ui.Color{}
+	}
+	data, err := os.ReadFile(filepath.Join(ghosttyThemesDir(), name))
+	if err != nil {
+		return ui.Color{}
+	}
+	for line := range strings.Lines(string(data)) {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), glowLine); ok {
+			if c, ok := parseHex(strings.TrimSpace(v)); ok {
+				return c
+			}
+		}
+	}
+	return ui.Color{}
+}
+
+// parseHex reads an opaque color as #rrggbb, as theme files write them;
+// ui.Hex panics on anything else, which a file edited by hand can hold.
+func parseHex(s string) (ui.Color, bool) {
+	h, ok := strings.CutPrefix(s, "#")
+	if !ok || len(h) != 6 {
+		return ui.Color{}, false
+	}
+	v, err := strconv.ParseUint(h, 16, 32)
+	if err != nil {
+		return ui.Color{}, false
+	}
+	return ui.RGB(uint8(v>>16), uint8(v>>8), uint8(v)), true
+}
+
 // ghosttyThemeFile writes th in Ghostty's format, as ParseGhosttyTheme
-// reads it, noting the theme it was made from.
-func ghosttyThemeFile(th *terminal.Theme, base string) []byte {
+// reads it, noting the theme it was made from, and glow unless it is the
+// one the theme's accent gives anyway.
+func ghosttyThemeFile(th *terminal.Theme, glow ui.Color, base string) []byte {
 	hex := func(c ui.Color) string { return fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B) }
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Made in Kero from %s.\n", base)
+	if glow.A != 0 && glow != themeAccent(th) {
+		fmt.Fprintf(&b, "%s %s\n", glowLine, hex(glow))
+	}
 	for i, c := range th.Palette {
 		fmt.Fprintf(&b, "palette = %d=%s\n", i, hex(c))
 	}
@@ -635,7 +688,7 @@ func (a *App) saveTheme(d *themeDraft) {
 	dir := ghosttyThemesDir()
 	err := os.MkdirAll(dir, 0o755)
 	if err == nil {
-		err = os.WriteFile(filepath.Join(dir, name), ghosttyThemeFile(&d.th, d.base), 0o644)
+		err = os.WriteFile(filepath.Join(dir, name), ghosttyThemeFile(&d.th, d.glow, d.base), 0o644)
 	}
 	if err != nil {
 		a.ss.toast = locales.SetThemeSaveFailed(err.Error())
@@ -657,7 +710,7 @@ func (a *App) saveTheme(d *themeDraft) {
 // themeEditor edits the draft: its name and every color, under a preview
 // of it, which the terminals show too.
 func (a *App) themeEditor(c *ui.Context, pal *palette, d *themeDraft) {
-	opaque(&d.th)
+	d.opaque()
 	if d.checked != d.name {
 		d.checked = d.name
 		d.problem, d.replaces = checkThemeName(strings.TrimSpace(d.name))
@@ -702,6 +755,9 @@ func (a *App) themeEditor(c *ui.Context, pal *palette, d *themeDraft) {
 		ui.Column(c).Padding(4, 0, 12, 0).Children(func() { a.terminalPreview(c, pal, &d.th) })
 		groupRows = 0
 		pair("base", locales.SetThemeBase(), &d.th.Background, &d.th.Foreground, locales.SetThemeBackground(), locales.SetThemeForeground())
+		settingRow(c, pal, locales.SetThemeGlow(), locales.SetThemeGlowDetail(), func() {
+			well("glow", &d.glow, locales.SetThemeGlow())
+		})
 		pair("cursor", locales.SetCursor(), &d.th.Cursor, &d.th.CursorText, locales.SetCursor(), locales.SetThemeCursorText())
 		pair("sel", locales.SetThemeSelection(), &d.th.Selection, &d.th.SelectionText, locales.SetThemeSelection(), locales.SetThemeSelectionText())
 		pair("match", locales.SetThemeMatches(), &d.th.Search, &d.th.SearchText, locales.SetThemeMatch(), locales.SetThemeMatchText())
@@ -718,5 +774,12 @@ func (a *App) themeEditor(c *ui.Context, pal *palette, d *themeDraft) {
 			a.saveTheme(d)
 		}
 	})
+	d.opaque()
+}
+
+// opaque makes every color of the draft opaque, its glow too, as a
+// theme's colors are (opaque).
+func (d *themeDraft) opaque() {
 	opaque(&d.th)
+	d.glow = ui.RGB(d.glow.R, d.glow.G, d.glow.B)
 }

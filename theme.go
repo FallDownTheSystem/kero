@@ -249,24 +249,27 @@ func (a *App) looks() *looks {
 	}
 	l.light, l.dark = l.chosenLight, l.chosenDark
 	if a.preview.light != nil {
-		l.light = lookOf(a.preview.light, false)
+		l.light = lookOf(a.preview.light, a.preview.lightGlow, false)
 	}
 	if a.preview.dark != nil {
-		l.dark = lookOf(a.preview.dark, true)
+		l.dark = lookOf(a.preview.dark, a.preview.darkGlow, true)
 	}
 	currentLooks.Store(l)
 	return l
 }
 
 // lookOf is the look of a terminal theme Settings previews: kero's whose
-// colors it has, with its wash, else the one a Ghostty theme has.
-func lookOf(th *terminal.Theme, dark bool) *look {
-	for _, t := range settings.KeroThemes {
-		if l := keroLook(t.ID, dark); *l.term == *th {
-			return l
+// colors it has, with its wash, else the one a Ghostty theme has, lit by
+// glow unless it is none.
+func lookOf(th *terminal.Theme, glow ui.Color, dark bool) *look {
+	if glow.A == 0 {
+		for _, t := range settings.KeroThemes {
+			if l := keroLook(t.ID, dark); *l.term == *th {
+				return l
+			}
 		}
 	}
-	return ghosttyLook(th)
+	return ghosttyLook(th, glow)
 }
 
 // lookFor is the look of the window c draws, by its appearance.
@@ -289,7 +292,7 @@ func lookNamed(name string, dark bool) *look {
 		return keroLook(id, dark)
 	}
 	if th, err := terminal.GhosttyTheme(name); err == nil {
-		return ghosttyLook(th)
+		return ghosttyLook(th, themeGlow(name))
 	}
 	return keroLook("paper", dark)
 }
@@ -365,10 +368,27 @@ func glowOf(c ui.Color) ui.LinearGradient {
 }
 
 // ghosttyLook washes the window in a Ghostty theme's background, a shade
-// under its cards, lit by its cursor's color: its accent, unless that is
-// a gray, as many themes' cursors are, when blue is.
-func ghosttyLook(th *terminal.Theme) *look {
+// under its cards, lit from the top right by glow, else by its accent.
+func ghosttyLook(th *terminal.Theme, glow ui.Color) *look {
 	bl, bc, bh := oklch(th.Background)
+	accent := themeAccent(th)
+	if glow.A == 0 {
+		glow = accent
+	}
+	l := &look{term: th, pal: tinted(th, accent)}
+	shade, strength := float32(0.03), float32(0.16)
+	if l.pal.dark {
+		shade, strength = 0.04, 0.2
+	}
+	l.base = ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
+		{Color: ui.Oklch(max(bl-shade, 0), bc, bh), At: 0}, {Color: ui.Oklch(max(bl-shade/2, 0), bc, bh), At: 1}}}
+	l.glow = glowOf(glow.Alpha(strength))
+	return l
+}
+
+// themeAccent is a Ghostty theme's accent: its cursor's color, unless that
+// is a gray, as many themes' cursors are, when its blue is.
+func themeAccent(th *terminal.Theme) ui.Color {
 	accent := th.Cursor
 	if accent == (ui.Color{}) {
 		accent = th.Foreground
@@ -376,15 +396,7 @@ func ghosttyLook(th *terminal.Theme) *look {
 	if _, c, _ := oklch(accent); c < 0.05 {
 		accent = th.Palette[4]
 	}
-	l := &look{term: th, pal: tinted(th, accent)}
-	shade, glow := float32(0.03), float32(0.16)
-	if l.pal.dark {
-		shade, glow = 0.04, 0.2
-	}
-	l.base = ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
-		{Color: ui.Oklch(max(bl-shade, 0), bc, bh), At: 0}, {Color: ui.Oklch(max(bl-shade/2, 0), bc, bh), At: 1}}}
-	l.glow = glowOf(accent.Alpha(glow))
-	return l
+	return ui.RGB(accent.R, accent.G, accent.B)
 }
 
 // tinted is kero's palette for the light or the dark, as a terminal
