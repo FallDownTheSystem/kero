@@ -565,6 +565,28 @@ func (s *pane) setFile(file string) error {
 	return nil
 }
 
+// setPreview shows an editor pane's Markdown file as it reads, or its
+// text again, as the app or kero do pane.preview asks.
+func (s *pane) setPreview(on bool) error {
+	s.mu.Lock()
+	if !s.info.Editor() {
+		s.mu.Unlock()
+		return fmt.Errorf("pane %s is no editor", s.info.ID)
+	}
+	if on && !proto.MarkdownFile(s.info.File) {
+		s.mu.Unlock()
+		return fmt.Errorf("pane %s shows %s, which is no Markdown file to preview", s.info.ID, filepath.Base(s.info.File))
+	}
+	changed := s.info.Preview != on
+	s.info.Preview = on
+	s.mu.Unlock()
+	if changed {
+		s.d.save()
+		s.d.changed()
+	}
+	return nil
+}
+
 // useTheme gives the panes, and those to come, a client's colors, which
 // programs asking about them get: Copilot CLI drew its input box dark on
 // a light background, as kerod's terminals answered with a dark theme.

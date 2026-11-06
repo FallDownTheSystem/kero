@@ -26,6 +26,8 @@ kero new -- npm run dev          # start one running a command
 kero split --down -- npm test    # a pane beside this one
 kero split --url localhost:3000  # a browser pane showing a page
 kero split --file src/main.go    # an editor pane of a file
+kero split --file plan.md --preview   # a Markdown file, shown as it reads
+kero split --url docs/brief.html # a local HTML page
 kero new --file notes/plan.md    # a session of an editor, of a file its save makes
 kero rename api backend          # rename a session
 kero focus backend               # show it in the app
@@ -43,8 +45,9 @@ kero restart <pane>              # start an exited pane's shell again
 | `-d`, `--dir <dir>`         | Start it there (default: the current directory) |
 | `-f`, `--focus`             | Show it in the app                              |
 | `-w`, `--wait`              | Wait for its command to end, and exit with its status |
-| `-u`, `--url <url>`         | Open a browser showing the page instead of a shell |
+| `-u`, `--url <url>`         | Open a browser showing the page instead of a shell; a path to a local file shows that file |
 | `--file <path>`             | Open an editor of the file instead of a shell   |
+| `--preview`                 | With `--file` of a Markdown file, show it as it reads rather than its text |
 | `--worktree <branch>`       | Start it in a git worktree of its own, on a new branch ([more](./changes.md#sessions-in-their-own-worktree)) |
 | `--base <ref>`              | The branch the worktree's starts from (default: the default branch) |
 
@@ -262,6 +265,13 @@ kero do files.show path=src/main.go
 ```
 
 A relative `path=` or `dir=` is of the folder you run `kero do` in.
+
+`kero do pane.preview` shows an editor pane's Markdown file as it reads, or its text again: `on`, `off`, or toggled when you say neither. It acts on the pane `pane=` names, else on your session's editor pane of a Markdown file. It sets what kerod keeps of the pane, as `kero split --preview` does, so it needs neither Remote Control nor the app open.
+
+```sh
+kero do pane.preview on
+kero do pane.preview off pane=4f2a
+```
 
 ## Exit status
 

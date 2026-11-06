@@ -40,10 +40,12 @@ type savedPane struct {
 	ID      string   `json:"id"`
 	Dir     string   `json:"dir,omitempty"`
 	Command []string `json:"command,omitempty"`
-	// URL and Title are a browser pane's page; File an editor pane's file.
-	URL   string `json:"url,omitempty"`
-	Title string `json:"title,omitempty"`
-	File  string `json:"file,omitempty"`
+	// URL and Title are a browser pane's page; File an editor pane's file,
+	// and Preview whether it shows it as it reads.
+	URL     string `json:"url,omitempty"`
+	Title   string `json:"title,omitempty"`
+	File    string `json:"file,omitempty"`
+	Preview bool   `json:"preview,omitempty"`
 	// Agent is the agent's session that ran in it, to resume, and Turn
 	// where its last turn started.
 	Agent   *proto.AgentSession `json:"agent,omitempty"`
@@ -85,7 +87,7 @@ func (d *Daemon) saveState() {
 		ss := savedSession{ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed, Created: s.created, Layout: s.layout, Focus: s.focus, Worktree: s.worktree}
 		for _, p := range s.panes {
 			p.mu.Lock()
-			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL, File: p.info.File,
+			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL, File: p.info.File, Preview: p.info.Preview,
 				Agent: p.info.AgentSession, Turn: p.info.Turn, Created: p.info.Created, Cols: p.info.Cols, Rows: p.info.Rows}
 			if p.info.Browser() {
 				sp.Title = p.info.Title
@@ -184,7 +186,7 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string, resumeAgents
 	now := time.Now().UnixMilli()
 	if sp.URL != "" || sp.File != "" {
 		p, _ := newPane(d, sid, proto.Pane{
-			ID: sp.ID, Dir: sp.Dir, URL: sp.URL, File: sp.File, Title: sp.Title, Status: proto.Idle, Since: now,
+			ID: sp.ID, Dir: sp.Dir, URL: sp.URL, File: sp.File, Preview: sp.Preview, Title: sp.Title, Status: proto.Idle, Since: now,
 			Created: sp.Created, Restored: true,
 		})
 		return p

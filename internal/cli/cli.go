@@ -42,9 +42,12 @@ Usage:
       -d, --dir <dir>             start it there (default: here)
       -f, --focus                 show it in the app
       -w, --wait                  wait for cmd to end, exit with its status
-      -u, --url <url>             a browser showing url, not a shell
+      -u, --url <url>             a browser showing url, not a shell; or
+                                  a local file, as page.html
       --file <path>               an editor of the file, not a shell; a file
                                   not there yet is made as it is saved
+      --preview                   with --file of Markdown: show it as it
+                                  reads, not its text
       --worktree <branch>         in a git worktree of its own, on a new
                                   branch from the default branch
       --base <ref>                the branch to start it from instead
@@ -55,9 +58,15 @@ Usage:
       -d, --dir <dir>             start it there (default: the pane's)
       -w, --wait                  wait for cmd to end, exit with its status
       -u, --url <url>             a browser showing url, not a shell, as
-                                  a dev server's page: localhost:3000
+                                  a dev server's page: localhost:3000, or
+                                  a local file's: docs/brief.html
       --file <path>               an editor of the file, not a shell; a file
                                   not there yet is made as it is saved
+      --preview                   with --file of Markdown: show it as it
+                                  reads, not its text
+                                a file or local page a pane of the session
+                                shows already focuses that pane instead,
+                                which shows the file as it changes on disk
   kero send <target> <text…>    type text into a pane
       -e                          interpret \n \r \t \e \xHH escapes
       --enter                     press Enter after it
@@ -150,7 +159,11 @@ Usage:
   kero do <action> [key=value…]  run an action of the app, as its menus do
                                 (needs Remote Control, in Settings › Agents),
                                 as kero do files.show path=src/main.go
-  kero actions                  list the actions kero do runs
+      pane.preview [on|off] [pane=<target>]
+                                  show an editor pane's Markdown as it
+                                  reads, or its text (default: toggle;
+                                  the session's Markdown editor pane)
+  kero actions                 list the actions kero do runs
   kero config path|show|edit|check
                                 the configuration file: where it is, every
                                 key with its value (--defaults: as kero
@@ -261,6 +274,120 @@ func hereFile(path, host string) string {
 		return abs
 	}
 	return path
+}
+
+// shownIn is what kero new or split (cmd) shows in place of a shell: the
+// page --url names, a local file's as a file:// URL (localPage), or the
+// file --file names, absolute (hereFile), its preview with --preview,
+// which only a Markdown file has: asking for another's is a mistake to
+// tell of, not one to leave the user looking at its text unawares.
+func shownIn(cmd string, f *flags, command []string, host string) (page, file string, err error) {
+	runs := len(command) > 0 || f.set["wait"]
+	page, err = localPage(f.vals["url"], host)
+	if err != nil {
+		return "", "", err
+	}
+	if page != "" && runs {
+		return "", "", usageErr("kero %s --url shows a page, and runs no command", cmd)
+	}
+	file = hereFile(f.vals["file"], host)
+	if file != "" && (runs || page != "") {
+		return "", "", usageErr("kero %s --file shows a file, and runs no command", cmd)
+	}
+	if f.set["preview"] && (file == "" || !proto.MarkdownFile(file)) {
+		return "", "", usageErr("kero %s --preview shows a Markdown file as it reads: --file notes/plan.md --preview", cmd)
+	}
+	return page, file, nil
+}
+
+// localPage makes what kero split --url names a URL to load: a file of
+// this machine, as .backlog/pages/brief.html or C:\docs\brief.html, of the
+// shell's folder, is its file:// URL, which the browser pane loads from
+// the disk, as it does the file's pictures and scripts beside it; the
+// rest, as localhost:3000, stays for kerod to make a URL of. A path to an
+// HTML file that isn't there is a mistake, not a site to look up. On
+// another host (-H) it stays as it is, the app's disk being no host's.
+func localPage(text, host string) (string, error) {
+	if text == "" || host != "" || strings.Contains(text, "://") {
+		return text, nil
+	}
+	path := hereFile(text, host)
+	if st, err := os.Stat(path); err == nil && !st.IsDir() {
+		return proto.FileURL(path), nil
+	}
+	switch strings.ToLower(filepath.Ext(text)) {
+	case ".html", ".htm":
+		return "", fmt.Errorf("%w: no file %s", errNotFound, path)
+	}
+	return text, nil
+}
+
+// editorPane is the editor pane of a Markdown file kero do pane.preview
+// acts on: the pane named, else of the session, its focused pane when it
+// is one, else its one, as kero browser finds a session's browser.
+func editorPane(t target, named bool) (*proto.Pane, error) {
+	md := func(p *proto.Pane) bool { return p != nil && p.Editor() && proto.MarkdownFile(p.File) }
+	if named && t.pane != "" {
+		p := t.s.PaneByID(t.pane)
+		if !md(p) {
+			return nil, fmt.Errorf("%w: pane %s is no editor of a Markdown file", errNotFound, t.pane)
+		}
+		return p, nil
+	}
+	if p := t.s.FocusPane(); md(p) {
+		return p, nil
+	}
+	var found []*proto.Pane
+	var ids []string
+	for i := range t.s.Panes {
+		if p := &t.s.Panes[i]; md(p) {
+			found, ids = append(found, p), append(ids, p.ID)
+		}
+	}
+	switch len(found) {
+	case 1:
+		return found[0], nil
+	case 0:
+		return nil, fmt.Errorf("%w: session %s has no editor pane of a Markdown file (open one with kero split --file plan.md)", errNotFound, t.s.ID)
+	}
+	return nil, fmt.Errorf("%w: session %s has several editor panes of Markdown files, name one with pane=: %s", errNotFound, t.s.ID, strings.Join(ids, ", "))
+}
+
+// previewCmd is kero do pane.preview [on|off|toggle] [pane=<target>]: it
+// sets what kerod keeps of the pane, as kero split --preview does, so it
+// needs neither the app open nor Remote Control.
+func previewCmd(c *client.Client, st proto.State, args []string) error {
+	mode, ref := "toggle", ""
+	for _, arg := range args {
+		switch k, v, ok := strings.Cut(arg, "="); {
+		case !ok && (arg == "on" || arg == "off" || arg == "toggle"):
+			mode = arg
+		case ok && (k == "pane" || k == "target"):
+			ref = v
+		default:
+			return usageErr("kero do pane.preview [on|off|toggle] [pane=<target>]")
+		}
+	}
+	var t target
+	var err error
+	if ref != "" {
+		t, err = find(st, ref)
+	} else {
+		t, err = findOrCurrent(st, nil)
+	}
+	if err != nil {
+		return err
+	}
+	p, err := editorPane(t, ref != "")
+	if err != nil {
+		return err
+	}
+	on := mode == "on" || mode == "toggle" && !p.Preview
+	if err := c.Call("pane.preview", proto.PreviewParams{ID: p.ID, Preview: on}, nil); err != nil {
+		return err
+	}
+	fmt.Println(p.ID)
+	return nil
 }
 
 func usageErr(format string, args ...any) error {
@@ -417,7 +544,7 @@ func run(args []string, host string) error {
 		f, err := parse(args,
 			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout",
 				"u": "url", "url": "url", "file": "file", "worktree": "worktree", "base": "base"},
-			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait"})
+			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait", "preview": "preview"})
 		if err != nil {
 			return err
 		}
@@ -425,12 +552,9 @@ func run(args []string, host string) error {
 		if f.set["wait"] && len(command) == 0 {
 			return usageErr("kero new --wait needs a command: kero new --wait -- cmd…")
 		}
-		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
-			return usageErr("kero new --url shows a page, and runs no command")
-		}
-		file := hereFile(f.vals["file"], host)
-		if file != "" && (len(command) > 0 || f.set["wait"] || f.vals["url"] != "") {
-			return usageErr("kero new --file shows a file, and runs no command")
+		page, file, err := shownIn("new", f, command, host)
+		if err != nil {
+			return err
 		}
 		// The file is resolved here, in this checkout, not in the worktree
 		// the session would start in.
@@ -448,7 +572,7 @@ func run(args []string, host string) error {
 		}
 		var s proto.Session
 		if err := c.Call("create", proto.CreateParams{
-			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: f.vals["url"], File: file,
+			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: page, File: file, Preview: f.set["preview"],
 			After: os.Getenv("KERO_SESSION"), Worktree: f.vals["worktree"], Base: f.vals["base"],
 		}, &s); err != nil {
 			return err
@@ -470,7 +594,7 @@ func run(args []string, host string) error {
 
 	case "split":
 		f, err := parse(args, map[string]string{"r": "ratio", "ratio": "ratio", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout", "u": "url", "url": "url", "file": "file"},
-			map[string]string{"right": "right", "down": "down", "left": "left", "up": "up", "json": "json", "f": "focus", "focus": "focus", "wait": "wait", "w": "wait"})
+			map[string]string{"right": "right", "down": "down", "left": "left", "up": "up", "json": "json", "f": "focus", "focus": "focus", "wait": "wait", "w": "wait", "preview": "preview"})
 		if err != nil {
 			return err
 		}
@@ -489,17 +613,19 @@ func run(args []string, host string) error {
 		if f.set["wait"] && len(command) == 0 {
 			return usageErr("kero split --wait needs a command: kero split --wait -- cmd…")
 		}
-		if f.vals["url"] != "" && (len(command) > 0 || f.set["wait"]) {
-			return usageErr("kero split --url shows a page, and runs no command")
-		}
-		file := hereFile(f.vals["file"], host)
-		if file != "" && (len(command) > 0 || f.set["wait"] || f.vals["url"] != "") {
-			return usageErr("kero split --file shows a file, and runs no command")
+		page, file, err := shownIn("split", f, command, host)
+		if err != nil {
+			return err
 		}
 		var s proto.Session
 		if err := c.Call("split", proto.CreateParams{Split: t.ref(), Direction: dir, Ratio: ratio,
-			Dir: f.vals["dir"], Command: command, URL: f.vals["url"], File: file}, &s); err != nil {
+			Dir: f.vals["dir"], Command: command, URL: page, File: file, Preview: f.set["preview"]}, &s); err != nil {
 			return err
+		}
+		if t.s.PaneByID(s.Focus) != nil {
+			// kerod focused the pane already showing it (reuse): said
+			// apart from the id, which a script reads.
+			fmt.Fprintf(os.Stderr, "pane %s shows it already: focused it, rather than split\n", s.Focus)
 		}
 		if f.set["focus"] {
 			c.Call("select", proto.FocusParams{Session: s.ID, Pane: s.Focus}, nil)
@@ -832,6 +958,9 @@ func run(args []string, host string) error {
 	case "do":
 		if len(args) < 1 {
 			return usageErr("kero do <action> [key=value…] (see kero actions)")
+		}
+		if args[0] == "pane.preview" {
+			return previewCmd(c, st, args[1:])
 		}
 		a, ok := actions.Find(args[0])
 		if !ok || !a.Remote {

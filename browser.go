@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"runtime"
 	"time"
 	"unicode/utf8"
@@ -48,6 +49,18 @@ type webEntry struct {
 	// staged lays the page out unseen, for kero browser screenshot of a
 	// pane never shown, which has no size, and so no picture.
 	staged bool
+	// disk is the file of a page of this machine's disk as last looked at
+	// (checked), which the page reloads as it changes (watchPage).
+	disk    diskMark
+	checked time.Time
+}
+
+// diskMark is what tells a file changed: its path, when it was written,
+// and its size.
+type diskMark struct {
+	path string
+	mod  time.Time
+	size int64
 }
 
 // browserUA makes the page look like Safari's on macOS: sites serve a bare
@@ -164,6 +177,44 @@ func (e *webEntry) load(text string) {
 	e.loading = true
 }
 
+// pageCheck is how often a page of a local file looks whether the file
+// changed: an agent writes the page again as the user answers it.
+const pageCheck = time.Second
+
+// watchPage reloads a page of a file of this machine's disk, which the
+// web view loads it from, as the file changes on disk.
+func (a *App) watchPage(c *ui.Context, e *webEntry) {
+	if _, ok := proto.URLFile(e.url); !ok {
+		e.disk = diskMark{}
+		return
+	}
+	c.After(pageCheck)
+	if e.loading || time.Since(e.checked) < pageCheck {
+		return
+	}
+	e.checked = time.Now()
+	if e.diskChanged() && e.view != nil {
+		e.view.Page().Reload()
+		e.loading = true
+	}
+}
+
+// diskChanged tells that the file of the page changed since it was last
+// looked at; the first look, or one at another file, tells nothing.
+func (e *webEntry) diskChanged() bool {
+	path, ok := proto.URLFile(e.url)
+	if !ok {
+		return false
+	}
+	m := diskMark{path: path}
+	if st, err := os.Stat(path); err == nil {
+		m.mod, m.size = st.ModTime(), st.Size()
+	}
+	was := e.disk
+	e.disk = m
+	return was.path == path && !m.mod.IsZero() && (m.mod != was.mod || m.size != was.size)
+}
+
 // tellPage tells kerod the page a browser pane shows, which it keeps for
 // a restore, and the title that names the pane.
 func (a *App) tellPage(id string, e *webEntry) {
@@ -247,6 +298,7 @@ func (a *App) focusAddress() {
 // its page; it reports whether the pane is being dragged by its toolbar.
 func (a *App) paneBrowser(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, p *proto.Pane, top, left, right, multi, focused, hovered bool) (dragging bool) {
 	e := a.ensureWeb(p)
+	a.watchPage(c, e)
 	ref := a.paneRef(p.ID)
 	// What the page was as the build began: the address bar, which holds
 	// the pane's handle while there is no page, may go to one as it

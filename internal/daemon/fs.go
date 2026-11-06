@@ -186,7 +186,7 @@ func fsStat(p proto.FSStatParams) proto.FSStat {
 	if err != nil {
 		return proto.FSStat{Path: path}
 	}
-	return proto.FSStat{Path: path, Exists: true, Dir: st.IsDir(), Size: st.Size()}
+	return proto.FSStat{Path: path, Exists: true, Dir: st.IsDir(), Size: st.Size(), Mod: st.ModTime().UnixNano()}
 }
 
 // maxRead bounds what fs.read reads: an image to preview.

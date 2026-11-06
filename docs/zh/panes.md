@@ -38,10 +38,13 @@ kero split --right --ratio 0.3 -- go test ./... -count=1
 | `-r`, `--ratio <0..1>`                | 新窗格所占的空间比例（默认 0.5）               |
 | `-d`, `--dir <dir>`                   | 在另一个目录中启动                             |
 | `-w`, `--wait`                        | 等待其命令结束，并以该命令的状态码退出         |
-| `-u`, `--url <url>`                   | 打开浏览器显示该页面，而不是 shell             |
+| `-u`, `--url <url>`                   | 打开浏览器显示该页面，而不是 shell；本地文件的路径则显示该文件 |
 | `--file <path>`                       | 打开该文件的编辑器，而不是 shell               |
+| `--preview`                           | 对 `--file` 的 Markdown 文件，按渲染后的样子显示，而不是文本 |
 
 在 Kero 中运行时，`kero split` 会拆分它所在的窗格。在其他地方运行时，需要指定目标：`kero split my-session --down`。
+
+会话中已有窗格显示的文件或本地页面不会再次拆分：`kero split` 会聚焦那个窗格（带 `--preview` 时切换为预览），输出它的 ID，并在 stderr 中说明。重写了计划的代理再次展示时，会在原处找到它。
 
 ## 编辑器窗格
 
@@ -62,6 +65,15 @@ kero new --file src/main.go     # 在独立会话中
 
 它的标题栏和查看器一样有文件的按钮：保存、长行换行和在编辑器中打开；有未保存的编辑时会显示一个圆点。窗格太窄放不下时，这些按钮会收进**文件操作**菜单。Markdown 文件还有 **预览 Markdown**，按渲染后的样子显示它，包括旁边的图片；再次点击即可回到编辑文本。**缩小文字**和**放大文字**会独立于终端，缩放所有文件及其 Markdown 预览的文字；文件获得焦点时，<kbd>⌘</kbd> <kbd>=</kbd>、<kbd>⌘</kbd> <kbd>-</kbd> 和 <kbd>⌘</kbd> <kbd>0</kbd>（Windows 和 Linux 上为 <kbd>Ctrl</kbd>）效果相同。
 
+**窗格 › 切换 Markdown 预览** 对你所在的窗格做同样的事。Kero 重启后，窗格仍保持预览。代理可以以预览打开它，或切换预览：
+
+```sh
+kero split --file plans/plan.md --preview
+kero do pane.preview off
+```
+
+窗格会跟随它的文件：当代理等其他程序写入该文件时，窗格显示写入的内容；但如果你有未保存的编辑，它们会保留，保存时会询问是否覆盖。
+
 ## 浏览器窗格
 
 浏览器窗格在终端旁显示网页：智能体正在开发的开发服务器、它在读的文档、它提交的拉取请求。它和其他窗格一样可以拆分、放大、移动和关闭，Kero 重启后也会回到同一页面。
@@ -78,7 +90,10 @@ kero new --file src/main.go     # 在独立会话中
 ```sh
 kero split --url localhost:5173
 kero new --url https://github.com/egoist/kero/pulls
+kero split --url .backlog/pages/brief.html
 ```
+
+本机文件的路径（相对于运行 `kero split` 的文件夹）或 `file:///` URL 会显示本地页面：旁边的图片和样式表从磁盘加载，CDN 上的脚本从网络加载。文件在磁盘上变化时，页面会重新加载。本地页面无法以模块（`<script type="module">`）方式加载或 fetch 同一文件夹中的脚本：浏览器只允许从服务器这样做。
 
 之后智能体就能像你一样通过 `kero browser` 使用这个页面：点击、输入、读取文本、等待加载以及截图。参见[命令行](./cli.md#browsing)。
 
