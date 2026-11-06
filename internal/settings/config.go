@@ -386,6 +386,18 @@ var keys = []key{
 	boolKey("dock-bounce", "once, when a session comes to need you", func(s *Settings) *bool { return &s.BounceDock }),
 
 	boolKey("remote-control", "kero do, kero focus and kero browser drive the app", func(s *Settings) *bool { return &s.RemoteControl }),
+	{name: "agent", doc: "a command a new agent session may start, run in your shell, as claude, cc or codex --full-auto; repeat it", list: true,
+		get: func(s *Settings) []string { return slices.Clone(s.Agents) },
+		set: func(s *Settings, v []string) error {
+			s.Agents = nil
+			for _, cmd := range v {
+				if cmd = strings.TrimSpace(cmd); cmd != "" {
+					s.Agents = append(s.Agents, cmd)
+				}
+			}
+			return nil
+		}},
+	stringKey("default-agent", "the agent command the New Session dialog has chosen as it opens", func(s *Settings) *string { return &s.DefaultAgent }),
 	stringKey("resume-command-claude", "the command that resumes a Claude Code conversation, run in your shell, as cc --yolo --resume {session}; {session} in it is the conversation's id: empty for claude --resume {session}", func(s *Settings) *string { return &s.ResumeClaude }),
 	stringKey("resume-command-codex", "the command that resumes a Codex conversation, as resume-command-claude: empty for codex resume {session}", func(s *Settings) *string { return &s.ResumeCodex }),
 	stringKey("resume-command-pi", "the command that resumes a Pi conversation, as resume-command-claude: empty for pi --session {session}", func(s *Settings) *string { return &s.ResumePi }),
@@ -455,7 +467,7 @@ var keys = []key{
 	boolKey("remote-updates", "let Kero on another machine that connects update the Kero app here to its version, which restarts it", func(s *Settings) *bool { return &s.RemoteUpdates }),
 	boolKey("git-status", "show the git branch and changes of each session", func(s *Settings) *bool { return &s.GitStatus }),
 	numberKey("branch-max-age", "hide from the branch switcher the branches with no commit in that many weeks, unless its filter finds them; 0 for none", func(s *Settings) float64 { return float64(s.BranchMaxWeeks) }, func(s *Settings, n float64) { s.BranchMaxWeeks = int(n) }),
-	choiceKey("worktree-base", "what a session's own git worktree branches from: the repository's default branch, or the branch of the session you're in", func(s *Settings) *string { return &s.WorktreeBase }, "default", "current"),
+	choiceKey("worktree-base", "what a new branch you name for a session's own git worktree starts from: the repository's default branch, or the branch of the project's folder", func(s *Settings) *string { return &s.WorktreeBase }, "default", "current"),
 	stringKey("worktree-dir", "where sessions' own git worktrees go, each under its repository's name; empty for .kero/worktrees in the repository", func(s *Settings) *string { return &s.WorktreeDir }),
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
 	boolKey("wrap-lines", "wrap the long lines of the viewer's diffs and files rather than scrolling them sideways", func(s *Settings) *bool { return &s.WrapLines }),

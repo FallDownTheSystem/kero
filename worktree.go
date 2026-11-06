@@ -11,84 +11,6 @@ import (
 	"kero/locales"
 )
 
-// worktreeAsk asks the name of the branch a new session checks out in a
-// worktree of its own (plans/git.md, Phase 3), to start it on a host
-// with p.
-type worktreeAsk struct {
-	open   bool
-	branch string
-	host   *host
-	p      proto.CreateParams
-}
-
-// newWorktreeSession asks a branch's name for a session in a worktree of
-// its own, of the repository of the session the user is in, else of its
-// host's first project.
-func (a *App) newWorktreeSession() { a.newWorktreeSessionOn(a.selectedHost(), "", "") }
-
-// newWorktreeSessionOn asks it for a session on h: in project, of the
-// repository at dir, when the user isn't in a session of it; "" for the
-// session the user is in.
-func (a *App) newWorktreeSessionOn(h *host, project, dir string) {
-	if h.cl == nil {
-		a.toast(locales.HostNotConnected(h.label()))
-		return
-	}
-	p := proto.CreateParams{Project: project, Dir: dir}
-	if cur := a.session(a.selected); cur != nil && a.hostOf(cur.ID) == h {
-		if project == "" || cur.Project == project {
-			p.Project, p.After, p.Dir = cur.Project, cur.ID, cur.FocusPane().WorkDir()
-		}
-		p.Cols, p.Rows = cur.Cols, cur.Rows
-	}
-	if a.set.WorktreeBase == "current" {
-		p.Base = "HEAD"
-	}
-	a.wtAsk = &worktreeAsk{open: true, host: h, p: p}
-}
-
-func (a *App) worktreeView(c *ui.Context, pal *palette) {
-	w := a.wtAsk
-	if w == nil {
-		return
-	}
-	create := false
-	ui.DialogBase(c.Key("worktree"), &w.open, func(backdrop, panel ui.Element) {
-		backdrop.Background(pal.overlay)
-		floating(panel.Width(420).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(locales.WorktreeTitle())
-		ui.Text(c, locales.WorktreeTitle()).FontSize(15).FontWeight(650).TextColor(pal.text)
-		detail := locales.WorktreeDetailDefault()
-		if w.p.Base == "HEAD" {
-			detail = locales.WorktreeDetailCurrent()
-		}
-		ui.Text(c, detail).FontSize(13).TextColor(pal.textMuted).LineHeight(1.4)
-		ui.Row(c).Margin(8, 0, 0, 0).Children(func() {
-			in := textField(c, "branch", &w.branch, locales.WorktreeBranch(), 0, pal)
-			in.AutoFocus()
-			if in.Submitted() {
-				create = true
-			}
-		})
-		ui.Row(c).Gap(8).Justify(ui.End).Margin(14, 0, 0, 0).Children(func() {
-			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
-				w.open = false
-			}
-			if button(c, "ok", locales.WorktreeCreate(), "↩", true, pal) {
-				create = true
-			}
-		})
-	})
-	if branch := strings.TrimSpace(w.branch); create && branch != "" {
-		w.open = false
-		w.p.Worktree = branch
-		a.create(w.host, w.p, w.p.Project)
-	}
-	if !w.open {
-		a.wtAsk = nil
-		a.focusTerminal()
-	}
-}
-
 // askCloseWorktree closes a session in a worktree of its own once the
 // user says whether its worktree goes with it, as what kerod finds the
 // removal would lose decides: Remove at hand when nothing, Keep when
@@ -183,7 +105,7 @@ func (a *App) worktreesRow(c *ui.Context, pal *palette, s *proto.Session, pane *
 			})
 		}
 		iconButton(c, "new", plusIcon, locales.ActionNewSessionWorktree(), pal, func() {
-			a.newWorktreeSessionOn(a.hostOf(s.ID), s.Project, root)
+			a.askNewSession(a.hostOf(s.ID), s.Project, root, true)
 		})
 	})
 }

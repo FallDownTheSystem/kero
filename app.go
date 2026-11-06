@@ -159,7 +159,7 @@ type App struct {
 	find    findState
 	srch    convSearch
 	confirm *confirmation
-	wtAsk   *worktreeAsk
+	newAsk  *newSessionAsk
 	// prReview asks the prompt of a review of a pull request, and prSetup
 	// sets up a repository's reviews (pulls.go).
 	prReview *prReview
@@ -1327,6 +1327,13 @@ func (a *App) newSessionOn(h *host, projectID string) {
 	if h.cl == nil {
 		return
 	}
+	a.create(h, a.newSessionParams(h, projectID), "")
+}
+
+// newSessionParams are a new session's on h, in a project of its, as
+// newSessionOn starts it: after the session shown, of its size, in the
+// folder the settings say.
+func (a *App) newSessionParams(h *host, projectID string) proto.CreateParams {
 	p := proto.CreateParams{Project: projectID}
 	if cur := a.session(a.selected); cur != nil && a.hostOf(cur.ID) == h {
 		if projectID == "" || cur.Project == projectID {
@@ -1347,7 +1354,7 @@ func (a *App) newSessionOn(h *host, projectID string) {
 	if p.Project == "" && len(a.projectsOf(h)) == 0 {
 		p.Dir = home
 	}
-	a.create(h, p, "")
+	return p
 }
 
 // create starts a session on a host, and shows it, opening the project

@@ -24,6 +24,21 @@ A **session** is a unit of work: one task, one agent, one long-running process. 
 
 Name sessions after their task, such as `fix-login-redirect` or `review-pr-42`, so you can find them in the sidebar and target them from the [CLI](./cli.md).
 
+<a id="new-session-dialog"></a>
+
+### The New Session dialog
+
+The **+** beside a project's name in the sidebar, and **New Session** in the project's menu, open the New Session dialog. Choose what the session starts with the mouse or the arrow keys, and press <kbd>Return</kbd> (<kbd>Enter</kbd>) to start it:
+
+- **Agent**, chosen as the dialog opens: a terminal with an agent already running in it, the one **Agent** below chooses. The agents are the commands of the `agent` setting, run in your shell so that your aliases and flags work, such as `cc` or `codex --full-auto`; `default-agent` is the one chosen as the dialog opens. Set them in **Settings › Agents**.
+- **Terminal**: your shell.
+- **New File**: an editor on a new file in the project's folder, `untitled.txt`, else `untitled-2.txt` and on, which its first save makes.
+- **Browser**: a browser on a blank page.
+
+For an agent or a terminal, **In a worktree** starts the session in a [git worktree of its own](./changes.md#sessions-in-their-own-worktree). **Branch** is the project folder's branch as the dialog opens: click it to pick another, the most recent first, or type a name no branch has to make that branch. Git checks a branch out in one worktree alone, and the project's folder has its own branch checked out already, so a branch checked out elsewhere asks where the session goes: **Open in that worktree**, or **New branch from** it, in a new worktree, under a name Kero suggests and you can change.
+
+**Existing worktrees** lists the repository's other worktrees, the one used last first, with the sessions working in each. Click one to start the session there.
+
 ### Where a new session starts
 
 The `new-session-directory` setting picks the folder:

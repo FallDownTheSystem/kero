@@ -109,6 +109,12 @@ type Settings struct {
 	ResumeCodex    string `json:"resumeCodex"`
 	ResumePi       string `json:"resumePi"`
 	ResumeOpenCode string `json:"resumeOpenCode"`
+	// Agents are the commands a new agent session may start, in the
+	// user's shell, as their aliases and flags have them: claude, cc,
+	// codex --full-auto; DefaultAgent is the one the New Session dialog
+	// has chosen as it opens.
+	Agents       []string `json:"agents"`
+	DefaultAgent string   `json:"defaultAgent"`
 
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
@@ -137,9 +143,9 @@ type Settings struct {
 	// polled every PRPollMinutes.
 	PRNotify      string `json:"prNotify"`
 	PRPollMinutes int    `json:"prPollMinutes"`
-	// WorktreeBase is what a session's own worktree branches from:
-	// "default", the repository's default branch, or "current", the
-	// branch of the session the user is in. WorktreeDir is where its
+	// WorktreeBase is what a new branch the user names for a session's
+	// own worktree starts from: "default", the repository's default
+	// branch, or "current", the project folder's. WorktreeDir is where its
 	// worktrees go, "" for .kero/worktrees in the repository.
 	WorktreeBase string `json:"worktreeBase"`
 	WorktreeDir  string `json:"worktreeDir"`
@@ -271,6 +277,8 @@ func Default() Settings {
 		NotifyFailed:    true,
 		DockBadge:       true,
 		RemoteControl:   true,
+		Agents:          []string{DefaultAgentCommand},
+		DefaultAgent:    DefaultAgentCommand,
 		GitStatus:       true,
 		DiffLayout:      "auto",
 		WorktreeBase:    "default",
@@ -282,6 +290,19 @@ func Default() Settings {
 		BlockAds:        true,
 		AdLists:         slices.Clone(adblock.DefaultLists),
 	}
+}
+
+// DefaultAgentCommand is the agent a new agent session starts when the
+// settings name none.
+const DefaultAgentCommand = "claude"
+
+// AgentCommands are the agents a new agent session may start, the default
+// one among them, first when the list lacks it.
+func (s *Settings) AgentCommands() []string {
+	if slices.Contains(s.Agents, s.DefaultAgent) {
+		return s.Agents
+	}
+	return append([]string{s.DefaultAgent}, s.Agents...)
 }
 
 // MinScrollMultiplier and MaxScrollMultiplier bound ScrollPrecision and
@@ -491,6 +512,7 @@ func clone(s Settings) Settings {
 	s.Hosts = slices.Clone(s.Hosts)
 	s.Listen = slices.Clone(s.Listen)
 	s.ListenAllow = slices.Clone(s.ListenAllow)
+	s.Agents = slices.Clone(s.Agents)
 	if s.Shortcuts != nil {
 		m := make(map[string]string, len(s.Shortcuts))
 		for k, v := range s.Shortcuts {
@@ -565,6 +587,19 @@ func (s *Settings) normalize() {
 	oneOf(&s.DiffLayout, d.DiffLayout, "auto", "unified", "split")
 	s.BranchMaxWeeks = max(s.BranchMaxWeeks, 0)
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
+	var agents []string
+	for _, cmd := range s.Agents {
+		if cmd = strings.TrimSpace(cmd); cmd != "" && !slices.Contains(agents, cmd) {
+			agents = append(agents, cmd)
+		}
+	}
+	if agents == nil {
+		agents = d.Agents
+	}
+	s.Agents = agents
+	if s.DefaultAgent = strings.TrimSpace(s.DefaultAgent); s.DefaultAgent == "" {
+		s.DefaultAgent = d.DefaultAgent
+	}
 	oneOf(&s.PRNotify, d.PRNotify, "review", "all", "off")
 	if s.PRPollMinutes < 1 || s.PRPollMinutes > 1440 {
 		s.PRPollMinutes = d.PRPollMinutes

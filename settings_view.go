@@ -67,6 +67,7 @@ type settingsState struct {
 	revealed     string // the query and page the search last scrolled to
 	draft        map[string]string
 	envDraft     string
+	agentDraft   string
 	shellDraft   string
 	shellEditing bool
 	// featuresDraft is font-feature as the field has it, while
@@ -1468,6 +1469,38 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 				}
 			})
 		}
+	})
+	settingsGroup(c, pal, locales.SetAgentCommands(), locales.SetAgentCommandsDetail(), func() {
+		for i, cmd := range s.Agents {
+			ui.Row(c.Key("agent"+strconv.Itoa(i))).Padding(8, 0).Gap(10).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, cmd).Font("monospace").FontSize(12.5).TextColor(pal.text).Grow(1).SingleLine().Ellipsis("…").MinWidth(0)
+				idx := i
+				// The last stays: a new agent session starts one.
+				if len(s.Agents) > 1 {
+					iconButton(c, "rm", closeIcon, locales.CommonRemove(), pal, func() {
+						a.set.Agents = slices.Delete(slices.Clone(a.set.Agents), idx, idx+1)
+						if a.set.DefaultAgent == cmd {
+							a.set.DefaultAgent = a.set.Agents[0]
+						}
+					})
+				}
+			})
+		}
+		ui.Row(c).Padding(8, 0).Gap(8).AlignItems(ui.Center).Children(func() {
+			add := func() {
+				if cmd := strings.TrimSpace(a.ss.agentDraft); cmd != "" && !slices.Contains(a.set.Agents, cmd) {
+					a.set.Agents = append(slices.Clone(a.set.Agents), cmd)
+					a.ss.agentDraft = ""
+				}
+			}
+			textField(c, "agent-new", &a.ss.agentDraft, locales.SetAgentCommand(), 0, pal).Font("monospace").OnSubmit(add)
+			if fieldButton(c, "agent-add", locales.CommonAdd(), false, pal) {
+				add()
+			}
+		})
+		settingRow(c, pal, locales.SetDefaultAgent(), locales.SetDefaultAgentDetail(), func() {
+			popup(c, "default-agent", &s.DefaultAgent, s.AgentCommands(), func(cmd string) string { return cmd }, 220, pal)
+		})
 	})
 	settingsGroup(c, pal, locales.SetResumeCommands(), locales.SetResumeCommandsDetail(), func() {
 		for _, agent := range settings.ResumeAgents {

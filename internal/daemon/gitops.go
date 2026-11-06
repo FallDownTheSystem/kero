@@ -306,11 +306,28 @@ func opCommand(ctx context.Context, r git.Repo, p proto.GitOpParams) ([]string, 
 	return nil, nil
 }
 
-// gitBranches returns a pane's repository's branches.
+// paramsRepo returns the worktree of p's pane, else the one holding p.Dir.
+func (d *Daemon) paramsRepo(ctx context.Context, p proto.GitParams) (git.Repo, error) {
+	if p.Pane != "" || p.Dir == "" {
+		r, _, _, err := d.paneRepo(ctx, p.Pane)
+		return r, err
+	}
+	dir, err := d.cleanDir(p.Dir)
+	if err != nil {
+		return git.Repo{}, err
+	}
+	r, err := git.Open(ctx, dir)
+	if err != nil {
+		return git.Repo{}, fmt.Errorf("%s is in no git repository", proto.ShortDir(dir))
+	}
+	return r, nil
+}
+
+// gitBranches returns a pane's repository's branches, or a folder's.
 func (d *Daemon) gitBranches(p proto.GitParams) (proto.GitBranches, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	r, err := d.paramsRepo(ctx, p)
 	if err != nil {
 		return proto.GitBranches{}, err
 	}
@@ -327,12 +344,13 @@ func (d *Daemon) gitBranches(p proto.GitParams) (proto.GitBranches, error) {
 	return res, nil
 }
 
-// gitWorktrees returns a pane's repository's worktrees, the main one
-// first, and with p.State what removing each would lose.
+// gitWorktrees returns a pane's repository's worktrees, or a folder's, the
+// main one first, each with when it was last used and how many sessions
+// work in it, and with p.State what removing each would lose.
 func (d *Daemon) gitWorktrees(p proto.GitWorktreesParams) (proto.GitWorktrees, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	r, err := d.paramsRepo(ctx, proto.GitParams{Pane: p.Pane, Dir: p.Dir})
 	if err != nil {
 		return proto.GitWorktrees{}, err
 	}
@@ -353,7 +371,10 @@ func (d *Daemon) gitWorktrees(p proto.GitWorktreesParams) (proto.GitWorktrees, e
 	var wg sync.WaitGroup
 	for i, co := range list {
 		w := proto.GitWorktree{Path: co.Path, Branch: co.Branch, Head: co.Head, Prunable: co.Prunable, Locked: co.Locked,
-			Main: main != "" && filepath.Clean(co.Path) == filepath.Clean(main)}
+			Main: main != "" && sameDir(co.Path, main)}
+		if !co.Prunable {
+			w.Used = git.Used(co.Path)
+		}
 		res.Worktrees[i] = w
 		if !p.State || co.Prunable {
 			continue
@@ -374,6 +395,7 @@ func (d *Daemon) gitWorktrees(p proto.GitWorktreesParams) (proto.GitWorktrees, e
 		}()
 	}
 	wg.Wait()
+	d.countWorktreeSessions(res.Worktrees)
 	return res, nil
 }
 

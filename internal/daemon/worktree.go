@@ -109,6 +109,38 @@ func (d *Daemon) addWorktree(dir string, p proto.CreateParams) (*proto.Worktree,
 	return &proto.Worktree{Path: path, Branch: branch, Base: from, Main: main}, nil
 }
 
+// countWorktreeSessions sets how many sessions have a pane working in
+// each of wts.
+func (d *Daemon) countWorktreeSessions(wts []proto.GitWorktree) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range wts {
+		wt := &wts[i]
+		for _, s := range d.sessions {
+			for _, pn := range s.panes {
+				pn.mu.Lock()
+				in := proto.Within(pn.info.WorkDir(), wt.Path)
+				pn.mu.Unlock()
+				if in {
+					wt.Sessions++
+					break
+				}
+			}
+		}
+	}
+}
+
+// sameDir reports whether a and b are one folder, as git and the system
+// may spell it apart in case on Windows and macOS.
+func sameDir(a, b string) bool {
+	if filepath.Clean(a) == filepath.Clean(b) {
+		return true
+	}
+	sa, errA := os.Stat(a)
+	sb, errB := os.Stat(b)
+	return errA == nil && errB == nil && os.SameFile(sa, sb)
+}
+
 // worktreePath is where a worktree for branch goes: in the repository's
 // .kero/worktrees, else in dir (the worktree-dir setting) under the
 // repository's name; a branch's slashes become dashes.

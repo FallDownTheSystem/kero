@@ -83,6 +83,32 @@ func (r Repo) Checkouts(ctx context.Context) ([]Checkout, error) {
 	return list, nil
 }
 
+// Used returns when HEAD last moved in the worktree at path, in
+// milliseconds, 0 when unknown: its reflog's time, which every commit,
+// checkout and reset there appends to, and the worktree's adding starts;
+// else its HEAD file's. Neither changes as git status refreshes the
+// index, which the app does of every worktree it shows.
+func Used(path string) int64 {
+	admin := filepath.Join(path, ".git")
+	if b, err := os.ReadFile(admin); err == nil {
+		// A linked worktree's .git is a file naming its git directory.
+		dir, ok := strings.CutPrefix(strings.TrimSpace(string(b)), "gitdir:")
+		if !ok {
+			return 0
+		}
+		admin = filepath.FromSlash(strings.TrimSpace(dir))
+		if !filepath.IsAbs(admin) {
+			admin = filepath.Join(path, admin)
+		}
+	}
+	for _, f := range []string{filepath.Join(admin, "logs", "HEAD"), filepath.Join(admin, "HEAD")} {
+		if st, err := os.Stat(f); err == nil {
+			return st.ModTime().UnixMilli()
+		}
+	}
+	return 0
+}
+
 // HasBranch reports whether the repository has a local branch name.
 func (r Repo) HasBranch(name string) bool { return r.hasRef("refs/heads/" + name) }
 
