@@ -695,7 +695,7 @@ func TestInteractiveRebase(t *testing.T) {
 		t.Errorf("the panel has %q, %q", rv.subject, rv.body)
 	}
 	rv.subject = "two, reworded"
-	if err := tt.Click("OK"); err != nil {
+	if err := tt.Click("Use Message"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

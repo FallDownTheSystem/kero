@@ -6108,13 +6108,13 @@ func (msgs Messages) NewSessionTerminalDetail() string {
 	return Catalog.Format(msgs.locale, "newSessionTerminalDetail", nil)
 }
 
-// NewSessionFileDetail says "An editor on a new file in {folder}, which its first save makes."
+// NewSessionFileDetail says "An editor on a new file in {folder}. Kero creates the file when you first save it."
 // in the language the app shows.
 func NewSessionFileDetail(folder string) string {
 	return In(i18n.Locale()).NewSessionFileDetail(folder)
 }
 
-// NewSessionFileDetail says "An editor on a new file in {folder}, which its first save makes."
+// NewSessionFileDetail says "An editor on a new file in {folder}. Kero creates the file when you first save it."
 // in the language of msgs.
 func (msgs Messages) NewSessionFileDetail(folder string) string {
 	return Catalog.Format(msgs.locale, "newSessionFileDetail", map[string]any{"folder": folder})
@@ -6180,47 +6180,47 @@ func (msgs Messages) NewSessionDefaultBranch() string {
 	return Catalog.Format(msgs.locale, "newSessionDefaultBranch", nil)
 }
 
-// NewSessionBranchNew says "Kero makes the branch {branch} from {base}, in a folder of its own."
+// NewSessionBranchNew says "Kero creates the branch {branch} from {base}, in a new worktree."
 // in the language the app shows.
 func NewSessionBranchNew(branch string, base string) string {
 	return In(i18n.Locale()).NewSessionBranchNew(branch, base)
 }
 
-// NewSessionBranchNew says "Kero makes the branch {branch} from {base}, in a folder of its own."
+// NewSessionBranchNew says "Kero creates the branch {branch} from {base}, in a new worktree."
 // in the language of msgs.
 func (msgs Messages) NewSessionBranchNew(branch string, base string) string {
 	return Catalog.Format(msgs.locale, "newSessionBranchNew", map[string]any{"branch": branch, "base": base})
 }
 
-// NewSessionBranchAsIs says "Kero checks {branch} out as it is, in a folder of its own."
+// NewSessionBranchAsIs says "Kero checks out {branch} as it is, in a new worktree."
 // in the language the app shows.
 func NewSessionBranchAsIs(branch string) string {
 	return In(i18n.Locale()).NewSessionBranchAsIs(branch)
 }
 
-// NewSessionBranchAsIs says "Kero checks {branch} out as it is, in a folder of its own."
+// NewSessionBranchAsIs says "Kero checks out {branch} as it is, in a new worktree."
 // in the language of msgs.
 func (msgs Messages) NewSessionBranchAsIs(branch string) string {
 	return Catalog.Format(msgs.locale, "newSessionBranchAsIs", map[string]any{"branch": branch})
 }
 
-// NewSessionBranchInUse says "{branch} is checked out in {path}, and git checks a branch out in one worktree alone."
+// NewSessionBranchInUse says "{branch} is already checked out in {path}. Git checks out a branch in only one worktree at a time."
 // in the language the app shows.
 func NewSessionBranchInUse(branch string, path string) string {
 	return In(i18n.Locale()).NewSessionBranchInUse(branch, path)
 }
 
-// NewSessionBranchInUse says "{branch} is checked out in {path}, and git checks a branch out in one worktree alone."
+// NewSessionBranchInUse says "{branch} is already checked out in {path}. Git checks out a branch in only one worktree at a time."
 // in the language of msgs.
 func (msgs Messages) NewSessionBranchInUse(branch string, path string) string {
 	return Catalog.Format(msgs.locale, "newSessionBranchInUse", map[string]any{"branch": branch, "path": path})
 }
 
-// NewSessionBranchInUseChoice says "Where the session goes"
+// NewSessionBranchInUseChoice says "Where to start the session"
 // in the language the app shows.
 func NewSessionBranchInUseChoice() string { return In(i18n.Locale()).NewSessionBranchInUseChoice() }
 
-// NewSessionBranchInUseChoice says "Where the session goes"
+// NewSessionBranchInUseChoice says "Where to start the session"
 // in the language of msgs.
 func (msgs Messages) NewSessionBranchInUseChoice() string {
 	return Catalog.Format(msgs.locale, "newSessionBranchInUseChoice", nil)
@@ -6248,13 +6248,13 @@ func (msgs Messages) NewSessionNewBranchFrom(branch string) string {
 	return Catalog.Format(msgs.locale, "newSessionNewBranchFrom", map[string]any{"branch": branch})
 }
 
-// NewSessionBranchExists says "{branch} is a branch already."
+// NewSessionBranchExists says "A branch named {branch} already exists."
 // in the language the app shows.
 func NewSessionBranchExists(branch string) string {
 	return In(i18n.Locale()).NewSessionBranchExists(branch)
 }
 
-// NewSessionBranchExists says "{branch} is a branch already."
+// NewSessionBranchExists says "A branch named {branch} already exists."
 // in the language of msgs.
 func (msgs Messages) NewSessionBranchExists(branch string) string {
 	return Catalog.Format(msgs.locale, "newSessionBranchExists", map[string]any{"branch": branch})
@@ -6320,11 +6320,11 @@ func (msgs Messages) SetAgentCommands() string {
 	return Catalog.Format(msgs.locale, "setAgentCommands", nil)
 }
 
-// SetAgentCommandsDetail says "The commands a new agent session may start, run in your shell, so that aliases and flags work, as cc or codex --full-…"
+// SetAgentCommandsDetail says "The agent commands the New Session dialog offers. They run in your shell, so aliases and flags work, such as cc or co…"
 // in the language the app shows.
 func SetAgentCommandsDetail() string { return In(i18n.Locale()).SetAgentCommandsDetail() }
 
-// SetAgentCommandsDetail says "The commands a new agent session may start, run in your shell, so that aliases and flags work, as cc or codex --full-…"
+// SetAgentCommandsDetail says "The agent commands the New Session dialog offers. They run in your shell, so aliases and flags work, such as cc or co…"
 // in the language of msgs.
 func (msgs Messages) SetAgentCommandsDetail() string {
 	return Catalog.Format(msgs.locale, "setAgentCommandsDetail", nil)
@@ -6340,11 +6340,11 @@ func (msgs Messages) SetDefaultAgent() string {
 	return Catalog.Format(msgs.locale, "setDefaultAgent", nil)
 }
 
-// SetDefaultAgentDetail says "The one the New Session dialog has chosen."
+// SetDefaultAgentDetail says "The agent the New Session dialog selects first."
 // in the language the app shows.
 func SetDefaultAgentDetail() string { return In(i18n.Locale()).SetDefaultAgentDetail() }
 
-// SetDefaultAgentDetail says "The one the New Session dialog has chosen."
+// SetDefaultAgentDetail says "The agent the New Session dialog selects first."
 // in the language of msgs.
 func (msgs Messages) SetDefaultAgentDetail() string {
 	return Catalog.Format(msgs.locale, "setDefaultAgentDetail", nil)
@@ -6828,11 +6828,11 @@ func (msgs Messages) SetThemeNameInvalid() string {
 	return Catalog.Format(msgs.locale, "setThemeNameInvalid", nil)
 }
 
-// SetThemeNameTaken says "“{name}” is a theme of Ghostty’s: choose another name."
+// SetThemeNameTaken says "Ghostty already has a theme named “{name}”. Choose another name."
 // in the language the app shows.
 func SetThemeNameTaken(name string) string { return In(i18n.Locale()).SetThemeNameTaken(name) }
 
-// SetThemeNameTaken says "“{name}” is a theme of Ghostty’s: choose another name."
+// SetThemeNameTaken says "Ghostty already has a theme named “{name}”. Choose another name."
 // in the language of msgs.
 func (msgs Messages) SetThemeNameTaken(name string) string {
 	return Catalog.Format(msgs.locale, "setThemeNameTaken", map[string]any{"name": name})
@@ -7208,11 +7208,11 @@ func (msgs Messages) SetExplorerFolder() string {
 	return Catalog.Format(msgs.locale, "setExplorerFolder", nil)
 }
 
-// SetExplorerFolderDetail says "What the viewer's header shows of the folder it shows. Fit shows the path, else the name, as the room allows."
+// SetExplorerFolderDetail says "How the viewer's header names its folder. Fit shows the path, or the name when the path doesn't fit."
 // in the language the app shows.
 func SetExplorerFolderDetail() string { return In(i18n.Locale()).SetExplorerFolderDetail() }
 
-// SetExplorerFolderDetail says "What the viewer's header shows of the folder it shows. Fit shows the path, else the name, as the room allows."
+// SetExplorerFolderDetail says "How the viewer's header names its folder. Fit shows the path, or the name when the path doesn't fit."
 // in the language of msgs.
 func (msgs Messages) SetExplorerFolderDetail() string {
 	return Catalog.Format(msgs.locale, "setExplorerFolderDetail", nil)
@@ -7268,11 +7268,11 @@ func (msgs Messages) SetPaneFolder() string {
 	return Catalog.Format(msgs.locale, "setPaneFolder", nil)
 }
 
-// SetPaneFolderDetail says "What a pane's header shows of the folder it works in. Fit shows the path, else the name, as the room allows."
+// SetPaneFolderDetail says "How a pane's header names the folder it works in. Fit shows the path, or the name when the path doesn't fit."
 // in the language the app shows.
 func SetPaneFolderDetail() string { return In(i18n.Locale()).SetPaneFolderDetail() }
 
-// SetPaneFolderDetail says "What a pane's header shows of the folder it works in. Fit shows the path, else the name, as the room allows."
+// SetPaneFolderDetail says "How a pane's header names the folder it works in. Fit shows the path, or the name when the path doesn't fit."
 // in the language of msgs.
 func (msgs Messages) SetPaneFolderDetail() string {
 	return Catalog.Format(msgs.locale, "setPaneFolderDetail", nil)
@@ -7388,11 +7388,11 @@ func (msgs Messages) SetEditor() string {
 	return Catalog.Format(msgs.locale, "setEditor", nil)
 }
 
-// SetEditorDetail says "What Open in Editor runs, as code or zed. Empty uses the system's app."
+// SetEditorDetail says "The command Open in Editor runs, such as code or zed. Leave it empty to use the system's default app."
 // in the language the app shows.
 func SetEditorDetail() string { return In(i18n.Locale()).SetEditorDetail() }
 
-// SetEditorDetail says "What Open in Editor runs, as code or zed. Empty uses the system's app."
+// SetEditorDetail says "The command Open in Editor runs, such as code or zed. Leave it empty to use the system's default app."
 // in the language of msgs.
 func (msgs Messages) SetEditorDetail() string {
 	return Catalog.Format(msgs.locale, "setEditorDetail", nil)
@@ -7528,11 +7528,11 @@ func (msgs Messages) FilesFilter() string {
 	return Catalog.Format(msgs.locale, "filesFilter", nil)
 }
 
-// FilesFilterTip says "Finds files and folders by name in all of the folder, or by path with a slash, as src/main. Enter or Down opens the f…"
+// FilesFilterTip says "Find files and folders by name anywhere in the folder, or by path with a slash, such as src/main. Enter or Down opens…"
 // in the language the app shows.
 func FilesFilterTip() string { return In(i18n.Locale()).FilesFilterTip() }
 
-// FilesFilterTip says "Finds files and folders by name in all of the folder, or by path with a slash, as src/main. Enter or Down opens the f…"
+// FilesFilterTip says "Find files and folders by name anywhere in the folder, or by path with a slash, such as src/main. Enter or Down opens…"
 // in the language of msgs.
 func (msgs Messages) FilesFilterTip() string {
 	return Catalog.Format(msgs.locale, "filesFilterTip", nil)
@@ -7558,21 +7558,21 @@ func (msgs Messages) FilesNoMatch(query string) string {
 	return Catalog.Format(msgs.locale, "filesNoMatch", map[string]any{"query": query})
 }
 
-// FilesCantFind says "Can't search the folder"
+// FilesCantFind says "Couldn't search the folder"
 // in the language the app shows.
 func FilesCantFind() string { return In(i18n.Locale()).FilesCantFind() }
 
-// FilesCantFind says "Can't search the folder"
+// FilesCantFind says "Couldn't search the folder"
 // in the language of msgs.
 func (msgs Messages) FilesCantFind() string {
 	return Catalog.Format(msgs.locale, "filesCantFind", nil)
 }
 
-// FilesMoreMatches says "More match than show. Type more of the name."
+// FilesMoreMatches says "More files match than fit here. Type more of the name."
 // in the language the app shows.
 func FilesMoreMatches() string { return In(i18n.Locale()).FilesMoreMatches() }
 
-// FilesMoreMatches says "More match than show. Type more of the name."
+// FilesMoreMatches says "More files match than fit here. Type more of the name."
 // in the language of msgs.
 func (msgs Messages) FilesMoreMatches() string {
 	return Catalog.Format(msgs.locale, "filesMoreMatches", nil)
@@ -7618,13 +7618,13 @@ func (msgs Messages) FilesConfirmCloseTitle() string {
 	return Catalog.Format(msgs.locale, "filesConfirmCloseTitle", nil)
 }
 
-// FilesConfirmCloseDetail says "Your edits to {file} aren't saved, and go with the pane."
+// FilesConfirmCloseDetail says "Your edits to {file} aren't saved. Closing the pane discards them."
 // in the language the app shows.
 func FilesConfirmCloseDetail(file string) string {
 	return In(i18n.Locale()).FilesConfirmCloseDetail(file)
 }
 
-// FilesConfirmCloseDetail says "Your edits to {file} aren't saved, and go with the pane."
+// FilesConfirmCloseDetail says "Your edits to {file} aren't saved. Closing the pane discards them."
 // in the language of msgs.
 func (msgs Messages) FilesConfirmCloseDetail(file string) string {
 	return Catalog.Format(msgs.locale, "filesConfirmCloseDetail", map[string]any{"file": file})
@@ -7660,11 +7660,11 @@ func (msgs Messages) FilesNewTerminal() string {
 	return Catalog.Format(msgs.locale, "filesNewTerminal", nil)
 }
 
-// FilesNotInTree says "{path} isn't in the folder the Files view shows"
+// FilesNotInTree says "{path} is outside the folder that Files shows"
 // in the language the app shows.
 func FilesNotInTree(path string) string { return In(i18n.Locale()).FilesNotInTree(path) }
 
-// FilesNotInTree says "{path} isn't in the folder the Files view shows"
+// FilesNotInTree says "{path} is outside the folder that Files shows"
 // in the language of msgs.
 func (msgs Messages) FilesNotInTree(path string) string {
 	return Catalog.Format(msgs.locale, "filesNotInTree", map[string]any{"path": path})
@@ -7680,11 +7680,11 @@ func (msgs Messages) FilesNew() string {
 	return Catalog.Format(msgs.locale, "filesNew", nil)
 }
 
-// FilesNewTip says "The file isn't there yet: saving it makes it"
+// FilesNewTip says "This file doesn't exist yet. Saving creates it."
 // in the language the app shows.
 func FilesNewTip() string { return In(i18n.Locale()).FilesNewTip() }
 
-// FilesNewTip says "The file isn't there yet: saving it makes it"
+// FilesNewTip says "This file doesn't exist yet. Saving creates it."
 // in the language of msgs.
 func (msgs Messages) FilesNewTip() string {
 	return Catalog.Format(msgs.locale, "filesNewTip", nil)
@@ -7780,11 +7780,11 @@ func (msgs Messages) SetCommitMessage() string {
 	return Catalog.Format(msgs.locale, "setCommitMessage", nil)
 }
 
-// SetCommitMessageDetail says "Runs in your shell, with the prompt on its standard input; '{session}' becomes the pane agent's conversation ID, to f…"
+// SetCommitMessageDetail says "The command that writes commit messages. It runs in your shell and reads the prompt on standard input. '{session}' be…"
 // in the language the app shows.
 func SetCommitMessageDetail() string { return In(i18n.Locale()).SetCommitMessageDetail() }
 
-// SetCommitMessageDetail says "Runs in your shell, with the prompt on its standard input; '{session}' becomes the pane agent's conversation ID, to f…"
+// SetCommitMessageDetail says "The command that writes commit messages. It runs in your shell and reads the prompt on standard input. '{session}' be…"
 // in the language of msgs.
 func (msgs Messages) SetCommitMessageDetail() string {
 	return Catalog.Format(msgs.locale, "setCommitMessageDetail", nil)
@@ -9680,11 +9680,11 @@ func (msgs Messages) RebaseBody() string {
 	return Catalog.Format(msgs.locale, "rebaseBody", nil)
 }
 
-// RebaseKeepMessage says "OK"
+// RebaseKeepMessage says "Use Message"
 // in the language the app shows.
 func RebaseKeepMessage() string { return In(i18n.Locale()).RebaseKeepMessage() }
 
-// RebaseKeepMessage says "OK"
+// RebaseKeepMessage says "Use Message"
 // in the language of msgs.
 func (msgs Messages) RebaseKeepMessage() string {
 	return Catalog.Format(msgs.locale, "rebaseKeepMessage", nil)
@@ -9770,11 +9770,11 @@ func (msgs Messages) GitSessionHereTitle() string {
 	return Catalog.Format(msgs.locale, "gitSessionHereTitle", nil)
 }
 
-// HistoryCantRead says "Can't read the history"
+// HistoryCantRead says "Couldn't read the history"
 // in the language the app shows.
 func HistoryCantRead() string { return In(i18n.Locale()).HistoryCantRead() }
 
-// HistoryCantRead says "Can't read the history"
+// HistoryCantRead says "Couldn't read the history"
 // in the language of msgs.
 func (msgs Messages) HistoryCantRead() string {
 	return Catalog.Format(msgs.locale, "historyCantRead", nil)
@@ -9970,11 +9970,11 @@ func (msgs Messages) HistoryDropTitle() string {
 	return Catalog.Format(msgs.locale, "historyDropTitle", nil)
 }
 
-// HistoryDropDetail says "“{message}” is lost."
+// HistoryDropDetail says "This deletes the stash entry “{message}”."
 // in the language the app shows.
 func HistoryDropDetail(message string) string { return In(i18n.Locale()).HistoryDropDetail(message) }
 
-// HistoryDropDetail says "“{message}” is lost."
+// HistoryDropDetail says "This deletes the stash entry “{message}”."
 // in the language of msgs.
 func (msgs Messages) HistoryDropDetail(message string) string {
 	return Catalog.Format(msgs.locale, "historyDropDetail", map[string]any{"message": message})
@@ -10264,11 +10264,11 @@ func (msgs Messages) SearchPlaceholder() string {
 	return Catalog.Format(msgs.locale, "searchPlaceholder", nil)
 }
 
-// SearchTip says "Finds the agents' conversations by what was said in them, their titles and folders. Narrow it with agent:codex, dir:k…"
+// SearchTip says "Find agent conversations by what was said in them, their titles and their folders. Narrow the search with agent:codex…"
 // in the language the app shows.
 func SearchTip() string { return In(i18n.Locale()).SearchTip() }
 
-// SearchTip says "Finds the agents' conversations by what was said in them, their titles and folders. Narrow it with agent:codex, dir:k…"
+// SearchTip says "Find agent conversations by what was said in them, their titles and their folders. Narrow the search with agent:codex…"
 // in the language of msgs.
 func (msgs Messages) SearchTip() string {
 	return Catalog.Format(msgs.locale, "searchTip", nil)
@@ -10294,11 +10294,11 @@ func (msgs Messages) SearchIndexing(done int, todo int) string {
 	return Catalog.Format(msgs.locale, "searchIndexing", map[string]any{"done": done, "todo": todo})
 }
 
-// SearchNoMatches says "No conversation has that"
+// SearchNoMatches says "No conversations match"
 // in the language the app shows.
 func SearchNoMatches() string { return In(i18n.Locale()).SearchNoMatches() }
 
-// SearchNoMatches says "No conversation has that"
+// SearchNoMatches says "No conversations match"
 // in the language of msgs.
 func (msgs Messages) SearchNoMatches() string {
 	return Catalog.Format(msgs.locale, "searchNoMatches", nil)
@@ -10374,11 +10374,11 @@ func (msgs Messages) SetResumeCommands() string {
 	return Catalog.Format(msgs.locale, "setResumeCommands", nil)
 }
 
-// SetResumeCommandsDetail says "Runs in your shell, as cc --resume '{session}', where '{session}' becomes the conversation's ID. Empty uses the agent…"
+// SetResumeCommandsDetail says "The command that resumes an agent's conversation, such as cc --resume '{session}'. It runs in your shell, and '{sessi…"
 // in the language the app shows.
 func SetResumeCommandsDetail() string { return In(i18n.Locale()).SetResumeCommandsDetail() }
 
-// SetResumeCommandsDetail says "Runs in your shell, as cc --resume '{session}', where '{session}' becomes the conversation's ID. Empty uses the agent…"
+// SetResumeCommandsDetail says "The command that resumes an agent's conversation, such as cc --resume '{session}'. It runs in your shell, and '{sessi…"
 // in the language of msgs.
 func (msgs Messages) SetResumeCommandsDetail() string {
 	return Catalog.Format(msgs.locale, "setResumeCommandsDetail", nil)
@@ -10414,11 +10414,11 @@ func (msgs Messages) ActionShowSearch() string {
 	return Catalog.Format(msgs.locale, "actionShowSearch", nil)
 }
 
-// GoToFileNoFolder says "No folder to find files in: open a session in one"
+// GoToFileNoFolder says "No folder to find files in. Open a session in a folder first."
 // in the language the app shows.
 func GoToFileNoFolder() string { return In(i18n.Locale()).GoToFileNoFolder() }
 
-// GoToFileNoFolder says "No folder to find files in: open a session in one"
+// GoToFileNoFolder says "No folder to find files in. Open a session in a folder first."
 // in the language of msgs.
 func (msgs Messages) GoToFileNoFolder() string {
 	return Catalog.Format(msgs.locale, "goToFileNoFolder", nil)
@@ -10444,11 +10444,11 @@ func (msgs Messages) GoToFileHint(keys string) string {
 	return Catalog.Format(msgs.locale, "goToFileHint", map[string]any{"keys": keys})
 }
 
-// GoToFileMore says "{count, plural, one {Only # file is listed} other {Only the first # files are listed}}: type to find among them"
+// GoToFileMore says "{count, plural, one {Only # file is listed} other {Only the first # files are listed}}. Type to search among them."
 // in the language the app shows.
 func GoToFileMore(count int) string { return In(i18n.Locale()).GoToFileMore(count) }
 
-// GoToFileMore says "{count, plural, one {Only # file is listed} other {Only the first # files are listed}}: type to find among them"
+// GoToFileMore says "{count, plural, one {Only # file is listed} other {Only the first # files are listed}}. Type to search among them."
 // in the language of msgs.
 func (msgs Messages) GoToFileMore(count int) string {
 	return Catalog.Format(msgs.locale, "goToFileMore", map[string]any{"count": count})
@@ -10586,11 +10586,11 @@ func (msgs Messages) SearchNone() string {
 	return Catalog.Format(msgs.locale, "searchNone", nil)
 }
 
-// SearchNoneDetail says "No line of the folder's files has {query}."
+// SearchNoneDetail says "No file in the folder contains {query}."
 // in the language the app shows.
 func SearchNoneDetail(query string) string { return In(i18n.Locale()).SearchNoneDetail(query) }
 
-// SearchNoneDetail says "No line of the folder's files has {query}."
+// SearchNoneDetail says "No file in the folder contains {query}."
 // in the language of msgs.
 func (msgs Messages) SearchNoneDetail(query string) string {
 	return Catalog.Format(msgs.locale, "searchNoneDetail", map[string]any{"query": query})
@@ -10606,11 +10606,11 @@ func (msgs Messages) ReviewComment() string {
 	return Catalog.Format(msgs.locale, "reviewComment", nil)
 }
 
-// ReviewCommentTip says "Comment on the lines selected of this change, or on all of it, for the agent to address"
+// ReviewCommentTip says "Comment on the selected lines of this change, or on the whole change, for the agent to address"
 // in the language the app shows.
 func ReviewCommentTip() string { return In(i18n.Locale()).ReviewCommentTip() }
 
-// ReviewCommentTip says "Comment on the lines selected of this change, or on all of it, for the agent to address"
+// ReviewCommentTip says "Comment on the selected lines of this change, or on the whole change, for the agent to address"
 // in the language of msgs.
 func (msgs Messages) ReviewCommentTip() string {
 	return Catalog.Format(msgs.locale, "reviewCommentTip", nil)
@@ -10728,11 +10728,11 @@ func (msgs Messages) ReviewDiscardTitle(count int) string {
 	return Catalog.Format(msgs.locale, "reviewDiscardTitle", map[string]any{"count": count})
 }
 
-// ReviewDiscardDetail says "The agent won't get them."
+// ReviewDiscardDetail says "Nothing is sent to the agent."
 // in the language the app shows.
 func ReviewDiscardDetail() string { return In(i18n.Locale()).ReviewDiscardDetail() }
 
-// ReviewDiscardDetail says "The agent won't get them."
+// ReviewDiscardDetail says "Nothing is sent to the agent."
 // in the language of msgs.
 func (msgs Messages) ReviewDiscardDetail() string {
 	return Catalog.Format(msgs.locale, "reviewDiscardDetail", nil)
@@ -10768,21 +10768,21 @@ func (msgs Messages) ReviewSend() string {
 	return Catalog.Format(msgs.locale, "reviewSend", nil)
 }
 
-// ReviewSendTip says "Paste the comments as one prompt in the pane of the agent in this worktree, and send it"
+// ReviewSendTip says "Send the comments as one prompt to the agent in this worktree"
 // in the language the app shows.
 func ReviewSendTip() string { return In(i18n.Locale()).ReviewSendTip() }
 
-// ReviewSendTip says "Paste the comments as one prompt in the pane of the agent in this worktree, and send it"
+// ReviewSendTip says "Send the comments as one prompt to the agent in this worktree"
 // in the language of msgs.
 func (msgs Messages) ReviewSendTip() string {
 	return Catalog.Format(msgs.locale, "reviewSendTip", nil)
 }
 
-// ReviewNoAgent says "No agent works in this worktree"
+// ReviewNoAgent says "No agent is running in this worktree"
 // in the language the app shows.
 func ReviewNoAgent() string { return In(i18n.Locale()).ReviewNoAgent() }
 
-// ReviewNoAgent says "No agent works in this worktree"
+// ReviewNoAgent says "No agent is running in this worktree"
 // in the language of msgs.
 func (msgs Messages) ReviewNoAgent() string {
 	return Catalog.Format(msgs.locale, "reviewNoAgent", nil)
@@ -10868,11 +10868,11 @@ func (msgs Messages) SetPRPromptDetail() string {
 	return Catalog.Format(msgs.locale, "setPRPromptDetail", nil)
 }
 
-// SetReviewPromptDetail says "What the agent reviewing a pull request is asked. A repository's setup, in the Review tab, can replace these prompts."
+// SetReviewPromptDetail says "What Kero asks an agent that reviews a pull request. A repository's own setup, in the Review tab, can replace these p…"
 // in the language the app shows.
 func SetReviewPromptDetail() string { return In(i18n.Locale()).SetReviewPromptDetail() }
 
-// SetReviewPromptDetail says "What the agent reviewing a pull request is asked. A repository's setup, in the Review tab, can replace these prompts."
+// SetReviewPromptDetail says "What Kero asks an agent that reviews a pull request. A repository's own setup, in the Review tab, can replace these p…"
 // in the language of msgs.
 func (msgs Messages) SetReviewPromptDetail() string {
 	return Catalog.Format(msgs.locale, "setReviewPromptDetail", nil)
@@ -11300,11 +11300,11 @@ func (msgs Messages) PrsReviewExistingDetail(path string) string {
 	return Catalog.Format(msgs.locale, "prsReviewExistingDetail", map[string]any{"path": path})
 }
 
-// PrsUseExisting says "Its Worktree"
+// PrsUseExisting says "Earlier Worktree"
 // in the language the app shows.
 func PrsUseExisting() string { return In(i18n.Locale()).PrsUseExisting() }
 
-// PrsUseExisting says "Its Worktree"
+// PrsUseExisting says "Earlier Worktree"
 // in the language of msgs.
 func (msgs Messages) PrsUseExisting() string {
 	return Catalog.Format(msgs.locale, "prsUseExisting", nil)
@@ -11422,13 +11422,13 @@ func (msgs Messages) PrsRemoveWorktreeTitle(number int) string {
 	return Catalog.Format(msgs.locale, "prsRemoveWorktreeTitle", map[string]any{"number": number})
 }
 
-// PrsRemoveWorktreeDetail says "Its folder {path} goes. Its branch {branch} goes too, unless it has commits that aren't on a remote."
+// PrsRemoveWorktreeDetail says "This deletes the folder {path}. The branch {branch} is deleted too, unless it has commits that aren't on a remote."
 // in the language the app shows.
 func PrsRemoveWorktreeDetail(path string, branch string) string {
 	return In(i18n.Locale()).PrsRemoveWorktreeDetail(path, branch)
 }
 
-// PrsRemoveWorktreeDetail says "Its folder {path} goes. Its branch {branch} goes too, unless it has commits that aren't on a remote."
+// PrsRemoveWorktreeDetail says "This deletes the folder {path}. The branch {branch} is deleted too, unless it has commits that aren't on a remote."
 // in the language of msgs.
 func (msgs Messages) PrsRemoveWorktreeDetail(path string, branch string) string {
 	return Catalog.Format(msgs.locale, "prsRemoveWorktreeDetail", map[string]any{"path": path, "branch": branch})
@@ -11626,11 +11626,11 @@ func (msgs Messages) PrsSetupCommand() string {
 	return Catalog.Format(msgs.locale, "prsSetupCommand", nil)
 }
 
-// PrsSetupCommandHint says "Kero gives the agent the prompt as one argument: in place of '{prompt}' in the command, else after it. The pull reque…"
+// PrsSetupCommandHint says "Kero passes the prompt to the agent as one argument: in place of '{prompt}' in the command, or at its end. The pull r…"
 // in the language the app shows.
 func PrsSetupCommandHint() string { return In(i18n.Locale()).PrsSetupCommandHint() }
 
-// PrsSetupCommandHint says "Kero gives the agent the prompt as one argument: in place of '{prompt}' in the command, else after it. The pull reque…"
+// PrsSetupCommandHint says "Kero passes the prompt to the agent as one argument: in place of '{prompt}' in the command, or at its end. The pull r…"
 // in the language of msgs.
 func (msgs Messages) PrsSetupCommandHint() string {
 	return Catalog.Format(msgs.locale, "prsSetupCommandHint", nil)
@@ -11666,11 +11666,11 @@ func (msgs Messages) PrsSetupPlaceholders() string {
 	return Catalog.Format(msgs.locale, "prsSetupPlaceholders", nil)
 }
 
-// PrsSetupGlobal says "A prompt left as it is follows the one in Settings › Git."
+// PrsSetupGlobal says "Leave a prompt unchanged to use the one in Settings › Git."
 // in the language the app shows.
 func PrsSetupGlobal() string { return In(i18n.Locale()).PrsSetupGlobal() }
 
-// PrsSetupGlobal says "A prompt left as it is follows the one in Settings › Git."
+// PrsSetupGlobal says "Leave a prompt unchanged to use the one in Settings › Git."
 // in the language of msgs.
 func (msgs Messages) PrsSetupGlobal() string {
 	return Catalog.Format(msgs.locale, "prsSetupGlobal", nil)
@@ -12232,11 +12232,11 @@ func (msgs Messages) PrsStartingDraft() string {
 	return Catalog.Format(msgs.locale, "prsStartingDraft", nil)
 }
 
-// PrsStartDraftTip says "Start a draft review without an agent, for comments added here or with kero pr --pr"
+// PrsStartDraftTip says "Start a draft review without an agent. Add comments here, or with kero pr comment."
 // in the language the app shows.
 func PrsStartDraftTip() string { return In(i18n.Locale()).PrsStartDraftTip() }
 
-// PrsStartDraftTip says "Start a draft review without an agent, for comments added here or with kero pr --pr"
+// PrsStartDraftTip says "Start a draft review without an agent. Add comments here, or with kero pr comment."
 // in the language of msgs.
 func (msgs Messages) PrsStartDraftTip() string {
 	return Catalog.Format(msgs.locale, "prsStartDraftTip", nil)
@@ -12262,11 +12262,11 @@ func (msgs Messages) PrsDraftOld() string {
 	return Catalog.Format(msgs.locale, "prsDraftOld", nil)
 }
 
-// PrsSummary says "Summary (Markdown), the review's text on GitHub"
+// PrsSummary says "Summary for GitHub (Markdown)"
 // in the language the app shows.
 func PrsSummary() string { return In(i18n.Locale()).PrsSummary() }
 
-// PrsSummary says "Summary (Markdown), the review's text on GitHub"
+// PrsSummary says "Summary for GitHub (Markdown)"
 // in the language of msgs.
 func (msgs Messages) PrsSummary() string {
 	return Catalog.Format(msgs.locale, "prsSummary", nil)
@@ -12614,11 +12614,11 @@ func (msgs Messages) HistoryWorktreeRemoveBranch() string {
 	return Catalog.Format(msgs.locale, "historyWorktreeRemoveBranch", nil)
 }
 
-// HistoryWorktreeInUse says "Close {names} first: it works in this worktree."
+// HistoryWorktreeInUse says "Close the sessions that use this worktree first: {names}"
 // in the language the app shows.
 func HistoryWorktreeInUse(names string) string { return In(i18n.Locale()).HistoryWorktreeInUse(names) }
 
-// HistoryWorktreeInUse says "Close {names} first: it works in this worktree."
+// HistoryWorktreeInUse says "Close the sessions that use this worktree first: {names}"
 // in the language of msgs.
 func (msgs Messages) HistoryWorktreeInUse(names string) string {
 	return Catalog.Format(msgs.locale, "historyWorktreeInUse", map[string]any{"names": names})
@@ -12636,61 +12636,61 @@ func (msgs Messages) HistoryWorktreeRemoveTitle(name string) string {
 	return Catalog.Format(msgs.locale, "historyWorktreeRemoveTitle", map[string]any{"name": name})
 }
 
-// HistoryWorktreeRemoveDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost. Its branch stays, with its comm…"
+// HistoryWorktreeRemoveDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost. The branch stays, with its comm…"
 // in the language the app shows.
 func HistoryWorktreeRemoveDirty(count int, path string) string {
 	return In(i18n.Locale()).HistoryWorktreeRemoveDirty(count, path)
 }
 
-// HistoryWorktreeRemoveDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost. Its branch stays, with its comm…"
+// HistoryWorktreeRemoveDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost. The branch stays, with its comm…"
 // in the language of msgs.
 func (msgs Messages) HistoryWorktreeRemoveDirty(count int, path string) string {
 	return Catalog.Format(msgs.locale, "historyWorktreeRemoveDirty", map[string]any{"count": count, "path": path})
 }
 
-// HistoryWorktreeRemoveUnpushed says "{count, plural, one {# commit of {branch} is} other {# commits of {branch} are}} on no remote. Its folder goes, its b…"
+// HistoryWorktreeRemoveUnpushed says "{count, plural, one {# commit of {branch} isn't} other {# commits of {branch} aren't}} on a remote. Removing the work…"
 // in the language the app shows.
 func HistoryWorktreeRemoveUnpushed(count int, branch string) string {
 	return In(i18n.Locale()).HistoryWorktreeRemoveUnpushed(count, branch)
 }
 
-// HistoryWorktreeRemoveUnpushed says "{count, plural, one {# commit of {branch} is} other {# commits of {branch} are}} on no remote. Its folder goes, its b…"
+// HistoryWorktreeRemoveUnpushed says "{count, plural, one {# commit of {branch} isn't} other {# commits of {branch} aren't}} on a remote. Removing the work…"
 // in the language of msgs.
 func (msgs Messages) HistoryWorktreeRemoveUnpushed(count int, branch string) string {
 	return Catalog.Format(msgs.locale, "historyWorktreeRemoveUnpushed", map[string]any{"count": count, "branch": branch})
 }
 
-// HistoryWorktreeRemoveSafe says "Its folder {path} goes. Its branch {branch} is pushed or merged, so nothing is lost; it stays unless you remove it too."
+// HistoryWorktreeRemoveSafe says "This deletes the folder {path}. The branch {branch} stays. It's pushed or merged, so you can also remove it without l…"
 // in the language the app shows.
 func HistoryWorktreeRemoveSafe(path string, branch string) string {
 	return In(i18n.Locale()).HistoryWorktreeRemoveSafe(path, branch)
 }
 
-// HistoryWorktreeRemoveSafe says "Its folder {path} goes. Its branch {branch} is pushed or merged, so nothing is lost; it stays unless you remove it too."
+// HistoryWorktreeRemoveSafe says "This deletes the folder {path}. The branch {branch} stays. It's pushed or merged, so you can also remove it without l…"
 // in the language of msgs.
 func (msgs Messages) HistoryWorktreeRemoveSafe(path string, branch string) string {
 	return Catalog.Format(msgs.locale, "historyWorktreeRemoveSafe", map[string]any{"path": path, "branch": branch})
 }
 
-// HistoryWorktreeRemoveBranchDetail says "Its folder {path} goes, and its branch {branch}, which git deletes only if it's merged."
+// HistoryWorktreeRemoveBranchDetail says "This deletes the folder {path} and the branch {branch}. Git deletes the branch only if it's merged."
 // in the language the app shows.
 func HistoryWorktreeRemoveBranchDetail(path string, branch string) string {
 	return In(i18n.Locale()).HistoryWorktreeRemoveBranchDetail(path, branch)
 }
 
-// HistoryWorktreeRemoveBranchDetail says "Its folder {path} goes, and its branch {branch}, which git deletes only if it's merged."
+// HistoryWorktreeRemoveBranchDetail says "This deletes the folder {path} and the branch {branch}. Git deletes the branch only if it's merged."
 // in the language of msgs.
 func (msgs Messages) HistoryWorktreeRemoveBranchDetail(path string, branch string) string {
 	return Catalog.Format(msgs.locale, "historyWorktreeRemoveBranchDetail", map[string]any{"path": path, "branch": branch})
 }
 
-// HistoryWorktreeRemoveDetail says "Its folder {path} goes."
+// HistoryWorktreeRemoveDetail says "This deletes the folder {path}."
 // in the language the app shows.
 func HistoryWorktreeRemoveDetail(path string) string {
 	return In(i18n.Locale()).HistoryWorktreeRemoveDetail(path)
 }
 
-// HistoryWorktreeRemoveDetail says "Its folder {path} goes."
+// HistoryWorktreeRemoveDetail says "This deletes the folder {path}."
 // in the language of msgs.
 func (msgs Messages) HistoryWorktreeRemoveDetail(path string) string {
 	return Catalog.Format(msgs.locale, "historyWorktreeRemoveDetail", map[string]any{"path": path})
@@ -12766,11 +12766,11 @@ func (msgs Messages) GitPickOlder(count int, weeks int) string {
 	return Catalog.Format(msgs.locale, "gitPickOlder", map[string]any{"count": count, "weeks": weeks})
 }
 
-// HistoryNotListed says "That commit isn't in the history listed."
+// HistoryNotListed says "That commit isn't in the listed history."
 // in the language the app shows.
 func HistoryNotListed() string { return In(i18n.Locale()).HistoryNotListed() }
 
-// HistoryNotListed says "That commit isn't in the history listed."
+// HistoryNotListed says "That commit isn't in the listed history."
 // in the language of msgs.
 func (msgs Messages) HistoryNotListed() string {
 	return Catalog.Format(msgs.locale, "historyNotListed", nil)
@@ -12786,11 +12786,11 @@ func (msgs Messages) SetBranchMaxAge() string {
 	return Catalog.Format(msgs.locale, "setBranchMaxAge", nil)
 }
 
-// SetBranchMaxAgeDetail says "In the branch switcher, unless the filter finds them"
+// SetBranchMaxAgeDetail says "Hidden in the branch switcher until a search finds them."
 // in the language the app shows.
 func SetBranchMaxAgeDetail() string { return In(i18n.Locale()).SetBranchMaxAgeDetail() }
 
-// SetBranchMaxAgeDetail says "In the branch switcher, unless the filter finds them"
+// SetBranchMaxAgeDetail says "Hidden in the branch switcher until a search finds them."
 // in the language of msgs.
 func (msgs Messages) SetBranchMaxAgeDetail() string {
 	return Catalog.Format(msgs.locale, "setBranchMaxAgeDetail", nil)

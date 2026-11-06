@@ -57,7 +57,7 @@ kero split --file src/main.go
 kero new --file src/main.go     # in a session of its own
 ```
 
-A file that isn't there yet opens empty, marked new, in a folder that is: saving it makes it.
+A file that doesn't exist yet opens empty and marked new, as long as its folder exists. Saving creates it.
 
 Right-click a pane's split button, right or down, and choose **New File** for an empty `untitled.txt` in the pane's folder. Until you type in it, **Open File…** in its header opens a file of your choice in its place.
 
