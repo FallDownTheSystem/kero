@@ -5,6 +5,12 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.6
+
+- History's chosen commit keeps its graph in line with the rows around
+  it in the dark, and its highlight stands off the sidebar's left edge,
+  as off its right. A chosen row in any list no longer moves its text
+
 ## 2.1.34-fork.5
 
 - Customize Theme has a Background glow: the color that lights the
