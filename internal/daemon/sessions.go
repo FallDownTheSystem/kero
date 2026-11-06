@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -262,6 +263,12 @@ func (d *Daemon) startPane(sid string, p proto.CreateParams, dir string) (*pane,
 		// Its folder is the file's, as a shell split from it starts in.
 		info.File, info.Dir, info.Command = file, filepath.Dir(file), nil
 	}
+	if p.Preview {
+		if !info.Editor() || !proto.MarkdownFile(info.File) {
+			return nil, errors.New("only a Markdown file shows a preview")
+		}
+		info.Preview = true
+	}
 	pn, err := newPane(d, sid, info)
 	if err != nil || !pn.info.Terminal() {
 		return pn, err
@@ -342,8 +349,20 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 	return info, nil
 }
 
-// split starts a pane beside another, in its session.
+// split starts a pane beside another, in its session; or, for a file or
+// a page of a local file one of its panes shows already, focuses that
+// pane instead (reuse).
 func (d *Daemon) split(p proto.CreateParams) (proto.Session, error) {
+	var file, page string
+	switch {
+	case p.File != "":
+		var err error
+		if file, err = editorFile(p.File); err != nil {
+			return proto.Session{}, err
+		}
+	case p.URL != "":
+		page, _ = proto.URLFile(proto.BrowserURL(p.URL))
+	}
 	d.mu.Lock()
 	at := d.findPaneLocked(p.Split)
 	var s *session
@@ -355,6 +374,10 @@ func (d *Daemon) split(p proto.CreateParams) (proto.Session, error) {
 	if s == nil || at == nil {
 		d.mu.Unlock()
 		return proto.Session{}, fmt.Errorf("no session or pane %q", p.Split)
+	}
+	if shown := showingLocked(s, file, page); shown != nil {
+		d.mu.Unlock()
+		return d.reuse(s, shown, p.Preview)
 	}
 	dir := at.info.Dir
 	if p.Cols == 0 {
@@ -396,6 +419,66 @@ func (d *Daemon) split(p proto.CreateParams) (proto.Session, error) {
 	d.changed()
 	d.log.Printf("pane %s split from %s", pn.info.ID, atID)
 	return info, nil
+}
+
+// showingLocked returns the pane of a session that shows file, in an
+// editor, or page, a local file in a browser; nil for none, or for
+// neither asked. An agent showing the user a document again, as it
+// changed, is to find it where it was rather than in another split.
+func showingLocked(s *session, file, page string) *pane {
+	if file == "" && page == "" {
+		return nil
+	}
+	for _, pn := range s.panes {
+		pn.mu.Lock()
+		info := pn.info
+		pn.mu.Unlock()
+		if file != "" && info.Editor() && samePath(info.File, file) {
+			return pn
+		}
+		if page != "" && info.Browser() {
+			if shown, ok := proto.URLFile(info.URL); ok && samePath(shown, page) {
+				return pn
+			}
+		}
+	}
+	return nil
+}
+
+// reuse focuses a pane a split asked for again (showingLocked), in its
+// session, showing a Markdown file's preview when asked to; the app
+// reads the file, or reloads the page, as it changes on disk.
+func (d *Daemon) reuse(s *session, pn *pane, preview bool) (proto.Session, error) {
+	if preview {
+		if err := pn.setPreview(true); err != nil {
+			return proto.Session{}, err
+		}
+	}
+	d.mu.Lock()
+	if !slices.Contains(d.sessions, s) || !slices.Contains(s.panes, pn) {
+		d.mu.Unlock()
+		return proto.Session{}, errors.New("the pane closed")
+	}
+	id := pn.info.ID
+	s.focus = id
+	if s.zoomed != id {
+		s.zoomed = ""
+	}
+	info := d.sessionInfo(s)
+	d.mu.Unlock()
+	d.changed()
+	d.log.Printf("pane %s shown again", id)
+	return info, nil
+}
+
+// samePath tells whether two absolute paths are of one file, as the
+// system names them: of any case on Windows and macOS.
+func samePath(a, b string) bool {
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
 }
 
 // removePane closes a pane; its session goes with its last pane.

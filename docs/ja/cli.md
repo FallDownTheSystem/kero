@@ -26,6 +26,8 @@ kero new -- npm run dev          # コマンドを実行するセッションを
 kero split --down -- npm test    # このペインの横にペイン
 kero split --url localhost:3000  # ページを表示するブラウザペイン
 kero split --file src/main.go    # ファイルのエディタペイン
+kero split --file plan.md --preview   # Markdown ファイルを表示どおりに
+kero split --url docs/brief.html # ローカルの HTML ページ
 kero new --file notes/plan.md    # 独立したエディタセッション。保存時にファイルを作成
 kero rename api backend          # セッション名を変更
 kero focus backend               # アプリで表示
@@ -43,8 +45,9 @@ kero restart <pane>              # 終了したペインのシェルを再び開
 | `-d`, `--dir <dir>`         | そこで開始する（デフォルト: 現在のディレクトリ） |
 | `-f`, `--focus`             | アプリで表示する                                |
 | `-w`, `--wait`              | コマンドの終了を待ち、その終了ステータスで終了する |
-| `-u`, `--url <url>`         | シェルの代わりに、ページを表示するブラウザを開く |
+| `-u`, `--url <url>`         | シェルの代わりに、ページを表示するブラウザを開く。ローカルファイルのパスならそのファイルを表示 |
 | `--file <path>`             | シェルの代わりに、ファイルのエディタを開く      |
+| `--preview`                 | `--file` の Markdown ファイルを、テキストではなく表示どおりに見せる |
 | `--worktree <branch>`       | 専用の git ワークツリーで、新しいブランチで開始する（[詳しく](./changes.md#sessions-in-their-own-worktree)） |
 | `--base <ref>`              | ワークツリーのブランチの起点（既定: デフォルトブランチ） |
 
@@ -257,6 +260,13 @@ kero do files.show path=src/main.go
 ```
 
 相対パスの `path=` または `dir=` は、`kero do` を実行したディレクトリを基準にします。
+
+`kero do pane.preview` は、エディタペインの Markdown ファイルを表示どおりに見せるか、テキストに戻します: `on`、`off`、どちらも指定しなければ切り替えます。`pane=` で指定したペイン、なければセッションの Markdown ファイルのエディタペインが対象です。`kero split --preview` と同じく kerod が保持するペインの状態を設定するので、リモートコントロールもアプリの起動も不要です。
+
+```sh
+kero do pane.preview on
+kero do pane.preview off pane=4f2a
+```
 
 ## 終了ステータス
 

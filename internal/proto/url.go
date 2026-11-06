@@ -3,6 +3,7 @@ package proto
 import (
 	"net"
 	"net/url"
+	"path/filepath"
 	"strings"
 )
 
@@ -81,6 +82,32 @@ func localHost(host string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified())
+}
+
+// FileURL is the file:// URL of a local file's absolute path, of this
+// system: "C:\docs\a b.html" is "file:///C:/docs/a%20b.html".
+func FileURL(path string) string {
+	p := strings.ReplaceAll(path, `\`, "/")
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p}).String()
+}
+
+// URLFile is the local file a file:// URL names, as FileURL makes them,
+// with the separators of the system it is in; false for any other URL,
+// and for a file of another machine's share.
+func URLFile(raw string) (string, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || !strings.EqualFold(u.Scheme, "file") || u.Host != "" && !strings.EqualFold(u.Host, "localhost") || u.Path == "" {
+		return "", false
+	}
+	p := u.Path
+	// "/C:/docs" is Windows' C:/docs.
+	if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+		p = p[1:]
+	}
+	return filepath.FromSlash(p), true
 }
 
 // URLHost is the host of a URL to show for its page, as "localhost:3000",

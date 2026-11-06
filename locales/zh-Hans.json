@@ -21,6 +21,7 @@
   "actionNewBrowser": "新建浏览器面板",
   "actionOpenLocation": "打开位置…",
   "actionZoomPane": "放大窗格",
+  "actionTogglePreview": "切换 Markdown 预览",
   "actionFind": "查找…",
   "actionFindNext": "查找下一个",
   "actionFindPrevious": "查找上一个",

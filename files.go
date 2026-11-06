@@ -147,6 +147,15 @@ type fileView struct {
 	// which md shows it by.
 	preview bool
 	md      *markdown.Options
+	// told is an editor pane's preview as kerod last had it, which
+	// preview follows as it changes (kero do pane.preview).
+	told bool
+	// mod and size are the file's on disk as it was last read, which an
+	// editor pane checks the disk against every few seconds (checked),
+	// for what another program wrote that no worktree's status tells of.
+	mod, size int64
+	checked   time.Time
+	checking  bool
 	// goTo is where the caret goes once the text shows (openAt).
 	goTo *editor.Pos
 }
@@ -165,13 +174,7 @@ func (fv *fileView) stale(stamp string, working bool) bool {
 }
 
 // markdownFile tells a file of Markdown, which previews, by its name.
-func markdownFile(name string) bool {
-	switch strings.ToLower(filepath.Ext(name)) {
-	case ".md", ".markdown", ".mdown", ".mkd":
-		return true
-	}
-	return false
-}
+func markdownFile(name string) bool { return proto.MarkdownFile(name) }
 
 // filesKey keys a path of a host.
 func filesKey(h *host, p string) string { return h.name + "\x00" + p }
@@ -816,7 +819,7 @@ func (a *App) fileActions(c *ui.Context, pal *palette, fv *fileView) {
 		}
 		b.Children(func() { ui.Icon(c, previewIcon).Size(16, 16) })
 		if b.Clicked() {
-			fv.preview = !fv.preview
+			a.previewFile(fv, !fv.preview)
 		}
 	}
 	if fv.st != nil {
@@ -841,7 +844,7 @@ func (a *App) fileActionsMenu(m *ui.Menu, fv *fileView) {
 		}
 	}
 	if fv.st != nil && markdownFile(fv.path) && m.Item(locales.FilesPreviewMarkdown()).Checked(fv.preview).Chosen() {
-		fv.preview = !fv.preview
+		a.previewFile(fv, !fv.preview)
 	}
 	if fv.st != nil {
 		if a.menuShortcut(m.Item(locales.FilesSmaller()), "text.smaller").Chosen() {
@@ -926,6 +929,7 @@ func (a *App) loadFile(cl *client.Client, fv *fileView, stamp string) {
 				return
 			}
 			fv.err = ""
+			fv.mod, fv.size = st.Mod, st.Size
 			fv.absent = fresh && !st.Exists
 			fv.gone = !fv.absent && (!st.Exists || st.Dir)
 			fv.large = !fv.gone && st.Size > limit
