@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/plugins/terminal"
@@ -14,12 +15,52 @@ func TestThemeFileRoundTrip(t *testing.T) {
 	th := editable(*darkTermTheme)
 	th.Palette[3] = ui.RGBA(10, 20, 30, 0.5) // a picker's translucent color
 	opaque(&th)
-	got, err := terminal.ParseGhosttyTheme(ghosttyThemeFile(&th, "Kero"))
+	got, err := terminal.ParseGhosttyTheme(ghosttyThemeFile(&th, ui.Color{}, "Kero"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if *got != th {
 		t.Errorf("read back\n%+v\nwant\n%+v", *got, th)
+	}
+}
+
+// A theme's background glow goes in a line Ghostty takes as a comment,
+// which kero reads back; a glow the theme's accent gives anyway isn't
+// written, so the glow follows the accent.
+func TestThemeGlow(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	dir := ghosttyThemesDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	th := editable(*darkTermTheme)
+	glow := ui.Hex("#c0306a")
+	data := ghosttyThemeFile(&th, glow, "Kero")
+	if got, err := terminal.ParseGhosttyTheme(data); err != nil || *got != th {
+		t.Fatalf("the glow's line changed the theme: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "Mine"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := themeGlow("Mine"); got != glow {
+		t.Errorf("glow %v, want %v", got, glow)
+	}
+	if l := lookNamed("Mine", true); l.glow.Stops[0].Color.R != glow.R || l.glow.Stops[0].Color.B != glow.B {
+		t.Errorf("the look glows %v", l.glow.Stops[0].Color)
+	}
+
+	plain := ghosttyThemeFile(&th, themeAccent(&th), "Kero")
+	if strings.Contains(string(plain), glowLine) {
+		t.Errorf("the accent's glow was written:\n%s", plain)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "Plain"), plain, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := themeGlow("Plain"); got.A != 0 {
+		t.Errorf("a theme with no glow line glows %v", got)
+	}
+	if got := themeGlow("Dracula"); got.A != 0 {
+		t.Errorf("a theme of Ghostty's glows %v", got)
 	}
 }
 
@@ -236,6 +277,7 @@ func TestSaveThemeChoosesIt(t *testing.T) {
 		t.Fatalf("draft %+v, want one named Paper Dark", d)
 	}
 	d.th.Background = ui.Hex("#123456")
+	d.glow = ui.Hex("#c0306a")
 	a.saveTheme(d)
 	if a.ss.themeEdit != nil {
 		t.Fatalf("draft kept after saving: %s", a.ss.toast)
@@ -250,5 +292,8 @@ func TestSaveThemeChoosesIt(t *testing.T) {
 	a.editTheme("dark")
 	if a.ss.themeEdit.name != "Paper Dark" || !userTheme("Paper Dark") {
 		t.Errorf("draft named %q, want the theme itself", a.ss.themeEdit.name)
+	}
+	if g := a.ss.themeEdit.glow; g != ui.Hex("#c0306a") {
+		t.Errorf("draft glows %v, want the glow saved", g)
 	}
 }
