@@ -5,6 +5,28 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.1
+
+Upstream 2.1.34 (CHANGELOG.md): **reorder projects** in the sidebar by
+dragging a project's header, from its menu's **Move** (Up, Down, to Top,
+to Bottom), or with `kero projects move`; **Cell width** in Settings ›
+Terminal (`cell-width`) widens or narrows the terminal's columns;
+**Session count** in Settings › General hides the number beside each
+project; your own agents in `agents.toml`; <kbd>Alt</kbd>-click on a
+marked shell prompt moves its cursor; `kerod.log` says why a restored
+pane came back as a shell. MyGo now follows the unreleased commit Kero
+2.1.34 requires (3b9d676), with the fork's MyGo changes on top: it
+brings MyGo's fixes since 0.7.4, among them AltGr typing its character
+in the terminal on Windows (upstream's fix, in place of the fork's own).
+
+- Dragging a project in the sidebar is upstream's now, in place of the
+  fork's: a line shows where it goes, and its menu has **Move** too. The
+  hairlines between projects stay
+- Settings › Terminal's sample is upstream's real terminal, which shows
+  the cell width; pointing at a theme, or editing one, still recolors it
+- Restored editor panes and your own **Resume** commands keep working
+  alongside upstream's notes in `kerod.log`
+
 ## 2.1.33-fork.1
 
 Upstream 2.1.33 (CHANGELOG.md): **Keep computer awake** (Settings ›
