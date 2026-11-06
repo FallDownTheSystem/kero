@@ -631,7 +631,7 @@ func TestNewSessionDialog(t *testing.T) {
 	tt.Frame()
 	tt.Key(0, ui.KeyEnter)
 	tt.Frame()
-	if w.sel.name != "topic" || !w.sel.create || !tt.HasText("Kero makes the branch topic from the default branch") {
+	if w.sel.name != "topic" || !w.sel.create || !tt.HasText("Kero creates the branch topic from the default branch") {
 		t.Fatalf("chose %+v; texts %q", w.sel, tt.Texts())
 	}
 	if err := tt.Click("feat"); err != nil {
