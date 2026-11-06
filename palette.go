@@ -438,9 +438,15 @@ func confirmDialog(c *ui.Context, pal *palette, pending **confirmation) bool {
 	ui.DialogBase(c.Key("confirm"), &cf.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay)
 		width := float32(380)
+		labels, keys := []string{locales.CommonCancel(), cf.action}, []string{"esc", "↩"}
 		if cf.alt != "" {
 			width = 460 // room for a third button
+			labels, keys = append(labels, cf.alt), append(keys, "")
 		}
+		// As wide as its buttons on one line, as a long branch's name makes
+		// them, while the window has room: they wrap only past that.
+		winW, _ := c.Size()
+		width = max(width, min(buttonsWidth(c, labels, keys)+44+1, winW-40))
 		floating(panel.Width(width).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(cf.title)
 		ui.Text(c, cf.title).FontSize(15).FontWeight(650).TextColor(pal.text)
 		ui.Text(c, cf.detail).FontSize(13).TextColor(pal.textMuted).LineHeight(1.4)

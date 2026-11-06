@@ -96,6 +96,22 @@ func dialogButtons(c *ui.Context, fn func()) ui.Element {
 	return ui.Row(c).Gap(8).Wrap().Justify(ui.End).Margin(14, 0, 0, 0).Children(fn)
 }
 
+// buttonsWidth is how wide a row of buttons, as button draws each, is on
+// one line, for a dialog to be as wide; each of keys is its button's,
+// "" for none.
+func buttonsWidth(c *ui.Context, labels, keys []string) float32 {
+	var w float32
+	for i, label := range labels {
+		lw, _ := c.MeasureText(0, ui.Span{Text: label, Size: 13, Weight: 500})
+		w += lw + 28
+		if keys[i] != "" {
+			kw, _ := c.MeasureText(0, ui.Span{Text: keys[i], Size: 12})
+			w += kw + 8
+		}
+	}
+	return w + 8*float32(len(labels)-1)
+}
+
 // button is kero's button: a raised surface, or the accent's for the
 // primary one, with a label and, optionally, its keys.
 func button(c *ui.Context, key, label, keys string, primary bool, pal *palette) bool {
