@@ -542,10 +542,6 @@ func (a *App) tabButton(c *ui.Context, pal *palette, t sideTabInfo, tab string, 
 	if iconOnly {
 		b.Width(tabIconW).Padding(0)
 	}
-	if pal.dark {
-		// Room for the chosen tab's edge in every tab.
-		b.Border(1, ui.Transparent)
-	}
 	bg, fg := ui.Transparent, pal.textMuted
 	switch {
 	case on:

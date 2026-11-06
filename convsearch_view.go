@@ -294,9 +294,6 @@ func (a *App) hitRow(c *ui.Context, pal *palette, hit *searchHit, chosenRow bool
 	key := hit.key()
 	open := s.open == key
 	card := ui.Column(c.Key("hit-"+key)).Radius(8).Margin(0, 0, 1, 0)
-	if pal.dark {
-		card.Border(1, ui.Transparent)
-	}
 	bg := ui.Transparent
 	switch {
 	case open || chosenRow:

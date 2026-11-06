@@ -269,10 +269,6 @@ type treeKey struct {
 // a session's row is.
 func treeRow(c *ui.Context, pal *palette, depth int, current bool) ui.Element {
 	row := ui.Row(c.Key("row")).Height(26).Padding(0, 8, 0, 6+12*float32(depth)).Gap(5).AlignItems(ui.Center).Radius(7)
-	if pal.dark {
-		// Room for the chosen row's edge in every row.
-		row.Border(1, ui.Transparent)
-	}
 	switch {
 	case current:
 		row.Background(pal.rowSelected)
