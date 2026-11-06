@@ -1266,6 +1266,28 @@ func (msgs Messages) SessionMarkRead() string {
 	return Catalog.Format(msgs.locale, "sessionMarkRead", nil)
 }
 
+// SessionReview says "Review"
+// in the language the app shows.
+func SessionReview() string { return In(i18n.Locale()).SessionReview() }
+
+// SessionReview says "Review"
+// in the language of msgs.
+func (msgs Messages) SessionReview() string {
+	return Catalog.Format(msgs.locale, "sessionReview", nil)
+}
+
+// SessionReviewTip says "Reviews {repo}#{number}"
+// in the language the app shows.
+func SessionReviewTip(number int, repo string) string {
+	return In(i18n.Locale()).SessionReviewTip(number, repo)
+}
+
+// SessionReviewTip says "Reviews {repo}#{number}"
+// in the language of msgs.
+func (msgs Messages) SessionReviewTip(number int, repo string) string {
+	return Catalog.Format(msgs.locale, "sessionReviewTip", map[string]any{"number": number, "repo": repo})
+}
+
 // SessionMoveToProject says "Move to Project"
 // in the language the app shows.
 func SessionMoveToProject() string { return In(i18n.Locale()).SessionMoveToProject() }
@@ -10954,16 +10976,6 @@ func (msgs Messages) PrsFetchFailed(error string) string {
 	return Catalog.Format(msgs.locale, "prsFetchFailed", map[string]any{"error": error})
 }
 
-// PrsAgentLate says "The agent isn't ready. Kero copied the prompt: paste it to the agent."
-// in the language the app shows.
-func PrsAgentLate() string { return In(i18n.Locale()).PrsAgentLate() }
-
-// PrsAgentLate says "The agent isn't ready. Kero copied the prompt: paste it to the agent."
-// in the language of msgs.
-func (msgs Messages) PrsAgentLate() string {
-	return Catalog.Format(msgs.locale, "prsAgentLate", nil)
-}
-
 // PrsReviewStarted says "Reviewing #{number} in the background. The list shows when the review is ready."
 // in the language the app shows.
 func PrsReviewStarted(number int) string { return In(i18n.Locale()).PrsReviewStarted(number) }
@@ -10972,6 +10984,196 @@ func PrsReviewStarted(number int) string { return In(i18n.Locale()).PrsReviewSta
 // in the language of msgs.
 func (msgs Messages) PrsReviewStarted(number int) string {
 	return Catalog.Format(msgs.locale, "prsReviewStarted", map[string]any{"number": number})
+}
+
+// PrsReviewHasAgent says "An agent is reviewing #{number} already."
+// in the language the app shows.
+func PrsReviewHasAgent(number int) string { return In(i18n.Locale()).PrsReviewHasAgent(number) }
+
+// PrsReviewHasAgent says "An agent is reviewing #{number} already."
+// in the language of msgs.
+func (msgs Messages) PrsReviewHasAgent(number int) string {
+	return Catalog.Format(msgs.locale, "prsReviewHasAgent", map[string]any{"number": number})
+}
+
+// PrsReviewHasWorktree says "An earlier review of #{number} left its worktree."
+// in the language the app shows.
+func PrsReviewHasWorktree(number int) string { return In(i18n.Locale()).PrsReviewHasWorktree(number) }
+
+// PrsReviewHasWorktree says "An earlier review of #{number} left its worktree."
+// in the language of msgs.
+func (msgs Messages) PrsReviewHasWorktree(number int) string {
+	return Catalog.Format(msgs.locale, "prsReviewHasWorktree", map[string]any{"number": number})
+}
+
+// PrsReviewExistingDetail says "Kero starts the agent in a new session, in the earlier review's worktree, {path}."
+// in the language the app shows.
+func PrsReviewExistingDetail(path string) string {
+	return In(i18n.Locale()).PrsReviewExistingDetail(path)
+}
+
+// PrsReviewExistingDetail says "Kero starts the agent in a new session, in the earlier review's worktree, {path}."
+// in the language of msgs.
+func (msgs Messages) PrsReviewExistingDetail(path string) string {
+	return Catalog.Format(msgs.locale, "prsReviewExistingDetail", map[string]any{"path": path})
+}
+
+// PrsUseExisting says "Its Worktree"
+// in the language the app shows.
+func PrsUseExisting() string { return In(i18n.Locale()).PrsUseExisting() }
+
+// PrsUseExisting says "Its Worktree"
+// in the language of msgs.
+func (msgs Messages) PrsUseExisting() string {
+	return Catalog.Format(msgs.locale, "prsUseExisting", nil)
+}
+
+// PrsUseNew says "New Worktree"
+// in the language the app shows.
+func PrsUseNew() string { return In(i18n.Locale()).PrsUseNew() }
+
+// PrsUseNew says "New Worktree"
+// in the language of msgs.
+func (msgs Messages) PrsUseNew() string {
+	return Catalog.Format(msgs.locale, "prsUseNew", nil)
+}
+
+// PrsAgents says "Review Agents"
+// in the language the app shows.
+func PrsAgents() string { return In(i18n.Locale()).PrsAgents() }
+
+// PrsAgents says "Review Agents"
+// in the language of msgs.
+func (msgs Messages) PrsAgents() string {
+	return Catalog.Format(msgs.locale, "prsAgents", nil)
+}
+
+// PrsAgent says "Agent"
+// in the language the app shows.
+func PrsAgent() string { return In(i18n.Locale()).PrsAgent() }
+
+// PrsAgent says "Agent"
+// in the language of msgs.
+func (msgs Messages) PrsAgent() string {
+	return Catalog.Format(msgs.locale, "prsAgent", nil)
+}
+
+// PrsOpenAgent says "Open Review Agent"
+// in the language the app shows.
+func PrsOpenAgent() string { return In(i18n.Locale()).PrsOpenAgent() }
+
+// PrsOpenAgent says "Open Review Agent"
+// in the language of msgs.
+func (msgs Messages) PrsOpenAgent() string {
+	return Catalog.Format(msgs.locale, "prsOpenAgent", nil)
+}
+
+// PrsAgentOptions says "Review Agent Options"
+// in the language the app shows.
+func PrsAgentOptions() string { return In(i18n.Locale()).PrsAgentOptions() }
+
+// PrsAgentOptions says "Review Agent Options"
+// in the language of msgs.
+func (msgs Messages) PrsAgentOptions() string {
+	return Catalog.Format(msgs.locale, "prsAgentOptions", nil)
+}
+
+// PrsAgentClosed says "Session closed · {branch}"
+// in the language the app shows.
+func PrsAgentClosed(branch string) string { return In(i18n.Locale()).PrsAgentClosed(branch) }
+
+// PrsAgentClosed says "Session closed · {branch}"
+// in the language of msgs.
+func (msgs Messages) PrsAgentClosed(branch string) string {
+	return Catalog.Format(msgs.locale, "prsAgentClosed", map[string]any{"branch": branch})
+}
+
+// PrsAgentChanged says "{count, plural, one {# changed file} other {# changed files}}"
+// in the language the app shows.
+func PrsAgentChanged(count int) string { return In(i18n.Locale()).PrsAgentChanged(count) }
+
+// PrsAgentChanged says "{count, plural, one {# changed file} other {# changed files}}"
+// in the language of msgs.
+func (msgs Messages) PrsAgentChanged(count int) string {
+	return Catalog.Format(msgs.locale, "prsAgentChanged", map[string]any{"count": count})
+}
+
+// PrsOpenPage says "Show Pull Request"
+// in the language the app shows.
+func PrsOpenPage() string { return In(i18n.Locale()).PrsOpenPage() }
+
+// PrsOpenPage says "Show Pull Request"
+// in the language of msgs.
+func (msgs Messages) PrsOpenPage() string {
+	return Catalog.Format(msgs.locale, "prsOpenPage", nil)
+}
+
+// PrsReviewAgain says "Review Again in Its Worktree…"
+// in the language the app shows.
+func PrsReviewAgain() string { return In(i18n.Locale()).PrsReviewAgain() }
+
+// PrsReviewAgain says "Review Again in Its Worktree…"
+// in the language of msgs.
+func (msgs Messages) PrsReviewAgain() string {
+	return Catalog.Format(msgs.locale, "prsReviewAgain", nil)
+}
+
+// PrsRemoveWorktreeItem says "Remove Worktree…"
+// in the language the app shows.
+func PrsRemoveWorktreeItem() string { return In(i18n.Locale()).PrsRemoveWorktreeItem() }
+
+// PrsRemoveWorktreeItem says "Remove Worktree…"
+// in the language of msgs.
+func (msgs Messages) PrsRemoveWorktreeItem() string {
+	return Catalog.Format(msgs.locale, "prsRemoveWorktreeItem", nil)
+}
+
+// PrsRemoveWorktreeTitle says "Remove the worktree of #{number}?"
+// in the language the app shows.
+func PrsRemoveWorktreeTitle(number int) string {
+	return In(i18n.Locale()).PrsRemoveWorktreeTitle(number)
+}
+
+// PrsRemoveWorktreeTitle says "Remove the worktree of #{number}?"
+// in the language of msgs.
+func (msgs Messages) PrsRemoveWorktreeTitle(number int) string {
+	return Catalog.Format(msgs.locale, "prsRemoveWorktreeTitle", map[string]any{"number": number})
+}
+
+// PrsRemoveWorktreeDetail says "Its folder {path} goes. Its branch {branch} goes too, unless it has commits that aren't on a remote."
+// in the language the app shows.
+func PrsRemoveWorktreeDetail(path string, branch string) string {
+	return In(i18n.Locale()).PrsRemoveWorktreeDetail(path, branch)
+}
+
+// PrsRemoveWorktreeDetail says "Its folder {path} goes. Its branch {branch} goes too, unless it has commits that aren't on a remote."
+// in the language of msgs.
+func (msgs Messages) PrsRemoveWorktreeDetail(path string, branch string) string {
+	return Catalog.Format(msgs.locale, "prsRemoveWorktreeDetail", map[string]any{"path": path, "branch": branch})
+}
+
+// PrsRemoveWorktreeDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost."
+// in the language the app shows.
+func PrsRemoveWorktreeDirty(count int, path string) string {
+	return In(i18n.Locale()).PrsRemoveWorktreeDirty(count, path)
+}
+
+// PrsRemoveWorktreeDirty says "{count, plural, one {# changed file} other {# changed files}} in {path} will be lost."
+// in the language of msgs.
+func (msgs Messages) PrsRemoveWorktreeDirty(count int, path string) string {
+	return Catalog.Format(msgs.locale, "prsRemoveWorktreeDirty", map[string]any{"count": count, "path": path})
+}
+
+// PrsRemoveWorktreeFailed says "Couldn't remove the worktree: {error}"
+// in the language the app shows.
+func PrsRemoveWorktreeFailed(error string) string {
+	return In(i18n.Locale()).PrsRemoveWorktreeFailed(error)
+}
+
+// PrsRemoveWorktreeFailed says "Couldn't remove the worktree: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsRemoveWorktreeFailed(error string) string {
+	return Catalog.Format(msgs.locale, "prsRemoveWorktreeFailed", map[string]any{"error": error})
 }
 
 // PrsReviewing says "Reviewing"
@@ -11142,6 +11344,16 @@ func PrsSetupCommand() string { return In(i18n.Locale()).PrsSetupCommand() }
 // in the language of msgs.
 func (msgs Messages) PrsSetupCommand() string {
 	return Catalog.Format(msgs.locale, "prsSetupCommand", nil)
+}
+
+// PrsSetupCommandHint says "Kero gives the agent the prompt as one argument: in place of '{prompt}' in the command, else after it. The pull reque…"
+// in the language the app shows.
+func PrsSetupCommandHint() string { return In(i18n.Locale()).PrsSetupCommandHint() }
+
+// PrsSetupCommandHint says "Kero gives the agent the prompt as one argument: in place of '{prompt}' in the command, else after it. The pull reque…"
+// in the language of msgs.
+func (msgs Messages) PrsSetupCommandHint() string {
+	return Catalog.Format(msgs.locale, "prsSetupCommandHint", nil)
 }
 
 // PrsSetupPrompt says "Review prompt"

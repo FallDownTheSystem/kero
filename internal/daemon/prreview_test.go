@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"kero/internal/proto"
 )
@@ -116,6 +117,125 @@ func TestPRReviewDraft(t *testing.T) {
 	}
 	if _, err := op(proto.PRReviewParams{Op: "comment", Comment: proto.PRDraftComment{Path: "big.txt", Line: 20, Body: "x"}}); err == nil || !strings.Contains(err.Error(), "--pr") {
 		t.Errorf("a comment after the discard: %v", err)
+	}
+}
+
+// A session started to review a pull request says so, and still does
+// once restored; its agent's draft is found by the session, whose pane's
+// id the draft may no longer have, or by the pull request it reviews.
+func TestReviewSession(t *testing.T) {
+	t.Setenv("KERO_HOME", t.TempDir())
+	d := testDaemon(t)
+	ref := &proto.PRReviewRef{Slug: "Acme/web", Number: 5}
+	s, err := d.create(proto.CreateParams{Dir: t.TempDir(), Review: ref})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.removeSession(s.ID)
+	if s.Review == nil || *s.Review != *ref {
+		t.Errorf("created %+v", s.Review)
+	}
+	plain, err := d.create(proto.CreateParams{Dir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.removeSession(plain.ID)
+	for _, st := range d.state().Sessions {
+		if want := st.ID == s.ID; (st.Review != nil) != want {
+			t.Errorf("session %s review %+v", st.ID, st.Review)
+		}
+	}
+	d.saveState()
+	r := testDaemon(t)
+	r.dir = d.dir
+	r.restore()
+	defer func() {
+		for _, rs := range r.state().Sessions {
+			r.removeSession(rs.ID)
+		}
+	}()
+	for _, st := range r.state().Sessions {
+		if want := st.ID == s.ID; (st.Review != nil) != want || want && *st.Review != *ref {
+			t.Errorf("restored session %s review %+v", st.ID, st.Review)
+		}
+	}
+
+	pane := s.Panes[0].ID
+	if sid, got := d.paneSession(pane); sid != s.ID || got == nil || *got != *ref {
+		t.Errorf("pane's session %q, %+v", sid, got)
+	}
+	// Of an older kerod: the pane's id alone.
+	saveReview(&proto.PRReviewDraft{Repo: "Acme/web", Number: 4, Agent: pane, Comments: []proto.PRDraftComment{}})
+	if dr, err := agentReview(pane, "", nil); err != nil || dr == nil || dr.Number != 4 {
+		t.Errorf("by the pane %+v, %v", dr, err)
+	}
+	// Of a pane gone since, bound to its session, the latest.
+	saveReview(&proto.PRReviewDraft{Repo: "Acme/web", Number: 3, Agent: "gone", Session: s.ID, Comments: []proto.PRDraftComment{}})
+	if dr, err := agentReview(pane, s.ID, nil); err != nil || dr == nil || dr.Number != 3 && dr.Number != 4 {
+		t.Errorf("by the session %+v, %v", dr, err)
+	}
+	if dr, err := agentReview("other", s.ID, nil); err != nil || dr == nil || dr.Number != 3 {
+		t.Errorf("by the session alone %+v, %v", dr, err)
+	}
+	// Of the pull request the session reviews, whatever the case.
+	saveReview(&proto.PRReviewDraft{Repo: "acme/WEB", Number: 5, Comments: []proto.PRDraftComment{}})
+	if dr, err := agentReview("other", "", ref); err != nil || dr == nil || dr.Number != 5 {
+		t.Errorf("by the pull request %+v, %v", dr, err)
+	}
+	if dr, err := agentReview("other", "nope", nil); err != nil || dr != nil {
+		t.Errorf("another's %+v, %v", dr, err)
+	}
+}
+
+// A review's worktree, on a review/pr-<number> branch, lists with its
+// changed files; removing it waits for the session in it to close, and
+// for the user to say so of its changes.
+func TestReviewWorktreesLeft(t *testing.T) {
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	wt := filepath.Join(repo, ".kero", "worktrees", "review-pr-5")
+	runGit(t, repo, "worktree", "add", "-q", "-b", "review/pr-5", wt)
+	runGit(t, repo, "branch", "other")
+	s, err := d.create(proto.CreateParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.removeSession(s.ID)
+	os.WriteFile(filepath.Join(wt, "new.txt"), []byte("x\n"), 0o644)
+	got, err := d.reviewWorktrees(proto.PRWorktreesParams{Pane: s.ID})
+	if err != nil || len(got) != 1 || got[0].Number != 5 || got[0].Branch != "review/pr-5" || !samePath(got[0].Path, wt) || got[0].Files != 1 {
+		t.Fatalf("review worktrees %+v, %v", got, err)
+	}
+	in, err := d.create(proto.CreateParams{Dir: wt})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove := func(force bool) error {
+		return d.removeReviewWorktree(proto.PRWorktreeRemoveParams{Pane: s.ID, Path: got[0].Path, Force: force})
+	}
+	if err := remove(true); err == nil || !strings.Contains(err.Error(), "session") {
+		t.Errorf("removed one a session works in: %v", err)
+	}
+	d.removeSession(in.ID)
+	if err := remove(false); err == nil || !strings.Contains(err.Error(), "1 changed") {
+		t.Errorf("removed one with changes: %v", err)
+	}
+	if err := d.removeReviewWorktree(proto.PRWorktreeRemoveParams{Pane: s.ID, Path: repo, Force: true}); err == nil {
+		t.Error("removed the main checkout")
+	}
+	// Windows lets go of a folder a moment after its shell ends.
+	for i := 0; ; i++ {
+		err := remove(true)
+		if err == nil {
+			break
+		}
+		if i == 30 {
+			t.Fatal(err)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if _, err := os.Stat(wt); !os.IsNotExist(err) {
+		t.Errorf("the worktree stays: %v", err)
 	}
 }
 

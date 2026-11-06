@@ -160,15 +160,11 @@ type App struct {
 	srch    convSearch
 	confirm *confirmation
 	wtAsk   *worktreeAsk
-	// prReview asks the prompt of a review of a pull request, prSetup sets
-	// up a repository's reviews, and launches are the agents started that
-	// are sent their prompts as they are ready (pulls.go).
+	// prReview asks the prompt of a review of a pull request, and prSetup
+	// sets up a repository's reviews (pulls.go).
 	prReview *prReview
 	prSetup  *prSetup
-	launches []*agentLaunch
-	// launchStop stops the ticker that checks launches, while some wait.
-	launchStop chan struct{}
-	poll       prPoll
+	poll     prPoll
 	// endedAll shows all of the sidebar's Ended; skillMissing tells, as
 	// of skillsAt, that no kind of agent has Kero's skill (ended.go).
 	endedAll     bool
@@ -1539,8 +1535,18 @@ func (a *App) endSession(id string, p proto.CloseParams) {
 	for _, p := range s.Panes {
 		a.dropTerm(p.ID)
 	}
+	// A review's worktree, kept, shows in the Review view once it closes.
+	var done func(error)
+	if s.Review != nil {
+		done = func(err error) {
+			if err != nil {
+				a.toast(err.Error())
+			}
+			a.refetchReviewWorktrees()
+		}
+	}
 	a.st.Sessions = slices.DeleteFunc(a.st.Sessions, func(x proto.Session) bool { return x.ID == id })
-	a.callOn(h, "close", p, nil)
+	a.callOn(h, "close", p, done)
 }
 
 // closeAllSessions closes every session of a group, leaving its

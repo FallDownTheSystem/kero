@@ -125,7 +125,9 @@ func shellQuote(shell, s string) string {
 	case "fish":
 		return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) + "'"
 	case "pwsh", "powershell":
-		return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+		// PowerShell ends a quoted string at a typographic single quote
+		// too, as a prompt's "don’t" has: each is doubled as ' is.
+		return "'" + strings.NewReplacer("'", "''", "‘", "‘‘", "’", "’’", "‚", "‚‚", "‛", "‛‛").Replace(s) + "'"
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }

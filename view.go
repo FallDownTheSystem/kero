@@ -268,7 +268,6 @@ func (a *App) view(c *ui.Context) {
 	a.worktreeView(c, pal)
 	a.prReviewView(c, pal)
 	a.prSetupView(c, pal)
-	a.pollLaunches(c)
 	// A preview that showed no more fades in anew next time.
 	if !a.previewShown {
 		a.previewKey = ""
@@ -775,6 +774,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 					name()
+					reviewBadge(c, pal, s)
 					ui.Spacer(c)
 					when()
 					trailing()
@@ -788,6 +788,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 			})
 		} else {
 			name()
+			reviewBadge(c, pal, s)
 			// A branch of its own, as an agent's in a worktree, by the name.
 			if b := offBranch(g); b != "" {
 				ui.Text(c, b).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(3).MinWidth(24).MaxWidth(120)
