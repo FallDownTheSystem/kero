@@ -671,6 +671,8 @@
   "setThemeSaveFailed": "テーマを保存できませんでした: {error}",
   "setThemeBase": "背景とテキスト",
   "setThemeBackground": "背景",
+  "setThemeGlow": "背景の光",
+  "setThemeGlowDetail": "ウィンドウの背景を右上の角から照らす色。",
   "setThemeForeground": "テキスト",
   "setThemeCursorText": "カーソル下のテキスト",
   "setThemeSelection": "選択範囲",
