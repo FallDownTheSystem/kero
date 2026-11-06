@@ -164,7 +164,7 @@ func (d *Daemon) gitOp(p proto.GitOpParams) (proto.GitOpResult, error) {
 	}
 	ctx, progress, done := follow(p.ID, timeout)
 	defer done()
-	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	r, err := d.paramsRepo(ctx, proto.GitParams{Pane: p.Pane, Dir: p.Dir})
 	if err != nil {
 		return proto.GitOpResult{}, err
 	}

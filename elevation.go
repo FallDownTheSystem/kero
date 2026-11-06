@@ -89,6 +89,13 @@ func face(e ui.Element, pal *palette, bg ui.Color) ui.Element {
 	return darkShadow(litEdge(e, pal))
 }
 
+// dialogButtons is a dialog's row of buttons, at its end, which wraps
+// onto more lines when a label, as a long branch's name, leaves no room
+// for them on one.
+func dialogButtons(c *ui.Context, fn func()) ui.Element {
+	return ui.Row(c).Gap(8).Wrap().Justify(ui.End).Margin(14, 0, 0, 0).Children(fn)
+}
+
 // button is kero's button: a raised surface, or the accent's for the
 // primary one, with a label and, optionally, its keys.
 func button(c *ui.Context, key, label, keys string, primary bool, pal *palette) bool {
@@ -112,7 +119,7 @@ func sizedButton(c *ui.Context, key, label, keys string, primary bool, height, r
 }
 
 func sizedButtonAt(c *ui.Context, key, label, keys string, primary bool, height, radius float32, pal *palette, focus bool) bool {
-	b := ui.ButtonBase(c.Key(key)).Height(height).Padding(0, 14).Gap(8).Radius(radius).AlignItems(ui.Center).Label(label)
+	b := ui.ButtonBase(c.Key(key)).Height(height).Padding(0, 14).Gap(8).Radius(radius).AlignItems(ui.Center).MinWidth(0).Label(label)
 	if focus {
 		b.AutoFocus()
 	}
@@ -130,9 +137,9 @@ func sizedButtonAt(c *ui.Context, key, label, keys string, primary bool, height,
 	}
 	face(b, pal, b.AnimateColor("bg", bg, ui.Animation{Duration: 90e6})).TextColor(fg)
 	b.Children(func() {
-		ui.Text(c, label).FontSize(13).FontWeight(500).SingleLine()
+		ui.Text(c, label).FontSize(13).FontWeight(500).SingleLine().Ellipsis("…").MinWidth(0)
 		if keys != "" {
-			ui.Text(c, keys).FontSize(12).TextColor(fg.Alpha(0.55)).SingleLine()
+			ui.Text(c, keys).FontSize(12).TextColor(fg.Alpha(0.55)).SingleLine().Shrink(0)
 		}
 	})
 	return b.Clicked()

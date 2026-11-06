@@ -211,11 +211,17 @@ func (a *App) worktreeMenu(c *ui.Context, m *ui.Menu, s *proto.Session, pane *pr
 		}
 		return
 	}
+	removeWorktreeItems(m, w, func(branch bool) { a.removeWorktree(pane, w, branch) })
+}
+
+// removeWorktreeItems are a worktree's menu's Remove and, on a branch,
+// Remove with Branch, which remove calls with whether the branch goes too.
+func removeWorktreeItems(m *ui.Menu, w proto.GitWorktree, remove func(branch bool)) {
 	if m.Item(locales.WorktreeRemove() + "…").Chosen() {
-		a.removeWorktree(pane, w, false)
+		remove(false)
 	}
 	if w.Branch != "" && m.Item(locales.HistoryWorktreeRemoveBranch()+"…").Disabled(w.State && (w.Files > 0 || w.Unpushed > 0)).Chosen() {
-		a.removeWorktree(pane, w, true)
+		remove(true)
 	}
 }
 
@@ -224,12 +230,20 @@ func (a *App) pushWorktree(pane *proto.Pane, w proto.GitWorktree) {
 	a.push(pane.ID, pane.Git.Root, proto.GitOpParams{Name: w.Branch})
 }
 
-// removeWorktree removes a worktree, and with branch its branch, once the
-// user says so, as what it would lose decides. A worktree a session was
-// made for closes with it, as closing the session asks; one another
-// session works in stays, which the user closes first.
+// removeWorktree removes one of the History view's worktrees, as
+// askRemoveWorktree asks, from the pane's worktree.
 func (a *App) removeWorktree(pane *proto.Pane, w proto.GitWorktree, branch bool) {
-	h := a.hostOf(pane.ID)
+	id, root := pane.ID, pane.Git.Root
+	run := func(p proto.GitOpParams) { a.runGit(id, root, p, locales.WorktreeRemove(), nil) }
+	a.askRemoveWorktree(a.hostOf(id), w, branch, run, func() { a.pushWorktree(pane, w) })
+}
+
+// askRemoveWorktree removes a worktree of h, and with branch its branch,
+// once the user says so, as what it would lose decides; run runs the
+// removal, and push, unless nil, pushes the branch in its place. A
+// worktree a session was made for closes with it, as closing the session
+// asks; one another session works in stays, which the user closes first.
+func (a *App) askRemoveWorktree(h *host, w proto.GitWorktree, branch bool, run func(proto.GitOpParams), push func()) {
 	var users []string
 	for _, s := range a.st.Sessions {
 		if a.hostOf(s.ID) != h {
@@ -250,34 +264,35 @@ func (a *App) removeWorktree(pane *proto.Pane, w proto.GitWorktree, branch bool)
 		a.toast(locales.HistoryWorktreeInUse(strings.Join(users, ", ")))
 		return
 	}
-	id, root := pane.ID, pane.Git.Root
 	name := w.Branch
 	if name == "" {
 		name = h.shortDir(w.Path)
 	}
-	run := func(force, withBranch bool) func() {
+	remove := func(force, withBranch bool) func() {
 		p := proto.GitOpParams{Op: "worktreeRemove", Path: w.Path, Force: force}
 		if withBranch {
 			p.Name = w.Branch
 		}
-		return func() { a.runGit(id, root, p, locales.WorktreeRemove(), nil) }
+		return func() { run(p) }
 	}
 	path := h.shortDir(w.Path)
-	cf := &confirmation{open: true, title: locales.HistoryWorktreeRemoveTitle(menuName(name)), action: locales.WorktreeRemove(), run: run(false, branch)}
+	cf := &confirmation{open: true, title: locales.HistoryWorktreeRemoveTitle(menuName(name)), action: locales.WorktreeRemove(), run: remove(false, branch)}
 	switch {
 	case w.Files > 0:
 		cf.detail = locales.HistoryWorktreeRemoveDirty(w.Files, path)
-		cf.action, cf.destroy, cf.run = locales.WorktreeRemoveAnyway(), true, run(true, false)
+		cf.action, cf.destroy, cf.run = locales.WorktreeRemoveAnyway(), true, remove(true, false)
 	case w.Unpushed > 0:
 		cf.detail = locales.HistoryWorktreeRemoveUnpushed(w.Unpushed, menuName(w.Branch))
-		cf.run = run(false, false)
-		cf.alt, cf.altRun = locales.GitPushBranch(menuName(w.Branch)), func() { a.pushWorktree(pane, w) }
+		cf.run = remove(false, false)
+		if push != nil {
+			cf.alt, cf.altRun = locales.GitPushBranch(menuName(w.Branch)), push
+		}
 	case branch:
 		cf.detail = locales.HistoryWorktreeRemoveBranchDetail(path, menuName(w.Branch))
 		cf.action = locales.HistoryWorktreeRemoveBranch()
 	case w.Branch != "" && w.State:
 		cf.detail = locales.HistoryWorktreeRemoveSafe(path, menuName(w.Branch))
-		cf.alt, cf.altRun = locales.HistoryWorktreeRemoveBranch(), run(false, true)
+		cf.alt, cf.altRun = locales.HistoryWorktreeRemoveBranch(), remove(false, true)
 	default:
 		cf.detail = locales.HistoryWorktreeRemoveDetail(path)
 	}

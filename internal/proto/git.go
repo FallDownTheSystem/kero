@@ -56,6 +56,10 @@ type (
 		// pane must still work in: else it is refused, rather than done in
 		// the one the pane went to since, as a queued one could be.
 		Root string `json:"root,omitempty"`
+		// Dir is a folder of the repository to run the operation in, in
+		// place of a pane, as GitParams' is: the New Session dialog has
+		// none.
+		Dir string `json:"dir,omitempty"`
 
 		Paths     []string `json:"paths,omitempty"`
 		Untracked []string `json:"untracked,omitempty"`

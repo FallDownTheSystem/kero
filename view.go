@@ -264,10 +264,12 @@ func (a *App) view(c *ui.Context) {
 	a.goToFileView(c, pal)
 	a.pickerView(c, pal)
 	a.rebaseView(c, pal)
-	a.confirmView(c, pal)
 	a.newSessionView(c, pal)
 	a.prReviewView(c, pal)
 	a.prSetupView(c, pal)
+	// Last, over the dialog that asked it, as the New Session dialog's
+	// Remove does.
+	a.confirmView(c, pal)
 	// A preview that showed no more fades in anew next time.
 	if !a.previewShown {
 		a.previewKey = ""

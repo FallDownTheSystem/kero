@@ -1891,7 +1891,7 @@
       }
     }
   },
-  "prsRemoveWorktreeFailed": "Couldn't remove the worktree: {error}",
+  "worktreeRemoveFailed": "Couldn't remove the worktree: {error}",
   "prsReviewing": "Reviewing",
   "prsReviewReady": "Review Ready",
   "prsInReview": "In Review",

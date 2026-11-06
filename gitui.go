@@ -397,7 +397,7 @@ func (a *App) nameView(c *ui.Context, pal *palette) {
 				done = true
 			}
 		})
-		ui.Row(c).Gap(8).Justify(ui.End).Margin(14, 0, 0, 0).Children(func() {
+		dialogButtons(c, func() {
 			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				w.open = false
 			}

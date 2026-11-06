@@ -166,6 +166,15 @@ func TestGitWorktreesOfFolder(t *testing.T) {
 	if !sameDir(where["main"], repo) || !sameDir(where["old"], old) || !sameDir(where["new"], s.Worktree.Path) {
 		t.Errorf("branches checked out at %q", where)
 	}
+
+	// The New Session dialog removes one by the folder, with no pane.
+	res2, err := d.gitOp(proto.GitOpParams{Dir: repo, Op: "worktreeRemove", Path: old})
+	if err != nil || res2.Error != "" {
+		t.Fatalf("removing by the folder: %v %q", err, res2.Error)
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Errorf("the worktree's folder stays: %v", err)
+	}
 }
 
 func TestWorktreePath(t *testing.T) {
