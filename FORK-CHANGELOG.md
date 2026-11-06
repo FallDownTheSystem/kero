@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.5
+
+- Customize Theme has a Background glow: the color that lights the
+  window from the top right corner, in place of the theme's cursor
+  color, or its blue when the cursor is gray. Kero saves it on a
+  `# kero-glow:` line, which Ghostty reads as a comment
+
 ## 2.1.34-fork.4
 
 - A question widens to keep its buttons on one line, as one with a long
