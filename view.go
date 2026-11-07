@@ -260,6 +260,7 @@ func (a *App) view(c *ui.Context) {
 			})
 		}
 	}
+	a.worktreeSetupCards(c, pal)
 	a.paletteView(c, pal)
 	a.goToFileView(c, pal)
 	a.pickerView(c, pal)

@@ -146,6 +146,9 @@ type State struct {
 	// anew (the conversations method) rather than have them in every
 	// state.
 	Conversations uint64 `json:"conversations,omitempty"`
+	// Setups are the setups of worktrees kero made, under way or just
+	// ended, as progress cards show them.
+	Setups []WorktreeSetup `json:"setups,omitempty"`
 }
 
 // Project groups sessions, usually those of one repository.

@@ -119,6 +119,17 @@ description: 在窗格旁查看会话的 git 分支，以及它的智能体逐�
 - 创建工作树前，Kero 会先获取基础分支并从远程的分支创建，所以本地 `main` 过时也没关系。离线时，或本地分支有远程没有的提交时，从本地分支创建。设置 `worktree-from-origin = false` 可以始终从本地分支创建。
 - 设置 `worktree-base = current`，可以从项目文件夹所在的分支而不是默认分支创建新分支。
 - 新工作树只有 git 跟踪的文件。要带上被忽略的文件，如 `.claude/settings.local.json`、`CLAUDE.local.md` 或 `.env`，就像 Claude Code 的工作树那样，在仓库顶层的 `.worktreeinclude` 里按 `.gitignore` 的语法列出它们。Kero 会复制每个匹配的被忽略文件，工作树里已有的文件保持不变。它跳过 `node_modules` 和其他工作树，只有当某个模式指向整个被忽略的文件夹内的路径（如 `cache/keep.txt`）时才进入该文件夹。
+- 要为新工作树做准备（比如安装依赖），在仓库里放一个 `kero.json`，写上在创建工作树时运行的脚本。Kero 也读取格式相同的 t3code 的 `t3.json`，两者都先从工作树读取，再从主检出读取：
+
+  ```json
+  {
+    "scripts": [
+      { "name": "Install", "command": "bun install", "runOnWorktreeCreate": true }
+    ]
+  }
+  ```
+
+  第一个带 `runOnWorktreeCreate` 的脚本会在会话自身终端下方的终端中运行，并设置 `KERO_WORKTREE_PATH`、`KERO_PROJECT_ROOT`（主检出）和 `KERO_WORKTREE_BRANCH`。智能体会立即在旁边启动；如果脚本写了 `"async": false`，智能体会等脚本结束后再启动。脚本成功后终端会关闭，失败时会连同输出一起保留。如果工作树有子模块，Kero 会先检出它们。窗口右下角的卡片会显示每一步的进度，**取消**可以停止脚本。
 - 会话会加入仓库所在的项目，边栏中会显示它的分支。
 
 关闭会话时，Kero 会询问是否一并删除它的工作树：

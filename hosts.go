@@ -57,6 +57,9 @@ type host struct {
 	// busy is what the app does on the host for the user: install, update
 	// or restart.
 	busy string
+	// setups are its kerod's setups of worktrees, as their progress
+	// cards show them (worktree_setup_view.go).
+	setups []proto.WorktreeSetup
 }
 
 func (h *host) remote() bool { return h.name != "" }

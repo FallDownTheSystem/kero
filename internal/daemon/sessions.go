@@ -43,6 +43,7 @@ func (d *Daemon) stateLocked() proto.State {
 		Started:  d.started.UnixMilli(),
 		// The conversations' lock comes after d.mu.
 		Conversations: d.convs.generation(),
+		Setups:        d.setupsLocked(),
 	}
 	for _, s := range d.sessions {
 		st.Sessions = append(st.Sessions, d.sessionInfo(s))
@@ -329,7 +330,12 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 		dir = wt.Path
 	}
 	s := &session{id: newID(), project: project, name: strings.TrimSpace(p.Name), created: time.Now().UnixMilli(), worktree: wt, review: p.Review}
-	pn, err := d.startPane(s.id, p, dir)
+	first := p
+	if wt != nil {
+		// Or the setup script's terminal, which the agent waits for.
+		first = d.setupFirst(wt.Path, p)
+	}
+	pn, err := d.startPane(s.id, first, dir)
 	if err != nil {
 		return proto.Session{}, err
 	}

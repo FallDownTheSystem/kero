@@ -48,7 +48,7 @@ func (d *Daemon) addWorktree(dir string, p proto.CreateParams) (*proto.Worktree,
 	if _, err := os.Lstat(path); err == nil {
 		return nil, fmt.Errorf("%s is there already", proto.ShortDir(path))
 	}
-	from, untrack := "", false
+	from, untrack, fetch := "", false, originFetch{}
 	if r.HasBranch(branch) {
 		// Git checks a branch out in one worktree alone.
 		cos, err := r.Checkouts(ctx)
@@ -85,7 +85,7 @@ func (d *Daemon) addWorktree(dir string, p proto.CreateParams) (*proto.Worktree,
 		}
 		// A pull request's worktree starts from the branch fetched for it.
 		if p.PushBranch == "" && settings.Load().WorktreeFromOrigin {
-			from, untrack = d.fromOrigin(ctx, r, from)
+			from, untrack, fetch = d.fromOrigin(ctx, r, from)
 		}
 	}
 	if proto.Within(path, main) {
@@ -115,6 +115,7 @@ func (d *Daemon) addWorktree(dir string, p proto.CreateParams) (*proto.Worktree,
 	if n > 0 {
 		d.log.Printf("copied %d files of .worktreeinclude to %s", n, path)
 	}
+	d.setUpWorktree(main, path, branch, fetch)
 	return &proto.Worktree{Path: path, Branch: branch, Base: from, Main: main}, nil
 }
 

@@ -121,6 +121,17 @@ Agents working side by side in one checkout trip over each other's changes. **Se
 - Before making the worktree, Kero fetches the base branch and starts from the remote's copy, so a stale local `main` doesn't matter. Offline, or when the local branch has commits the remote lacks, it starts from the local branch. Set `worktree-from-origin = false` to always use the local branch.
 - Set `worktree-base = current` to make a new branch from the project folder's branch instead of the default branch.
 - A new worktree has only the files git tracks. To bring along ignored ones, such as `.claude/settings.local.json`, `CLAUDE.local.md` or `.env`, list them in a `.worktreeinclude` at the top of the repository, in `.gitignore`'s syntax, as Claude Code's worktrees read it. Kero copies each ignored file that matches, unless the worktree has it already. It skips `node_modules` and other worktrees, and goes into a wholly ignored folder only for a pattern that names a path in it, such as `cache/keep.txt`.
+- To set a new worktree up, as installing its packages, give the repository a `kero.json` with a script that runs as a worktree is made. Kero reads t3code's `t3.json` too, which has the same form, and reads either from the worktree first, then from the main checkout:
+
+  ```json
+  {
+    "scripts": [
+      { "name": "Install", "command": "bun install", "runOnWorktreeCreate": true }
+    ]
+  }
+  ```
+
+  The first script with `runOnWorktreeCreate` runs in a terminal below the session's own, with `KERO_WORKTREE_PATH`, `KERO_PROJECT_ROOT` (the main checkout) and `KERO_WORKTREE_BRANCH` set. The agent starts beside it right away, unless the script says `"async": false`, which has the agent wait for the script to end. The terminal closes once the script succeeds, and stays with its output when it fails. Kero checks out the worktree's submodules first, when it has some. A card at the window's bottom right shows each step as it goes; **Cancel** stops the script.
 - The session joins the repository's project, and the sidebar shows its branch.
 
 Closing the session asks whether its worktree goes too:
