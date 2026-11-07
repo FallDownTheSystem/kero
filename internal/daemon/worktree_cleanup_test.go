@@ -126,3 +126,62 @@ func TestWorktreeCleanup(t *testing.T) {
 		t.Errorf("closed removed %+v", res.Removed)
 	}
 }
+
+// kero worktree list tells, of each worktree, the sessions in it (of the
+// deepest worktree that holds a pane, not the main checkout holding them
+// all), whether kero made it, what removing it would lose, and what the
+// cleanup makes of it, removing nothing itself.
+func TestWorktreeList(t *testing.T) {
+	d := testDaemon(t)
+	repo := gitRepo(t)
+	d.projects = []proto.Project{{ID: "pr", Name: "repo", Dir: repo}}
+	kero := filepath.Join(repo, ".kero", "worktrees")
+	add := func(path, branch string) {
+		runGit(t, repo, "worktree", "add", "-q", "-b", branch, path)
+		then := time.Now().Add(-48 * time.Hour)
+		os.Chtimes(filepath.Join(repo, ".git", "worktrees", filepath.Base(path), "logs", "HEAD"), then, then)
+	}
+	done, busy := filepath.Join(kero, "done"), filepath.Join(kero, "busy")
+	add(done, "done")
+	add(busy, "busy")
+	os.WriteFile(filepath.Join(busy, "new.txt"), []byte("x"), 0o644)
+	outside := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+"-mine")
+	add(outside, "mine")
+	t.Cleanup(func() { os.RemoveAll(outside) })
+	s, err := d.create(proto.CreateParams{Dir: busy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := settings.Default()
+	set.WorktreeCleanup = settings.WorktreeCleanup{On: true, Closed: true}
+	if err := settings.Save(set); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := d.worktreeList(proto.WorktreeListParams{Dir: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Cleanup != "on" || len(res.Worktrees) != 4 {
+		t.Fatalf("list %+v", res)
+	}
+	by := map[string]proto.WorktreeInfo{}
+	for _, w := range res.Worktrees {
+		by[filepath.Base(w.Path)] = w
+	}
+	if w := by[filepath.Base(repo)]; !w.Main || len(w.Sessions) != 0 || w.Kero {
+		t.Errorf("main checkout %+v", w)
+	}
+	if w := by["busy"]; !w.Kero || len(w.Sessions) != 1 || w.Sessions[0] != s.ID || w.Files != 1 || w.Keeps != keepInUse || w.Removes != "" {
+		t.Errorf("busy %+v", w)
+	}
+	if w := by["done"]; !w.Kero || len(w.Sessions) != 0 || w.Removes != "closed" {
+		t.Errorf("done %+v", w)
+	}
+	if w := by[filepath.Base(outside)]; w.Kero || w.Keeps != keepNotKero || w.Removes != "" {
+		t.Errorf("outside %+v", w)
+	}
+	if _, err := os.Stat(done); err != nil {
+		t.Errorf("listing removed %s: %v", done, err)
+	}
+}

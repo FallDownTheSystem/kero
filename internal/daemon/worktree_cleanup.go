@@ -64,11 +64,34 @@ func (d *Daemon) cleanWorktrees() proto.WorktreeCleanupResult {
 	defer cleanupMu.Unlock()
 	var res proto.WorktreeCleanupResult
 	set := settings.Load()
+	repos, order := d.cleanupRepos(set)
+	seen := d.loadCleanupSeen()
+	now := time.Now()
+	for _, main := range order {
+		if cr := repos[main]; !cr.keep && cr.rules.Removes() {
+			d.cleanRepo(cr, set.WorktreeDir, seen, now, &res)
+		}
+	}
+	for path := range seen {
+		if _, err := os.Stat(path); err != nil {
+			delete(seen, path)
+		}
+	}
+	d.saveCleanupSeen(seen)
+	if len(res.Removed) > 0 || len(res.Failed) > 0 {
+		d.log.Printf("worktree cleanup: %d removed, %d failed", len(res.Removed), len(res.Failed))
+	}
+	return res
+}
+
+// cleanupRepos are the projects' repositories, by main checkout, in the
+// projects' order, with the rules the cleanup goes by for each: a
+// repository's projects share its worktrees, so one turned off keeps
+// them, else the first whose rules remove any decides.
+func (d *Daemon) cleanupRepos(set settings.Settings) (map[string]*cleanupRepo, []string) {
 	d.mu.Lock()
 	projects := slices.Clone(d.projects)
 	d.mu.Unlock()
-	// A repository's projects share its worktrees: one turned off keeps
-	// them, else the first whose rules remove any decides.
 	repos := map[string]*cleanupRepo{}
 	var order []string
 	for _, p := range projects {
@@ -99,23 +122,7 @@ func (d *Daemon) cleanWorktrees() proto.WorktreeCleanupResult {
 			cr.rules = w
 		}
 	}
-	seen := d.loadCleanupSeen()
-	now := time.Now()
-	for _, main := range order {
-		if cr := repos[main]; !cr.keep && cr.rules.Removes() {
-			d.cleanRepo(cr, set.WorktreeDir, seen, now, &res)
-		}
-	}
-	for path := range seen {
-		if _, err := os.Stat(path); err != nil {
-			delete(seen, path)
-		}
-	}
-	d.saveCleanupSeen(seen)
-	if len(res.Removed) > 0 || len(res.Failed) > 0 {
-		d.log.Printf("worktree cleanup: %d removed, %d failed", len(res.Removed), len(res.Failed))
-	}
-	return res
+	return repos, order
 }
 
 // cleanRepo removes the worktrees of a repository its rules say are done
@@ -129,66 +136,13 @@ func (d *Daemon) cleanRepo(cr *cleanupRepo, dir string, seen map[string]int64, n
 		d.log.Printf("worktree cleanup of %s: %v", main, err)
 		return
 	}
-	// Kero's worktrees, of either folder: its own, and the setting's.
-	roots := []string{filepath.Dir(worktreePath(main, "x", "")), filepath.Dir(worktreePath(main, "x", dir))}
+	roots := cleanupRoots(main, dir)
 	base := cr.r.DefaultRef()
-	var ghRepos []github.Repo
-	ghAsked := false
+	gh := &cleanupGitHub{}
 	for _, co := range cos {
-		if co.Prunable || co.Locked || sameDir(co.Path, main) ||
-			!slices.ContainsFunc(roots, func(root string) bool { return sameDir(filepath.Dir(co.Path), root) }) {
-			continue
-		}
-		if d.worktreeInUse(co.Path) {
+		reason, keep := d.cleanupVerdict(ctx, cr, co, roots, base, seen, now, gh)
+		if keep == keepInUse {
 			seen[co.Path] = now.UnixMilli()
-			continue
-		}
-		used := max(git.Used(co.Path), seen[co.Path])
-		if used == 0 || now.Sub(time.UnixMilli(used)) < cleanupGrace {
-			continue
-		}
-		wr, err := git.Open(ctx, co.Path)
-		if err != nil {
-			continue
-		}
-		st, err := wr.State(ctx, co.Branch, base)
-		if err != nil || st.Files > 0 {
-			continue
-		}
-		if f, err := wr.LocalFiles(ctx, main); err != nil || f != "" {
-			continue
-		}
-		rules, reason := cr.rules, ""
-		switch {
-		case rules.Closed:
-			reason = "closed"
-		case rules.Unchanged && co.Branch != "" && base != "" && st.Merged:
-			reason = "unchanged"
-		case rules.InactiveDays > 0 && now.Sub(time.UnixMilli(used)) >= time.Duration(rules.InactiveDays)*24*time.Hour:
-			reason = "inactive"
-		case rules.Merged && co.Branch != "":
-			if !ghAsked {
-				ghAsked = true
-				if _, byName, err := gitHubRepos(ctx, cr.r); err == nil {
-					for _, gr := range byName {
-						ghRepos = append(ghRepos, gr)
-					}
-				}
-			}
-			number := 0
-			if m := reviewBranchRe.FindStringSubmatch(co.Branch); m != nil {
-				number, _ = strconv.Atoi(m[1])
-			}
-			for _, gr := range ghRepos {
-				merged, err := github.MergedAt(ctx, main, gr, number, co.Branch, co.Head)
-				if err != nil {
-					d.log.Printf("worktree cleanup: pull request of %s in %s: %v", co.Branch, gr.Slug(), err)
-				}
-				if merged {
-					reason = "merged"
-					break
-				}
-			}
 		}
 		// A session may have started in it while this looked.
 		if reason == "" || d.worktreeInUse(co.Path) {
@@ -203,6 +157,104 @@ func (d *Daemon) cleanRepo(cr *cleanupRepo, dir string, seen map[string]int64, n
 		res.Removed = append(res.Removed, proto.CleanedWorktree{Path: co.Path, Branch: co.Branch, Reason: reason})
 		d.log.Printf("worktree cleanup: removed %s on %q (%s)", co.Path, co.Branch, reason)
 	}
+}
+
+// cleanupRoots are the folders of Kero's worktrees of the repository
+// whose main checkout is main, of either place: its own, and dir's (the
+// worktree-dir setting's).
+func cleanupRoots(main, dir string) []string {
+	return []string{filepath.Dir(worktreePath(main, "x", "")), filepath.Dir(worktreePath(main, "x", dir))}
+}
+
+// Why the cleanup keeps a worktree, as cleanupVerdict says it.
+const (
+	keepMain     = "main checkout"
+	keepLocked   = "locked"
+	keepPrunable = "folder gone"
+	keepNotKero  = "not made by Kero"
+	keepInUse    = "a session works in it"
+	keepNew      = "used in the last 10 minutes"
+	keepChanges  = "has changes"
+	keepLocal    = "has files of its own"
+	keepNoRule   = "no rule says so"
+)
+
+// cleanupGitHub is the repository's remotes on GitHub, which the merged
+// rule asks of, read once per cleanup, when it first needs them.
+type cleanupGitHub struct {
+	asked bool
+	repos []github.Repo
+}
+
+// cleanupVerdict is what the cleanup, by cr's rules, makes of the worktree
+// co: reason, why it removes it (merged, closed, unchanged, inactive),
+// else keep, why it stays. It removes nothing.
+func (d *Daemon) cleanupVerdict(ctx context.Context, cr *cleanupRepo, co git.Checkout, roots []string, base string, seen map[string]int64, now time.Time, gh *cleanupGitHub) (reason, keep string) {
+	main := cr.r.Main()
+	switch {
+	case sameDir(co.Path, main):
+		return "", keepMain
+	case co.Locked:
+		return "", keepLocked
+	case co.Prunable:
+		return "", keepPrunable
+	case !slices.ContainsFunc(roots, func(root string) bool { return sameDir(filepath.Dir(co.Path), root) }):
+		return "", keepNotKero
+	case d.worktreeInUse(co.Path):
+		return "", keepInUse
+	}
+	used := max(git.Used(co.Path), seen[co.Path])
+	if used == 0 || now.Sub(time.UnixMilli(used)) < cleanupGrace {
+		return "", keepNew
+	}
+	wr, err := git.Open(ctx, co.Path)
+	if err != nil {
+		return "", err.Error()
+	}
+	st, err := wr.State(ctx, co.Branch, base)
+	if err != nil {
+		return "", err.Error()
+	}
+	if st.Files > 0 {
+		return "", keepChanges
+	}
+	if f, err := wr.LocalFiles(ctx, main); err != nil {
+		return "", err.Error()
+	} else if f != "" {
+		return "", keepLocal + ": " + f
+	}
+	rules := cr.rules
+	switch {
+	case rules.Closed:
+		return "closed", ""
+	case rules.Unchanged && co.Branch != "" && base != "" && st.Merged:
+		return "unchanged", ""
+	case rules.InactiveDays > 0 && now.Sub(time.UnixMilli(used)) >= time.Duration(rules.InactiveDays)*24*time.Hour:
+		return "inactive", ""
+	case rules.Merged && co.Branch != "":
+		if !gh.asked {
+			gh.asked = true
+			if _, byName, err := gitHubRepos(ctx, cr.r); err == nil {
+				for _, gr := range byName {
+					gh.repos = append(gh.repos, gr)
+				}
+			}
+		}
+		number := 0
+		if m := reviewBranchRe.FindStringSubmatch(co.Branch); m != nil {
+			number, _ = strconv.Atoi(m[1])
+		}
+		for _, gr := range gh.repos {
+			merged, err := github.MergedAt(ctx, main, gr, number, co.Branch, co.Head)
+			if err != nil {
+				d.log.Printf("worktree cleanup: pull request of %s in %s: %v", co.Branch, gr.Slug(), err)
+			}
+			if merged {
+				return "merged", ""
+			}
+		}
+	}
+	return "", keepNoRule
 }
 
 // worktreeInUse reports whether a session works in the worktree at path,

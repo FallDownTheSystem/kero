@@ -86,6 +86,20 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.handoff(p)
 
+	case "worktree.list":
+		var p proto.WorktreeListParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.worktreeList(p)
+
+	case "worktree.status":
+		var p proto.WorktreeStatusParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.worktreeStatus(p)
+
 	case "worktree.cleanup":
 		return d.cleanWorktrees(), nil
 

@@ -34,6 +34,8 @@ kero focus backend               # アプリで表示
 kero close backend               # セッションを終える（ペインを指定するとそのペイン）
 kero close fix-login --remove-worktree   # 専用のワークツリーも削除する
 kero restart <pane>              # 終了したペインのシェルを再び開始
+kero worktree list               # ワークツリー: セッション、Kero が作ったか、削除で失うもの、クリーンアップ
+kero worktree status             # このセッションのワークツリー、セットアップ、プルリクエスト、ハンドオフ
 kero worktree handoff fix-login  # このエージェントのセッションを専用のワークツリーに移す
 ```
 
@@ -238,6 +240,21 @@ kero pr link 123             # または番号か URL
 kero pr status --json        # 状況: チェック、失敗したチェック、コンフリクト
 kero pr unlink
 ```
+
+`gh` にサインインしたユーザーとして、GitHub のプルリクエストを操作します。番号を指定するか、省略してセッションにリンクされたものを対象にします。マージは、指定がなければリポジトリの既定の方法（**リポジトリの設定**のもの、なければ squash、merge、rebase のうちリポジトリが許す最初のもの）で行います:
+
+```sh
+kero pr state 123                          # オープンか、ドラフトか、マージできるか、どの方法で
+kero pr ready 123                          # または draft、close、reopen
+kero pr update-branch 123 --rebase         # ブランチをベースに追いつかせる
+kero pr merge 123 --squash --delete-branch # または --merge、--rebase。--head <sha> はそのコミットでだけマージ
+kero pr merge 123 --auto                   # 要件を満たしたらマージ。--disable-auto で止める
+kero pr delete-branch 123                  # クローズかマージのあとで
+kero pr checkout 123                       # そのブランチをここに。変更のあるワークツリーでは断る
+kero pr checkout 123 --worktree -- claude  # 専用のワークツリーで新しいセッション。その ID を出力
+```
+
+そのプルリクエストを持つワークツリーがすでにあれば、それをそのまま使います: `kero pr checkout` はその場所を伝え、`--worktree` ならそこで動いているセッションを出力し、なければそこでセッションを始めます。
 
 ## 構成とセットアップ
 

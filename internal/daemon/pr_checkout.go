@@ -24,6 +24,17 @@ func (d *Daemon) prCheckout(p proto.PRCheckoutParams) (proto.PRCheckedOut, error
 	if err != nil {
 		return proto.PRCheckedOut{}, err
 	}
+	if p.Remote == "" {
+		// kero pr checkout names none: the remote the other pr.* methods
+		// pick, as the app's list has it.
+		repos, byName, err := gitHubRepos(ctx, r)
+		if err != nil {
+			return proto.PRCheckedOut{}, err
+		}
+		if p.Remote, err = pickRemote(ctx, r, byName, repos, ""); err != nil {
+			return proto.PRCheckedOut{}, err
+		}
+	}
 	if p.Here {
 		st, err := r.Status(ctx)
 		switch {

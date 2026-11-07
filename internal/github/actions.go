@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -25,6 +26,27 @@ const (
 
 // Methods are the merge methods, in GitHub's order.
 var Methods = []string{MethodMerge, MethodSquash, MethodRebase}
+
+// mergeOrder is the order the default merge method is taken in, of those
+// the repository allows, when the repository's setup names none: squash
+// first, as most repositories that allow it prefer it.
+var mergeOrder = []string{MethodSquash, MethodMerge, MethodRebase}
+
+// DefaultMethod is how a pull request merges unless the user says
+// otherwise: setup, the repository's own (ReviewSetup.MergeMethod), if
+// allowed has it, else the first of mergeOrder allowed has; allowed nil
+// for not known yet. The app's Merge and kero pr merge take it alike.
+func DefaultMethod(setup string, allowed []string) string {
+	if setup != "" && (allowed == nil || slices.Contains(allowed, setup)) {
+		return setup
+	}
+	for _, m := range mergeOrder {
+		if allowed == nil || slices.Contains(allowed, m) {
+			return m
+		}
+	}
+	return MethodMerge
+}
 
 // Actions is what a pull request's actions depend on: its state, whether
 // it merges as it is and why not, the repository's merge methods, and

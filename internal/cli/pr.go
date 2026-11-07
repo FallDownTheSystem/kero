@@ -16,7 +16,7 @@ import (
 // user posts from Kero; nothing here posts.
 func prCommand(c *client.Client, args []string) error {
 	if len(args) == 0 {
-		return usageErr("kero pr link|unlink|status|guide|comment|edit|delete|summary|show (see kero help)")
+		return usageErr("kero pr link|unlink|status|state|merge|ready|draft|close|reopen|update-branch|delete-branch|checkout|guide|comment|edit|delete|summary|show (see kero help)")
 	}
 	sub := args[0]
 	if sub == "guide" {
@@ -24,6 +24,9 @@ func prCommand(c *client.Client, args []string) error {
 	}
 	if sub == "link" || sub == "unlink" || sub == "status" {
 		return prLinkCommand(c, args)
+	}
+	if _, ok := prActionCommands[sub]; ok {
+		return prActionCommand(c, args)
 	}
 	f, err := parse(args[1:], map[string]string{"pr": "pr", "remote": "remote"}, map[string]string{"base": "base", "json": "json"})
 	if err != nil {

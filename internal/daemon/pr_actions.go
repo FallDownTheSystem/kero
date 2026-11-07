@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"kero/internal/github"
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 // A pull request's actions, as its page and the list offer them: merging
@@ -33,6 +35,15 @@ func (d *Daemon) prAction(p proto.PRActionParams) (proto.PRActionResult, error) 
 	switch p.Op {
 	case proto.PRActState:
 	case proto.PRActMerge, proto.PRActAutoMerge:
+		if p.Method == "" {
+			// kero pr merge names none: the repository's default, as the
+			// app's Merge takes it.
+			var a github.Actions
+			if a, err = github.ActionsOf(ctx, dir, repo, n); err != nil {
+				return res, err
+			}
+			p.Method = github.DefaultMethod(settings.Load().Reviews[strings.ToLower(t.slug)].MergeMethod, a.Methods)
+		}
 		err = github.MergePR(ctx, dir, repo, n, github.Merge{Method: p.Method, Auto: p.Op == proto.PRActAutoMerge, DeleteBranch: p.DeleteBranch, Head: p.Head})
 	case proto.PRActDisableAutoMerge:
 		err = github.DisableAutoMerge(ctx, dir, repo, n)

@@ -34,6 +34,8 @@ kero focus backend               # show it in the app
 kero close backend               # end a session (or, given a pane, the pane)
 kero close fix-login --remove-worktree   # and remove its own worktree
 kero restart <pane>              # start an exited pane's shell again
+kero worktree list               # the worktrees: sessions, Kero's, what removing loses, cleanup
+kero worktree status             # this session's worktree, setup, pull request, and handoff
 kero worktree handoff fix-login  # move this agent's session into a worktree of its own
 ```
 
@@ -243,6 +245,21 @@ kero pr link 123             # or its number, or its URL
 kero pr status --json        # how it stands: checks, failed checks, conflicts
 kero pr unlink
 ```
+
+Act on a pull request on GitHub, as the user signed in to `gh`: give its number, or leave it out for the session's linked one. A merge takes the repository's default method (**Repository Setup**'s, else the first it allows of squash, merge and rebase) unless given one:
+
+```sh
+kero pr state 123                          # open, draft, whether it merges, and by which methods
+kero pr ready 123                          # or draft, close, reopen
+kero pr update-branch 123 --rebase         # bring its branch up to date with its base
+kero pr merge 123 --squash --delete-branch # or --merge, --rebase; --head <sha> merges only at that commit
+kero pr merge 123 --auto                   # once its requirements are met; --disable-auto stops it
+kero pr delete-branch 123                  # once it's closed or merged
+kero pr checkout 123                       # its branch here, refusing a worktree with changes
+kero pr checkout 123 --worktree -- claude  # a new session in a worktree of its own; prints its id
+```
+
+A worktree that has the pull request already is used as it is: `kero pr checkout` says where, and with `--worktree` prints the session working there, or starts one there.
 
 ## Configuration and setup
 

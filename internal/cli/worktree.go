@@ -11,10 +11,19 @@ import (
 )
 
 // worktreeCommand runs kero worktree: handoff moves the session it runs
-// in, with its agent's conversation, into a new worktree of its own.
+// in, with its agent's conversation, into a new worktree of its own; list
+// and status tell of the repository's worktrees, and of the session's.
 func worktreeCommand(c *client.Client, args []string) error {
+	if len(args) > 0 {
+		switch args[0] {
+		case "list":
+			return worktreeListCommand(c, args[1:])
+		case "status":
+			return worktreeStatusCommand(c, args[1:])
+		}
+	}
 	if len(args) == 0 || args[0] != "handoff" {
-		return usageErr("kero worktree handoff <branch> [--base <ref>] [--prompt <text|->] (see kero help)")
+		return usageErr("kero worktree list|status|handoff (see kero help)")
 	}
 	f, err := parse(args[1:], map[string]string{"base": "base", "prompt": "prompt", "p": "prompt"}, map[string]string{"json": "json"})
 	if err != nil {

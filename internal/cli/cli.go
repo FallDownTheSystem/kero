@@ -138,6 +138,15 @@ Usage:
                                   and its branch once merged
       --force                     even if that loses changes or commits
   kero restart <target>         start an exited pane's shell again
+  kero worktree list [-d <dir>] [--json]
+                                the repository's worktrees: the sessions in
+                                each, whether Kero made it, what removing
+                                it would lose, what the cleanup makes of it
+  kero worktree status [--json]
+                                this session's worktree: where it works,
+                                the worktree Kero made for it and its
+                                setup, its pull request, the settings new
+                                worktrees take, whether handoff would go
   kero worktree handoff <branch> [--base <ref>] [--prompt <text|->]
                                 move this session into a git worktree of
                                 its own, on a new branch from the default
@@ -182,6 +191,29 @@ Usage:
   kero pr status [--session s] [--json]
                                 the session's pull request: its checks,
                                 and whether it merges
+  kero pr state [<number>] [--json]
+                                whether a pull request is open, a draft,
+                                and merges, and by which methods
+  kero pr merge [<number>] [--squash|--merge|--rebase] [--delete-branch]
+                                merge it on GitHub, by the repository's
+                                default method unless given one; --auto
+                                once its requirements are met, or
+                                --disable-auto; --head <sha> only at it
+  kero pr ready|draft|close|reopen [<number>]
+                                mark it ready for review, make it a draft
+                                again, close or reopen it
+  kero pr update-branch [<number>] [--rebase]
+                                bring its branch up to date with its base
+  kero pr delete-branch [<number>]
+                                delete its branch, once closed or merged
+  kero pr checkout [<number>] [--worktree [-n name] [-- command…]]
+                                check its branch out here, refusing a
+                                worktree with changes; --worktree: in a new
+                                session in a worktree of its own (one that
+                                has it already, and its session); prints
+                                the session's id
+      (these take the session's linked pull request without a number,
+      act as the user signed in to gh, and --remote <name> as kero pr)
   kero report <state> [message] [--kind k] [--progress n] [--app a] [--id i]
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear
