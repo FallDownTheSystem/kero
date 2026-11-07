@@ -476,6 +476,8 @@
   "setGitDetail": "会话所在仓库的分支和改动。",
   "setGitStatus": "显示 Git 状态",
   "setGitStatusDetail": "在窗格标题和侧边栏中显示每个会话的分支和改动。",
+  "setWorktreeFromOrigin": "从 origin 创建工作树",
+  "setWorktreeFromOriginDetail": "创建新工作树前先获取基础分支，并从远程的分支创建。离线时，或本地有远程没有的提交时，从本地分支创建。",
   "setDiffLayout": "差异",
   "setDiffLayoutDetail": "自动：差异卡片较窄时合并显示，较宽时并排显示。",
   "setDiffAuto": "自动",

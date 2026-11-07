@@ -476,6 +476,8 @@
   "setGitDetail": "セッションが作業しているリポジトリのブランチと変更。",
   "setGitStatus": "git の状態を表示",
   "setGitStatusDetail": "各セッションのブランチと変更を、ペインのタイトルの横とサイドバーに表示します。",
+  "setWorktreeFromOrigin": "ワークツリーを origin から作る",
+  "setWorktreeFromOriginDetail": "新しいワークツリーを作る前に元のブランチを取得し、リモートのブランチから作ります。オフラインのときや、リモートにないローカルのコミットがあるときは、ローカルのブランチから作ります。",
   "setDiffLayout": "差分",
   "setDiffLayoutDetail": "自動では、差分のカードが狭い間は統合表示、広くなると左右に並べて表示します。",
   "setDiffAuto": "自動",

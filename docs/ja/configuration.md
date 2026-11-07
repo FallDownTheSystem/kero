@@ -158,6 +158,7 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `wrap-lines`  | `false`    | 差分とファイルタブで開いたファイルの長い行を、横にスクロールせずに折り返す                           |
 | `branch-max-age` | `0` | ブランチの切り替えで、その週数コミットのないブランチを隠します（フィルタで見つけたものは表示）。`0` で隠しません |
 | `worktree-base` | `default` | [セッション専用のワークツリー](./changes.md#sessions-in-their-own-worktree)で名前を付けて作る新しいブランチの起点: リポジトリのデフォルトブランチ `default`、またはプロジェクトのフォルダのブランチ `current` || `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
+| `worktree-from-origin` | `true` | セッション専用のワークツリーを作る前に元のブランチを取得し、リモートのブランチから作ります。取得に失敗したとき（オフラインなど）や、ローカルのブランチにリモートにないコミットがあるときは、ローカルのブランチから作ります |
 | `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。シェルで実行され、プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。中の `{session}` はフォークするペインのエージェントの会話の ID になります（`cc -p --resume {session} --fork-session` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
 | `commit-message-prompt` |  | エージェントがコミットメッセージを書く方法。最近のコミットとステージした差分の前に置く指示です。空なら Kero のもの（設定 › Git に表示）。改行は `\n` と書きます |
 | `pr-message-prompt` |  | エージェントが[プルリクエスト](./changes.md#new-pull-request)のタイトルと説明を書く方法。`commit-message-prompt` と同様です |

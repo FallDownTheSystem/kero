@@ -652,6 +652,8 @@
   "setGitDetail": "Branches and changes of the repositories sessions work in.",
   "setGitStatus": "Show git status",
   "setGitStatusDetail": "Each session's branch and changes, by its panes' titles and in the sidebar.",
+  "setWorktreeFromOrigin": "Start worktrees from origin",
+  "setWorktreeFromOriginDetail": "Fetch the base branch before making a new worktree, and branch from the remote's copy. Offline, or with local commits the remote lacks, the local branch is used.",
   "setDiffLayout": "Diffs",
   "setDiffLayoutDetail": "Auto shows diffs unified while their card is narrow, and side by side once it's wide.",
   "setDiffAuto": "Auto",

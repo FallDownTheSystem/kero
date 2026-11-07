@@ -158,6 +158,7 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `wrap-lines`  | `false` | diff 和从文件标签页打开的文件中的长行自动换行，而不是横向滚动                                       |
 | `branch-max-age` | `0` | 在分支切换器中隐藏那么多周没有提交的分支，除非筛选找到它们；`0` 表示不隐藏 |
 | `worktree-base` | `default` | [会话专属工作树](./changes.md#sessions-in-their-own-worktree)中你命名的新分支的起点：`default` 为仓库的默认分支，`current` 为项目文件夹所在的分支 || `worktree-dir` |        | 会话专属工作树的存放位置，各自放在仓库名之下；留空则放在仓库内的 `.kero/worktrees` |
+| `worktree-from-origin` | `true` | 创建会话专属工作树前先获取基础分支，并从远程的分支创建；获取失败时（如离线），或本地分支有远程没有的提交时，从本地分支创建 |
 | `commit-message-command` |  | 为已暂存的改动[撰写提交信息](./changes.md#committing)的命令，在你的 shell 中运行，提示通过标准输入传入，如 `llm -m gpt-5`；其中的 `{session}` 会换成要分叉的窗格中智能体对话的 ID，如 `cc -p --resume {session} --fork-session`；留空则分叉窗格中智能体的对话，没有对话时新运行 Claude Code 或 Codex |
 | `commit-message-prompt` |  | 智能体撰写提交信息的方式：放在最近的提交和已暂存的差异之前的说明；留空则用 Kero 自己的（显示在 设置 › Git 中）。换行写作 `\n` |
 | `pr-message-prompt` |  | 智能体撰写[拉取请求](./changes.md#new-pull-request)标题和描述的方式，同 `commit-message-prompt` |
