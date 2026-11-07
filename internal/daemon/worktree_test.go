@@ -309,6 +309,14 @@ func TestReviewWorktrees(t *testing.T) {
 	if out, _ := exec.Command("git", "-C", repo, "branch", "--list", "--format=%(refname:short)", "review/*").Output(); strings.TrimSpace(string(out)) != "review/pr-7-2" {
 		t.Errorf("branches left: %q", out)
 	}
+	// An empty folder, as a removal that failed on Windows left, takes
+	// no name.
+	if err := os.MkdirAll(one.Worktree.Path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if again := review(); again.Worktree.Branch != "review/pr-7" {
+		t.Errorf("a review after an empty folder is on %s", again.Worktree.Branch)
+	}
 
 	// A session asking for a branch another worktree has gets kero's word
 	// for it, not git's.

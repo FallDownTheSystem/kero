@@ -110,6 +110,26 @@ func (p *ptyProc) Kill() {
 	}
 }
 
+// killTree kills the program and whatever it started: its process group,
+// and the other processes of its session.
+func (p *ptyProc) killTree() {
+	p.Kill()
+	for _, pid := range sessionProcs(p.cmd.Process.Pid) {
+		syscall.Kill(pid, syscall.SIGKILL)
+	}
+}
+
+// running reports whether the program, or a process it started, which
+// its session has, still runs.
+func (p *ptyProc) running() bool {
+	select {
+	case <-p.exited:
+	default:
+		return true
+	}
+	return len(sessionProcs(p.cmd.Process.Pid)) > 0
+}
+
 // Foreground returns the process group in the terminal's foreground.
 func (p *ptyProc) Foreground() int {
 	var pgid int32

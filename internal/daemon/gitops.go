@@ -266,6 +266,7 @@ func (d *Daemon) runOp(ctx context.Context, r git.Repo, p proto.GitOpParams, cmd
 	case "stash":
 		return r.StashPush(ctx, git.StashOptions{Message: p.Message, Untracked: p.IncludeUntracked, Staged: p.Staged, Paths: p.Paths})
 	case "worktreeRemove":
+		defer d.git.hold(p.Path)()
 		return r.RemoveCheckout(ctx, p.Path, p.Force, p.Name)
 	case "worktreePrune":
 		return r.PruneCheckouts(ctx)

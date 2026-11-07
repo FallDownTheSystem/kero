@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Linked worktrees of a session's own (plans/git.md, Phase 3): what kero
@@ -193,20 +196,26 @@ func (r Repo) State(ctx context.Context, branch, base string) (WorktreeState, er
 
 // RemoveWorktree removes the linked worktree at path, what it holds
 // included, from the repository whose main checkout is main; then its
-// branch, when base has every commit of it.
+// branch, when base has every commit of it. A worktree git forgot, though
+// its folder stayed in use, loses its branch too: no worktree has it, and
+// it would only take the name of the next.
 func RemoveWorktree(ctx context.Context, main, path, branch, base string) error {
-	if _, err := run(ctx, main, nil, "worktree", "remove", "--force", "--", path); err != nil {
+	_, forgot, err := removeWorktree(ctx, main, path, func() (string, error) {
+		_, err := run(ctx, main, nil, "worktree", "remove", "--force", "--", path)
+		return "", err
+	})
+	if err != nil && !forgot {
 		return err
 	}
 	if branch == "" || base == "" {
-		return nil
+		return err
 	}
 	ref := "refs/heads/" + branch
-	if _, err := run(ctx, main, nil, "merge-base", "--is-ancestor", ref, base); err != nil {
-		return nil // not merged: the branch stays, with its commits
+	if _, merr := run(ctx, main, nil, "merge-base", "--is-ancestor", ref, base); merr != nil {
+		return err // not merged: the branch stays, with its commits
 	}
-	_, err := run(ctx, main, nil, "branch", "-D", "--", branch)
-	return err
+	_, berr := run(ctx, main, nil, "branch", "-D", "--", branch)
+	return errors.Join(err, berr)
 }
 
 // RemoveCheckout removes the linked worktree at path, with force the
@@ -221,20 +230,110 @@ func (r Repo) RemoveCheckout(ctx context.Context, path string, force bool, branc
 	if force {
 		args = append(args, "--force")
 	}
-	if out, err := r.write(ctx, "", nil, append(args, "--", path)...); err != nil {
+	out, forgot, err := removeWorktree(ctx, r.Root, path, func() (string, error) {
+		return r.write(ctx, "", nil, append(args, "--", path)...)
+	})
+	if err != nil && !forgot || branch == "" {
 		return out, err
 	}
-	if branch == "" {
-		return "", nil
+	// Git forgot it, its folder in use or not: the branch goes as asked.
+	bout, berr := r.DeleteBranch(ctx, branch, false)
+	if berr != nil {
+		berr = fmt.Errorf("the worktree is removed, but its branch stays: %w", berr)
+		return bout, errors.Join(err, berr)
 	}
-	out, err := r.DeleteBranch(ctx, branch, false)
-	if err != nil {
-		return out, fmt.Errorf("the worktree is removed, but its branch stays: %w", err)
-	}
-	return out, nil
+	return out, err
 }
 
 // PruneCheckouts forgets the worktrees whose folders are gone.
 func (r Repo) PruneCheckouts(ctx context.Context) (string, error) {
 	return r.write(ctx, "", nil, "worktree", "prune")
+}
+
+// lockWait is how long removing a worktree tries again while its folder
+// is in use: Windows deletes no folder that a process works in, nor a
+// file that one has open, and an agent's programs, or git run by Kero,
+// may take a moment to let go of it.
+var lockWait = 5 * time.Second
+
+// removeWorktree runs remove, git's removing of the linked worktree at
+// path of the repository with a worktree at root, again while its folder
+// is in use, for up to lockWait. Git forgets the worktree even when it
+// fails to delete the folder, leaving it empty, or with the files it
+// couldn't delete: those go then, as git meant them to; and so does an
+// empty folder that such a removal left before. forgot tells that git no
+// longer has the worktree, whether or not its folder went.
+func removeWorktree(ctx context.Context, root, path string, remove func() (string, error)) (out string, forgot bool, err error) {
+	r := Repo{Root: root}
+	known := r.registers(ctx, path)
+	// An empty folder git doesn't know goes alone, never what fills it
+	// meanwhile.
+	leftover := !known && emptyDir(path)
+	forgot = leftover
+	deadline := time.Now().Add(lockWait)
+	for {
+		err = nil
+		if !forgot {
+			out, err = remove()
+			forgot = err != nil && known && !r.registers(ctx, path)
+		}
+		switch {
+		case leftover:
+			err = os.Remove(path)
+		case forgot:
+			err = os.RemoveAll(path)
+		}
+		if err == nil || !forgot && !inUse(err) || time.Now().After(deadline) {
+			if err == nil && forgot {
+				out = ""
+			}
+			return out, forgot, err
+		}
+		select {
+		case <-time.After(200 * time.Millisecond):
+		case <-ctx.Done():
+			return out, forgot, err
+		}
+	}
+}
+
+// registers reports whether git has a worktree at path; true when it
+// can't tell, which deletes nothing on its word.
+func (r Repo) registers(ctx context.Context, path string) bool {
+	cos, err := r.Checkouts(ctx)
+	if err != nil {
+		return true
+	}
+	return slices.ContainsFunc(cos, func(co Checkout) bool { return samePath(co.Path, path) })
+}
+
+// samePath reports whether a and b are one path, as git and the system
+// may spell it apart: in case on Windows and macOS, and git through the
+// links, junctions and subst drives on the way, which it resolves.
+func samePath(a, b string) bool {
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if a == b || (runtime.GOOS == "windows" || runtime.GOOS == "darwin") && strings.EqualFold(a, b) {
+		return true
+	}
+	sa, errA := os.Stat(a)
+	sb, errB := os.Stat(b)
+	return errA == nil && errB == nil && os.SameFile(sa, sb)
+}
+
+// emptyDir reports whether path is a folder with nothing in it.
+func emptyDir(path string) bool {
+	entries, err := os.ReadDir(path)
+	return err == nil && len(entries) == 0
+}
+
+// inUse reports whether git failed on a folder or file in use, as
+// Windows says of one that a process works in or has open.
+func inUse(err error) bool {
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{"permission denied", "access is denied", "being used by another process", "resource busy", "directory not empty"} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
 }

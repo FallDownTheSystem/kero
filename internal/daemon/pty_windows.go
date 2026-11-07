@@ -348,6 +348,33 @@ func (p *ptyProc) Kill() {
 	}
 }
 
+// killTree kills the program and whatever it started, as Kill does.
+func (p *ptyProc) killTree() { p.Kill() }
+
+// jobAccounting is a job's JOBOBJECT_BASIC_ACCOUNTING_INFORMATION.
+type jobAccounting struct {
+	TotalUserTime, TotalKernelTime, PeriodUserTime, PeriodKernelTime int64
+	TotalPageFaults, TotalProcesses, ActiveProcesses, Terminated     uint32
+}
+
+// running reports whether the program, or a process it started, which
+// its job has, still runs.
+func (p *ptyProc) running() bool {
+	select {
+	case <-p.exited:
+	default:
+		return true
+	}
+	if p.job == 0 {
+		return false
+	}
+	var info jobAccounting
+	if windows.QueryInformationJobObject(p.job, windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil) != nil {
+		return false
+	}
+	return info.ActiveProcesses > 0
+}
+
 // Foreground returns the program the shell runs: Windows has no process
 // groups, so it is the one of the shell's children that started last,
 // or, down its line of children, the coding agent one of them runs (as

@@ -547,7 +547,7 @@ func (d *Daemon) removeReviewWorktree(p proto.PRWorktreeRemoveParams) error {
 	if st.Unpushed == 0 {
 		base = "refs/heads/" + co.Branch
 	}
-	if err := git.RemoveWorktree(ctx, main, co.Path, co.Branch, base); err != nil {
+	if err := d.removeWorktree(ctx, main, co.Path, co.Branch, base, nil); err != nil {
 		return err
 	}
 	d.log.Printf("review worktree %s removed", co.Path)
