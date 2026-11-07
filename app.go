@@ -396,6 +396,7 @@ func (a *App) setState(h *host, st proto.State) {
 		dragged = s.Layout
 	}
 	a.mergeState(h, st)
+	h.setups = st.Setups
 	a.loaded = true
 	if s := a.session(a.layoutDrag.session); s != nil && s.Layout.SameShape(dragged) {
 		s.Layout = dragged

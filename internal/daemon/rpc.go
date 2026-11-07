@@ -58,6 +58,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.create(p)
 
+	case "worktree.setup.cancel":
+		var p proto.IDParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return nil, d.cancelSetup(p.ID)
+
 	case "close":
 		var p proto.CloseParams
 		if err := decode(&p); err != nil {
