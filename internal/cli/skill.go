@@ -139,9 +139,23 @@ you built: open it with kero split --url, then
     kero browser screenshot -o /tmp/page.png   # shown or not, without the focus
     kero browser back|forward|reload
     kero browser cookies save state.json       # or load: Playwright's, or cookies.txt
+    kero browser pick                          # the user picks elements, with notes, for you
 
 Refs last until the page goes to another; one whose element is gone
 fails: take a new snapshot.
+
+To have the user show you what to change on a page, rather than describe
+it, turn on Pick mode: kero browser pick. The user clicks elements and
+writes a note on each (they can also do this from the pane's toolbar
+without you asking), and their picks come to you as one message labelled
+"element picks", typed into your prompt, or to kero browser wait-message
+if you wait for the page. For each element it gives, strongest first:
+Source, the file and line from the framework's development build or the
+page's own HTML file, checked against the file; Search hints, strings
+likely written in the source as they are (★ marks one no other element
+on the page has), to grep for; where it sits on the page and its HTML;
+then the page's selector, which is not the source's, and its styles, and
+a screenshot of it you can open. Go to Source first, then grep the hints.
 
 With no target, kero browser drives your session's browser pane; name
 one (kero browser <target> text) when there are several. It needs the app

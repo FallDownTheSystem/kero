@@ -162,6 +162,7 @@ kero browser eval 'document.title'
 | `eval <js…>`                    | ページで JavaScript を実行し、その値を出力: 文字列はそのまま、それ以外は JSON |
 | `screenshot [-o file.png]`      | ページの画像を保存し、その場所を出力。`-o -` で標準出力に書き出す |
 | `wait-message [--json]`         | ページが [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) で送る次のメッセージを待ち、ページの情報を付けて表示します。`--json` は `id`、`from`、`label`、`url`、`title`、`text`、`at` を表示します |
+| `pick`                          | 要素を選ぶモードをオンにし、ユーザーが要素を選んでメモを書けるようにする。選んだ要素はページのエージェントへのメッセージとして届く（[詳しく](./panes.md#エージェントのために要素を選ぶ)） |
 
 `wait-message` は `--timeout` を指定しない限り届くまで待ち、何も届かなければ `timed out` で失敗します: エージェントは、シェルツール自体のタイムアウトより短いタイムアウトで待ち直します。Remote Control は不要です。
 
