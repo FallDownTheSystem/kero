@@ -2483,5 +2483,40 @@
         "type": "int"
       }
     }
-  }
+  },
+  "prLinkTip": "Pull request #{number}",
+  "@prLinkTip": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prLinkConflicts": "merge conflicts",
+  "prLinkChecksFailed": "checks failed",
+  "prLinkChecksRunning": "checks running",
+  "prLinkChecksPassed": "checks passed",
+  "prLinkShow": "Show Pull Request #{number}",
+  "@prLinkShow": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prLinkUnlink": "Unlink Pull Request #{number}",
+  "@prLinkUnlink": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prLinkLink": "Link to this session, which then wakes its agent when the checks fail",
+  "prLinkLinked": "Linked to this session, which wakes its agent when the checks fail. Click to unlink.",
+  "setPRWatchWake": "Wake the session's agent",
+  "setPRWatchWakeDetail": "When the pull request of a session's branch, or one you linked, fails its checks or can't merge for conflicts; with All, also when its checks pass and when comments come. Uses the GitHub CLI.",
+  "setPRWatchWakeAll": "All",
+  "setPRWatchWakeFailures": "Failures",
+  "setPRWatchWakeOff": "Off"
 }

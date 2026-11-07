@@ -39,6 +39,7 @@ func settingsIndex() []searchEntry {
 		{"git", locales.SetCommitMessage(), "commit-message-command commit message ai agent claude codex llm write generate"},
 		{"git", locales.SetPRNotify(), "pr-notify pull request pr github gh notification notify review requested new poll"},
 		{"git", locales.SetPRPoll(), "pr-poll-interval pull request pr github poll check interval minutes"},
+		{"git", locales.SetPRWatchWake(), "pr-watch-wake pull request pr watch checks ci failed failing comments conflict agent wake session link"},
 		{"git", locales.SetCommitPrompt(), "commit-message-prompt commit message prompt instructions agent write generate default"},
 		{"git", locales.SetPRPrompt(), "pr-message-prompt pull request pr title description prompt instructions agent github default"},
 		{"git", locales.SetReviewPrompt(), "pr-review-prompt review pull request pr prompt agent code review default"},

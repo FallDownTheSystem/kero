@@ -171,6 +171,7 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `pr-message-prompt` |  | 智能体撰写[拉取请求](./changes.md#new-pull-request)标题和描述的方式，同 `commit-message-prompt` |
 | `pr-notify` | `review` | 项目所在 GitHub 仓库的哪些新拉取请求会[通知你](./changes.md#pull-request-notifications)：`review`，请求你审查的；`all`，别人打开的每一个；`off`，都不通知，此时也停止检查 |
 | `pr-poll-interval` | `5` | Kero 检查新拉取请求的间隔，单位为分钟 |
+| `pr-watch-wake` | `all` | [会话的拉取请求](./changes.md#会话的拉取请求)的哪些情况会唤醒会话中的智能体：`all`，检查失败和通过、他人的评论和审查、合并冲突；`failures`，检查失败和合并冲突；`off`，什么也不做，并停止关注 |
 | `review-command` |  | [审查](./changes.md#review)仓库拉取请求的智能体命令，如 `owner/name=codex --full-auto`；留空则为 `claude`。智能体把提示词作为一个参数收到，放在 `{prompt}` 处，否则放在命令之后；其中也可使用拉取请求的占位符。每个仓库重复一行 |
 | `review-prompt` |  | 交给审查智能体的提示词，如 `owner/name=/code-review {ticket} #{number}`；留空则用 Kero 自己的。换行写作 `\n`。每个仓库重复一行 |
 | `pr-review-prompt` |  | 没有自己的 `review-prompt` 的仓库中，交给[审查](./changes.md#review)智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |

@@ -1423,5 +1423,19 @@
   "setWorktreeCleanupFailed": "无法清理工作树：{error}",
   "setWorktreeCleanupNone": "没有要删除的工作树。",
   "setWorktreeCleanupRemoved": "已删除 {count} 个工作树。",
-  "setWorktreeCleanupSome": "已删除 {count} 个工作树；部分无法删除：{failed}"
+  "setWorktreeCleanupSome": "已删除 {count} 个工作树；部分无法删除：{failed}",
+  "prLinkTip": "拉取请求 #{number}",
+  "prLinkConflicts": "合并冲突",
+  "prLinkChecksFailed": "检查失败",
+  "prLinkChecksRunning": "检查进行中",
+  "prLinkChecksPassed": "检查通过",
+  "prLinkShow": "显示拉取请求 #{number}",
+  "prLinkUnlink": "取消链接拉取请求 #{number}",
+  "prLinkLink": "链接到此会话，检查失败时会唤醒其智能体",
+  "prLinkLinked": "已链接到此会话，检查失败时会唤醒其智能体。点击取消链接。",
+  "setPRWatchWake": "唤醒会话的智能体",
+  "setPRWatchWakeDetail": "当会话分支的拉取请求或你链接的拉取请求检查失败，或因冲突无法合并时；选择“全部”时，检查通过和有新评论时也会唤醒。使用 GitHub CLI。",
+  "setPRWatchWakeAll": "全部",
+  "setPRWatchWakeFailures": "仅失败",
+  "setPRWatchWakeOff": "关闭"
 }

@@ -25,6 +25,7 @@ type session struct {
 	focus, zoomed     string
 	worktree          *proto.Worktree // made for it (proto.Session.Worktree)
 	review            *proto.PRReviewRef
+	pr                *prState // its pull request and its watch (prwatch.go), nil for none
 }
 
 // state returns what the subscribers see.
@@ -55,7 +56,7 @@ func (d *Daemon) stateLocked() proto.State {
 func (d *Daemon) sessionInfo(s *session) proto.Session {
 	info := proto.Session{
 		ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed,
-		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree, Review: s.review,
+		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree, Review: s.review, PR: s.pr.link(),
 		Panes: make([]proto.Pane, 0, len(s.panes)),
 	}
 	// Panes in the layout's order: left to right, top to bottom.

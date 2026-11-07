@@ -1423,5 +1423,19 @@
   "setWorktreeCleanupFailed": "ワークツリーを整理できませんでした: {error}",
   "setWorktreeCleanupNone": "削除するワークツリーはありません。",
   "setWorktreeCleanupRemoved": "{count} 個のワークツリーを削除しました。",
-  "setWorktreeCleanupSome": "{count} 個のワークツリーを削除しました。削除できなかったもの: {failed}"
+  "setWorktreeCleanupSome": "{count} 個のワークツリーを削除しました。削除できなかったもの: {failed}",
+  "prLinkTip": "プルリクエスト #{number}",
+  "prLinkConflicts": "マージコンフリクト",
+  "prLinkChecksFailed": "チェック失敗",
+  "prLinkChecksRunning": "チェック実行中",
+  "prLinkChecksPassed": "チェック成功",
+  "prLinkShow": "プルリクエスト #{number} を表示",
+  "prLinkUnlink": "プルリクエスト #{number} のリンクを解除",
+  "prLinkLink": "このセッションにリンクします。チェックが失敗するとエージェントを起こします",
+  "prLinkLinked": "このセッションにリンク済みで、チェックが失敗するとエージェントを起こします。クリックでリンクを解除。",
+  "setPRWatchWake": "セッションのエージェントを起こす",
+  "setPRWatchWakeDetail": "セッションのブランチのプルリクエスト、またはリンクしたものがチェックに失敗したとき、またはコンフリクトでマージできないとき。「すべて」では、チェックが成功したときとコメントが来たときにも。GitHub CLI を使います。",
+  "setPRWatchWakeAll": "すべて",
+  "setPRWatchWakeFailures": "失敗のみ",
+  "setPRWatchWakeOff": "オフ"
 }
