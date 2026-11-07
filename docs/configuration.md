@@ -161,6 +161,12 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `worktree-branch-prefix` | `semantic` | What goes before a branch Kero [names from a new worktree's task](./sessions.md#new-session-dialog): `semantic`, the kind of the work, as `feat/` or `fix/`; `static`, `worktree-branch-static-prefix`; or `custom`, what `worktree-branch-prompt` asks for |
 | `worktree-branch-static-prefix` | `kero/` | The prefix while `worktree-branch-prefix` is `static`; `{type}` in it is the kind of the work |
 | `worktree-branch-prompt` |        | How a new worktree's branch is named from its task, over Kero's own, with `\n` between lines |
+| `worktree-cleanup-enabled` | `false` | [Remove the worktrees Kero made](./changes.md#cleaning-up-worktrees) as Kero starts and hourly, once one of the rules below says so |
+| `worktree-cleanup-inactive-days` | `30` | Remove a worktree with no commit, checkout or session in it for that many days; `0` for never |
+| `worktree-cleanup-merged` | `true` | Remove a worktree once its branch's pull request on GitHub merged, at the commit the worktree is on |
+| `worktree-cleanup-unchanged` | `false` | Remove a worktree with no commit of its own beyond the default branch |
+| `worktree-cleanup-closed` | `false` | Remove a worktree once no session is left in it |
+| `worktree-cleanup-project` |  | A project's own cleanup, by its folder: `<folder>=off`, or `<folder>=` and rules, comma-separated, of `inactive:<days>`, `merged`, `unchanged` and `closed`; repeat it |
 | `commit-message-command` |  | The command that [writes a commit message](./changes.md#committing) of what's staged, run in your shell and given the prompt on its stdin, as `llm -m gpt-5`; `{session}` in it is the ID of the pane's agent's conversation, to fork it, as `cc -p --resume {session} --fork-session`; empty for a fork of the conversation of the agent in the pane, else a new run of Claude Code's or Codex's |
 | `commit-message-prompt` |  | How the agent writes a commit message: the instructions before the recent commits and the staged diff; empty for Kero's own, which Settings › Git shows. Write a line break as `\n` |
 | `pr-message-prompt` |  | How the agent writes a [pull request](./changes.md#new-pull-request)'s title and description, as `commit-message-prompt` |

@@ -13865,3 +13865,309 @@ func PrsSetupMergeHint() string { return In(i18n.Locale()).PrsSetupMergeHint() }
 func (msgs Messages) PrsSetupMergeHint() string {
 	return Catalog.Format(msgs.locale, "prsSetupMergeHint", nil)
 }
+
+// SetWorktreeCleanup says "Worktree cleanup"
+// in the language the app shows.
+func SetWorktreeCleanup() string { return In(i18n.Locale()).SetWorktreeCleanup() }
+
+// SetWorktreeCleanup says "Worktree cleanup"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanup() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanup", nil)
+}
+
+// SetWorktreeCleanupNote says "Only worktrees Kero made are removed. Kero never removes one a session works in, or one with uncommitted changes, unt…"
+// in the language the app shows.
+func SetWorktreeCleanupNote() string { return In(i18n.Locale()).SetWorktreeCleanupNote() }
+
+// SetWorktreeCleanupNote says "Only worktrees Kero made are removed. Kero never removes one a session works in, or one with uncommitted changes, unt…"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupNote() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupNote", nil)
+}
+
+// SetWorktreeCleanupOn says "Clean up worktrees automatically"
+// in the language the app shows.
+func SetWorktreeCleanupOn() string { return In(i18n.Locale()).SetWorktreeCleanupOn() }
+
+// SetWorktreeCleanupOn says "Clean up worktrees automatically"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupOn() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupOn", nil)
+}
+
+// SetWorktreeCleanupOnDetail says "As Kero starts and every hour, when any rule below matches. Off by default."
+// in the language the app shows.
+func SetWorktreeCleanupOnDetail() string { return In(i18n.Locale()).SetWorktreeCleanupOnDetail() }
+
+// SetWorktreeCleanupOnDetail says "As Kero starts and every hour, when any rule below matches. Off by default."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupOnDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupOnDetail", nil)
+}
+
+// SetWorktreeCleanupInactive says "Inactive for"
+// in the language the app shows.
+func SetWorktreeCleanupInactive() string { return In(i18n.Locale()).SetWorktreeCleanupInactive() }
+
+// SetWorktreeCleanupInactive says "Inactive for"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupInactive() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupInactive", nil)
+}
+
+// SetWorktreeCleanupInactiveDetail says "No commit, checkout, or session in the worktree for this long."
+// in the language the app shows.
+func SetWorktreeCleanupInactiveDetail() string {
+	return In(i18n.Locale()).SetWorktreeCleanupInactiveDetail()
+}
+
+// SetWorktreeCleanupInactiveDetail says "No commit, checkout, or session in the worktree for this long."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupInactiveDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupInactiveDetail", nil)
+}
+
+// SetWorktreeCleanupNever says "Never"
+// in the language the app shows.
+func SetWorktreeCleanupNever() string { return In(i18n.Locale()).SetWorktreeCleanupNever() }
+
+// SetWorktreeCleanupNever says "Never"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupNever() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupNever", nil)
+}
+
+// SetWorktreeCleanupDays says "{count, plural, one {# day} other {# days}}"
+// in the language the app shows.
+func SetWorktreeCleanupDays(count int) string { return In(i18n.Locale()).SetWorktreeCleanupDays(count) }
+
+// SetWorktreeCleanupDays says "{count, plural, one {# day} other {# days}}"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupDays(count int) string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupDays", map[string]any{"count": count})
+}
+
+// SetWorktreeCleanupMerged says "Pull request merged"
+// in the language the app shows.
+func SetWorktreeCleanupMerged() string { return In(i18n.Locale()).SetWorktreeCleanupMerged() }
+
+// SetWorktreeCleanupMerged says "Pull request merged"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupMerged() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupMerged", nil)
+}
+
+// SetWorktreeCleanupMergedDetail says "Its branch’s pull request on GitHub merged, at the commit the worktree is on."
+// in the language the app shows.
+func SetWorktreeCleanupMergedDetail() string {
+	return In(i18n.Locale()).SetWorktreeCleanupMergedDetail()
+}
+
+// SetWorktreeCleanupMergedDetail says "Its branch’s pull request on GitHub merged, at the commit the worktree is on."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupMergedDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupMergedDetail", nil)
+}
+
+// SetWorktreeCleanupUnchanged says "No commits of its own"
+// in the language the app shows.
+func SetWorktreeCleanupUnchanged() string { return In(i18n.Locale()).SetWorktreeCleanupUnchanged() }
+
+// SetWorktreeCleanupUnchanged says "No commits of its own"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupUnchanged() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupUnchanged", nil)
+}
+
+// SetWorktreeCleanupUnchangedDetail says "Nothing on its branch beyond the default branch."
+// in the language the app shows.
+func SetWorktreeCleanupUnchangedDetail() string {
+	return In(i18n.Locale()).SetWorktreeCleanupUnchangedDetail()
+}
+
+// SetWorktreeCleanupUnchangedDetail says "Nothing on its branch beyond the default branch."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupUnchangedDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupUnchangedDetail", nil)
+}
+
+// SetWorktreeCleanupClosed says "Last session closed"
+// in the language the app shows.
+func SetWorktreeCleanupClosed() string { return In(i18n.Locale()).SetWorktreeCleanupClosed() }
+
+// SetWorktreeCleanupClosed says "Last session closed"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupClosed() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupClosed", nil)
+}
+
+// SetWorktreeCleanupClosedDetail says "No session works in it anymore."
+// in the language the app shows.
+func SetWorktreeCleanupClosedDetail() string {
+	return In(i18n.Locale()).SetWorktreeCleanupClosedDetail()
+}
+
+// SetWorktreeCleanupClosedDetail says "No session works in it anymore."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupClosedDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupClosedDetail", nil)
+}
+
+// SetWorktreeCleanupProject says "Project"
+// in the language the app shows.
+func SetWorktreeCleanupProject() string { return In(i18n.Locale()).SetWorktreeCleanupProject() }
+
+// SetWorktreeCleanupProject says "Project"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupProject() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupProject", nil)
+}
+
+// SetWorktreeCleanupProjectDetail says "A project of this computer can follow the rules above, keep its worktrees, or have rules of its own."
+// in the language the app shows.
+func SetWorktreeCleanupProjectDetail() string {
+	return In(i18n.Locale()).SetWorktreeCleanupProjectDetail()
+}
+
+// SetWorktreeCleanupProjectDetail says "A project of this computer can follow the rules above, keep its worktrees, or have rules of its own."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupProjectDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupProjectDetail", nil)
+}
+
+// SetWorktreeCleanupProjectMode says "Cleanup for this project"
+// in the language the app shows.
+func SetWorktreeCleanupProjectMode() string { return In(i18n.Locale()).SetWorktreeCleanupProjectMode() }
+
+// SetWorktreeCleanupProjectMode says "Cleanup for this project"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupProjectMode() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupProjectMode", nil)
+}
+
+// SetWorktreeCleanupInherit says "Inherit"
+// in the language the app shows.
+func SetWorktreeCleanupInherit() string { return In(i18n.Locale()).SetWorktreeCleanupInherit() }
+
+// SetWorktreeCleanupInherit says "Inherit"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupInherit() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupInherit", nil)
+}
+
+// SetWorktreeCleanupOff says "Off"
+// in the language the app shows.
+func SetWorktreeCleanupOff() string { return In(i18n.Locale()).SetWorktreeCleanupOff() }
+
+// SetWorktreeCleanupOff says "Off"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupOff() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupOff", nil)
+}
+
+// SetWorktreeCleanupCustom says "Custom"
+// in the language the app shows.
+func SetWorktreeCleanupCustom() string { return In(i18n.Locale()).SetWorktreeCleanupCustom() }
+
+// SetWorktreeCleanupCustom says "Custom"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupCustom() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupCustom", nil)
+}
+
+// SetWorktreeCleanupNow says "Clean up now"
+// in the language the app shows.
+func SetWorktreeCleanupNow() string { return In(i18n.Locale()).SetWorktreeCleanupNow() }
+
+// SetWorktreeCleanupNow says "Clean up now"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupNow() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupNow", nil)
+}
+
+// SetWorktreeCleanupNowDetail says "Runs the cleanup on this computer at once, with the rules as they are."
+// in the language the app shows.
+func SetWorktreeCleanupNowDetail() string { return In(i18n.Locale()).SetWorktreeCleanupNowDetail() }
+
+// SetWorktreeCleanupNowDetail says "Runs the cleanup on this computer at once, with the rules as they are."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupNowDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupNowDetail", nil)
+}
+
+// SetWorktreeCleanupNowButton says "Delete Now"
+// in the language the app shows.
+func SetWorktreeCleanupNowButton() string { return In(i18n.Locale()).SetWorktreeCleanupNowButton() }
+
+// SetWorktreeCleanupNowButton says "Delete Now"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupNowButton() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupNowButton", nil)
+}
+
+// SetWorktreeCleanupRunning says "Cleaning Up…"
+// in the language the app shows.
+func SetWorktreeCleanupRunning() string { return In(i18n.Locale()).SetWorktreeCleanupRunning() }
+
+// SetWorktreeCleanupRunning says "Cleaning Up…"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupRunning() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupRunning", nil)
+}
+
+// SetWorktreeCleanupNoKerod says "Kero isn’t connected to its background service."
+// in the language the app shows.
+func SetWorktreeCleanupNoKerod() string { return In(i18n.Locale()).SetWorktreeCleanupNoKerod() }
+
+// SetWorktreeCleanupNoKerod says "Kero isn’t connected to its background service."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupNoKerod() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupNoKerod", nil)
+}
+
+// SetWorktreeCleanupFailed says "Couldn’t clean up worktrees: {error}"
+// in the language the app shows.
+func SetWorktreeCleanupFailed(error string) string {
+	return In(i18n.Locale()).SetWorktreeCleanupFailed(error)
+}
+
+// SetWorktreeCleanupFailed says "Couldn’t clean up worktrees: {error}"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupFailed(error string) string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupFailed", map[string]any{"error": error})
+}
+
+// SetWorktreeCleanupNone says "No worktree to remove."
+// in the language the app shows.
+func SetWorktreeCleanupNone() string { return In(i18n.Locale()).SetWorktreeCleanupNone() }
+
+// SetWorktreeCleanupNone says "No worktree to remove."
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupNone() string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupNone", nil)
+}
+
+// SetWorktreeCleanupRemoved says "{count, plural, one {Removed # worktree.} other {Removed # worktrees.}}"
+// in the language the app shows.
+func SetWorktreeCleanupRemoved(count int) string {
+	return In(i18n.Locale()).SetWorktreeCleanupRemoved(count)
+}
+
+// SetWorktreeCleanupRemoved says "{count, plural, one {Removed # worktree.} other {Removed # worktrees.}}"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupRemoved(count int) string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupRemoved", map[string]any{"count": count})
+}
+
+// SetWorktreeCleanupSome says "{count, plural, one {Removed # worktree} other {Removed # worktrees}}; some couldn’t be removed: {failed}"
+// in the language the app shows.
+func SetWorktreeCleanupSome(count int, failed string) string {
+	return In(i18n.Locale()).SetWorktreeCleanupSome(count, failed)
+}
+
+// SetWorktreeCleanupSome says "{count, plural, one {Removed # worktree} other {Removed # worktrees}}; some couldn’t be removed: {failed}"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeCleanupSome(count int, failed string) string {
+	return Catalog.Format(msgs.locale, "setWorktreeCleanupSome", map[string]any{"count": count, "failed": failed})
+}

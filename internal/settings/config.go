@@ -471,6 +471,47 @@ var keys = []key{
 	choiceKey("worktree-branch-prefix", "what goes before a branch Kero names from a new worktree's task: the kind of the work, as feat/ or fix/; worktree-branch-static-prefix; or what worktree-branch-prompt says", func(s *Settings) *string { return &s.WorktreeBranchPrefix }, "semantic", "static", "custom"),
 	stringKey("worktree-branch-static-prefix", "the prefix of a named branch while worktree-branch-prefix is static, as kero/; {type} in it is the kind of the work", func(s *Settings) *string { return &s.WorktreeBranchStatic }),
 	textKey("worktree-branch-prompt", "how a new worktree's branch is named from its task, over Kero's own, with \\n between lines; empty for Kero's", func(s *Settings) *string { return &s.WorktreeBranchPrompt }),
+	boolKey("worktree-cleanup-enabled", "remove the worktrees Kero made, as Kero starts and hourly, once a rule of worktree-cleanup-* says so; never one a session works in, or one with changes, untracked files or ignored files that can't be made again", func(s *Settings) *bool { return &s.WorktreeCleanup.On }),
+	numberKey("worktree-cleanup-inactive-days", "remove a worktree with no commit or checkout in it for that many days; 0 for never", func(s *Settings) float64 { return float64(s.WorktreeCleanup.InactiveDays) }, func(s *Settings, n float64) { s.WorktreeCleanup.InactiveDays = int(n) }),
+	boolKey("worktree-cleanup-merged", "remove a worktree once its branch's pull request on GitHub is merged, at the commit the worktree is on", func(s *Settings) *bool { return &s.WorktreeCleanup.Merged }),
+	boolKey("worktree-cleanup-unchanged", "remove a worktree with no commit of its own beyond the default branch", func(s *Settings) *bool { return &s.WorktreeCleanup.Unchanged }),
+	boolKey("worktree-cleanup-closed", "remove a worktree once no session is left in it", func(s *Settings) *bool { return &s.WorktreeCleanup.Closed }),
+	{name: "worktree-cleanup-project", doc: "<folder>=<rules>: a project's own worktree cleanup, by the project's folder, over worktree-cleanup-enabled and its rules: off, or on with any of inactive:<days>, merged, unchanged and closed, comma-separated; repeat it", list: true,
+		get: func(s *Settings) []string {
+			var out []string
+			for _, dir := range slices.Sorted(maps.Keys(s.ProjectCleanup)) {
+				out = append(out, dir+"="+cleanupRules(s.ProjectCleanup[dir]))
+			}
+			return out
+		},
+		set: func(s *Settings, v []string) error {
+			s.ProjectCleanup = nil
+			var bad []string
+			for _, line := range v {
+				// A folder may hold =, the rules never do.
+				i := strings.LastIndex(line, "=")
+				if i < 0 {
+					if strings.TrimSpace(line) != "" {
+						bad = append(bad, fmt.Sprintf("%q is not <folder>=<rules>", line))
+					}
+					continue
+				}
+				dir := strings.TrimSpace(line[:i])
+				w, err := parseCleanupRules(line[i+1:])
+				if dir == "" || err != nil {
+					bad = append(bad, fmt.Sprintf("%q: %v", line, err))
+					continue
+				}
+				if s.ProjectCleanup == nil {
+					s.ProjectCleanup = map[string]WorktreeCleanup{}
+				}
+				s.ProjectCleanup[CleanupKey(dir)] = w
+			}
+			if bad != nil {
+				return fmt.Errorf("%s", strings.Join(bad, "; "))
+			}
+			return nil
+		}},
 	choiceKey("diff-layout", "the changes panel's diffs: unified while the panel is narrow and side by side once it's wide, or always one", func(s *Settings) *string { return &s.DiffLayout }, "auto", "unified", "split"),
 	stringKey("commit-message-command", "the command that writes a commit message of what is staged, run in your shell and given the prompt on its stdin, as llm -m gpt-5; {session} in it is the id of the pane's agent's conversation, to fork it, as cc -p --resume {session} --fork-session: empty for a fork of that conversation, else a new run of Claude Code's or Codex's", func(s *Settings) *string { return &s.CommitMessageCommand }),
 	textKey("commit-message-prompt", "how a commit message is written, over Kero's own, with \\n between lines; empty for Kero's", func(s *Settings) *string { return &s.CommitMessagePrompt }),

@@ -435,3 +435,29 @@ func TestFontFeature(t *testing.T) {
 		t.Errorf("a new file sets font-feature:\n%s", out)
 	}
 }
+
+func TestWorktreeCleanupRoundTrip(t *testing.T) {
+	s := Default()
+	s.WorktreeCleanup.On = true
+	s.ProjectCleanup = map[string]WorktreeCleanup{
+		CleanupKey(`C:\new\a=b`): {On: true, InactiveDays: 7, Closed: true},
+		CleanupKey("/src/web"):   {},
+	}
+	out := format(s, "")
+	back, probs := parse(out)
+	if len(probs) != 0 {
+		t.Fatalf("problems %q in:\n%s", probs, out)
+	}
+	if back.WorktreeCleanup != s.WorktreeCleanup || !maps.Equal(back.ProjectCleanup, s.ProjectCleanup) {
+		t.Errorf("got %+v %+v, want %+v %+v\n%s", back.WorktreeCleanup, back.ProjectCleanup, s.WorktreeCleanup, s.ProjectCleanup, out)
+	}
+	if w := back.CleanupFor("/src/web/"); w.Removes() {
+		t.Errorf("a project turned off removes: %+v", w)
+	}
+	if w := back.CleanupFor("/elsewhere"); w != s.WorktreeCleanup {
+		t.Errorf("a project of no rules of its own has %+v", w)
+	}
+	if _, probs := parse("worktree-cleanup-project = /x=merged,soon\n"); len(probs) != 1 {
+		t.Errorf("an unknown rule: problems %q", probs)
+	}
+}

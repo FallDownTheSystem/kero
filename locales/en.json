@@ -2351,5 +2351,55 @@
   "prsDoneBranchDeleted": "Deleted {branch}",
   "prsSetupMerge": "Default merge method",
   "prsSetupMergeAuto": "GitHub's",
-  "prsSetupMergeHint": "How Merge merges this repository's pull requests. GitHub's is the first the repository allows of squash, merge commit and rebase."
+  "prsSetupMergeHint": "How Merge merges this repository's pull requests. GitHub's is the first the repository allows of squash, merge commit and rebase.",
+  "setWorktreeCleanup": "Worktree cleanup",
+  "setWorktreeCleanupNote": "Only worktrees Kero made are removed. Kero never removes one a session works in, or one with uncommitted changes, untracked files, or ignored files that a build can’t make again, such as .env. Branches with commits of their own stay.",
+  "setWorktreeCleanupOn": "Clean up worktrees automatically",
+  "setWorktreeCleanupOnDetail": "As Kero starts and every hour, when any rule below matches. Off by default.",
+  "setWorktreeCleanupInactive": "Inactive for",
+  "setWorktreeCleanupInactiveDetail": "No commit, checkout, or session in the worktree for this long.",
+  "setWorktreeCleanupNever": "Never",
+  "setWorktreeCleanupDays": "{count, plural, one {# day} other {# days}}",
+  "@setWorktreeCleanupDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "setWorktreeCleanupMerged": "Pull request merged",
+  "setWorktreeCleanupMergedDetail": "Its branch’s pull request on GitHub merged, at the commit the worktree is on.",
+  "setWorktreeCleanupUnchanged": "No commits of its own",
+  "setWorktreeCleanupUnchangedDetail": "Nothing on its branch beyond the default branch.",
+  "setWorktreeCleanupClosed": "Last session closed",
+  "setWorktreeCleanupClosedDetail": "No session works in it anymore.",
+  "setWorktreeCleanupProject": "Project",
+  "setWorktreeCleanupProjectDetail": "A project of this computer can follow the rules above, keep its worktrees, or have rules of its own.",
+  "setWorktreeCleanupProjectMode": "Cleanup for this project",
+  "setWorktreeCleanupInherit": "Inherit",
+  "setWorktreeCleanupOff": "Off",
+  "setWorktreeCleanupCustom": "Custom",
+  "setWorktreeCleanupNow": "Clean up now",
+  "setWorktreeCleanupNowDetail": "Runs the cleanup on this computer at once, with the rules as they are.",
+  "setWorktreeCleanupNowButton": "Delete Now",
+  "setWorktreeCleanupRunning": "Cleaning Up…",
+  "setWorktreeCleanupNoKerod": "Kero isn’t connected to its background service.",
+  "setWorktreeCleanupFailed": "Couldn’t clean up worktrees: {error}",
+  "setWorktreeCleanupNone": "No worktree to remove.",
+  "setWorktreeCleanupRemoved": "{count, plural, one {Removed # worktree.} other {Removed # worktrees.}}",
+  "@setWorktreeCleanupRemoved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "setWorktreeCleanupSome": "{count, plural, one {Removed # worktree} other {Removed # worktrees}}; some couldn’t be removed: {failed}",
+  "@setWorktreeCleanupSome": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

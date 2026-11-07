@@ -103,6 +103,7 @@ type settingsState struct {
 	hostEdit    hostDraft                  // a host's, as the user edits it
 	tailnet     tailnetLook                // this machine on the tailnet, for the Hosts page
 	confirm     *confirmation              // a question, asked in this window
+	cleanup     cleanupDraft               // Settings › Git's worktree cleanup
 	// preview is the Terminal page's sample terminal, made once
 	// previewLoad, which waits for terminal.Load off the main thread,
 	// gives its result; previewText is its text, for assistive technology.
@@ -761,6 +762,7 @@ func (a *App) gitPage(c *ui.Context, pal *palette) {
 		promptSetting(c, pal, "pr-prompt", locales.SetPRPrompt(), locales.SetPRPromptDetail(), &s.PRMessagePrompt, commitmsg.DefaultPRPrompt, &a.ss.prompts[1])
 		promptSetting(c, pal, "review-prompt", locales.SetReviewPrompt(), locales.SetReviewPromptDetail(), &s.ReviewPrompt, DefaultReviewPrompt, &a.ss.prompts[2])
 	})
+	a.worktreeCleanupGroups(c, pal)
 }
 
 // filesPage is Settings › Files: the editor files open in, and the Files

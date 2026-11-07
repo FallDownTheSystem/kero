@@ -160,6 +160,12 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `worktree-branch-prefix` | `semantic` | [新しいワークツリーのタスクから](./sessions.md#new-session-dialog)名前を付けたブランチの接頭辞: 作業の種類（`feat/`、`fix/` など）の `semantic`、`worktree-branch-static-prefix` の `static`、`worktree-branch-prompt` の指示どおりの `custom` |
 | `worktree-branch-static-prefix` | `kero/` | `worktree-branch-prefix` が `static` のときの接頭辞。`{type}` は作業の種類になります |
 | `worktree-branch-prompt` |        | 新しいワークツリーのブランチ名をタスクから付ける方法。Kero のものの代わりに使い、行の間は `\n` |
+| `worktree-cleanup-enabled` | `false` | Kero の起動時と 1 時間ごとに、下の条件のいずれかに当てはまる [Kero が作ったワークツリーを削除](./changes.md#cleaning-up-worktrees)します |
+| `worktree-cleanup-inactive-days` | `30` | その日数、コミット、チェックアウト、セッションがないワークツリーを削除します。`0` で削除しません |
+| `worktree-cleanup-merged` | `true` | ブランチの GitHub のプルリクエストが、ワークツリーのコミットでマージされたら削除します |
+| `worktree-cleanup-unchanged` | `false` | デフォルトブランチ以外のコミットがないワークツリーを削除します |
+| `worktree-cleanup-closed` | `false` | セッションがなくなったワークツリーを削除します |
+| `worktree-cleanup-project` |  | プロジェクト独自の整理。フォルダごとに `<フォルダ>=off`、または `<フォルダ>=` に続けて `inactive:<日数>`、`merged`、`unchanged`、`closed` をカンマ区切りで。繰り返し指定できます |
 | `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。シェルで実行され、プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。中の `{session}` はフォークするペインのエージェントの会話の ID になります（`cc -p --resume {session} --fork-session` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
 | `commit-message-prompt` |  | エージェントがコミットメッセージを書く方法。最近のコミットとステージした差分の前に置く指示です。空なら Kero のもの（設定 › Git に表示）。改行は `\n` と書きます |
 | `pr-message-prompt` |  | エージェントが[プルリクエスト](./changes.md#new-pull-request)のタイトルと説明を書く方法。`commit-message-prompt` と同様です |
