@@ -1257,8 +1257,26 @@
   "setThemeSaveFailed": "Couldn’t save the theme: {error}",
   "setThemeBase": "Background and text",
   "setThemeBackground": "Background",
-  "setThemeAccent": "Accent",
+  "setThemeWash": "Background colors",
+  "setThemeWashColor": "Background color {n}",
+  "@setThemeWashColor": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "setThemeWashMore": "Add a color",
+  "setThemeWashLess": "Remove the last color",
   "setThemeGlow": "Background glow",
+  "setThemeHighlight": "Highlight",
+  "setThemeHighlightBg": "Highlight background",
+  "setThemeExport": "Export",
+  "setThemeImport": "Import…",
+  "setThemeImportAction": "Import",
+  "setThemeImportTitle": "Import Theme",
+  "setThemeImportDetail": "Paste a theme in Ghostty's format, as Export copies it. Its colors replace the ones here; nothing is saved until you click Save.",
+  "setThemeImportFailed": "Couldn’t read the theme: {error}",
   "setThemeForeground": "Text",
   "setThemeCursorText": "Text under the cursor",
   "setThemeSelection": "Selection",

@@ -143,14 +143,11 @@ func sizedButtonAt(c *ui.Context, key, label, keys string, primary bool, height,
 		b.AutoFocus()
 	}
 	bg, fg := pal.control, pal.text
-	if primary {
-		bg, fg = pal.accent, ui.Hex("#ffffff")
-	}
 	switch {
+	case primary:
+		bg, fg = accentFace(pal, b.Hovered(), b.Pressed()), pal.onAccent
 	case b.Pressed():
 		bg = bg.Mix(ui.Hex("#000000"), 0.08)
-	case b.Hovered() && primary:
-		bg = bg.Mix(ui.Hex("#ffffff"), 0.08)
 	case b.Hovered():
 		bg = pal.controlHover
 	}
@@ -164,12 +161,36 @@ func sizedButtonAt(c *ui.Context, key, label, keys string, primary bool, height,
 	return b.Clicked()
 }
 
+// accentFace is the face of a primary control, the highlight's
+// background, lighter under the pointer and darker pressed; its text is
+// pal.onAccent.
+func accentFace(pal *palette, hovered, pressed bool) ui.Color {
+	switch {
+	case pressed:
+		return pal.accentBg.Mix(ui.Hex("#000000"), 0.08)
+	case hovered:
+		return pal.accentBg.Mix(ui.Hex("#ffffff"), 0.08)
+	}
+	return pal.accentBg
+}
+
+// highlightRow gives a menu's row the highlight's face, as the pointer or
+// the arrows are on it, and returns its text's colors: plain and faint.
+func highlightRow(row ui.Element, pal *palette) (fg, faint ui.Color) {
+	row.Background(pal.accentBg)
+	return pal.onAccent, pal.onAccent.Alpha(0.75)
+}
+
 // borderless returns the theme with kero's look: its accent, and no lines
 // around controls, which stand out by their fill: white fields and
 // buttons on soft panels.
 func borderless(c *ui.Context, pal *palette) *ui.Theme {
 	t := *c.Theme()
-	t.Accent = pal.accent
+	// MyGo draws its highlighted menu rows and checked boxes in Accent,
+	// with AccentText on them: kero's faces of the highlight. It has no
+	// accent of lines apart, so its carets and links take the face's too.
+	t.Accent, t.AccentText = pal.accentBg, pal.onAccent
+	t.AccentHover, t.AccentPressed = accentFace(pal, true, false), accentFace(pal, false, true)
 	t.Selection = pal.accent.Alpha(0.25)
 	t.Border = ui.Transparent
 	t.Surface = pal.control
@@ -188,7 +209,7 @@ func toggle(c *ui.Context, on *bool, pal *palette) ui.Element {
 		track = ui.RGBA(255, 255, 255, 0.2)
 	}
 	if *on {
-		track = pal.accent
+		track = pal.accentBg
 	}
 	sw.Background(sw.AnimateColor("track", track, ui.Animation{Duration: 150 * time.Millisecond}))
 	x := sw.AnimateTo("knob", b2f(*on)*16, ui.Animation{Spring: ui.SpringOptions{Duration: 260 * time.Millisecond, Bounce: 0.15}})

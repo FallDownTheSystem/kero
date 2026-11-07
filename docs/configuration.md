@@ -96,7 +96,16 @@ kero config check             # report unknown keys and bad values, and agents.t
 little away; below `1`, wide letters can touch. Cells take whole pixels, so
 values close together can look the same or differ by a pixel.
 
-Your own themes are files in Ghostty's format in Ghostty's themes folder: `$XDG_CONFIG_HOME/ghostty/themes` when that is set, else `%LOCALAPPDATA%\ghostty\themes` on Windows and `~/.config/ghostty/themes` elsewhere. In Settings › Appearance, point at a theme in the Ghostty themes' menus to preview it in the window, and use Customize Theme to edit every color of the theme you use and save the result there as a theme of your own. Its Accent colors Kero's buttons and highlights, the theme's cursor color (its blue when the cursor is gray) unless you choose another, so a bright cursor can have quieter buttons. Its Background glow is the color that lights the window from the top right corner, the accent unless you choose another. Kero saves them on `# kero-accent:` and `# kero-glow:` lines, which Ghostty reads as comments. The file theme colors the editor panes and the viewer, whose code takes its 16 colors: keywords magenta, strings green, types yellow, functions blue, comments bright black. Settings › Appearance › File Colors chooses the file theme, the terminals' by default.
+Your own themes are files in Ghostty's format in Ghostty's themes folder: `$XDG_CONFIG_HOME/ghostty/themes` when that is set, else `%LOCALAPPDATA%\ghostty\themes` on Windows and `~/.config/ghostty/themes` elsewhere. In Settings › Appearance, point at a theme in the Ghostty themes' menus to preview it in the window, and use Customize Theme to edit every color of the theme you use and save the result there as a theme of your own. Kero's own colors of a theme follow its other colors unless you choose them:
+
+- **Background colors**: 2 to 4 colors blended from top to bottom under the cards, as Aurora's; else two shades of the theme's background.
+- **Background glow**: the color that lights the window from the top right corner; else the highlight background.
+- **Highlight**: icons, outlines, links, focus rings and the faint washes of selected rows; else the theme's cursor color, or its blue when the cursor is gray.
+- **Highlight background**: the face of primary buttons, highlighted menu rows and pills, with white or near-black text, whichever reads better; else the highlight. A bright cursor can have quieter buttons.
+
+Kero saves them on `# kero-wash:`, `# kero-glow:`, `# kero-highlight:` and `# kero-highlight-bg:` lines, which Ghostty reads as comments; a theme saved with a `# kero-accent:` line takes it as both highlights. **Export** copies the theme being edited, those lines too, as the text of its file; **Import…** takes such text, pasted, into the theme being edited, which is saved only when you click Save.
+
+The file theme colors the editor panes and the viewer, whose code takes its 16 colors: keywords magenta, strings green, types yellow, functions blue, comments bright black. Settings › Appearance › File Colors chooses the file theme, the terminals' by default.
 
 ## Shell
 

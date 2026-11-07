@@ -281,8 +281,7 @@ func (a *App) basePopover(c *ui.Context, pal *palette, f *prForm, d *proto.PRDra
 				row.Height(menuItemH+2).Padding(0, 10, 0, 6).Gap(6).Radius(7).AlignItems(ui.Center)
 				fg := pal.text
 				if hi {
-					row.Background(pal.accent)
-					fg = ui.Hex("#ffffff")
+					fg, _ = highlightRow(row, pal)
 				}
 				row.TextColor(fg).Children(func() {
 					if name == d.Base {

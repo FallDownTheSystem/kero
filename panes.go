@@ -478,7 +478,7 @@ func (a *App) dropPreview(c *ui.Context, pal *palette, target string, zone dropZ
 			// pointer carries through its middle.
 			ui.Box(c).HeightPercent(22).Shrink(0)
 			pill := ui.Row(c).Height(30).Padding(0, 12).Gap(7).Radius(15).AlignItems(ui.Center).
-				Background(pal.accent).TextColor(ui.Hex("#ffffff"))
+				Background(pal.accentBg).TextColor(pal.onAccent)
 			floating(pill, pal).Children(func() {
 				ui.Icon(c, glyph).Size(14, 14)
 				ui.Text(c, label).FontSize(12.5).FontWeight(600).SingleLine()

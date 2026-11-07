@@ -598,8 +598,7 @@ func (a *App) pickRowView(c *ui.Context, pal *palette, s *proto.Session, pane *p
 	row.Height(menuItemH+2).Padding(0, 10, 0, 6+14*float32(r.depth)).Gap(6).Radius(7).AlignItems(ui.Center)
 	fg, faint := pal.text, pal.textFaint
 	if hi {
-		row.Background(pal.accent)
-		fg, faint = ui.Hex("#ffffff"), ui.Hex("#ffffff").Alpha(0.75)
+		fg, faint = highlightRow(row, pal)
 	}
 	b := r.b
 	if b != nil && b.Worktree != "" && !b.Current {
