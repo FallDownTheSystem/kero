@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"math"
 	"os"
@@ -26,6 +27,7 @@ import (
 	"kero/internal/cli"
 	"kero/internal/client"
 	"kero/internal/commitmsg"
+	"kero/internal/localbrowser"
 	"kero/internal/proto"
 	"kero/internal/settings"
 	"kero/internal/shell"
@@ -116,6 +118,10 @@ type settingsState struct {
 	listed       map[string]*terminal.Theme // the themes the menus listed, by name
 	themeEdit    *themeDraft                // the theme being edited
 	previewing   themePreview               // the themes the page being built previews
+	// signIns is what Settings › Browser last heard of importing each
+	// browser's cookies, by its name; importing is the one it imports.
+	signIns   map[string]signInImport
+	importing string
 }
 
 // openSettings shows the Settings window, on a page.
@@ -808,6 +814,63 @@ func (a *App) browserPage(c *ui.Context, pal *palette) {
 			adListRows(c, pal, s)
 		}
 	})
+	settingsGroup(c, pal, locales.SetSignIns(), locales.SetSignInsNote(), func() {
+		for _, name := range localbrowser.Names {
+			title := localbrowser.Title(name)
+			res := a.ss.signIns[name]
+			detail := locales.SetSignInsFrom(title)
+			switch {
+			case a.ss.importing == name:
+				detail = locales.SetSignInsAllow(title)
+			case res.err != "":
+				detail = res.err
+			case res.done != "":
+				detail = res.done
+			}
+			settingRow(c, pal, title, detail, func() {
+				if button(c, "import-"+name, locales.SetSignInsImport(), "", false, pal) && a.ss.importing == "" {
+					a.importSignIns(name)
+				}
+			})
+		}
+	})
+}
+
+// signInImport is how importing a browser's cookies ended: what it
+// loaded, or why it failed.
+type signInImport struct{ done, err string }
+
+// importSignIns gives the browser panes the cookies of the user's own
+// browser, as it runs, which asks them to allow Kero first: off the main
+// thread, as the browser waits on them.
+func (a *App) importSignIns(name string) {
+	a.ss.importing = name
+	go func() {
+		var res signInImport
+		dir, err := localbrowser.Dir(name)
+		var all []proto.Cookie
+		if err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			all, err = localbrowser.Cookies(ctx, name, dir)
+			cancel()
+		}
+		if err != nil {
+			res.err = err.Error()
+		} else {
+			skipped := loadCookies(all)
+			res.done = locales.SetSignInsDone(len(all)-len(skipped), localbrowser.Title(name))
+		}
+		a.update(func() {
+			a.ss.importing = ""
+			if a.ss.signIns == nil {
+				a.ss.signIns = map[string]signInImport{}
+			}
+			a.ss.signIns[name] = res
+			if a.setWin != nil {
+				a.setWin.Invalidate()
+			}
+		})
+	}()
 }
 
 // adListRows are the filter lists to block with: those Kero offers, and

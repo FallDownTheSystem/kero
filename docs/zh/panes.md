@@ -183,3 +183,16 @@ CSS 选择器很难把智能体带到源码，所以每个元素都附带能带�
 Kero 能拦截的，就是 WebKit 内容拦截器所能拦截的：发往广告和跟踪服务器的请求，以及列表要隐藏的元素。需要拦截器自身脚本才能实现的过滤规则，例如按文本隐藏元素或改写页面加载内容的规则，不会生效。列表所拦截域名上的页面无法在浏览器窗格中打开。
 
 如需不拦截地浏览，可在**设置 › 浏览器**中关闭**拦截广告**，或在[配置](./configuration.md#browser)中设置 `browser-block-ads = false`。已打开的页面会保留已加载的内容，直到重新加载。
+
+<a id="signing-in-with-your-browsers-cookies"></a>
+### 用浏览器的 Cookie 登录
+
+浏览器面板有自己的 Cookie，所以你在 Chrome 或 Edge 中已登录的网站，在面板中会要求你重新登录。与其逐个登录，不如把浏览器的 Cookie 交给面板：
+
+1. 在 Chrome（144 或更高版本）或 Edge 中打开 `chrome://inspect/#remote-debugging`（Edge 中为 `edge://inspect/#remote-debugging`），开启远程调试。它会一直有效，直到浏览器退出。
+2. 在**设置 › 浏览器**的**登录状态**下，点击浏览器旁的**导入**，或运行 `kero browser cookies import chrome`（或 `edge`）。
+3. 浏览器会询问是否允许连接：允许即可。
+
+Kero 会复制浏览器视为默认的配置文件中的 Cookie，让面板在你于浏览器中登录过的网站上也处于登录状态。它不会改动浏览器：读取 Cookie 后即断开连接。登录过期后再导入一次即可。Kero 重启后面板仍保留这些 Cookie，所有 `kero browser` 命令照常作用于页面。
+
+Chrome 和 Edge 不允许其他程序打开你的配置文件或读取其 Cookie 文件，并会忽略针对它的 `--remote-debugging-port`：`chrome://inspect` 中的开关是唯一的途径，而且每次都会征求你的同意。Cookie 就是登录凭据：会话中的智能体和你一样，可以使用这些页面和 `kero browser cookies save`。

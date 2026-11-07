@@ -120,6 +120,11 @@ Usage:
       cookies save [file]         save the browser's cookies (Playwright's
                                   JSON, or cookies.txt for a .txt file)
       cookies load <file>         load cookies from either
+      cookies import <chrome|edge>
+                                  copy your browser's cookies as it runs
+                                  (turn on remote debugging in it first, at
+                                  chrome://inspect/#remote-debugging, and
+                                  allow Kero in its dialog)
       wait-message [--json]       wait for the next message the page sends
                                   with window.kero.send, and print it
                                   (needs no Remote Control; no timeout
