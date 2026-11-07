@@ -3,23 +3,27 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"kero/internal/client"
+	"kero/internal/localbrowser"
 	"kero/internal/proto"
 )
 
 // cookiesCmd saves the cookies of the browser panes' pages to a file, or
 // loads them from one: Playwright's storage state, as JSON, or the
 // Netscape cookies.txt that curl and browser extensions write, for a
-// file named .txt.
+// file named .txt; or imports them from the user's own Chrome or Edge,
+// as it runs, which signs the panes in where the user is.
 func cookiesCmd(c *client.Client, p proto.BrowserParams, pos []string, f *flags) error {
-	const use = "kero browser [target] cookies <save [file] | load <file>> [--domain domain]"
+	const use = "kero browser [target] cookies <save [file] | load <file> | import <chrome|edge|dir>> [--domain domain]"
 	if len(pos) == 0 || len(pos) > 2 || len(f.rest) > 0 || f.vals["out"] != "" || f.vals["text"] != "" || f.set["enter"] || p.Ref != "" {
 		return usageErr("%s", use)
 	}
@@ -66,6 +70,37 @@ func cookiesCmd(c *client.Client, p proto.BrowserParams, pos []string, f *flags)
 		}
 		fmt.Printf("saved %s to %s\n", n, file)
 		return nil
+	case "import":
+		if file == "" {
+			return usageErr("kero browser [target] cookies import <chrome|edge|dir> [--domain domain]")
+		}
+		dir, err := localbrowser.Dir(file)
+		if err != nil {
+			return err
+		}
+		// The browser asks the user to allow Kero: they take their time.
+		wait := importWait
+		if p.Timeout > 0 {
+			wait = time.Duration(p.Timeout) * time.Millisecond
+		}
+		fmt.Fprintf(os.Stderr, "connecting to %s: allow Kero in its dialog\n", localbrowser.Title(file))
+		ctx, cancel := context.WithTimeout(context.Background(), wait)
+		all, err := localbrowser.Cookies(ctx, file, dir)
+		cancel()
+		if err != nil {
+			return err
+		}
+		p.Text, p.Timeout = "load", 0
+		p.Cookies = ofDomain(all, domain)
+		if len(p.Cookies) == 0 {
+			return fmt.Errorf("%s has no cookies to import", localbrowser.Title(file))
+		}
+		var res proto.BrowserResult
+		if err := c.Call("browser", p, &res); err != nil {
+			return err
+		}
+		fmt.Println(res.Text)
+		return nil
 	case "load":
 		if file == "" {
 			return usageErr("kero browser [target] cookies load <file> [--domain domain]")
@@ -84,11 +119,7 @@ func cookiesCmd(c *client.Client, p proto.BrowserParams, pos []string, f *flags)
 		if err != nil {
 			return fmt.Errorf("%s: %w", file, err)
 		}
-		for _, ck := range all {
-			if host := strings.TrimPrefix(strings.ToLower(ck.Domain), "."); domain == "" || host == domain || strings.HasSuffix(host, "."+domain) {
-				p.Cookies = append(p.Cookies, ck)
-			}
-		}
+		p.Cookies = ofDomain(all, domain)
 		if len(p.Cookies) == 0 {
 			return fmt.Errorf("%s has no cookies to load", file)
 		}
@@ -100,6 +131,21 @@ func cookiesCmd(c *client.Client, p proto.BrowserParams, pos []string, f *flags)
 		return nil
 	}
 	return usageErr("%s", use)
+}
+
+// importWait is how long cookies import waits for the user to allow it
+// in their browser, unless --timeout says.
+const importWait = 2 * time.Minute
+
+// ofDomain keeps the cookies of a domain and its subdomains, or all for "".
+func ofDomain(all []proto.Cookie, domain string) []proto.Cookie {
+	var out []proto.Cookie
+	for _, ck := range all {
+		if host := strings.TrimPrefix(strings.ToLower(ck.Domain), "."); domain == "" || host == domain || strings.HasSuffix(host, "."+domain) {
+			out = append(out, ck)
+		}
+	}
+	return out
 }
 
 // parseCookies reads cookies of a storage state, a list of its cookies,

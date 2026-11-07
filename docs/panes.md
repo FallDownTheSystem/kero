@@ -181,3 +181,15 @@ Choose the lists under **Block ads** in **Settings › Browser**: lists of cooki
 Kero blocks what WebKit's content blockers can: requests to ad and tracker servers, and the elements the lists hide. Filters that need a blocker's own scripts, such as those that hide elements by their text or rewrite what a page loads, are left out. A page on a domain the lists block doesn't open in a browser pane.
 
 To browse without blocking, turn off **Block ads** in **Settings › Browser**, or set `browser-block-ads = false` in the [configuration](./configuration.md#browser). Open pages keep what they loaded until they reload.
+
+### Signing in with your browser's cookies
+
+Browser panes keep cookies of their own, so a site you're signed in to in Chrome or Edge asks you to sign in again in a pane. Rather than sign in to each, give the panes your browser's cookies:
+
+1. In Chrome (144 or later) or Edge, open `chrome://inspect/#remote-debugging` (`edge://inspect/#remote-debugging` in Edge) and turn on remote debugging. It lasts until the browser quits.
+2. In **Settings › Browser**, under **Sign-ins**, click **Import** beside the browser, or run `kero browser cookies import chrome` (or `edge`).
+3. The browser asks whether to allow the connection: allow it.
+
+Kero copies the cookies of the browser's profile it deems the default, which signs the panes in where you are there, and leaves the browser as it was: it reads the cookies and disconnects. Import again when a sign-in expires. Panes keep the cookies when Kero restarts, and every `kero browser` command works on the pages as before.
+
+Chrome and Edge don't let other programs open your profile or read its cookie files, and ignore `--remote-debugging-port` on it: the switch in `chrome://inspect` is the one way in, and asks you each time. Cookies sign you in: agents in your sessions can use the pages, and `kero browser cookies save`, as you can.

@@ -58,6 +58,9 @@ func TestBrowserTarget(t *testing.T) {
 		{"text", "-o", "x.png"},
 		{"click", "a", "--enter"},
 		{"s1", "eval"},
+		{"cookies"},
+		{"cookies", "import"},
+		{"cookies", "export", "chrome"},
 	} {
 		err := browserCmd(nil, st, args)
 		if !errors.Is(err, errUsage) && !(len(args) == 1 && args[0] == "bogus" && errors.Is(err, errNotFound)) {

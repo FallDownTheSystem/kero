@@ -223,24 +223,30 @@ func cookies(op, domain string, load []proto.Cookie) (*proto.BrowserResult, erro
 		}
 		return &proto.BrowserResult{Cookies: out}, nil
 	case "load":
-		var skipped []string
-		for _, pc := range load {
-			c := mygo.Cookie{Name: pc.Name, Value: pc.Value, Domain: pc.Domain, Path: pc.Path,
-				Secure: pc.Secure, HTTPOnly: pc.HTTPOnly, SameSite: mygo.CookieSameSite(strings.ToLower(pc.SameSite))}
-			if c.SameSite == mygo.CookieSameSiteNone && !c.Secure {
-				c.SameSite = mygo.CookieSameSiteLax
-			}
-			if pc.Expires > 0 {
-				c.Expires = time.Unix(int64(pc.Expires), 0)
-			}
-			if err := mygo.Cookies.Set(c); err != nil {
-				skipped = append(skipped, fmt.Sprintf("skipped %s of %s: %s", pc.Name, pc.Domain, strings.TrimPrefix(err.Error(), "mygo: cookies: ")))
-			}
-		}
+		skipped := loadCookies(load)
 		text := fmt.Sprintf("loaded %d of %s", len(load)-len(skipped), cookieCount(len(load)))
 		return &proto.BrowserResult{Text: strings.Join(append([]string{text}, skipped...), "\n")}, nil
 	}
 	return nil, fmt.Errorf("cookies: save or load, not %q", op)
+}
+
+// loadCookies gives the browser panes cookies, and tells of each the
+// engine refused, which it leaves out.
+func loadCookies(load []proto.Cookie) (skipped []string) {
+	for _, pc := range load {
+		c := mygo.Cookie{Name: pc.Name, Value: pc.Value, Domain: pc.Domain, Path: pc.Path,
+			Secure: pc.Secure, HTTPOnly: pc.HTTPOnly, SameSite: mygo.CookieSameSite(strings.ToLower(pc.SameSite))}
+		if c.SameSite == mygo.CookieSameSiteNone && !c.Secure {
+			c.SameSite = mygo.CookieSameSiteLax
+		}
+		if pc.Expires > 0 {
+			c.Expires = time.Unix(int64(pc.Expires), 0)
+		}
+		if err := mygo.Cookies.Set(c); err != nil {
+			skipped = append(skipped, fmt.Sprintf("skipped %s of %s: %s", pc.Name, pc.Domain, strings.TrimPrefix(err.Error(), "mygo: cookies: ")))
+		}
+	}
+	return skipped
 }
 
 // evalPage runs a script on the page and returns its value as text: a
