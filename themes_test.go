@@ -15,7 +15,7 @@ func TestThemeFileRoundTrip(t *testing.T) {
 	th := editable(*darkTermTheme)
 	th.Palette[3] = ui.RGBA(10, 20, 30, 0.5) // a picker's translucent color
 	opaque(&th)
-	got, err := terminal.ParseGhosttyTheme(ghosttyThemeFile(&th, ui.Color{}, "Kero"))
+	got, err := terminal.ParseGhosttyTheme(ghosttyThemeFile(&th, themeExtras{}, "Kero"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,43 +24,52 @@ func TestThemeFileRoundTrip(t *testing.T) {
 	}
 }
 
-// A theme's background glow goes in a line Ghostty takes as a comment,
-// which kero reads back; a glow the theme's accent gives anyway isn't
-// written, so the glow follows the accent.
-func TestThemeGlow(t *testing.T) {
+// A theme's accent and background glow go in lines Ghostty takes as
+// comments, which kero reads back; ones the theme gives anyway aren't
+// written, so they follow its cursor.
+func TestThemeExtras(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	dir := ghosttyThemesDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	th := editable(*darkTermTheme)
-	glow := ui.Hex("#c0306a")
-	data := ghosttyThemeFile(&th, glow, "Kero")
+	x := themeExtras{accent: ui.Hex("#5a6f9e"), glow: ui.Hex("#c0306a")}
+	data := ghosttyThemeFile(&th, x, "Kero")
 	if got, err := terminal.ParseGhosttyTheme(data); err != nil || *got != th {
-		t.Fatalf("the glow's line changed the theme: %v", err)
+		t.Fatalf("the extras' lines changed the theme: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "Mine"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := themeGlow("Mine"); got != glow {
-		t.Errorf("glow %v, want %v", got, glow)
+	if got := readThemeExtras("Mine"); got != x {
+		t.Errorf("extras %+v, want %+v", got, x)
 	}
-	if l := lookNamed("Mine", true); l.glow.Stops[0].Color.R != glow.R || l.glow.Stops[0].Color.B != glow.B {
+	l := lookNamed("Mine", true)
+	if l.glow.Stops[0].Color.R != x.glow.R || l.glow.Stops[0].Color.B != x.glow.B {
 		t.Errorf("the look glows %v", l.glow.Stops[0].Color)
 	}
+	if l.pal.accent != x.accent || l.term.Cursor != th.Cursor {
+		t.Errorf("accent %v, cursor %v: want the accent saved, the cursor kept", l.pal.accent, l.term.Cursor)
+	}
 
-	plain := ghosttyThemeFile(&th, themeAccent(&th), "Kero")
-	if strings.Contains(string(plain), glowLine) {
-		t.Errorf("the accent's glow was written:\n%s", plain)
+	// A glow of the accent chosen follows the accent, not the cursor.
+	if got := string(ghosttyThemeFile(&th, themeExtras{accent: x.accent, glow: x.accent}, "Kero")); strings.Contains(got, glowLine) {
+		t.Errorf("the accent's glow was written:\n%s", got)
+	}
+
+	plain := ghosttyThemeFile(&th, themeExtras{accent: themeAccent(&th), glow: themeAccent(&th)}, "Kero")
+	if strings.Contains(string(plain), glowLine) || strings.Contains(string(plain), accentLine) {
+		t.Errorf("the cursor's extras were written:\n%s", plain)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "Plain"), plain, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := themeGlow("Plain"); got.A != 0 {
-		t.Errorf("a theme with no glow line glows %v", got)
+	if got := readThemeExtras("Plain"); got != (themeExtras{}) {
+		t.Errorf("a theme with no extras' lines has %+v", got)
 	}
-	if got := themeGlow("Dracula"); got.A != 0 {
-		t.Errorf("a theme of Ghostty's glows %v", got)
+	if got := readThemeExtras("Dracula"); got != (themeExtras{}) {
+		t.Errorf("a theme of Ghostty's has %+v", got)
 	}
 }
 
@@ -277,7 +286,7 @@ func TestSaveThemeChoosesIt(t *testing.T) {
 		t.Fatalf("draft %+v, want one named Paper Dark", d)
 	}
 	d.th.Background = ui.Hex("#123456")
-	d.glow = ui.Hex("#c0306a")
+	d.extras = themeExtras{accent: ui.Hex("#5a6f9e"), glow: ui.Hex("#c0306a")}
 	a.saveTheme(d)
 	if a.ss.themeEdit != nil {
 		t.Fatalf("draft kept after saving: %s", a.ss.toast)
@@ -293,7 +302,7 @@ func TestSaveThemeChoosesIt(t *testing.T) {
 	if a.ss.themeEdit.name != "Paper Dark" || !userTheme("Paper Dark") {
 		t.Errorf("draft named %q, want the theme itself", a.ss.themeEdit.name)
 	}
-	if g := a.ss.themeEdit.glow; g != ui.Hex("#c0306a") {
-		t.Errorf("draft glows %v, want the glow saved", g)
+	if x := a.ss.themeEdit.extras; x != (themeExtras{accent: ui.Hex("#5a6f9e"), glow: ui.Hex("#c0306a")}) {
+		t.Errorf("draft extras %+v, want the ones saved", x)
 	}
 }
