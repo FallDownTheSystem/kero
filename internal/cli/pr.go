@@ -16,11 +16,14 @@ import (
 // user posts from Kero; nothing here posts.
 func prCommand(c *client.Client, args []string) error {
 	if len(args) == 0 {
-		return usageErr("kero pr comment|edit|delete|summary|show (see kero help)")
+		return usageErr("kero pr link|unlink|status|guide|comment|edit|delete|summary|show (see kero help)")
 	}
 	sub := args[0]
 	if sub == "guide" {
 		return guideCommand(c, args[1:])
+	}
+	if sub == "link" || sub == "unlink" || sub == "status" {
+		return prLinkCommand(c, args)
 	}
 	f, err := parse(args[1:], map[string]string{"pr": "pr", "remote": "remote"}, map[string]string{"base": "base", "json": "json"})
 	if err != nil {
@@ -107,7 +110,7 @@ func prCommand(c *client.Client, args []string) error {
 	case "show":
 		p.Op = "get"
 	default:
-		return usageErr("no kero pr %s: comment, edit, delete, summary or show", sub)
+		return usageErr("no kero pr %s: link, unlink, status, comment, edit, delete, summary or show", sub)
 	}
 	var dr *proto.PRReviewDraft
 	if err := c.Call("pr.review", p, &dr); err != nil {

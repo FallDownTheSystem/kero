@@ -250,6 +250,7 @@ func (d *Daemon) prCreate(p proto.PRCreateParams) (proto.PRCreated, error) {
 	if err != nil {
 		return proto.PRCreated{}, err
 	}
+	d.prCreated(p.Pane, t, url)
 	return proto.PRCreated{URL: url}, nil
 }
 

@@ -230,6 +230,15 @@ kero pr guide clear                       # start the tour again
 
 Kero から始めたガイドでは、ペインがそのプルリクエストを知っています。それ以外では `--pr <番号>` で指定します。
 
+Kero がセッションのエージェントのために見守る、セッションの[プルリクエスト](./changes.md#セッションのプルリクエスト):
+
+```sh
+kero pr link                 # セッションのブランチの開いたプルリクエスト
+kero pr link 123             # または番号か URL
+kero pr status --json        # 状況: チェック、失敗したチェック、コンフリクト
+kero pr unlink
+```
+
 ## 構成とセットアップ
 
 ```sh
