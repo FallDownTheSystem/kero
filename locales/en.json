@@ -1835,6 +1835,26 @@
     }
   },
   "prsFetchFailed": "Couldn't fetch the pull request: {error}",
+  "prsCheckout": "Check Out",
+  "prsCheckoutHere": "Check Out Here",
+  "prsCheckoutWorktree": "Check Out in New Worktree",
+  "prsCheckoutFailed": "Couldn't check out the pull request: {error}",
+  "prsCheckedOutBranch": "Checked out #{number} on {branch}",
+  "@prsCheckedOutBranch": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsCheckedOutIn": "#{number} is checked out in {dir} already",
+  "@prsCheckedOutIn": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "prsReviewStarted": "Reviewing #{number} in the background. The list shows when the review is ready.",
   "@prsReviewStarted": {
     "placeholders": {
