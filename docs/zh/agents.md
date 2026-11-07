@@ -73,6 +73,24 @@ pane=$(kero split --down -- go test ./...)
 kero wait "$pane" --exit || kero read "$pane" -n 80
 ```
 
+查看仓库的工作树，附带 `git worktree list` 没有的信息：每个工作树中的会话、是否由 Kero 创建、删除会丢失什么、自动清理会如何处理；查看自己会话的工作树、设置和拉取请求；把自己的会话连同对话移到新的 git 工作树中，并在本轮结束后在那里继续（[详情](./changes.md#moving-a-session-into-a-worktree)）：
+
+```sh
+kero worktree list
+kero worktree status
+kero worktree handoff fix-login --prompt "go on with the fix"
+```
+
+处理拉取请求：编写[评审导览](./changes.md#review-guides)，查看会话关联的拉取请求。Kero 会为智能体关注它，在检查失败时向其提示符输入一条以“Kero PR watch:”开头的消息。在你要求时，还能合并、更新或检出拉取请求（[全部命令](./cli.md)）：
+
+```sh
+kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
+kero pr status                  # 关联的拉取请求：检查、冲突
+kero pr update-branch --rebase
+kero pr merge --squash          # 仅在你要求时：合并无法撤销
+kero pr checkout 123 --worktree -- claude
+```
+
 告诉你进展如何：
 
 ```sh

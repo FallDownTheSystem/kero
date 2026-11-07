@@ -34,6 +34,8 @@ kero focus backend               # 在 app 中显示它
 kero close backend               # 结束会话（如果给的是窗格，则关闭该窗格）
 kero close fix-login --remove-worktree   # 同时删除它专属的工作树
 kero restart <pane>              # 重新启动已退出窗格的 shell
+kero worktree list               # 工作树：其中的会话、是否由 Kero 创建、删除会丢失什么、清理
+kero worktree status             # 本会话的工作树、设置、拉取请求，以及能否移交
 kero worktree handoff fix-login  # 把这个代理的会话移入专属工作树
 ```
 
@@ -237,6 +239,21 @@ kero pr link 123             # 或它的编号、URL
 kero pr status --json        # 状态：检查、失败的检查、冲突
 kero pr unlink
 ```
+
+以登录 `gh` 的用户身份操作 GitHub 上的拉取请求：给出它的编号，或省略以使用会话关联的那个。合并时如未指定方式，就用仓库的默认方式（**仓库设置**中设置的，否则是仓库允许的 squash、merge、rebase 中的第一个）：
+
+```sh
+kero pr state 123                          # 是否打开、是否草稿、能否合并、可用哪些方式
+kero pr ready 123                          # 或 draft、close、reopen
+kero pr update-branch 123 --rebase         # 让它的分支跟上基础分支
+kero pr merge 123 --squash --delete-branch # 或 --merge、--rebase；--head <sha> 只在该提交处合并
+kero pr merge 123 --auto                   # 满足要求后自动合并；--disable-auto 取消
+kero pr delete-branch 123                  # 在关闭或合并之后
+kero pr checkout 123                       # 在这里检出它的分支，工作树有改动时拒绝
+kero pr checkout 123 --worktree -- claude  # 在专属工作树中新建会话，并输出其 id
+```
+
+如果已有工作树包含该拉取请求，就直接使用它：`kero pr checkout` 会告诉你位置，带 `--worktree` 时输出在那里工作的会话，没有就在那里启动一个。
 
 ## 配置与设置
 

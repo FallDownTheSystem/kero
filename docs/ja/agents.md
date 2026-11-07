@@ -74,6 +74,24 @@ pane=$(kero split --down -- go test ./...)
 kero wait "$pane" --exit || kero read "$pane" -n 80
 ```
 
+`git worktree list` にはない情報つきでリポジトリのワークツリーを見る（各ワークツリーのセッション、Kero が作ったか、削除で失うもの、自動クリーンアップがどうするか）。自分のセッションのワークツリー、セットアップ、プルリクエストを確かめる。自分のセッションを会話ごと新しい git ワークツリーに移し、ターンの終わりにそこで続ける（[詳しく](./changes.md#moving-a-session-into-a-worktree)）:
+
+```sh
+kero worktree list
+kero worktree status
+kero worktree handoff fix-login --prompt "go on with the fix"
+```
+
+プルリクエストを扱う: [レビューガイド](./changes.md#review-guides)を書き、セッションにリンクされたプルリクエストを見ます。Kero はそれを見守り、チェックが失敗すると「Kero PR watch:」で始まるメッセージをエージェントのプロンプトに入力します。頼まれれば、マージ、更新、チェックアウトもします（[すべて](./cli.md)）:
+
+```sh
+kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
+kero pr status                  # リンクされたプルリクエスト: チェック、コンフリクト
+kero pr update-branch --rebase
+kero pr merge --squash          # 頼まれたときだけ: マージは取り消せません
+kero pr checkout 123 --worktree -- claude
+```
+
 状況をあなたに伝える:
 
 ```sh
