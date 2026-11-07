@@ -53,6 +53,10 @@ type webEntry struct {
 	// (checked), which the page reloads as it changes (watchPage).
 	disk    diskMark
 	checked time.Time
+	// agent is the agent's pane the user chose for the page's messages,
+	// as kerod found none, while the pane's opener was agentOpener
+	// (pageSend).
+	agent, agentOpener string
 }
 
 // diskMark is what tells a file changed: its path, when it was written,
@@ -86,7 +90,8 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 		return e
 	}
 	v, err := a.win.NewWebView(mygo.WebViewOptions{
-		Page: mygo.PageOptions{DevTools: mygo.DevToolsEnabled, UserAgentSuffix: browserUA(), ContentRules: a.adRules()},
+		// window.kero, in local pages (bridge.go).
+		Page: mygo.PageOptions{DevTools: mygo.DevToolsEnabled, UserAgentSuffix: browserUA(), ContentRules: a.adRules(), PreloadScript: bridgeScript},
 	})
 	if err != nil {
 		e.err = err.Error()

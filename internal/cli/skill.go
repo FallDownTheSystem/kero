@@ -14,7 +14,7 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
 ---
 
 # Kero
@@ -146,6 +146,43 @@ fails: take a new snapshot.
 With no target, kero browser drives your session's browser pane; name
 one (kero browser <target> text) when there are several. It needs the app
 open and Remote Control on, in Settings › Agents.
+
+## Get the user's answers from a page
+
+A local page (file:) you show the user in a browser pane can send you what
+they pick, as a decision brief's picks: it has window.kero.send(message,
+{label, mode}), which a page tells it is in Kero by, and copies the
+message to the clipboard where it isn't:
+
+    <button id="send">Send</button>
+    <script>
+    send.onclick = async () => {
+      const text = "D1: A\nD2: B";
+      if (!window.kero) return navigator.clipboard.writeText(text);
+      send.textContent = "Sending…";
+      await window.kero.send(text, { label: "decision brief",
+        onState: (s) => { if (s === "queued") send.textContent = "Queued" } });
+      send.textContent = "Sent";
+    };
+    </script>
+
+The message goes to the agent whose pane opened the page with kero split
+--url (or showed it again), labelled with the page: "Kero: message from
+decision brief, from the page "Brief" (file:///…/brief.html) in browser
+pane 3f2a:", then its text. Kero types it into your prompt once you are at
+it; or, while you wait for it, hands it to kero browser wait-message:
+
+    kero split --url .backlog/pages/brief.html
+    kero browser wait-message --json --timeout 9m   # until the page sends: {id, from, label, url, title, text, at}
+
+wait-message prints the message, labelled, or with --json its fields, and
+fails with "timed out" when none came in time: wait again, with a timeout
+under your shell tool's own. It needs no Remote Control. A page that sends
+with mode: "wait" keeps its messages, in order, for wait-message alone,
+never typed in; mode: "push" always types them in. The page's promise
+resolves once you have the message, and rejects if your pane closes
+first; onState hears "queued" (you are working) or "waiting" (kept for
+wait-message) before. A page no agent opened asks the user which agent.
 
 ## Review a pull request
 

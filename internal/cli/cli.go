@@ -120,6 +120,10 @@ Usage:
       cookies save [file]         save the browser's cookies (Playwright's
                                   JSON, or cookies.txt for a .txt file)
       cookies load <file>         load cookies from either
+      wait-message [--json]       wait for the next message the page sends
+                                  with window.kero.send, and print it
+                                  (needs no Remote Control; no timeout
+                                  unless given one)
       --ref <ref>                 a snapshot's element, in place of a
                                   selector
       --domain <domain>           cookies of a site and its subdomains
