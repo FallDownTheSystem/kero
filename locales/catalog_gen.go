@@ -11622,6 +11622,70 @@ func (msgs Messages) PrsFetchFailed(error string) string {
 	return Catalog.Format(msgs.locale, "prsFetchFailed", map[string]any{"error": error})
 }
 
+// PrsCheckout says "Check Out"
+// in the language the app shows.
+func PrsCheckout() string { return In(i18n.Locale()).PrsCheckout() }
+
+// PrsCheckout says "Check Out"
+// in the language of msgs.
+func (msgs Messages) PrsCheckout() string {
+	return Catalog.Format(msgs.locale, "prsCheckout", nil)
+}
+
+// PrsCheckoutHere says "Check Out Here"
+// in the language the app shows.
+func PrsCheckoutHere() string { return In(i18n.Locale()).PrsCheckoutHere() }
+
+// PrsCheckoutHere says "Check Out Here"
+// in the language of msgs.
+func (msgs Messages) PrsCheckoutHere() string {
+	return Catalog.Format(msgs.locale, "prsCheckoutHere", nil)
+}
+
+// PrsCheckoutWorktree says "Check Out in New Worktree"
+// in the language the app shows.
+func PrsCheckoutWorktree() string { return In(i18n.Locale()).PrsCheckoutWorktree() }
+
+// PrsCheckoutWorktree says "Check Out in New Worktree"
+// in the language of msgs.
+func (msgs Messages) PrsCheckoutWorktree() string {
+	return Catalog.Format(msgs.locale, "prsCheckoutWorktree", nil)
+}
+
+// PrsCheckoutFailed says "Couldn't check out the pull request: {error}"
+// in the language the app shows.
+func PrsCheckoutFailed(error string) string { return In(i18n.Locale()).PrsCheckoutFailed(error) }
+
+// PrsCheckoutFailed says "Couldn't check out the pull request: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsCheckoutFailed(error string) string {
+	return Catalog.Format(msgs.locale, "prsCheckoutFailed", map[string]any{"error": error})
+}
+
+// PrsCheckedOutBranch says "Checked out #{number} on {branch}"
+// in the language the app shows.
+func PrsCheckedOutBranch(number int, branch string) string {
+	return In(i18n.Locale()).PrsCheckedOutBranch(number, branch)
+}
+
+// PrsCheckedOutBranch says "Checked out #{number} on {branch}"
+// in the language of msgs.
+func (msgs Messages) PrsCheckedOutBranch(number int, branch string) string {
+	return Catalog.Format(msgs.locale, "prsCheckedOutBranch", map[string]any{"number": number, "branch": branch})
+}
+
+// PrsCheckedOutIn says "#{number} is checked out in {dir} already"
+// in the language the app shows.
+func PrsCheckedOutIn(number int, dir string) string {
+	return In(i18n.Locale()).PrsCheckedOutIn(number, dir)
+}
+
+// PrsCheckedOutIn says "#{number} is checked out in {dir} already"
+// in the language of msgs.
+func (msgs Messages) PrsCheckedOutIn(number int, dir string) string {
+	return Catalog.Format(msgs.locale, "prsCheckedOutIn", map[string]any{"number": number, "dir": dir})
+}
+
 // PrsReviewStarted says "Reviewing #{number} in the background. The list shows when the review is ready."
 // in the language the app shows.
 func PrsReviewStarted(number int) string { return In(i18n.Locale()).PrsReviewStarted(number) }

@@ -135,6 +135,7 @@ func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *pr
 		if ag, _ := a.prAgent(a.hostOf(pane.ID), g.repoSlug(), pr.Number); ag.session != nil {
 			a.agentButton(c, pal, ag.session)
 		}
+		a.checkoutButton(c, pal, func(here bool) { a.checkoutPR(s, pane, g.remote, pr, here) })
 		a.reviewButton(c, pal, func(mode string) { a.askReview(s, pane, g.remote, g.slug, pr, mode) })
 	})
 	if ps.page == nil {
