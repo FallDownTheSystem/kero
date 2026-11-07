@@ -34,7 +34,10 @@ kero focus backend               # show it in the app
 kero close backend               # end a session (or, given a pane, the pane)
 kero close fix-login --remove-worktree   # and remove its own worktree
 kero restart <pane>              # start an exited pane's shell again
+kero worktree handoff fix-login  # move this agent's session into a worktree of its own
 ```
+
+`kero worktree handoff <branch>` takes `--base <ref>`, the branch to start from, and `--prompt <text|->`, what the agent goes on with once it starts again in the worktree ([more](./changes.md#moving-a-session-into-a-worktree)).
 
 `kero new` options:
 
