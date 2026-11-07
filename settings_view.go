@@ -726,6 +726,9 @@ func (a *App) gitPage(c *ui.Context, pal *palette) {
 				return locales.SetBranchMaxAgeWeeks(n)
 			}, 140, pal)
 		})
+		settingRow(c, pal, locales.SetWorktreeFromOrigin(), locales.SetWorktreeFromOriginDetail(), func() {
+			toggle(c.Key("worktree-from-origin"), &s.WorktreeFromOrigin, pal)
+		})
 		promptSetting(c, pal, "commit-prompt", locales.SetCommitPrompt(), locales.SetCommitPromptDetail(), &s.CommitMessagePrompt, commitmsg.DefaultCommitPrompt, &a.ss.prompts[0])
 	})
 	settingsGroup(c, pal, locales.SetPullRequests(), "", func() {

@@ -147,6 +147,12 @@ type Settings struct {
 	// worktrees go, "" for .kero/worktrees in the repository.
 	WorktreeBase string `json:"worktreeBase"`
 	WorktreeDir  string `json:"worktreeDir"`
+
+	// WorktreeFromOrigin fetches the remote's copy of a new worktree's
+	// base branch, and starts the branch from that: from the local one
+	// still when the fetch fails, as offline, or the local branch has
+	// commits the remote's lacks.
+	WorktreeFromOrigin bool `json:"worktreeFromOrigin"`
 	// BranchMaxWeeks hides from the branch switcher the branches with no
 	// commit in that many weeks, unless its filter finds them; 0 hides
 	// none.
@@ -286,6 +292,8 @@ func Default() Settings {
 		FileDarkTheme:   "terminal",
 		BlockAds:        true,
 		AdLists:         slices.Clone(adblock.DefaultLists),
+
+		WorktreeFromOrigin: true,
 	}
 }
 

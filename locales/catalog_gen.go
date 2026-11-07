@@ -4820,6 +4820,26 @@ func (msgs Messages) SetGitStatusDetail() string {
 	return Catalog.Format(msgs.locale, "setGitStatusDetail", nil)
 }
 
+// SetWorktreeFromOrigin says "Start worktrees from origin"
+// in the language the app shows.
+func SetWorktreeFromOrigin() string { return In(i18n.Locale()).SetWorktreeFromOrigin() }
+
+// SetWorktreeFromOrigin says "Start worktrees from origin"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeFromOrigin() string {
+	return Catalog.Format(msgs.locale, "setWorktreeFromOrigin", nil)
+}
+
+// SetWorktreeFromOriginDetail says "Fetch the base branch before making a new worktree, and branch from the remote's copy. Offline, or with local commits…"
+// in the language the app shows.
+func SetWorktreeFromOriginDetail() string { return In(i18n.Locale()).SetWorktreeFromOriginDetail() }
+
+// SetWorktreeFromOriginDetail says "Fetch the base branch before making a new worktree, and branch from the remote's copy. Offline, or with local commits…"
+// in the language of msgs.
+func (msgs Messages) SetWorktreeFromOriginDetail() string {
+	return Catalog.Format(msgs.locale, "setWorktreeFromOriginDetail", nil)
+}
+
 // SetDiffLayout says "Diffs"
 // in the language the app shows.
 func SetDiffLayout() string { return In(i18n.Locale()).SetDiffLayout() }
