@@ -19,6 +19,9 @@ func prCommand(c *client.Client, args []string) error {
 		return usageErr("kero pr comment|edit|delete|summary|show (see kero help)")
 	}
 	sub := args[0]
+	if sub == "guide" {
+		return guideCommand(c, args[1:])
+	}
 	f, err := parse(args[1:], map[string]string{"pr": "pr", "remote": "remote"}, map[string]string{"base": "base", "json": "json"})
 	if err != nil {
 		return err

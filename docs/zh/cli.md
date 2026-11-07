@@ -213,6 +213,22 @@ kero pr delete 3
 
 在从 Kero 开始的审查中，窗格知道它的拉取请求；在其他地方，审查有草稿后用 `--pr <编号>` 指定；在拉取请求上点 **开始草稿** 即可开始一个草稿。
 
+## 审查导览
+
+智能体用 `kero pr guide` 编写拉取请求的[审查导览](./changes.md#review-guides)（导览标签页中的讲解）。站点按添加顺序排列，`--at <n>` 可放在第 n 站；行必须包含拉取请求差异的一部分，只给路径则是整个文件。导览不会发送到 GitHub：
+
+```sh
+kero pr guide summary "Moves retries onto a queue."
+kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
+kero pr guide stop src/api.go:88 --title "Who enqueues" --closely   # Look closely
+kero pr guide stop testdata/golden.txt --title "Snapshots"          # the whole file
+kero pr guide show                        # the guide, each stop with its id
+kero pr guide edit 2 --title "Clearer"    # or move 2 --at 1, delete 2
+kero pr guide clear                       # start the tour again
+```
+
+在从 Kero 开始的导览中，窗格知道它的拉取请求；在其他地方，用 `--pr <编号>` 指定。
+
 ## 配置与设置
 
 ```sh

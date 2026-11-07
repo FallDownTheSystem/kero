@@ -615,6 +615,9 @@ type prReview struct {
 	agent    string
 	worktree string
 	where    string
+	// guide has the agent write the pull request's review guide
+	// (prguide.go), not its review.
+	guide bool
 }
 
 // reviewExisting is a review in the worktree of an earlier one, as
@@ -651,6 +654,9 @@ func (a *App) prReviewView(c *ui.Context, pal *palette) {
 	ui.DialogBase(c.Key("pr-review"), &w.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay)
 		title := locales.PrsReviewTitle(w.pr.Number)
+		if w.guide {
+			title = locales.PrsGuideTitle(w.pr.Number)
+		}
 		floating(panel.Width(520).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(title)
 		ui.Text(c, title).FontSize(15).FontWeight(650).TextColor(pal.text)
 		where := map[string]string{reviewWorktree: locales.PrsReviewWorktreeDetail(), reviewHere: locales.PrsReviewHereDetail(), reviewSession: locales.PrsReviewSessionDetail()}[w.mode]
@@ -752,12 +758,17 @@ func (a *App) startReview(w *prReview) {
 		if cl == nil {
 			return
 		}
-		p := proto.PRReviewParams{Op: "start", Pane: pane.ID, Remote: w.remote, Number: w.pr.Number, Agent: agent}
+		var p any = proto.PRReviewParams{Op: "start", Pane: pane.ID, Remote: w.remote, Number: w.pr.Number, Agent: agent}
+		method, failed := "pr.review", locales.PrsDraftFailed
+		if w.guide {
+			p = proto.PRGuideParams{Op: "start", Pane: pane.ID, Remote: w.remote, Number: w.pr.Number, Agent: agent}
+			method, failed = "pr.guide", locales.PrsGuideFailed
+		}
 		go func() {
-			err := cl.Call("pr.review", p, nil)
+			err := cl.Call(method, p, nil)
 			a.update(func() {
 				if err != nil {
-					a.toast(locales.PrsDraftFailed(err.Error()))
+					a.toast(failed(err.Error()))
 					return
 				}
 				if then != nil {
@@ -788,6 +799,10 @@ func (a *App) startReview(w *prReview) {
 			return
 		}
 		draft(ns.Panes[0].ID, nil)
+		if w.guide {
+			a.toast(locales.PrsGuideStarted(w.pr.Number))
+			return
+		}
 		a.toast(locales.PrsReviewStarted(w.pr.Number))
 	}
 	switch {

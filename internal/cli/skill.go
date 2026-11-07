@@ -174,6 +174,31 @@ user's own comments show in kero pr show too; don't remove them. Outside a
 review the user started in your pane, name the pull request: --pr 123;
 with no draft yet, ask the user to click Start Draft on it in Kero.
 
+## Write a review guide of a pull request
+
+A review guide is a tour of a pull request that the user reads in Kero's
+Guide tab instead of reading the diff line by line: a summary, then stops
+in reading order, each on the lines worth reading with a note on them. It
+is not a review: write no comments for its author, and post nothing:
+
+    kero pr guide summary "Moves retries onto a queue; the worker is new."
+    kero pr guide stop src/queue.go:10-42 --title "The new queue" - <<'EOF'
+    Why it exists and what to check in it.
+    EOF
+    kero pr guide stop src/api.go:88 --title "Who enqueues" --closely "Is dropping the old path safe?"
+    kero pr guide stop testdata/golden.txt --title "Snapshots"   # whole file
+    kero pr guide show                         # the stops so far, with ids
+    kero pr guide edit 2 --title "Clearer"     # or move 2 --at 1, delete 2
+    kero pr guide clear                        # start the tour again
+
+Stops go in the order you add them (--at <n> puts one nth): start where
+the change starts, follow it outward, and put mechanical changes (renames,
+generated files, snapshots) last. Every changed file should be on some
+stop. --closely marks a stop with a call only a maintainer can make. Lines
+are the pull request's head's (the base's with --base) and must show some
+of the diff; a path with no lines is the whole file. Outside a guide the
+user started in your pane, name the pull request: --pr 123.
+
 ## Tell the user
 
     kero report working "Migrating the database" --progress 40
