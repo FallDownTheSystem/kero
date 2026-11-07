@@ -84,6 +84,7 @@ A browser pane shows a web page beside your terminals: the dev server an agent i
 | ---------------- | -------------------------------------- |
 | New browser pane | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>B</kbd> |
 | Open location    | <kbd>⌘</kbd> <kbd>L</kbd>              |
+| Pick elements    | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>C</kbd> |
 
 Right-click a pane's split button and choose **Browser** to open one beside that pane. Type an address in its bar, such as `localhost:3000` or `github.com`, or words to search for. An address typed in the command palette (<kbd>⌘</kbd> <kbd>P</kbd>) opens in a new browser pane too. <kbd>⌘</kbd> <kbd>F</kbd> finds text in the page.
 
@@ -153,6 +154,23 @@ send.onclick = async () => {
 ```
 
 A `kero:delivery` event on `window` tells each message's delivery too, with its `id`, `state` (`delivered` or `failed`) and `error`.
+
+### Picking elements for an agent
+
+To show an agent what to change on a page, turn on **Pick Elements**: the pointer-in-a-box button in the pane's toolbar, <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>C</kbd> (<kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd> on Windows and Linux), or the Pane menu. Click an element, write what you want of it in the note that opens, and pick more; **Parent** picks the element around it. **Send**, or <kbd>Ctrl</kbd> <kbd>Enter</kbd>, sends them all; <kbd>Esc</kbd> stops.
+
+The picks go where the page's own messages go ([Sending to an agent from a page](#sending-to-an-agent-from-a-page)): to the agent that opened the page with `kero split --url`, typed into its prompt once it is at it, or to an agent waiting for the page's messages. For a page no agent opened, Kero asks you which agent, once, and remembers; close the list without choosing and Kero copies the picks for you to paste.
+
+A CSS selector rarely leads an agent to the source, so each element comes with what does, strongest first:
+
+1. **Where it is in the source**, when the page can tell: the file and line of Svelte's and React 18's development builds, the line React 19's stack leads to through the source map, the component's file for Vue, with the line of its tag in it, and the attributes inspector plugins add, such as `data-v-inspector`. Kero checks a line against the file and corrects it when the tag is elsewhere. For a page of a local file, it is the line of the element's start tag in the file.
+2. **Search hints**: the strings likely written in the source as they are, to grep for: the class attribute, the id, test id, label, name, link and placeholder, and the element's own text, marked when no other element on the page has them.
+3. **Where it is on the page**: the landmark and heading above it and which of its like it is ("in `<main>`, below the heading "Pricing", the 2nd of 3 `div.card`"), its parent and siblings, and its HTML, cut short.
+4. Its selector and DOM path, the page's URL and viewport, its main computed styles, and a picture of it, boxed.
+
+The pictures are PNG files in the temporary folder, which the message names, so an agent in a terminal opens them by their paths. **Screenshots** in the picker's bar takes two: **Elements**, a picture of each element with a margin around it, boxed (one you scrolled away from is scrolled back into sight for it, and the page back after), and **Page**, the page as you see it, every element boxed and numbered as the message numbers them. Both are on; Kero remembers what you turn off for your next picks.
+
+The component chain comes from development builds only: a production build tells the hints and the rest.
 
 ### Blocking ads
 

@@ -173,6 +173,9 @@ type App struct {
 	skillsAt     time.Time
 	sideDrag     float32 // the width as a drag of the sidebar's edge began
 	pendingToast string
+	// pickNoShots and pickNoPage are the picker's screenshots the user
+	// turned off, which the next pick starts with (browserpick.go).
+	pickNoShots, pickNoPage bool
 	// later are actions that change what the view is building, run once
 	// it is built.
 	later []func()

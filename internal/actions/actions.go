@@ -52,6 +52,7 @@ var All = []Action{
 	{ID: "pane.split.down", Title: "Split Down", Menu: "Pane", Keys: "CmdOrCtrl+Shift+D", Remote: true},
 	{ID: "pane.browser", Title: "New Browser Pane", Menu: "Pane", Keys: "CmdOrCtrl+Shift+B", Remote: true},
 	{ID: "browser.address", Title: "Open Location…", Menu: "Pane", Keys: "CmdOrCtrl+L"},
+	{ID: "browser.pick", Title: "Pick Elements", Menu: "Pane", Keys: "CmdOrCtrl+Alt+C"},
 	{ID: "pane.zoom", Title: "Zoom Pane", Menu: "Pane", Keys: "CmdOrCtrl+Shift+Enter", Remote: true},
 	// kero do pane.preview sets the pane's preview through kerod (on, off,
 	// pane=), and so needs neither the app open nor Remote Control.
@@ -114,6 +115,7 @@ var pcKeys = map[string]string{
 	"pane.split.down":     "Alt+Shift+-",
 	"pane.browser":        "Alt+Shift+B",
 	"browser.address":     "",
+	"browser.pick":        "Alt+Shift+C",
 	"pane.zoom":           "Ctrl+Shift+Enter",
 	"pane.next":           "Ctrl+Shift+]",
 	"pane.previous":       "Ctrl+Shift+[",

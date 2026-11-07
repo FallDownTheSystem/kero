@@ -11154,6 +11154,86 @@ func (msgs Messages) AgentQueued(agent string) string {
 	return Catalog.Format(msgs.locale, "agentQueued", map[string]any{"agent": agent})
 }
 
+// ActionPickElements says "Pick Elements"
+// in the language the app shows.
+func ActionPickElements() string { return In(i18n.Locale()).ActionPickElements() }
+
+// ActionPickElements says "Pick Elements"
+// in the language of msgs.
+func (msgs Messages) ActionPickElements() string {
+	return Catalog.Format(msgs.locale, "actionPickElements", nil)
+}
+
+// PickSent says "{count, plural, one {# element} other {# elements}} sent to {agent}"
+// in the language the app shows.
+func PickSent(count int, agent string) string { return In(i18n.Locale()).PickSent(count, agent) }
+
+// PickSent says "{count, plural, one {# element} other {# elements}} sent to {agent}"
+// in the language of msgs.
+func (msgs Messages) PickSent(count int, agent string) string {
+	return Catalog.Format(msgs.locale, "pickSent", map[string]any{"count": count, "agent": agent})
+}
+
+// PickQueued says "{count, plural, one {# element goes} other {# elements go}} to {agent} once it is at its prompt"
+// in the language the app shows.
+func PickQueued(count int, agent string) string { return In(i18n.Locale()).PickQueued(count, agent) }
+
+// PickQueued says "{count, plural, one {# element goes} other {# elements go}} to {agent} once it is at its prompt"
+// in the language of msgs.
+func (msgs Messages) PickQueued(count int, agent string) string {
+	return Catalog.Format(msgs.locale, "pickQueued", map[string]any{"count": count, "agent": agent})
+}
+
+// PickKept says "{count, plural, one {# element is} other {# elements are}} kept for the agent waiting for this page"
+// in the language the app shows.
+func PickKept(count int) string { return In(i18n.Locale()).PickKept(count) }
+
+// PickKept says "{count, plural, one {# element is} other {# elements are}} kept for the agent waiting for this page"
+// in the language of msgs.
+func (msgs Messages) PickKept(count int) string {
+	return Catalog.Format(msgs.locale, "pickKept", map[string]any{"count": count})
+}
+
+// PickCopied says "No agent chosen: {count, plural, one {the element is} other {the # elements are}} copied, to paste where you like"
+// in the language the app shows.
+func PickCopied(count int) string { return In(i18n.Locale()).PickCopied(count) }
+
+// PickCopied says "No agent chosen: {count, plural, one {the element is} other {the # elements are}} copied, to paste where you like"
+// in the language of msgs.
+func (msgs Messages) PickCopied(count int) string {
+	return Catalog.Format(msgs.locale, "pickCopied", map[string]any{"count": count})
+}
+
+// PickNoAgent says "No agent chosen to send the elements to"
+// in the language the app shows.
+func PickNoAgent() string { return In(i18n.Locale()).PickNoAgent() }
+
+// PickNoAgent says "No agent chosen to send the elements to"
+// in the language of msgs.
+func (msgs Messages) PickNoAgent() string {
+	return Catalog.Format(msgs.locale, "pickNoAgent", nil)
+}
+
+// PickFailed says "Couldn’t pick elements: {error}"
+// in the language the app shows.
+func PickFailed(error string) string { return In(i18n.Locale()).PickFailed(error) }
+
+// PickFailed says "Couldn’t pick elements: {error}"
+// in the language of msgs.
+func (msgs Messages) PickFailed(error string) string {
+	return Catalog.Format(msgs.locale, "pickFailed", map[string]any{"error": error})
+}
+
+// PickWhichBrowser says "Pick Elements works in a browser pane: click one first"
+// in the language the app shows.
+func PickWhichBrowser() string { return In(i18n.Locale()).PickWhichBrowser() }
+
+// PickWhichBrowser says "Pick Elements works in a browser pane: click one first"
+// in the language of msgs.
+func (msgs Messages) PickWhichBrowser() string {
+	return Catalog.Format(msgs.locale, "pickWhichBrowser", nil)
+}
+
 // SideReview says "Review"
 // in the language the app shows.
 func SideReview() string { return In(i18n.Locale()).SideReview() }
