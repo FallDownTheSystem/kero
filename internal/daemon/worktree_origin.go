@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"kero/internal/git"
@@ -11,6 +12,11 @@ import (
 // or against a remote that doesn't answer, the session starts from the
 // local ref past it rather than wait.
 const originFetchTimeout = 20 * time.Second
+
+// forkPRRef is the name fetchPR gives a fork's pull request, fetched from
+// the remote's refs/pull/N/head just before: no branch of the remote's, so
+// fetching refs/heads/pr-N of it would fail, or fetch another branch.
+var forkPRRef = regexp.MustCompile(`^pr-[0-9]+$`)
 
 // originFetch is what fromOrigin fetched, as a worktree's setup shows it:
 // Ref, "" for nothing, and Err, why the fetch failed.
@@ -30,7 +36,7 @@ func (d *Daemon) fromOrigin(ctx context.Context, r git.Repo, from string) (base 
 	var remote, name string
 	if local {
 		remote, name = r.TrackedRemote(ctx, from)
-	} else if rm, n, ok := r.RemoteOf(ctx, from); ok {
+	} else if rm, n, ok := r.RemoteOf(ctx, from); ok && !forkPRRef.MatchString(n) {
 		remote, name = rm, n
 	}
 	if remote == "" {
