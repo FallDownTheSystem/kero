@@ -11072,6 +11072,28 @@ func (msgs Messages) ReviewSent(count int, agent string) string {
 	return Catalog.Format(msgs.locale, "reviewSent", map[string]any{"count": count, "agent": agent})
 }
 
+// ReviewQueued says "{count, plural, one {# comment goes} other {# comments go}} to {agent} once it is at its prompt"
+// in the language the app shows.
+func ReviewQueued(count int, agent string) string {
+	return In(i18n.Locale()).ReviewQueued(count, agent)
+}
+
+// ReviewQueued says "{count, plural, one {# comment goes} other {# comments go}} to {agent} once it is at its prompt"
+// in the language of msgs.
+func (msgs Messages) ReviewQueued(count int, agent string) string {
+	return Catalog.Format(msgs.locale, "reviewQueued", map[string]any{"count": count, "agent": agent})
+}
+
+// AgentSendFailed says "Couldn't send the message to the agent: {error}"
+// in the language the app shows.
+func AgentSendFailed(error string) string { return In(i18n.Locale()).AgentSendFailed(error) }
+
+// AgentSendFailed says "Couldn't send the message to the agent: {error}"
+// in the language of msgs.
+func (msgs Messages) AgentSendFailed(error string) string {
+	return Catalog.Format(msgs.locale, "agentSendFailed", map[string]any{"error": error})
+}
+
 // SideReview says "Review"
 // in the language the app shows.
 func SideReview() string { return In(i18n.Locale()).SideReview() }

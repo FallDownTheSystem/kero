@@ -847,6 +847,7 @@ func (s *pane) close() {
 		c.send(proto.FrameClosed, nil)
 		c.finish()
 	}
+	s.d.mailGone(s.info.ID)
 	if proc != nil {
 		proc.Close()
 		go func() {

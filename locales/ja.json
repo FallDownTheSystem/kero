@@ -1090,6 +1090,8 @@
   "reviewNoAgent": "このワークツリーで動くエージェントがありません",
   "reviewSendFailed": "レビューをエージェントに送れません: {error}",
   "reviewSent": "コメント {count} 件を {agent} に送りました",
+  "reviewQueued": "コメント {count} 件は {agent} がプロンプトに戻ったら送ります",
+  "agentSendFailed": "エージェントにメッセージを送れません: {error}",
   "sideReview": "レビュー",
   "actionToggleReview": "レビューの切り替え",
   "setCommitPrompt": "コミットメッセージのプロンプト",

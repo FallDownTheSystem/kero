@@ -509,8 +509,9 @@ func reviewPrompt(comments []*reviewComment) string {
 	return b.String()
 }
 
-// sendReview pastes a review's prompt in the worktree's agent's pane, then
-// Enter (submit), and lets the comments go once it is sent.
+// sendReview sends a review's prompt to the worktree's agent, typed in
+// once it is at its prompt (sendToAgent), and lets the comments go once
+// it is sent or queued.
 func (a *App) sendReview(pane *proto.Pane, rv *review) {
 	ap := a.reviewAgent(pane)
 	cl := a.hostOf(pane.ID).cl
@@ -524,7 +525,7 @@ func (a *App) sendReview(pane *proto.Pane, rv *review) {
 		name = locales.GitAnAgent()
 	}
 	go func() {
-		err := a.submit(cl, id, text)
+		res, err := a.sendToAgent(cl, proto.AgentSendParams{To: id, Text: text, Mode: "push"})
 		a.update(func() {
 			if err != nil {
 				a.toast(locales.ReviewSendFailed(err.Error()))
@@ -532,7 +533,11 @@ func (a *App) sendReview(pane *proto.Pane, rv *review) {
 			}
 			// What was written since stays, for the next.
 			rv.comments = slices.DeleteFunc(rv.comments, func(cm *reviewComment) bool { return slices.Contains(sent, cm) })
-			a.toast(locales.ReviewSent(len(sent), name))
+			if res.State == "queued" {
+				a.toast(locales.ReviewQueued(len(sent), name))
+			} else {
+				a.toast(locales.ReviewSent(len(sent), name))
+			}
 			if s := a.sessionOfPane(id); s != nil && s.ID == a.selected {
 				a.setFocus(s, id)
 				a.paneRef(id).Focus()
