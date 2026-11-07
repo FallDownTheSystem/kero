@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.8
+
+- Fixed: the divider beside a browser pane couldn't be dragged while the
+  page had the keyboard, as it does with Focus follows mouse on after the
+  pointer passed over the page. The page takes the keyboard back once the
+  drag ends
+
 ## 2.1.34-fork.7
 
 Built on MyGo 0.8.1, MyGo's latest release, in place of the unreleased
