@@ -725,6 +725,69 @@ func TestNewSessionRemoveWorktree(t *testing.T) {
 	}
 }
 
+// A worktree made for a session goes as that session closes, removing it,
+// after which the dialog lists the worktrees anew, without it.
+func TestNewSessionRemoveSessionWorktree(t *testing.T) {
+	a := testApp(t)
+	const path = "/tmp/.kero/worktrees/topic"
+	closes := make(chan proto.CloseParams, 1)
+	var mu sync.Mutex
+	gone := false
+	cl, _ := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		switch method {
+		case "git.branches":
+			return proto.GitBranches{Branches: []proto.GitBranch{{Name: "main", Current: true, Worktree: "/tmp"}}}, nil
+		case "git.worktrees":
+			mu.Lock()
+			defer mu.Unlock()
+			if gone {
+				return proto.GitWorktrees{Worktrees: []proto.GitWorktree{}}, nil
+			}
+			return proto.GitWorktrees{Worktrees: []proto.GitWorktree{{Path: path, Branch: "topic", Sessions: 1}}}, nil
+		case "worktree.check":
+			return proto.WorktreeCheck{Worktree: proto.Worktree{Path: path, Branch: "topic", Main: "/tmp"}, Merged: true}, nil
+		case "close":
+			var p proto.CloseParams
+			json.Unmarshal(raw, &p)
+			mu.Lock()
+			gone = true
+			mu.Unlock()
+			closes <- p
+			return nil, nil
+		}
+		return nil, errors.New("no " + method + " in a test")
+	})
+	a.local().conn, a.local().cl = connReady, cl
+	a.st.Sessions[0].Worktree = &proto.Worktree{Path: path, Branch: "topic", Main: "/tmp"}
+	id := a.st.Sessions[0].ID
+	tt := ui.NewTester(a.view, 1100, 700)
+	tt.Frame()
+	a.askNewSession(a.local(), "", "/tmp", true)
+	w := a.newAsk
+	frameUntil(t, tt, "the worktrees", func() bool { return w.trees != nil && len(w.trees.Worktrees) == 1 })
+	if err := tt.RightClick("topic"); err != nil {
+		t.Fatalf("%v; texts %q", err, tt.Texts())
+	}
+	if err := tt.ChooseMenuItem("Remove Worktree…"); err != nil {
+		t.Fatalf("%v; menu %q", err, tt.Menu())
+	}
+	frameUntil(t, tt, "the question", func() bool { return a.confirm != nil })
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	select {
+	case p := <-closes:
+		if p.ID != id || !p.RemoveWorktree {
+			t.Errorf("closed %+v", p)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no close")
+	}
+	frameUntil(t, tt, "the list anew", func() bool { return w.trees != nil && len(w.trees.Worktrees) == 0 })
+	if a.newAsk != w {
+		t.Error("the dialog closed")
+	}
+}
+
 // A new branch, of a name no branch has, starts from the branch chosen, a
 // remote's too; with none chosen, from the dialog's base. Without a new
 // branch, a branch checked out in another worktree, as git checks a branch

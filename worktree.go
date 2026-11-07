@@ -14,8 +14,9 @@ import (
 // askCloseWorktree closes a session in a worktree of its own once the
 // user says whether its worktree goes with it, as what kerod finds the
 // removal would lose decides: Remove at hand when nothing, Keep when
-// changes. A worktree another session works in stays, unasked.
-func (a *App) askCloseWorktree(id string) {
+// changes. A worktree another session works in stays, unasked. closed,
+// unless nil, runs once the session is closed, as endSession's.
+func (a *App) askCloseWorktree(id string, closed func()) {
 	s, h := a.session(id), a.hostOf(id)
 	cl := h.cl
 	if s == nil || cl == nil {
@@ -29,13 +30,13 @@ func (a *App) askCloseWorktree(id string) {
 			if a.session(id) == nil {
 				return
 			}
-			keep := func() { a.endSession(id, proto.CloseParams{ID: id}) }
+			keep := func() { a.endSession(id, proto.CloseParams{ID: id}, closed) }
 			if err != nil || wc.Shared {
 				keep()
 				return
 			}
 			remove := func(force bool) func() {
-				return func() { a.endSession(id, proto.CloseParams{ID: id, RemoveWorktree: true, Force: force}) }
+				return func() { a.endSession(id, proto.CloseParams{ID: id, RemoveWorktree: true, Force: force}, closed) }
 			}
 			path := h.shortDir(wc.Path)
 			cf := &confirmation{open: true, title: locales.WorktreeRemoveTitle(name),
@@ -235,22 +236,24 @@ func (a *App) pushWorktree(pane *proto.Pane, w proto.GitWorktree) {
 func (a *App) removeWorktree(pane *proto.Pane, w proto.GitWorktree, branch bool) {
 	id, root := pane.ID, pane.Git.Root
 	run := func(p proto.GitOpParams) { a.runGit(id, root, p, locales.WorktreeRemove(), nil) }
-	a.askRemoveWorktree(a.hostOf(id), w, branch, run, func() { a.pushWorktree(pane, w) })
+	a.askRemoveWorktree(a.hostOf(id), w, branch, run, func() { a.pushWorktree(pane, w) }, nil)
 }
 
 // askRemoveWorktree removes a worktree of h, and with branch its branch,
 // once the user says so, as what it would lose decides; run runs the
 // removal, and push, unless nil, pushes the branch in its place. A
 // worktree a session was made for closes with it, as closing the session
-// asks; one another session works in stays, which the user closes first.
-func (a *App) askRemoveWorktree(h *host, w proto.GitWorktree, branch bool, run func(proto.GitOpParams), push func()) {
+// asks, which run has no part in: closed, unless nil, runs once that
+// session is closed. One another session works in stays, which the user
+// closes first.
+func (a *App) askRemoveWorktree(h *host, w proto.GitWorktree, branch bool, run func(proto.GitOpParams), push, closed func()) {
 	var users []string
 	for _, s := range a.st.Sessions {
 		if a.hostOf(s.ID) != h {
 			continue
 		}
 		if wt := s.Worktree; wt != nil && samePath(wt.Path, w.Path) {
-			a.askCloseWorktree(s.ID)
+			a.askCloseWorktree(s.ID, closed)
 			return
 		}
 		for _, p := range s.Panes {
