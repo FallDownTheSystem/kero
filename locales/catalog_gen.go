@@ -6838,6 +6838,16 @@ func (msgs Messages) SetThemeBackground() string {
 	return Catalog.Format(msgs.locale, "setThemeBackground", nil)
 }
 
+// SetThemeAccent says "Accent"
+// in the language the app shows.
+func SetThemeAccent() string { return In(i18n.Locale()).SetThemeAccent() }
+
+// SetThemeAccent says "Accent"
+// in the language of msgs.
+func (msgs Messages) SetThemeAccent() string {
+	return Catalog.Format(msgs.locale, "setThemeAccent", nil)
+}
+
 // SetThemeGlow says "Background glow"
 // in the language the app shows.
 func SetThemeGlow() string { return In(i18n.Locale()).SetThemeGlow() }
@@ -6846,16 +6856,6 @@ func SetThemeGlow() string { return In(i18n.Locale()).SetThemeGlow() }
 // in the language of msgs.
 func (msgs Messages) SetThemeGlow() string {
 	return Catalog.Format(msgs.locale, "setThemeGlow", nil)
-}
-
-// SetThemeGlowDetail says "The color that lights the window's background from the top right corner."
-// in the language the app shows.
-func SetThemeGlowDetail() string { return In(i18n.Locale()).SetThemeGlowDetail() }
-
-// SetThemeGlowDetail says "The color that lights the window's background from the top right corner."
-// in the language of msgs.
-func (msgs Messages) SetThemeGlowDetail() string {
-	return Catalog.Format(msgs.locale, "setThemeGlowDetail", nil)
 }
 
 // SetThemeForeground says "Text"
