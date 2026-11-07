@@ -688,6 +688,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.gitMessage(p)
 
+	case "git.branchName":
+		var p proto.GitBranchNameParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.gitBranchName(p)
+
 	case "pr.list":
 		var p proto.PRListParams
 		if err := decode(&p); err != nil {
