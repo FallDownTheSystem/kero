@@ -671,6 +671,36 @@
   "setAdListFanboySocial": "Social media buttons and embeds.",
   "setAdListFanboyAnnoyance": "Pop-ups, newsletter prompts and chat boxes, and the cookie and social lists' too.",
   "setAdListsNote": "More lists hide more, and may break a page now and then. Add other lists as browser-filter-list in the configuration.",
+  "setSignIns": "Sign-ins",
+  "setSignInsNote": "Browser panes keep cookies of their own. Import gives them your browser's, so you're signed in where you are there. First turn on remote debugging in the browser, at chrome://inspect/#remote-debugging or edge://inspect/#remote-debugging, then allow Kero in the dialog it shows. Cookies sign you in: agents in your sessions can use them too.",
+  "setSignInsFrom": "Import the cookies of {browser} as it runs.",
+  "@setSignInsFrom": {
+    "placeholders": {
+      "browser": {
+        "type": "String"
+      }
+    }
+  },
+  "setSignInsAllow": "Connecting: allow Kero in the dialog {browser} shows.",
+  "@setSignInsAllow": {
+    "placeholders": {
+      "browser": {
+        "type": "String"
+      }
+    }
+  },
+  "setSignInsDone": "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}.",
+  "@setSignInsDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "browser": {
+        "type": "String"
+      }
+    }
+  },
+  "setSignInsImport": "Import",
   "changesUnmodified": "{count, plural, one {# unmodified line} other {# unmodified lines}}",
   "@changesUnmodified": {
     "placeholders": {

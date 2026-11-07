@@ -5030,6 +5030,68 @@ func (msgs Messages) SetAdListsNote() string {
 	return Catalog.Format(msgs.locale, "setAdListsNote", nil)
 }
 
+// SetSignIns says "Sign-ins"
+// in the language the app shows.
+func SetSignIns() string { return In(i18n.Locale()).SetSignIns() }
+
+// SetSignIns says "Sign-ins"
+// in the language of msgs.
+func (msgs Messages) SetSignIns() string {
+	return Catalog.Format(msgs.locale, "setSignIns", nil)
+}
+
+// SetSignInsNote says "Browser panes keep cookies of their own. Import gives them your browser's, so you're signed in where you are there. F…"
+// in the language the app shows.
+func SetSignInsNote() string { return In(i18n.Locale()).SetSignInsNote() }
+
+// SetSignInsNote says "Browser panes keep cookies of their own. Import gives them your browser's, so you're signed in where you are there. F…"
+// in the language of msgs.
+func (msgs Messages) SetSignInsNote() string {
+	return Catalog.Format(msgs.locale, "setSignInsNote", nil)
+}
+
+// SetSignInsFrom says "Import the cookies of {browser} as it runs."
+// in the language the app shows.
+func SetSignInsFrom(browser string) string { return In(i18n.Locale()).SetSignInsFrom(browser) }
+
+// SetSignInsFrom says "Import the cookies of {browser} as it runs."
+// in the language of msgs.
+func (msgs Messages) SetSignInsFrom(browser string) string {
+	return Catalog.Format(msgs.locale, "setSignInsFrom", map[string]any{"browser": browser})
+}
+
+// SetSignInsAllow says "Connecting: allow Kero in the dialog {browser} shows."
+// in the language the app shows.
+func SetSignInsAllow(browser string) string { return In(i18n.Locale()).SetSignInsAllow(browser) }
+
+// SetSignInsAllow says "Connecting: allow Kero in the dialog {browser} shows."
+// in the language of msgs.
+func (msgs Messages) SetSignInsAllow(browser string) string {
+	return Catalog.Format(msgs.locale, "setSignInsAllow", map[string]any{"browser": browser})
+}
+
+// SetSignInsDone says "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}."
+// in the language the app shows.
+func SetSignInsDone(count int, browser string) string {
+	return In(i18n.Locale()).SetSignInsDone(count, browser)
+}
+
+// SetSignInsDone says "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}."
+// in the language of msgs.
+func (msgs Messages) SetSignInsDone(count int, browser string) string {
+	return Catalog.Format(msgs.locale, "setSignInsDone", map[string]any{"count": count, "browser": browser})
+}
+
+// SetSignInsImport says "Import"
+// in the language the app shows.
+func SetSignInsImport() string { return In(i18n.Locale()).SetSignInsImport() }
+
+// SetSignInsImport says "Import"
+// in the language of msgs.
+func (msgs Messages) SetSignInsImport() string {
+	return Catalog.Format(msgs.locale, "setSignInsImport", nil)
+}
+
 // ChangesUnmodified says "{count, plural, one {# unmodified line} other {# unmodified lines}}"
 // in the language the app shows.
 func ChangesUnmodified(count int) string { return In(i18n.Locale()).ChangesUnmodified(count) }
