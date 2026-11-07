@@ -341,6 +341,7 @@ func (d *Daemon) gitBranches(p proto.GitParams) (proto.GitBranches, error) {
 			Upstream: b.Upstream, Ahead: b.Ahead, Behind: b.Behind, Gone: b.Gone, Time: b.Time, Subject: b.Subject, Worktree: b.Worktree})
 	}
 	res.Remotes, _ = r.Remotes(ctx)
+	res.Default = r.DefaultBranch()
 	return res, nil
 }
 

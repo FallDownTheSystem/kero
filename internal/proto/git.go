@@ -130,6 +130,8 @@ type (
 	GitBranches struct {
 		Branches []GitBranch `json:"branches"`
 		Remotes  []string    `json:"remotes,omitempty"`
+		// Default is the repository's default branch, as GitInfo's.
+		Default string `json:"default,omitempty"`
 	}
 	GitBranch struct {
 		Name     string `json:"name"`
