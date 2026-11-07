@@ -23,7 +23,12 @@ type gitFollow struct {
 	d    *Daemon
 	wake chan struct{}
 
+	// looking is held, read, while the follow looks or snapshots, its git
+	// running; hold takes it to wait for them.
+	looking sync.RWMutex
+
 	mu    sync.Mutex
+	held  map[string]int         // worktrees being removed, which it stays out of
 	poked map[string]bool        // directories whose worktree to refresh now
 	dirs  map[string]dirRepo     // the worktree of each directory, as last found
 	repos map[string]*repoStatus // by root
@@ -54,7 +59,52 @@ const (
 )
 
 func newGitFollow(d *Daemon) *gitFollow {
-	return &gitFollow{d: d, wake: make(chan struct{}, 1), poked: map[string]bool{}, dirs: map[string]dirRepo{}, repos: map[string]*repoStatus{}}
+	return &gitFollow{d: d, wake: make(chan struct{}, 1), held: map[string]int{}, poked: map[string]bool{}, dirs: map[string]dirRepo{}, repos: map[string]*repoStatus{}}
+}
+
+// hold keeps the follow out of the worktree at path until done, as it is
+// removed: the look or snapshot under way, whose git may run there, ends
+// first, and none after it goes in, as Windows deletes no folder that a
+// process works in; what it found of the worktree is forgotten.
+func (g *gitFollow) hold(path string) (done func()) {
+	if g == nil {
+		return func() {}
+	}
+	g.mu.Lock()
+	g.held[path]++
+	g.mu.Unlock()
+	g.looking.Lock()
+	g.mu.Lock()
+	for dir := range g.dirs {
+		if proto.Within(dir, path) {
+			delete(g.dirs, dir)
+		}
+	}
+	for root := range g.repos {
+		if proto.Within(root, path) {
+			delete(g.repos, root)
+		}
+	}
+	g.mu.Unlock()
+	g.looking.Unlock()
+	return func() {
+		g.mu.Lock()
+		if g.held[path]--; g.held[path] <= 0 {
+			delete(g.held, path)
+		}
+		g.mu.Unlock()
+	}
+}
+
+// heldLocked reports whether dir is in a worktree being removed; g.mu is
+// held.
+func (g *gitFollow) heldLocked(dir string) bool {
+	for path := range g.held {
+		if proto.Within(dir, path) {
+			return true
+		}
+	}
+	return false
 }
 
 // poke asks for the worktree of dir to be refreshed at once, as when a
@@ -82,7 +132,9 @@ func (g *gitFollow) loop() {
 		case <-g.d.quit:
 			return
 		}
+		g.looking.RLock()
 		g.look(time.Now())
+		g.looking.RUnlock()
 	}
 }
 
@@ -114,6 +166,11 @@ func (g *gitFollow) look(now time.Time) {
 	g.mu.Lock()
 	poked := g.poked
 	g.poked = map[string]bool{}
+	for i := range panes {
+		if g.heldLocked(panes[i].dir) {
+			panes[i].dir = ""
+		}
+	}
 	g.mu.Unlock()
 
 	// Each pane's worktree, and what each worktree has of the panes.
@@ -250,6 +307,14 @@ func (g *gitFollow) refresh(rs *repoStatus, stamp string, now time.Time) {
 // later stands.
 func (g *gitFollow) snapshot(p *pane, dir string, at time.Time) {
 	if g == nil || dir == "" || !settings.Load().GitStatus {
+		return
+	}
+	g.looking.RLock()
+	defer g.looking.RUnlock()
+	g.mu.Lock()
+	held := g.heldLocked(dir)
+	g.mu.Unlock()
+	if held {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)

@@ -46,3 +46,31 @@ func procParent(pid int) int {
 	ppid, _ := strconv.Atoi(f[1])
 	return ppid
 }
+
+// sessionProcs returns the processes of the session that sid leads,
+// which those a pane's program starts are in, in process groups of their
+// own too: those whose /proc/pid/stat has sid as its session, the fourth
+// field after the name.
+func sessionProcs(sid int) []int {
+	entries, _ := os.ReadDir("/proc")
+	var pids []int
+	for _, e := range entries {
+		pid, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+		b, err := os.ReadFile("/proc/" + e.Name() + "/stat")
+		if err != nil {
+			continue
+		}
+		i := bytes.LastIndexByte(b, ')')
+		if i < 0 {
+			continue
+		}
+		// A zombie, its parent yet to wait for it, holds nothing.
+		if f := strings.Fields(string(b[i+1:])); len(f) > 3 && f[0] != "Z" && f[3] == strconv.Itoa(sid) {
+			pids = append(pids, pid)
+		}
+	}
+	return pids
+}

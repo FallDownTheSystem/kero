@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -45,7 +47,7 @@ func (d *Daemon) addWorktree(dir string, p proto.CreateParams) (*proto.Worktree,
 		return nil, err
 	}
 	path := worktreePath(main, branch, settings.Load().WorktreeDir)
-	if _, err := os.Lstat(path); err == nil {
+	if taken(path) {
 		return nil, fmt.Errorf("%s is there already", proto.ShortDir(path))
 	}
 	from, untrack, fetch := "", false, originFetch{}
@@ -234,7 +236,11 @@ func (d *Daemon) closeSession(p proto.CloseParams) error {
 	if !wc.Shared && !p.Force && wc.Files > 0 {
 		return fmt.Errorf("the worktree has %s: --force removes it anyway", wc.Losses())
 	}
-	if err := d.removeSession(p.ID); err != nil {
+	// From before its panes close, which leaves the worktree to no
+	// session, until it is gone: the cleanup leaves it be meanwhile.
+	defer d.markRemoving(wc.Path)()
+	panes, err := d.closePanes(p.ID)
+	if err != nil {
 		return err
 	}
 	if wc.Shared {
@@ -242,14 +248,88 @@ func (d *Daemon) closeSession(p proto.CloseParams) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	// The panes' programs end as they close: give them a moment to let
-	// go of the worktree, as Windows wants of a folder to remove.
-	time.Sleep(200 * time.Millisecond)
-	if err := git.RemoveWorktree(ctx, wc.Main, wc.Path, wc.Branch, wc.Base); err != nil {
+	if err := d.removeWorktree(ctx, wc.Main, wc.Path, wc.Branch, wc.Base, panes); err != nil {
 		return fmt.Errorf("the session closed, but its worktree stays: %w", err)
 	}
 	d.log.Printf("worktree %s removed", wc.Path)
 	return nil
+}
+
+// markRemoving tells that the worktree at path is being removed, until
+// done (worktreeInUse).
+func (d *Daemon) markRemoving(path string) (done func()) {
+	d.mu.Lock()
+	if d.removing == nil {
+		d.removing = map[string]int{}
+	}
+	d.removing[path]++
+	d.mu.Unlock()
+	return func() {
+		d.mu.Lock()
+		if d.removing[path]--; d.removing[path] <= 0 {
+			delete(d.removing, path)
+		}
+		d.mu.Unlock()
+	}
+}
+
+// treeWait is how long removing a worktree waits for the programs of the
+// panes that closed in it, and whatever those started, to exit, before
+// it kills those left; an agent's MCP servers, node and git may take a
+// while.
+var treeWait = 5 * time.Second
+
+// awaitTrees tells whether removing a worktree waits for its programs:
+// on Windows alone, as Unix deletes a folder in use, and kills nothing
+// that outlives its pane on purpose, as a nohup job.
+var awaitTrees = runtime.GOOS == "windows"
+
+// removeWorktree removes the linked worktree at path of the repository
+// whose main checkout is main, and its branch when base has every commit
+// of it (git.RemoveWorktree), once the programs of panes, closed, have
+// exited, as Windows deletes no folder that a process works in; Kero's
+// own git status stays out of it meanwhile.
+func (d *Daemon) removeWorktree(ctx context.Context, main, path, branch, base string, panes []*pane) error {
+	awaitExit(panes)
+	defer d.git.hold(path)()
+	return git.RemoveWorktree(ctx, main, path, branch, base)
+}
+
+// awaitExit waits for the programs of panes, closed, and the processes
+// they started, to exit, those of a program that exited before too: for
+// up to treeWait, then it kills those left, and waits a second more for
+// them.
+func awaitExit(panes []*pane) {
+	if !awaitTrees {
+		return
+	}
+	var procs []*ptyProc
+	for _, p := range panes {
+		p.mu.Lock()
+		for _, proc := range []*ptyProc{p.proc, p.ended} {
+			if proc != nil {
+				procs = append(procs, proc)
+			}
+		}
+		p.mu.Unlock()
+	}
+	deadline, killed := time.Now().Add(treeWait), false
+	for {
+		procs = slices.DeleteFunc(procs, func(p *ptyProc) bool { return !p.running() })
+		if len(procs) == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			if killed {
+				return
+			}
+			for _, p := range procs {
+				p.killTree()
+			}
+			deadline, killed = time.Now().Add(time.Second), true
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 // reviewBranch is a branch for a review of pull request number of its
@@ -265,11 +345,20 @@ func reviewBranch(r git.Repo, number int) string {
 		if r.HasBranch(name) {
 			continue
 		}
-		if main := r.Main(); main != "" {
-			if _, err := os.Lstat(worktreePath(main, name, settings.Load().WorktreeDir)); err == nil {
-				continue
-			}
+		if main := r.Main(); main != "" && taken(worktreePath(main, name, settings.Load().WorktreeDir)) {
+			continue
 		}
 		return name
 	}
+}
+
+// taken reports whether a new worktree can't go at path: something is
+// there, but an empty folder, which git adds a worktree in, as a removal
+// that failed on Windows used to leave.
+func taken(path string) bool {
+	if _, err := os.Lstat(path); err != nil {
+		return false
+	}
+	entries, err := os.ReadDir(path)
+	return err != nil || len(entries) > 0
 }

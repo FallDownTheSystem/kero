@@ -42,8 +42,11 @@ type pane struct {
 	// that last resized the pane, 0 until one did.
 	cellW, cellH int
 	proc         *ptyProc
-	term         *terminal.Terminal
-	clients      map[*attachment]struct{}
+	// ended is the program that exited last, of which what it started
+	// may still run, as a removal of its worktree waits for (awaitExit).
+	ended   *ptyProc
+	term    *terminal.Terminal
+	clients map[*attachment]struct{}
 	// claimer is the client the user claimed the pane in last (claim), nil
 	// once it detached; stamp orders the clients' asks and claims.
 	claimer  *attachment
@@ -788,7 +791,7 @@ func (s *pane) exited(proc *ptyProc) {
 		return
 	}
 	code := proc.code
-	s.proc = nil
+	s.proc, s.ended = nil, proc
 	s.dropLive()
 	s.info.ExitCode = code
 	s.info.Process, s.info.Agent, s.info.Runtime, s.info.PID = "", "", "", 0
