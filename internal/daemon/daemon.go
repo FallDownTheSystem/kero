@@ -86,6 +86,7 @@ type Daemon struct {
 	// shows them (worktree_setup.go); d.mu.
 	setups map[string]*worktreeSetup
 	prw    *prWatcher // the sessions' pull requests' watch (prwatch.go)
+	mail   mailbox    // the messages on their way to agents (deliver.go)
 }
 
 // Options are how kerod runs.
@@ -218,6 +219,7 @@ func Run(opts Options) error {
 	go d.git.loop()
 	go d.worktreeCleanupLoop()
 	go d.prw.loop()
+	go d.deliverLoop()
 	uid := os.Getuid()
 	go func() {
 		for {

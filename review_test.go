@@ -19,7 +19,7 @@ import (
 // pane, with the files, the lines and their text, then sends it.
 func TestReview(t *testing.T) {
 	a := testApp(t)
-	sent := make(chan proto.SendParams, 8)
+	sent := make(chan proto.AgentSendParams, 8)
 	g, ix := gitDemo(a)
 	ix.Staged = nil
 	ix.Unstaged = []proto.GitFile{{Path: "b.go", Status: "modified", Added: 2, Removed: 1}}
@@ -29,11 +29,11 @@ func TestReview(t *testing.T) {
 			return ix, nil
 		case "git.file":
 			return proto.GitText{Old: "package b\n\nfunc a() {}\n", New: "package b\n\nfunc b() {}\nfunc c() {}\n", Hash: "h"}, nil
-		case "send":
-			var p proto.SendParams
+		case "agent.send":
+			var p proto.AgentSendParams
 			json.Unmarshal(raw, &p)
 			sent <- p
-			return true, nil
+			return proto.AgentSendResult{ID: 1, To: p.To, State: "delivered"}, nil
 		}
 		return nil, errors.New("no " + method + " in a test")
 	})
@@ -112,7 +112,7 @@ func TestReview(t *testing.T) {
 	if err := tt.Click("Send to Agent"); err != nil {
 		t.Fatal(err)
 	}
-	next := func() proto.SendParams {
+	next := func() proto.AgentSendParams {
 		t.Helper()
 		select {
 		case p := <-sent:
@@ -120,19 +120,17 @@ func TestReview(t *testing.T) {
 		case <-time.After(2 * time.Second):
 			t.Fatal("nothing sent")
 		}
-		return proto.SendParams{}
+		return proto.AgentSendParams{}
 	}
 	p := next()
 	for _, want := range []string{"1. b.go, lines 3-4:", "   > func b() {}\n   > func c() {}\n", "   Name these\n   after what they do\n"} {
-		if !strings.Contains(p.Data, want) {
-			t.Errorf("the prompt lacks %q:\n%s", want, p.Data)
+		if !strings.Contains(p.Text, want) {
+			t.Errorf("the prompt lacks %q:\n%s", want, p.Text)
 		}
 	}
-	if p.ID != "b" || !p.Paste {
-		t.Errorf("sent to %q, pasted %v", p.ID, p.Paste)
-	}
-	if p := next(); p.Data != "\r" || p.Paste {
-		t.Errorf("then sent %+v", p)
+	// kerod types it in once the agent is at its prompt (agent.send).
+	if p.To != "b" || p.Mode != "push" {
+		t.Errorf("sent to %q, %q", p.To, p.Mode)
 	}
 	for range 100 {
 		tt.Frame()

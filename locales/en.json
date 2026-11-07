@@ -1784,6 +1784,8 @@
   "reviewNoAgent": "No agent is running in this worktree",
   "reviewSendFailed": "Couldn't send the review to the agent: {error}",
   "reviewSent": "{count, plural, one {# comment} other {# comments}} sent to {agent}",
+  "reviewQueued": "{count, plural, one {# comment goes} other {# comments go}} to {agent} once it is at its prompt",
+  "agentSendFailed": "Couldn't send the message to the agent: {error}",
   "sideReview": "Review",
   "actionToggleReview": "Toggle Review",
   "setCommitPrompt": "Commit message prompt",
