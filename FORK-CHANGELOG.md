@@ -5,6 +5,24 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.11
+
+- Customize Theme has Background colors: 2 to 4 colors blended from top
+  to bottom under the cards, as Aurora's. Editing a copy of one of
+  Kero's themes starts with its own
+- The Accent is now two colors: Highlight, for icons, outlines, links
+  and the faint washes of selected rows, and Highlight background, for
+  primary buttons, highlighted menu rows and pills. Text on Highlight
+  background is white or near-black, whichever reads better, so Kero's
+  dark themes now show dark text on their light blue buttons. A theme
+  saved with an Accent takes it as both
+- Each of these colors and the Background glow follows the theme until
+  you change it: the highlight follows the cursor, the glow the
+  highlight background
+- Export copies the theme as the text of a Ghostty theme, Kero's colors
+  too; Import… pastes one into the theme being edited, saved only when
+  you click Save
+
 ## 2.1.34-fork.10
 
 - Customize Theme has an Accent: the color of Kero's buttons and
