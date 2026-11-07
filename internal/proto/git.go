@@ -267,4 +267,22 @@ type (
 	GitMessage struct {
 		Message string `json:"message"`
 	}
+
+	// GitBranchNameParams ask for the name of a new worktree's branch of
+	// Dir's repository, from the task its session starts with, written by
+	// Command (as GitMessageParams' is, but never a fork) after Prompt,
+	// the user's words of how to write it, "" for kerod's own. Prefix goes
+	// before it, its {type} the kind of the work, which the model picks.
+	GitBranchNameParams struct {
+		Dir     string `json:"dir"`
+		ID      string `json:"id,omitempty"`
+		Task    string `json:"task"`
+		Command string `json:"command,omitempty"`
+		Prompt  string `json:"prompt,omitempty"`
+		Prefix  string `json:"prefix,omitempty"`
+	}
+	// GitBranchName is the branch named, which no branch has yet.
+	GitBranchName struct {
+		Name string `json:"name"`
+	}
 )

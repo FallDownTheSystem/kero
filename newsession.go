@@ -52,6 +52,10 @@ type newSessionAsk struct {
 	fresh     bool
 	newBranch string
 	trees     *proto.GitWorktrees
+	// task is what an agent's session on a new branch starts on, which
+	// names the branch while newBranch is "" (newsession_branch.go);
+	// naming, the id of the naming under way, and nameErr why it failed.
+	task, naming, nameErr string
 	// loads counts the loads of the branches and worktrees, of which the
 	// last alone fills them in, as a removal loads them anew.
 	loads int
@@ -265,6 +269,9 @@ func (w *newSessionAsk) params(there string) (p proto.CreateParams, ok bool) {
 		if p.Command = commitmsg.Words(w.agent); len(p.Command) == 0 {
 			return p, false
 		}
+		if w.taskShown() && there == "" {
+			p.Command = agentArgs(p.Command, w.task)
+		}
 	case kindBrowser:
 		p.URL = proto.BlankURL
 	}
@@ -300,6 +307,13 @@ func (w *newSessionAsk) params(there string) (p proto.CreateParams, ok bool) {
 // startNewSession starts the dialog's session, in there when it isn't "",
 // and closes the dialog; while the session may not start, it stays.
 func (a *App) startNewSession(w *newSessionAsk, there string) {
+	if there == "" && w.naming != "" {
+		return
+	}
+	if there == "" && w.namesBranch() {
+		a.nameBranch(w, func() { a.startNewSession(w, there) })
+		return
+	}
 	p, ok := w.params(there)
 	if !ok {
 		return
@@ -356,6 +370,7 @@ func (a *App) newSessionView(c *ui.Context, pal *palette) {
 			})
 		})
 		_, ok := w.params("")
+		ok = ok || w.namesBranch() && w.naming == ""
 		dialogButtons(c, func() {
 			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
 				w.open = false
@@ -372,6 +387,7 @@ func (a *App) newSessionView(c *ui.Context, pal *palette) {
 		a.startNewSession(w, there)
 	}
 	if !w.open {
+		a.stopNaming(w)
 		a.newAsk = nil
 		a.focusTerminal()
 	}
@@ -488,10 +504,24 @@ func (a *App) worktreeFields(c *ui.Context, pal *palette, w *newSessionAsk, star
 	})
 	formRow(c, pal, "fresh", locales.NewSessionNewBranch(), func() { toggle(c, &w.fresh, pal).Label(locales.NewSessionNewBranch()) })
 	if w.fresh {
+		named := w.taskShown()
+		if named {
+			a.taskField(c, pal, w, start)
+		}
 		formRow(c, pal, "name", locales.GitBranchName(), func() {
-			in := textField(c, "new-branch", &w.newBranch, locales.NewSessionBranchPlaceholder(), 260, pal)
+			hint, width := locales.NewSessionBranchPlaceholder(), float32(260)
+			if named {
+				width = 226
+				if strings.TrimSpace(w.task) != "" {
+					hint = locales.NewSessionBranchAuto()
+				}
+			}
+			in := textField(c, "new-branch", &w.newBranch, hint, width, pal)
 			if in.Submitted() {
 				*start = true
+			}
+			if named {
+				a.nameButton(c, pal, w)
 			}
 		})
 	}
@@ -548,12 +578,19 @@ func (a *App) branchNote(c *ui.Context, pal *palette, w *newSessionAsk, there *s
 			base = locales.NewSessionDefaultBranch()
 		}
 		switch name := strings.TrimSpace(w.newBranch); {
+		case w.naming != "":
+			note(locales.NewSessionNamingBranch())
+		case name == "" && w.namesBranch():
+			note(locales.NewSessionBranchFromTask(base))
 		case name == "":
 			note(locales.NewSessionBranchUnnamed(base))
 		case hasLocalBranch(w.branches.list, name):
 			ui.Text(c, locales.NewSessionBranchExists(name)).FontSize(12.5).TextColor(pal.attention).LineHeight(1.4)
 		default:
 			note(locales.NewSessionBranchNew(name, base))
+		}
+		if w.nameErr != "" {
+			ui.Text(c, w.nameErr).FontSize(12.5).TextColor(pal.attention).LineHeight(1.4)
 		}
 		return
 	}
