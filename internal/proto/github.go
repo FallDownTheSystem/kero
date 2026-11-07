@@ -357,4 +357,72 @@ type (
 		Thread  string `json:"thread"`
 		Resolve bool   `json:"resolve,omitempty"`
 	}
+	// PRActionParams do Op (PRAct*) to pull request Number of Remote's
+	// repository of Pane's, or, with Op "" (PRActState), only read what
+	// its actions depend on. Method is a merge's (merge, squash or
+	// rebase), or with PRActUpdateBranch, rebase to rebase the branch;
+	// DeleteBranch deletes the branch once merged; Head is the commit the
+	// user saw it at, which a merge merges at alone, and runs are approved
+	// of alone.
+	PRActionParams struct {
+		Pane         string `json:"pane"`
+		Remote       string `json:"remote,omitempty"`
+		Number       int    `json:"number"`
+		Op           string `json:"op,omitempty"`
+		Method       string `json:"method,omitempty"`
+		DeleteBranch bool   `json:"deleteBranch,omitempty"`
+		Head         string `json:"head,omitempty"`
+	}
+	// PRActionResult is what came of an action: the URL of the pull
+	// request a revert opened, how many runs were approved, and, read
+	// after it, what the pull request's actions depend on now; nil when
+	// it couldn't be read.
+	PRActionResult struct {
+		URL      string     `json:"url,omitempty"`
+		Approved int        `json:"approved,omitempty"`
+		State    *PRActions `json:"state,omitempty"`
+	}
+	// PRActions is what a pull request's actions depend on: its state
+	// (OPEN, CLOSED or MERGED), whether it merges as it is (Mergeable:
+	// MERGEABLE, CONFLICTING or UNKNOWN; MergeState GitHub's
+	// mergeStateStatus, as BEHIND, BLOCKED or CLEAN), the method it
+	// auto-merges with, "" for none, the merge methods the repository
+	// allows, and what the user may do. PendingRuns counts the workflow
+	// runs of a fork's head that wait on a maintainer's approval.
+	PRActions struct {
+		State            string   `json:"state"`
+		Draft            bool     `json:"draft,omitempty"`
+		Head             string   `json:"head"`
+		HeadOID          string   `json:"headOid"`
+		Base             string   `json:"base"`
+		CrossRepo        bool     `json:"crossRepo,omitempty"`
+		HeadExists       bool     `json:"headExists,omitempty"`
+		Mergeable        string   `json:"mergeable,omitempty"`
+		MergeState       string   `json:"mergeState,omitempty"`
+		AutoMerge        string   `json:"autoMerge,omitempty"`
+		Methods          []string `json:"methods"`
+		AutoMergeAllowed bool     `json:"autoMergeAllowed,omitempty"`
+		DeleteOnMerge    bool     `json:"deleteOnMerge,omitempty"`
+		CanWrite         bool     `json:"canWrite,omitempty"`
+		CanUpdate        bool     `json:"canUpdate,omitempty"`
+		CanUpdateBranch  bool     `json:"canUpdateBranch,omitempty"`
+		CanDeleteBranch  bool     `json:"canDeleteBranch,omitempty"`
+		PendingRuns      int      `json:"pendingRuns,omitempty"`
+	}
+)
+
+// pr.action's ops, as PRActionParams.Op names them.
+const (
+	PRActState            = ""
+	PRActMerge            = "merge"
+	PRActAutoMerge        = "auto-merge"
+	PRActDisableAutoMerge = "disable-auto-merge"
+	PRActReady            = "ready"
+	PRActDraft            = "draft"
+	PRActClose            = "close"
+	PRActReopen           = "reopen"
+	PRActDeleteBranch     = "delete-branch"
+	PRActUpdateBranch     = "update-branch"
+	PRActRevert           = "revert"
+	PRActApproveRuns      = "approve-runs"
 )
