@@ -368,26 +368,45 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		a.paneRef(p.ID).Focus()
 	}
 	dragging := false
+	// The room past the address bar takes the buttons as they show, folded
+	// in a narrow pane, which keeps the address its room. Narrower, where
+	// even folded they would not fit beside the address at its least,
+	// back, forward and reload fold into the pane's menu too, and the
+	// address narrows further; narrower still, the menu takes every
+	// button, as a pane's header's does (foldAll).
+	room := func(lead float32) paneFold { return a.headerRoom(c, p, pad, lead, lead, top && right, multi).fold }
+	fold := min(room(browserNavW+browserAddressRoom), foldSplits)
+	navFold := room(browserNavW+browserAddressMin) == foldAll
+	if navFold {
+		fold = max(room(browserAddressNarrow), foldSplits)
+	}
+	canReload := e.view != nil && e.url != proto.BlankURL
+	stop := func() { e.view.Page().Stop(); e.loading = false }
+	reload := func() {
+		e.view.Page().Reload()
+		e.loading = true
+	}
+	if e.loading {
+		// Loading ends with an event, which a page that never ends loading
+		// sends late: look again meanwhile.
+		c.After(500 * time.Millisecond)
+		e.syncNav()
+	}
 	h.Children(func() {
 		if top && left {
 			a.sidebarButtons(c, pal, bar, shown)
 		}
-		navButton(c, "back", chevronLeftIcon, locales.BrowserBack(), e.back, pal, func() { e.view.Page().GoBack() })
-		navButton(c, "forward", chevronIcon, locales.BrowserForward(), e.fwd, pal, func() { e.view.Page().GoForward() })
-		if e.loading {
-			navButton(c, "stop", closeIcon, locales.BrowserStop(), true, pal, func() { e.view.Page().Stop(); e.loading = false })
-			// Loading ends with an event, which a page that never ends
-			// loading sends late: look again meanwhile.
-			c.After(500 * time.Millisecond)
-			e.syncNav()
-		} else {
-			navButton(c, "reload", reloadIcon, locales.BrowserReload(), e.view != nil && e.url != proto.BlankURL, pal, func() {
-				e.view.Page().Reload()
-				e.loading = true
-			})
+		if !navFold {
+			navButton(c, "back", chevronLeftIcon, locales.BrowserBack(), e.back, pal, func() { e.view.Page().GoBack() })
+			navButton(c, "forward", chevronIcon, locales.BrowserForward(), e.fwd, pal, func() { e.view.Page().GoForward() })
+			if e.loading {
+				navButton(c, "stop", closeIcon, locales.BrowserStop(), true, pal, stop)
+			} else {
+				navButton(c, "reload", reloadIcon, locales.BrowserReload(), canReload, pal, reload)
+			}
 		}
 		gap := ui.Box(c.Key("drag-l")).Width(8).Shrink(0).AlignSelf(ui.Stretch)
-		dragging = a.addressBar(c, pal, s, p, e, multi)
+		dragging = a.addressBar(c, pal, s, p, e, multi, navFold)
 		// The room the address bar leaves moves the window, and zooms it
 		// on a double click.
 		rest := ui.Box(c.Key("drag")).Grow(1).MinWidth(8).AlignSelf(ui.Stretch)
@@ -395,16 +414,28 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			gap.DragWindow()
 			rest.DragWindow()
 		}
-		// The room past the address bar takes the buttons as they show,
-		// folded in a narrow pane, which keeps the address its room. The
-		// buttons of the window's top right corner sit by the pane's own,
-		// as one row of buttons.
-		room := a.headerRoom(c, p, pad, 3*controlW+8+browserAddressRoom, top && right, multi)
-		ui.Row(c.Key("buttons")).AlignItems(ui.Center).Children(func() {
-			a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold)
-			if top && right {
-				a.cornerButtons(c, pal, "-h")
+		var more func(*ui.Menu)
+		if navFold {
+			more = func(m *ui.Menu) {
+				if m.Item(locales.BrowserBack()).Disabled(!e.back).Chosen() {
+					e.view.Page().GoBack()
+				}
+				if m.Item(locales.BrowserForward()).Disabled(!e.fwd).Chosen() {
+					e.view.Page().GoForward()
+				}
+				if e.loading {
+					if m.Item(locales.BrowserStop()).Chosen() {
+						stop()
+					}
+				} else if m.Item(locales.BrowserReload()).Disabled(!canReload).Chosen() {
+					reload()
+				}
 			}
+		}
+		// The buttons of the window's top right corner sit by the pane's
+		// own, as one row of buttons.
+		ui.Row(c.Key("buttons")).AlignItems(ui.Center).Children(func() {
+			a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, fold, top && right, more)
 		})
 		if top && right {
 			a.controlsRoom(c, 2)
@@ -433,11 +464,17 @@ func navButton(c *ui.Context, key string, svg *ui.SVG, label string, enabled boo
 // addressBar is where the page's URL shows, and the user types another, or
 // words to search for. With several panes, its globe is the pane's handle,
 // as a terminal's title is: it reports whether it is being dragged.
-func (a *App) addressBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, e *webEntry, multi bool) (dragging bool) {
+// Narrow, with the buttons before it folded, it gives up the room it keeps
+// beside them too, as the pane's buttons would come over the window's.
+func (a *App) addressBar(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, e *webEntry, multi, narrow bool) (dragging bool) {
 	blank := e.url == proto.BlankURL
+	least := float32(browserAddressMin)
+	if narrow {
+		least = browserAddressNarrow
+	}
 	// It takes the room up to a width that reads well, and leaves the
 	// rest to move the window by.
-	frame := ui.Row(c.Key("address")).Grow(100).MinWidth(120).MaxWidth(760).Height(28).Padding(0, 10, 0, 4).Gap(3).Radius(8).
+	frame := ui.Row(c.Key("address")).Grow(100).MinWidth(least).MaxWidth(760).Height(28).Padding(0, 10, 0, 4).Gap(3).Radius(8).
 		AlignItems(ui.Center).Background(pal.chip).Cursor(ui.CursorText)
 	var in ui.Element
 	frame.Children(func() {
