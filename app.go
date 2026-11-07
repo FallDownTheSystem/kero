@@ -889,6 +889,12 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 		// The scrollback-limit kerod's copy keeps, never the terminal's
 		// default, 10 MB, which would keep more here than there.
 		Scrollback: a.set.ScrollbackBytes(),
+		// Send to Session… sends the text selected to an agent.
+		ContextMenu: func(m *ui.Menu, selection string) {
+			if m.Item(locales.TermSendToSession()).Disabled(strings.TrimSpace(selection) == "").Chosen() {
+				a.sendExcerpt(id, selection)
+			}
+		},
 		// Every terminal zooms together, and the size is remembered.
 		OnZoom: func(z terminal.Zoom) bool {
 			a.zoom(z.Steps, z.Reset)

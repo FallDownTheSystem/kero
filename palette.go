@@ -31,6 +31,9 @@ type paletteState struct {
 	convs []hostConversation
 	only  bool
 	gen   int
+	// choose, set, lists only the agents of a host, to send something to
+	// one (chooseAgent).
+	choose *agentChoice
 }
 
 // hostConversation is a conversation a host's kerod remembers.
@@ -57,6 +60,7 @@ type paletteItem struct {
 }
 
 func (a *App) openPalette() {
+	a.cancelChoice()
 	a.pal = paletteState{open: true, reveal: true, gen: a.pal.gen + 1}
 	a.loadConversations()
 }
@@ -163,6 +167,9 @@ func (a *App) resumeConversation(h *host, cv proto.Conversation) {
 func (a *App) paletteItems() []paletteItem {
 	if a.pal.only {
 		return a.conversationItems()
+	}
+	if a.pal.choose != nil {
+		return a.agentItems()
 	}
 	var items []paletteItem
 	names := map[string]string{}
@@ -333,6 +340,9 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 			none = locales.PaletteNoConversations()
 		}
 	}
+	if ch := a.pal.choose; ch != nil {
+		label, placeholder, none = ch.title, locales.AgentChoosePlaceholder(), locales.AgentChooseNone()
+	}
 	ui.DialogBase(c.Key("palette"), &a.pal.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay).Justify(ui.Start).Padding(84, 0, 0, 0)
 		floating(panel.Width(600).MaxHeight(460).Radius(14).Background(pal.popover), pal).Clip().
@@ -365,7 +375,7 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 				kind := it.kind()
 				// Conversations head their group even first, as with no
 				// sessions, or they would read as sessions.
-				if (i > 0 || kind == paletteConversation) && kind != lastKind && a.pal.query == "" && !a.pal.only {
+				if (i > 0 || kind == paletteConversation) && kind != lastKind && a.pal.query == "" && !a.pal.only && a.pal.choose == nil {
 					title := locales.PaletteCommands()
 					if kind == paletteConversation {
 						title = locales.PaletteConversations()
@@ -405,9 +415,12 @@ func (a *App) paletteView(c *ui.Context, pal *palette) {
 	})
 	if chosen != nil {
 		a.pal.open = false
+		a.pal.choose = nil
 		chosen()
 	}
 	if !a.pal.open && chosen == nil {
+		// An agent's choice closed unchosen tells its asker so.
+		a.cancelChoice()
 		a.focusTerminal()
 	}
 }
