@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.13
+
+- Removing a worktree from the New Session dialog's Existing worktrees
+  now takes it off the list. A worktree made for a session, which goes
+  as that session closes, used to stay listed until the dialog opened
+  again
+
 ## 2.1.34-fork.12
 
 - New Session in a worktree has a New branch switch, on by default: name
