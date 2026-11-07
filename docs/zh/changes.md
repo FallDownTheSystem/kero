@@ -116,6 +116,7 @@ description: 在窗格旁查看会话的 git 分支，以及它的智能体逐�
 多个智能体在同一个检出目录里并行工作，会被彼此的改动绊住。**会话 › 在工作树中新建会话…**（<kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>T</kbd>）会打开已开启**在工作树中**的[新建会话对话框](./sessions.md#new-session-dialog)，在专属的 git 工作树中启动会话：一个检出你所选分支，或检出你命名并从仓库默认分支创建的新分支的文件夹。侧边栏中项目的菜单里也有这一项，用于为该项目的仓库启动会话。在没有菜单栏的 Windows 和 Linux 上，菜单栏的菜单位于侧边栏设置旁边的**菜单**按钮（⋯）中。
 
 - 工作树位于仓库内的 `.kero/worktrees/<branch>`，Kero 通过 `.git/info/exclude`（而不是你的 `.gitignore`）忽略它。设置 `worktree-dir` 可以把工作树放到别处。
+- 创建工作树前，Kero 会先获取基础分支并从远程的分支创建，所以本地 `main` 过时也没关系。离线时，或本地分支有远程没有的提交时，从本地分支创建。设置 `worktree-from-origin = false` 可以始终从本地分支创建。
 - 设置 `worktree-base = current`，可以从项目文件夹所在的分支而不是默认分支创建新分支。
 - 新工作树只有 git 跟踪的文件。要带上被忽略的文件，如 `.claude/settings.local.json`、`CLAUDE.local.md` 或 `.env`，就像 Claude Code 的工作树那样，在仓库顶层的 `.worktreeinclude` 里按 `.gitignore` 的语法列出它们。Kero 会复制每个匹配的被忽略文件，工作树里已有的文件保持不变。它跳过 `node_modules` 和其他工作树，只有当某个模式指向整个被忽略的文件夹内的路径（如 `cache/keep.txt`）时才进入该文件夹。
 - 会话会加入仓库所在的项目，边栏中会显示它的分支。
