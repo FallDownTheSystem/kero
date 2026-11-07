@@ -334,3 +334,66 @@ type (
 		Resolve bool   `json:"resolve,omitempty"`
 	}
 )
+
+type (
+	// PRGuideParams act on a pull request's review guide, the tour of it
+	// the Guide tab shows, by Op:
+	//
+	//   - "get": the guide, if any.
+	//   - "start": a guide anew, for Agent, the pane of the agent that
+	//     writes it, at the pull request's head, which kerod fetches. A
+	//     stop or summary with no guide yet starts one, with no Agent;
+	//     one of an older head than the pull request's starts anew.
+	//   - "stop": Stop added, at At (from 1; 0 last), or, with its ID,
+	//     edited, and moved to At when given.
+	//   - "delete": the stop ID deleted.
+	//   - "summary": the guide's Summary.
+	//   - "clear": its stops and summary gone, to write it anew.
+	//   - "discard": the guide gone.
+	//
+	// The pull request is Number of Remote's repository of Pane's; with no
+	// Number, the one whose guide, else draft review, Pane's agent writes.
+	PRGuideParams struct {
+		Op      string      `json:"op"`
+		Pane    string      `json:"pane"`
+		Remote  string      `json:"remote,omitempty"`
+		Number  int         `json:"number,omitempty"`
+		Agent   string      `json:"agent,omitempty"`
+		Stop    PRGuideStop `json:"stop,omitempty"`
+		At      int         `json:"at,omitempty"`
+		ID      int         `json:"id,omitempty"`
+		Summary string      `json:"summary,omitempty"`
+	}
+	// PRGuideStop is a stop of a guide: lines Start to Line, from 1, of
+	// Side's file, RIGHT the pull request's, LEFT the base's; Line 0 for
+	// the whole file, Side "". Closely marks a stop with a call only a
+	// maintainer can make ("Look closely").
+	PRGuideStop struct {
+		ID      int    `json:"id,omitempty"`
+		Path    string `json:"path"`
+		Side    string `json:"side,omitempty"`
+		Start   int    `json:"start,omitempty"`
+		Line    int    `json:"line,omitempty"`
+		Title   string `json:"title"`
+		Note    string `json:"note,omitempty"`
+		Closely bool   `json:"closely,omitempty"`
+	}
+	// PRGuide is a pull request's review guide, written at Head, of the
+	// changes since MergeBase: its summary, then its stops in reading
+	// order. kerod keeps it apart from the draft review, until discarded;
+	// nothing of it goes to GitHub. Agent and Session are the agent's that
+	// writes it, as PRReviewDraft's.
+	PRGuide struct {
+		Repo      string        `json:"repo"` // its slug
+		Remote    string        `json:"remote"`
+		Number    int           `json:"number"`
+		Title     string        `json:"title,omitempty"`
+		Head      string        `json:"head"`
+		MergeBase string        `json:"mergeBase"`
+		Agent     string        `json:"agent,omitempty"`
+		Session   string        `json:"session,omitempty"`
+		Summary   string        `json:"summary,omitempty"`
+		Stops     []PRGuideStop `json:"stops"`
+		Updated   int64         `json:"updated"`
+	}
+)

@@ -187,6 +187,12 @@ The agent never posts to GitHub. Its comments go to a draft review that Kero kee
 
 The comments show on the pull request's **Files** as the agent adds them, marked **Agent**. Edit or delete any of them, or add your own from a line's gutter, as in Changes, or on a whole file with the comment button in its header. The sparkles on an agent's comment type a question about it into the agent's pane, for you to finish. The bar under the pull request has the review's summary, its text on GitHub, and its verdict: **Comment**, **Approve** or **Request Changes** (only Comment on your own pull request). **Post Review** asks first, then posts the summary and the comments as one review, so the author gets one notification. A review needs no comments: approve a pull request, or leave a summary alone, from the bar. The Review list marks each pull request with a draft that has comments or a summary, or whose agent is still at work. **Start Draft**, in the bar, starts a draft with no agent, for an agent of your own to add comments to with `kero pr comment --pr <number>`. **Discard Review…**, in the bar's menu, deletes the draft.
 
+<a id="review-guides"></a>
+
+### Review guides
+
+A pull request's **Guide** tab is a tour of it, for reading it without going line by line: a summary, then stops in reading order, each on the lines worth reading with a note on them. **Write Guide** has an agent write it, in a worktree of the pull request as a review does, asked with `pr-guide-prompt` (Settings › Git); it writes with `kero pr guide`, and nothing of it goes to GitHub. The tab shows one stop at a time, an excerpt of its lines, with **Next Stop** and the list of stops above it; a stop marked **Look closely** has a call only a maintainer can make. **Full Diff** shows the stop's whole file, where you comment as on Files; **Comment** starts a comment on the stop's lines in your draft review, and **Ask Agent** types a question about the stop into the agent's pane. A guide written before the pull request changed says so, with **Rewrite Guide**. **Discard Guide**, in its menu, deletes it; the draft review stays.
+
 <a id="pull-request-notifications"></a>
 
 ### Notifications

@@ -42,6 +42,7 @@ func settingsIndex() []searchEntry {
 		{"git", locales.SetCommitPrompt(), "commit-message-prompt commit message prompt instructions agent write generate default"},
 		{"git", locales.SetPRPrompt(), "pr-message-prompt pull request pr title description prompt instructions agent github default"},
 		{"git", locales.SetReviewPrompt(), "pr-review-prompt review pull request pr prompt agent code review default"},
+		{"git", locales.SetGuidePrompt(), "pr-guide-prompt guide tour review pull request pr prompt agent walkthrough default"},
 		{"files", locales.SetEditor(), "editor open in editor code vscode zed files"},
 		{"files", locales.SetHiddenFiles(), "files-hidden dotfiles hidden files dot"},
 		{"general", locales.AwakeTitle(), "keep-computer-awake awake sleep caffeinate power agents idle lid"},

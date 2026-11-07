@@ -165,6 +165,7 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `review-command` |  | [审查](./changes.md#review)仓库拉取请求的智能体命令，如 `owner/name=codex --full-auto`；留空则为 `claude`。智能体把提示词作为一个参数收到，放在 `{prompt}` 处，否则放在命令之后；其中也可使用拉取请求的占位符。每个仓库重复一行 |
 | `review-prompt` |  | 交给审查智能体的提示词，如 `owner/name=/code-review {ticket} #{number}`；留空则用 Kero 自己的。换行写作 `\n`。每个仓库重复一行 |
 | `pr-review-prompt` |  | 没有自己的 `review-prompt` 的仓库中，交给[审查](./changes.md#review)智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
+| `pr-guide-prompt` |  | 交给编写拉取请求[审查导览](./changes.md#review-guides)的智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
 | `repo-commit-message-prompt` |  | 仓库自己的 `commit-message-prompt`，如 `owner/name=Write in Finnish`。每个仓库重复一行 |
 | `repo-pr-message-prompt` |  | 仓库自己的 `pr-message-prompt`，同 `repo-commit-message-prompt` |
 

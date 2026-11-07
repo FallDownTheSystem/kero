@@ -11038,6 +11038,26 @@ func (msgs Messages) SetReviewPrompt() string {
 	return Catalog.Format(msgs.locale, "setReviewPrompt", nil)
 }
 
+// SetGuidePrompt says "Guide prompt"
+// in the language the app shows.
+func SetGuidePrompt() string { return In(i18n.Locale()).SetGuidePrompt() }
+
+// SetGuidePrompt says "Guide prompt"
+// in the language of msgs.
+func (msgs Messages) SetGuidePrompt() string {
+	return Catalog.Format(msgs.locale, "setGuidePrompt", nil)
+}
+
+// SetGuidePromptDetail says "What Kero asks an agent that writes a review guide, the tour of a pull request in its Guide tab."
+// in the language the app shows.
+func SetGuidePromptDetail() string { return In(i18n.Locale()).SetGuidePromptDetail() }
+
+// SetGuidePromptDetail says "What Kero asks an agent that writes a review guide, the tour of a pull request in its Guide tab."
+// in the language of msgs.
+func (msgs Messages) SetGuidePromptDetail() string {
+	return Catalog.Format(msgs.locale, "setGuidePromptDetail", nil)
+}
+
 // SetResetPrompt says "Reset to Default"
 // in the language the app shows.
 func SetResetPrompt() string { return In(i18n.Locale()).SetResetPrompt() }
@@ -12410,6 +12430,290 @@ func PrsDraftOld() string { return In(i18n.Locale()).PrsDraftOld() }
 // in the language of msgs.
 func (msgs Messages) PrsDraftOld() string {
 	return Catalog.Format(msgs.locale, "prsDraftOld", nil)
+}
+
+// PrsGuideTab says "Guide"
+// in the language the app shows.
+func PrsGuideTab() string { return In(i18n.Locale()).PrsGuideTab() }
+
+// PrsGuideTab says "Guide"
+// in the language of msgs.
+func (msgs Messages) PrsGuideTab() string {
+	return Catalog.Format(msgs.locale, "prsGuideTab", nil)
+}
+
+// PrsGuideEmpty says "No guide yet"
+// in the language the app shows.
+func PrsGuideEmpty() string { return In(i18n.Locale()).PrsGuideEmpty() }
+
+// PrsGuideEmpty says "No guide yet"
+// in the language of msgs.
+func (msgs Messages) PrsGuideEmpty() string {
+	return Catalog.Format(msgs.locale, "prsGuideEmpty", nil)
+}
+
+// PrsGuideEmptyDetail says "An agent can write a tour of this pull request: its changes in reading order, each stop on the lines worth reading, w…"
+// in the language the app shows.
+func PrsGuideEmptyDetail() string { return In(i18n.Locale()).PrsGuideEmptyDetail() }
+
+// PrsGuideEmptyDetail says "An agent can write a tour of this pull request: its changes in reading order, each stop on the lines worth reading, w…"
+// in the language of msgs.
+func (msgs Messages) PrsGuideEmptyDetail() string {
+	return Catalog.Format(msgs.locale, "prsGuideEmptyDetail", nil)
+}
+
+// PrsWriteGuide says "Write Guide"
+// in the language the app shows.
+func PrsWriteGuide() string { return In(i18n.Locale()).PrsWriteGuide() }
+
+// PrsWriteGuide says "Write Guide"
+// in the language of msgs.
+func (msgs Messages) PrsWriteGuide() string {
+	return Catalog.Format(msgs.locale, "prsWriteGuide", nil)
+}
+
+// PrsGuideHint says "Agents write guides with kero pr guide stop --pr {number}."
+// in the language the app shows.
+func PrsGuideHint(number int) string { return In(i18n.Locale()).PrsGuideHint(number) }
+
+// PrsGuideHint says "Agents write guides with kero pr guide stop --pr {number}."
+// in the language of msgs.
+func (msgs Messages) PrsGuideHint(number int) string {
+	return Catalog.Format(msgs.locale, "prsGuideHint", map[string]any{"number": number})
+}
+
+// PrsGuideWriting says "An agent is writing the guide. Its stops show here as it adds them."
+// in the language the app shows.
+func PrsGuideWriting() string { return In(i18n.Locale()).PrsGuideWriting() }
+
+// PrsGuideWriting says "An agent is writing the guide. Its stops show here as it adds them."
+// in the language of msgs.
+func (msgs Messages) PrsGuideWriting() string {
+	return Catalog.Format(msgs.locale, "prsGuideWriting", nil)
+}
+
+// PrsGuideStale says "The pull request changed after the guide was written. Its lines may have moved."
+// in the language the app shows.
+func PrsGuideStale() string { return In(i18n.Locale()).PrsGuideStale() }
+
+// PrsGuideStale says "The pull request changed after the guide was written. Its lines may have moved."
+// in the language of msgs.
+func (msgs Messages) PrsGuideStale() string {
+	return Catalog.Format(msgs.locale, "prsGuideStale", nil)
+}
+
+// PrsRewriteGuide says "Rewrite Guide"
+// in the language the app shows.
+func PrsRewriteGuide() string { return In(i18n.Locale()).PrsRewriteGuide() }
+
+// PrsRewriteGuide says "Rewrite Guide"
+// in the language of msgs.
+func (msgs Messages) PrsRewriteGuide() string {
+	return Catalog.Format(msgs.locale, "prsRewriteGuide", nil)
+}
+
+// PrsGuideStops says "{count, plural, =0 {Guide, no stops yet} one {Guide, # stop} other {Guide, # stops}}"
+// in the language the app shows.
+func PrsGuideStops(count int) string { return In(i18n.Locale()).PrsGuideStops(count) }
+
+// PrsGuideStops says "{count, plural, =0 {Guide, no stops yet} one {Guide, # stop} other {Guide, # stops}}"
+// in the language of msgs.
+func (msgs Messages) PrsGuideStops(count int) string {
+	return Catalog.Format(msgs.locale, "prsGuideStops", map[string]any{"count": count})
+}
+
+// PrsGuideStopOf says "Stop {index} of {count}"
+// in the language the app shows.
+func PrsGuideStopOf(index int, count int) string {
+	return In(i18n.Locale()).PrsGuideStopOf(index, count)
+}
+
+// PrsGuideStopOf says "Stop {index} of {count}"
+// in the language of msgs.
+func (msgs Messages) PrsGuideStopOf(index int, count int) string {
+	return Catalog.Format(msgs.locale, "prsGuideStopOf", map[string]any{"index": index, "count": count})
+}
+
+// PrsGuideClosely says "Look closely"
+// in the language the app shows.
+func PrsGuideClosely() string { return In(i18n.Locale()).PrsGuideClosely() }
+
+// PrsGuideClosely says "Look closely"
+// in the language of msgs.
+func (msgs Messages) PrsGuideClosely() string {
+	return Catalog.Format(msgs.locale, "prsGuideClosely", nil)
+}
+
+// PrsGuidePrevious says "Previous Stop"
+// in the language the app shows.
+func PrsGuidePrevious() string { return In(i18n.Locale()).PrsGuidePrevious() }
+
+// PrsGuidePrevious says "Previous Stop"
+// in the language of msgs.
+func (msgs Messages) PrsGuidePrevious() string {
+	return Catalog.Format(msgs.locale, "prsGuidePrevious", nil)
+}
+
+// PrsGuideNext says "Next Stop"
+// in the language the app shows.
+func PrsGuideNext() string { return In(i18n.Locale()).PrsGuideNext() }
+
+// PrsGuideNext says "Next Stop"
+// in the language of msgs.
+func (msgs Messages) PrsGuideNext() string {
+	return Catalog.Format(msgs.locale, "prsGuideNext", nil)
+}
+
+// PrsGuideComment says "Comment"
+// in the language the app shows.
+func PrsGuideComment() string { return In(i18n.Locale()).PrsGuideComment() }
+
+// PrsGuideComment says "Comment"
+// in the language of msgs.
+func (msgs Messages) PrsGuideComment() string {
+	return Catalog.Format(msgs.locale, "prsGuideComment", nil)
+}
+
+// PrsGuideAsk says "Ask Agent"
+// in the language the app shows.
+func PrsGuideAsk() string { return In(i18n.Locale()).PrsGuideAsk() }
+
+// PrsGuideAsk says "Ask Agent"
+// in the language of msgs.
+func (msgs Messages) PrsGuideAsk() string {
+	return Catalog.Format(msgs.locale, "prsGuideAsk", nil)
+}
+
+// PrsGuideAskText says "About stop {index} of your guide, {place}:"
+// in the language the app shows.
+func PrsGuideAskText(index int, place string) string {
+	return In(i18n.Locale()).PrsGuideAskText(index, place)
+}
+
+// PrsGuideAskText says "About stop {index} of your guide, {place}:"
+// in the language of msgs.
+func (msgs Messages) PrsGuideAskText(index int, place string) string {
+	return Catalog.Format(msgs.locale, "prsGuideAskText", map[string]any{"index": index, "place": place})
+}
+
+// PrsGuideFullDiff says "Full Diff"
+// in the language the app shows.
+func PrsGuideFullDiff() string { return In(i18n.Locale()).PrsGuideFullDiff() }
+
+// PrsGuideFullDiff says "Full Diff"
+// in the language of msgs.
+func (msgs Messages) PrsGuideFullDiff() string {
+	return Catalog.Format(msgs.locale, "prsGuideFullDiff", nil)
+}
+
+// PrsGuideExcerpt says "Excerpt"
+// in the language the app shows.
+func PrsGuideExcerpt() string { return In(i18n.Locale()).PrsGuideExcerpt() }
+
+// PrsGuideExcerpt says "Excerpt"
+// in the language of msgs.
+func (msgs Messages) PrsGuideExcerpt() string {
+	return Catalog.Format(msgs.locale, "prsGuideExcerpt", nil)
+}
+
+// PrsGuideMoreLines says "{count, plural, one {# more line in the full diff} other {# more lines in the full diff}}"
+// in the language the app shows.
+func PrsGuideMoreLines(count int) string { return In(i18n.Locale()).PrsGuideMoreLines(count) }
+
+// PrsGuideMoreLines says "{count, plural, one {# more line in the full diff} other {# more lines in the full diff}}"
+// in the language of msgs.
+func (msgs Messages) PrsGuideMoreLines(count int) string {
+	return Catalog.Format(msgs.locale, "prsGuideMoreLines", map[string]any{"count": count})
+}
+
+// PrsGuideNoFile says "The pull request doesn't change this file anymore."
+// in the language the app shows.
+func PrsGuideNoFile() string { return In(i18n.Locale()).PrsGuideNoFile() }
+
+// PrsGuideNoFile says "The pull request doesn't change this file anymore."
+// in the language of msgs.
+func (msgs Messages) PrsGuideNoFile() string {
+	return Catalog.Format(msgs.locale, "prsGuideNoFile", nil)
+}
+
+// PrsGuideEnd says "That's the tour. Your review is below."
+// in the language the app shows.
+func PrsGuideEnd() string { return In(i18n.Locale()).PrsGuideEnd() }
+
+// PrsGuideEnd says "That's the tour. Your review is below."
+// in the language of msgs.
+func (msgs Messages) PrsGuideEnd() string {
+	return Catalog.Format(msgs.locale, "prsGuideEnd", nil)
+}
+
+// PrsGuideOptions says "Guide Options"
+// in the language the app shows.
+func PrsGuideOptions() string { return In(i18n.Locale()).PrsGuideOptions() }
+
+// PrsGuideOptions says "Guide Options"
+// in the language of msgs.
+func (msgs Messages) PrsGuideOptions() string {
+	return Catalog.Format(msgs.locale, "prsGuideOptions", nil)
+}
+
+// PrsGuideDiscard says "Discard Guide"
+// in the language the app shows.
+func PrsGuideDiscard() string { return In(i18n.Locale()).PrsGuideDiscard() }
+
+// PrsGuideDiscard says "Discard Guide"
+// in the language of msgs.
+func (msgs Messages) PrsGuideDiscard() string {
+	return Catalog.Format(msgs.locale, "prsGuideDiscard", nil)
+}
+
+// PrsGuideDiscardTitle says "Discard the guide?"
+// in the language the app shows.
+func PrsGuideDiscardTitle() string { return In(i18n.Locale()).PrsGuideDiscardTitle() }
+
+// PrsGuideDiscardTitle says "Discard the guide?"
+// in the language of msgs.
+func (msgs Messages) PrsGuideDiscardTitle() string {
+	return Catalog.Format(msgs.locale, "prsGuideDiscardTitle", nil)
+}
+
+// PrsGuideDiscardDetail says "Its summary and stops go. Your draft review stays."
+// in the language the app shows.
+func PrsGuideDiscardDetail() string { return In(i18n.Locale()).PrsGuideDiscardDetail() }
+
+// PrsGuideDiscardDetail says "Its summary and stops go. Your draft review stays."
+// in the language of msgs.
+func (msgs Messages) PrsGuideDiscardDetail() string {
+	return Catalog.Format(msgs.locale, "prsGuideDiscardDetail", nil)
+}
+
+// PrsGuideTitle says "Guide of #{number}"
+// in the language the app shows.
+func PrsGuideTitle(number int) string { return In(i18n.Locale()).PrsGuideTitle(number) }
+
+// PrsGuideTitle says "Guide of #{number}"
+// in the language of msgs.
+func (msgs Messages) PrsGuideTitle(number int) string {
+	return Catalog.Format(msgs.locale, "prsGuideTitle", map[string]any{"number": number})
+}
+
+// PrsGuideStarted says "Writing a guide of #{number} in the background. The Guide tab shows its stops as they come."
+// in the language the app shows.
+func PrsGuideStarted(number int) string { return In(i18n.Locale()).PrsGuideStarted(number) }
+
+// PrsGuideStarted says "Writing a guide of #{number} in the background. The Guide tab shows its stops as they come."
+// in the language of msgs.
+func (msgs Messages) PrsGuideStarted(number int) string {
+	return Catalog.Format(msgs.locale, "prsGuideStarted", map[string]any{"number": number})
+}
+
+// PrsGuideFailed says "Couldn't start the guide: {error}"
+// in the language the app shows.
+func PrsGuideFailed(error string) string { return In(i18n.Locale()).PrsGuideFailed(error) }
+
+// PrsGuideFailed says "Couldn't start the guide: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsGuideFailed(error string) string {
+	return Catalog.Format(msgs.locale, "prsGuideFailed", map[string]any{"error": error})
 }
 
 // PrsSummary says "Summary for GitHub (Markdown)"

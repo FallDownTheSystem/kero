@@ -1784,6 +1784,8 @@
   "setPRPromptDetail": "How the agent writes a pull request's title and description. Kero adds the commits and the diff after it.",
   "setReviewPromptDetail": "What Kero asks an agent that reviews a pull request. A repository's own setup, in the Review tab, can replace these prompts.",
   "setReviewPrompt": "Review prompt",
+  "setGuidePrompt": "Guide prompt",
+  "setGuidePromptDetail": "What Kero asks an agent that writes a review guide, the tour of a pull request in its Guide tab.",
   "setResetPrompt": "Reset to Default",
   "prsNoRepo": "No repository",
   "prsNoRepoDetail": "Pull requests show for the Git repository of the pane you are in.",
@@ -2046,6 +2048,86 @@
     }
   },
   "prsDraftOld": "The pull request changed after the review began. The comments stay on the older commit.",
+  "prsGuideTab": "Guide",
+  "prsGuideEmpty": "No guide yet",
+  "prsGuideEmptyDetail": "An agent can write a tour of this pull request: its changes in reading order, each stop on the lines worth reading, with a note. The guide stays in Kero; nothing of it goes to GitHub.",
+  "prsWriteGuide": "Write Guide",
+  "prsGuideHint": "Agents write guides with kero pr guide stop --pr {number}.",
+  "@prsGuideHint": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsGuideWriting": "An agent is writing the guide. Its stops show here as it adds them.",
+  "prsGuideStale": "The pull request changed after the guide was written. Its lines may have moved.",
+  "prsRewriteGuide": "Rewrite Guide",
+  "prsGuideStops": "{count, plural, =0 {Guide, no stops yet} one {Guide, # stop} other {Guide, # stops}}",
+  "@prsGuideStops": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsGuideStopOf": "Stop {index} of {count}",
+  "@prsGuideStopOf": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsGuideClosely": "Look closely",
+  "prsGuidePrevious": "Previous Stop",
+  "prsGuideNext": "Next Stop",
+  "prsGuideComment": "Comment",
+  "prsGuideAsk": "Ask Agent",
+  "prsGuideAskText": "About stop {index} of your guide, {place}:",
+  "@prsGuideAskText": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "prsGuideFullDiff": "Full Diff",
+  "prsGuideExcerpt": "Excerpt",
+  "prsGuideMoreLines": "{count, plural, one {# more line in the full diff} other {# more lines in the full diff}}",
+  "@prsGuideMoreLines": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsGuideNoFile": "The pull request doesn't change this file anymore.",
+  "prsGuideEnd": "That's the tour. Your review is below.",
+  "prsGuideOptions": "Guide Options",
+  "prsGuideDiscard": "Discard Guide",
+  "prsGuideDiscardTitle": "Discard the guide?",
+  "prsGuideDiscardDetail": "Its summary and stops go. Your draft review stays.",
+  "prsGuideTitle": "Guide of #{number}",
+  "@prsGuideTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsGuideStarted": "Writing a guide of #{number} in the background. The Guide tab shows its stops as they come.",
+  "@prsGuideStarted": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsGuideFailed": "Couldn't start the guide: {error}",
   "prsSummary": "Summary for GitHub (Markdown)",
   "prsEventComment": "Comment",
   "prsApprove": "Approve",

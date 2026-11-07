@@ -31,7 +31,7 @@ type prPage struct {
 	err          string
 	busy         bool
 	gen          int
-	tab          string // prConversation or prFiles
+	tab          string // prConversation, prFiles or prGuideTab
 	files        map[string]*sideFile
 	md           map[string]*markdown.Options // each text's, by its key
 	parts        map[string]prText
@@ -41,6 +41,7 @@ type prPage struct {
 	// rv shows the draft review's comments on the diffs (prdraft.go).
 	rv     *review
 	review prDraftState
+	guide  prGuideState // the review guide, of the Guide tab (prguide.go)
 	// at is the comment jumped to last (jumpComment), which revealSpot
 	// brings into view in the frames reveal counts down, until it is; view
 	// is the files' box, as last laid out.
@@ -94,6 +95,7 @@ func (a *App) fetchPRPage(g *prPage) {
 	gen := g.gen
 	g.busy, g.err = true, ""
 	a.fetchDraftReview(g)
+	a.fetchGuide(g)
 	p := proto.PRViewParams{Pane: g.pane, Remote: g.remote, Number: g.pr.Number}
 	go func() {
 		var res proto.PRView
@@ -148,7 +150,7 @@ func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *pr
 			files = locales.PrsFilesTabCount(len(g.res.Files))
 		}
 		ui.Row(c).Margin(4, 0, 0, 0).Gap(8).AlignItems(ui.Center).Children(func() {
-			segmented(c, "tab", &g.tab, []string{prConversation, prFiles}, []string{locales.PrsConversation(), files})
+			segmented(c, "tab", &g.tab, []string{prConversation, prFiles, prGuideTab}, []string{locales.PrsConversation(), files, locales.PrsGuideTab()})
 			ui.Spacer(c)
 			a.commentJump(c, pal, g)
 		})
@@ -167,6 +169,8 @@ func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *pr
 	}
 	if g.tab == prFiles {
 		a.prPageFiles(c, pal, s, pane, g, width)
+	} else if g.tab == prGuideTab {
+		a.prGuidePane(c, pal, s, pane, g, width)
 	} else {
 		ui.Scroll(c.Key("conversation")).Grow(1).MinHeight(0).TrackScroll(&g.scroll).Children(func() {
 			ui.Column(c).Padding(4, 12, 20, 12).Gap(16).AlignItems(ui.Stretch).Children(func() {

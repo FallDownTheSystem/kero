@@ -211,6 +211,22 @@ kero pr delete 3
 
 Kero から始めたレビューでは、ペインがそのプルリクエストを知っています。それ以外では、レビューに下書きがあれば `--pr <番号>` で指定します。下書きはプルリクエストの **下書きを開始** で始められます。
 
+## レビューガイド
+
+エージェントは `kero pr guide` で、プルリクエストの[レビューガイド](./changes.md#review-guides) (ガイドタブの案内) を書きます。ストップは追加した順に並び、`--at <n>` で n 番目に置けます。行はプルリクエストの差分を含む必要があり、パスだけならファイル全体です。GitHub には何も送られません:
+
+```sh
+kero pr guide summary "Moves retries onto a queue."
+kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
+kero pr guide stop src/api.go:88 --title "Who enqueues" --closely   # Look closely
+kero pr guide stop testdata/golden.txt --title "Snapshots"          # the whole file
+kero pr guide show                        # the guide, each stop with its id
+kero pr guide edit 2 --title "Clearer"    # or move 2 --at 1, delete 2
+kero pr guide clear                       # start the tour again
+```
+
+Kero から始めたガイドでは、ペインがそのプルリクエストを知っています。それ以外では `--pr <番号>` で指定します。
+
 ## 構成とセットアップ
 
 ```sh
