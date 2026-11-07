@@ -34,7 +34,10 @@ kero focus backend               # 在 app 中显示它
 kero close backend               # 结束会话（如果给的是窗格，则关闭该窗格）
 kero close fix-login --remove-worktree   # 同时删除它专属的工作树
 kero restart <pane>              # 重新启动已退出窗格的 shell
+kero worktree handoff fix-login  # 把这个代理的会话移入专属工作树
 ```
+
+`kero worktree handoff <branch>` 接受 `--base <ref>`（新分支的起点）和 `--prompt <text|->`（代理在工作树中重新启动后接着做的事）（[详情](./changes.md#moving-a-session-into-a-worktree)）。
 
 `kero new` 的选项：
 

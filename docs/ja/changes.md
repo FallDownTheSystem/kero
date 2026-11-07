@@ -136,6 +136,17 @@ kero close fix-login --remove-worktree    # 閉じて、ワークツリーを削
 kero close fix-login --remove-worktree --force   # 未コミットの変更があっても
 ```
 
+<a id="moving-a-session-into-a-worktree"></a>
+
+### セッションをワークツリーに移す
+
+チェックアウトですでに作業しているエージェントは、別のセッションを始める代わりに、自分のセッションを会話ごと専用のワークツリーに移せます。エージェントがペインで `kero worktree handoff <branch>` を実行すると、新規セッションのものと同じようにワークツリーが作られ（新しいブランチの起点はデフォルトブランチ、または `worktree-base` の設定どおり、または `--base`）、そのセッションのものになります。エージェントのターンが終わると、Kero はワークツリーの同じフォルダでエージェントを再び起動して会話を再開し、`--prompt` が渡されていればそれを入力します。ほかのペインと、コミットしていない変更はそのまま残ります。Kero のスキルがエージェントにこの使い方を教えます。すでに専用のワークツリーを持つセッションは、もう移せません。
+
+```sh
+kero worktree handoff fix-login                          # デフォルトブランチから
+kero worktree handoff fix-login --base HEAD --prompt "go on with the fix"
+```
+
 ## ファイル
 
 右サイドバーの**ファイル**タブ、または <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd>（Windows と Linux では <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd>）で、今いるペインのワークツリー、リポジトリの外ならそのフォルダのファイルを表示します。リモートホストでは、そのホストのファイルです。git が無視するものは薄く表示され、`.git` は表示されません。ドットファイルは `files-hidden` をオフにしない限り表示されます。

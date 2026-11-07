@@ -84,6 +84,21 @@ or start it with --wait, which exits with the command's status:
     kero wait "$pane" --exit || kero read "$pane" -n 80
     kero split --down --wait -- make build    # the same, in one step
 
+## Move into a worktree
+
+To go on with this conversation in a git worktree of its own, on a new
+branch, move your own session there, rather than start another:
+
+    kero worktree handoff fix-login           # from the default branch
+    kero worktree handoff fix-login --base HEAD --prompt "go on with the fix"
+
+Make it the last thing you do, then end your turn: once it ends, Kero
+starts you again in the worktree, resuming this conversation, and types
+--prompt, if given, for you to go on with. Changes not committed stay in
+this checkout: to take your work along, commit it first and hand off with
+--base HEAD, which starts the branch from this checkout's. A session that
+has a worktree of its own already can't move again.
+
 ## Hand work to another machine
 
 The user may have added other machines to Kero, each with a kerod of its

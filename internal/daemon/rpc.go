@@ -72,6 +72,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.checkWorktree(p.ID)
 
+	case "worktree.handoff":
+		var p proto.HandoffParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.handoff(p)
+
 	case "pane.close":
 		var p proto.IDParams
 		if err := decode(&p); err != nil {

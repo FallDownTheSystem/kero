@@ -34,7 +34,10 @@ kero focus backend               # アプリで表示
 kero close backend               # セッションを終える（ペインを指定するとそのペイン）
 kero close fix-login --remove-worktree   # 専用のワークツリーも削除する
 kero restart <pane>              # 終了したペインのシェルを再び開始
+kero worktree handoff fix-login  # このエージェントのセッションを専用のワークツリーに移す
 ```
+
+`kero worktree handoff <branch>` は、起点のブランチ `--base <ref>` と、ワークツリーで再び起動したエージェントが続ける内容 `--prompt <text|->` を取ります（[詳しく](./changes.md#moving-a-session-into-a-worktree)）。
 
 `kero new` のオプション:
 
