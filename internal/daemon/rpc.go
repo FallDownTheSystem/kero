@@ -751,6 +751,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.prMessage(p)
 
+	case "pr.action":
+		var p proto.PRActionParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prAction(p)
+
 	case "fs.list":
 		var p proto.FSListParams
 		if err := decode(&p); err != nil {

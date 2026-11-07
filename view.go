@@ -267,6 +267,7 @@ func (a *App) view(c *ui.Context) {
 	a.newSessionView(c, pal)
 	a.prReviewView(c, pal)
 	a.prSetupView(c, pal)
+	a.prMergeView(c, pal)
 	// Last, over the dialog that asked it, as the New Session dialog's
 	// Remove does.
 	a.confirmView(c, pal)

@@ -483,12 +483,15 @@ func target(path string) string {
 // alone), and Prompt what it is asked, its {placeholders} filled in for
 // the pull request; and CommitPrompt and PRPrompt, how its commit
 // messages and pull requests are written. An empty one is the setting's
-// of all repositories.
+// of all repositories. MergeMethod is how its pull requests merge by
+// default: merge, squash or rebase, "" for the first GitHub allows of
+// squash, merge and rebase.
 type ReviewSetup struct {
 	Command      string `json:"command,omitempty"`
 	Prompt       string `json:"prompt,omitempty"`
 	CommitPrompt string `json:"commitPrompt,omitempty"`
 	PRPrompt     string `json:"prPrompt,omitempty"`
+	MergeMethod  string `json:"mergeMethod,omitempty"`
 }
 
 // Clone returns a copy that shares nothing with s.

@@ -47,6 +47,8 @@ type prPage struct {
 	at     prSpot
 	reveal int
 	view   ui.Rect
+	// acts are its actions (pr_actions.go).
+	acts prActs
 }
 
 // prSpot is a comment on the page's diffs, which jumpComment goes to: of
@@ -143,6 +145,7 @@ func (a *App) prPageView(c *ui.Context, pal *palette, s *proto.Session, pane *pr
 	ui.Column(c.Key("page-head")).Shrink(0).Padding(0, 12, 8, 12).Gap(6).AlignItems(ui.Stretch).Children(func() {
 		ui.Text(c, g.pr.Title).FontSize(15).FontWeight(650).TextColor(pal.text).LineHeight(1.3).Selectable()
 		a.prMeta(c, pal, g)
+		a.prActionsBar(c, pal, g)
 		files := locales.PrsFilesTab()
 		if g.res != nil {
 			files = locales.PrsFilesTabCount(len(g.res.Files))

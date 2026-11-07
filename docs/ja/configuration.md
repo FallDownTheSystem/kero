@@ -167,6 +167,7 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `pr-review-prompt` |  | 自分の `review-prompt` がないリポジトリで、[レビュー](./changes.md#review)するエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
 | `repo-commit-message-prompt` |  | リポジトリ独自の `commit-message-prompt`（`owner/name=Write in Finnish` など）。リポジトリごとに繰り返します |
 | `repo-pr-message-prompt` |  | リポジトリ独自の `pr-message-prompt`。`repo-commit-message-prompt` と同様です |
+| `repo-merge-method` |  | リポジトリのプルリクエストを[マージ](./changes.md#review)する既定の方法。`owner/name=rebase` のように、`merge`、`squash`、`rebase` のいずれか。なければ、スカッシュ、マージ、リベースのうちリポジトリが許す最初のもの |
 
 ## ファイル
 
