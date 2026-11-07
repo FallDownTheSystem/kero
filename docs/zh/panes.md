@@ -23,6 +23,8 @@ description: 把会话拆分成多个窗格，并排运行开发服务器、测�
 
 窗格中的程序退出后，窗格会保留下来，方便你查看输出。**重启窗格**会在同一目录下重新启动它的 shell。
 
+要让智能体看到终端输出的内容，例如失败测试的输出，选中文本，右键点击并选择 **发送到会话…**，再选择智能体的会话。智能体会以代码块的形式收到这段文本，并附上来源窗格；它回到提示符时，文本就会输入进去。
+
 ## 通过命令行
 
 `kero split` 在另一个窗格旁启动新窗格，并打印其 id：
@@ -101,6 +103,57 @@ kero split --url .backlog/pages/brief.html
 kero browser type 'input[name=q]' "kero" --enter
 kero browser text main
 ```
+
+<a id="sending-to-an-agent-from-a-page"></a>
+### 从页面发送给智能体
+
+浏览器窗格中的本地页面（`file:`）可以给智能体发送消息，例如你在智能体展示的决策简报（decision brief）上做的选择。页面调用 `window.kero.send(message, options)`；Kero 会在智能体回到提示符时，把消息输入到用 `kero split --url` 打开（或再次显示）该页面的智能体窗格中；如果智能体正用 [`kero browser wait-message`](./cli.md#browsing) 等待，就直接交给它。对于不是智能体打开的页面，Kero 会像 **发送到会话…** 一样询问发给哪个智能体，之后都发到那里。
+
+每条消息都会告诉智能体它来自哪里：`Kero: message from database pick, from the page "Pick and send" (file:///…/send-to-agent.html) in browser pane 3f2a:`，后面是消息文本。`send` 返回的 Promise 会在智能体收到消息后完成，页面就能显示"已发送"；如果智能体的窗格先关闭，则会 reject。
+
+| 选项      | 作用 |
+| --------- | ---- |
+| `label`   | 消息是什么，放在页面标题和 URL 之前 |
+| `mode`    | `"push"` 总是输入到提示符；`"wait"` 只留给 `kero browser wait-message`；不设置时，交给正在等待的智能体，否则输入到提示符 |
+| `onState` | 在 Promise 完成之前收到 `"queued"`（智能体正在工作：回到提示符时收到）或 `"waiting"`（留给 `wait-message`） |
+
+不是字符串的消息会以 JSON 发送。`window.kero` 只存在于 Kero 中，所以页面可以据此判断能否发送，不能发送时把消息复制到剪贴板：
+
+```html
+<!doctype html>
+<meta charset="utf-8">
+<title>Pick and send</title>
+<h1>Which database?</h1>
+<label><input type="radio" name="d1" value="A" checked> A: SQLite</label>
+<label><input type="radio" name="d1" value="B"> B: Postgres</label>
+<p><button id="send">Send</button> <span id="status"></span></p>
+<script>
+const send = document.getElementById("send");
+const status = document.getElementById("status");
+send.onclick = async () => {
+  const text = "D1: " + document.querySelector('input[name="d1"]:checked').value;
+  if (!window.kero) {
+    await navigator.clipboard.writeText(text);
+    status.textContent = "Copied: paste it to the agent";
+    return;
+  }
+  status.textContent = "Sending…";
+  try {
+    await window.kero.send(text, {
+      label: "database pick",
+      onState: (state) => {
+        status.textContent = state === "queued" ? "Queued: the agent is working" : "Waiting for the agent";
+      },
+    });
+    status.textContent = "Sent";
+  } catch (err) {
+    status.textContent = "Not sent: " + err.message;
+  }
+};
+</script>
+```
+
+`window` 上的 `kero:delivery` 事件也会告知每条消息的投递情况，带有 `id`、`state`（`delivered` 或 `failed`）和 `error`。
 
 <a id="blocking-ads"></a>
 ### 拦截广告

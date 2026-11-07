@@ -16,17 +16,17 @@ import (
 
 // browserCommands are what kero browser does to a page, which name no
 // target: kero browser text is this session's browser's text.
-var browserCommands = []string{"open", "back", "forward", "reload", "text", "html", "snapshot", "click", "type", "wait", "eval", "screenshot", "cookies"}
+var browserCommands = []string{"open", "back", "forward", "reload", "text", "html", "snapshot", "click", "type", "wait", "eval", "screenshot", "cookies", "wait-message"}
 
 // browserCmd drives a browser pane's page, which the app has: kerod asks
 // the app, and hands its answer back.
 func browserCmd(c *client.Client, st proto.State, args []string) error {
 	f, err := parse(args, map[string]string{"timeout": "timeout", "t": "timeout", "o": "out", "out": "out", "text": "text", "ref": "ref", "domain": "domain"},
-		map[string]string{"enter": "enter", "E": "enter"})
+		map[string]string{"enter": "enter", "E": "enter", "json": "json"})
 	if err != nil {
 		return err
 	}
-	const use = "kero browser [target] <open|back|forward|reload|text|html|snapshot|click|type|wait|eval|screenshot|cookies> [args…]"
+	const use = "kero browser [target] <open|back|forward|reload|text|html|snapshot|click|type|wait|eval|screenshot|cookies|wait-message> [args…]"
 	pos := f.pos
 	var t target
 	if len(pos) > 0 && !slices.Contains(browserCommands, pos[0]) {
@@ -56,6 +56,12 @@ func browserCmd(c *client.Client, st proto.State, args []string) error {
 	timeout, err := parseTimeout(f.vals["timeout"])
 	if err != nil {
 		return err
+	}
+	if f.set["json"] && op != "wait-message" {
+		return usageErr("--json is wait-message's")
+	}
+	if op == "wait-message" {
+		return waitMessage(c, pane, timeout, pos, f)
 	}
 	p := proto.BrowserParams{ID: pane, Op: op, Timeout: timeout, Ref: f.vals["ref"]}
 	// --ref names the element in place of the selector.
@@ -201,5 +207,32 @@ func saveShot(png []byte, pane, out string) error {
 		return err
 	}
 	fmt.Println(out)
+	return nil
+}
+
+// waitMessage waits for the next message the browser pane's page sends
+// with window.kero.send, and prints it: labelled with the page, or as
+// JSON with --json. Messages sent while no agent waited are kept for it,
+// in order, when the page sent them to be waited for (mode "wait").
+func waitMessage(c *client.Client, pane string, timeout int64, pos []string, f *flags) error {
+	if len(pos) > 0 || len(f.rest) > 0 {
+		return usageErr("kero browser [target] wait-message [--timeout 10m] [--json]")
+	}
+	for _, k := range []string{"out", "text", "ref", "domain"} {
+		if f.vals[k] != "" {
+			return usageErr("wait-message takes only --timeout and --json")
+		}
+	}
+	if f.set["enter"] {
+		return usageErr("--enter is type's")
+	}
+	var msg proto.AgentMessage
+	if err := c.Call("browser.message", proto.MessageParams{ID: pane, Timeout: timeout}, &msg); err != nil {
+		return err
+	}
+	if f.set["json"] {
+		return printJSON(msg)
+	}
+	fmt.Println(msg.Prompt())
 	return nil
 }

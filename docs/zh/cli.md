@@ -160,6 +160,9 @@ kero browser eval 'document.title'
 | `wait [selector] [--text text]` | 等到元素或文本出现；两者都不给时，等到页面加载完成 |
 | `eval <js…>`                    | 在页面中运行 JavaScript 并打印结果：字符串原样输出，其他值输出为 JSON |
 | `screenshot [-o file.png]`      | 保存页面截图，并打印保存位置；`-o -` 会写到标准输出 |
+| `wait-message [--json]`         | 等待页面用 [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) 发送的下一条消息，并附上页面信息打印出来；`--json` 打印其 `id`、`from`、`label`、`url`、`title`、`text` 和 `at` |
+
+除非用 `--timeout` 指定，`wait-message` 会一直等待；没有收到消息时以 `timed out` 失败：智能体应以短于其 shell 工具自身超时的时间重新等待。它不需要 Remote Control。
 
 选择器是 CSS 选择器，在 shell 中记得加引号。需要元素的命令会等它出现，`--timeout`（默认 `10s`）设定这些命令以及页面加载最多等多久。`type` 和 `eval` 接受 `-`，表示从标准输入读取文本。
 
