@@ -5,6 +5,57 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.16
+
+- Send what a terminal printed to an agent: select it, right-click and
+  choose Send to Session…, then the agent's session. The agent gets the
+  text as a code block, with the pane it came from, typed into its prompt
+  once it is at its prompt
+- A local page in a browser pane can send the agent that opened it with
+  `kero split --url` a message: `window.kero.send(message, {label, mode})`.
+  The message carries the page's title and URL, and is typed into the
+  agent's prompt once the agent is ready, or handed to an agent waiting
+  with `kero browser wait-message --json`. The page hears when the agent
+  has it, to show "sent", and a page no agent opened asks which agent.
+  Pages tell by `window.kero` whether they are in Kero (Panes › Sending to
+  an agent from a page, with an example page)
+- Review's Send to Agent and PR watch send the same way: a review sent
+  while the agent works is typed in once it is at its prompt, rather than
+  into its busy prompt
+- Kero's agent skill (`kero skill setup`) describes `window.kero.send` and
+  `kero browser wait-message`
+- Pick Elements: a browser pane's Pick mode (its toolbar's button,
+  Ctrl+Alt+C / Alt+Shift+C, or `kero browser pick`) lets you click
+  elements of the page, write a note on each and send them to the agent
+  that opened the page. Each comes with where it is in the source first:
+  the file and line from Vue, Svelte and React development builds (React
+  19's through the source map), checked against the file, or the line of
+  its tag in a local HTML file; then strings to grep for, marked when
+  unique on the page; where it sits on the page and its HTML; its
+  selector, styles and a boxed screenshot last
+- The picker's screenshots go with the picks as files the message names,
+  which agents open by path: each element boxed (scrolled back into sight
+  if you scrolled away), and the page as you see it, every element boxed
+  and numbered. Both are on; the picker's bar turns either off, and Kero
+  remembers it
+- Browser panes can sign in where you are in Chrome or Edge: turn on
+  remote debugging in the browser (chrome://inspect/#remote-debugging),
+  then click Import in Settings › Browser › Sign-ins, or run `kero browser
+  cookies import chrome` (or `edge`), and allow Kero in the browser's
+  dialog. The panes keep the cookies, and `kero browser` works on the
+  pages as before
+- Closing a session with its worktree removes it on Windows too: Kero
+  waits for the agent and whatever it started, as MCP servers, node and
+  git, to exit (killing what is left after 5 seconds) instead of a fixed
+  200 ms, and tries again for a few seconds while the folder is still in
+  use. Git, failing so with "Permission denied", had forgotten the
+  worktree and emptied it, but left its folder and the merged branch:
+  both go now. Removing a review's worktree or one in the History tab,
+  the automatic cleanup and a handoff's try again too, and Kero's own git
+  status stays out of a worktree while it goes
+- An empty folder that such a removal left takes no new worktree's place:
+  one of its name goes in it
+
 ## 2.1.34-fork.15
 
 - Agents can act on pull requests: `kero pr state`, `merge` (with the
