@@ -14,7 +14,7 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, and draft pull request review comments. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, or a review of a pull request the user started from Kero.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
 ---
 
 # Kero
@@ -84,6 +84,16 @@ or start it with --wait, which exits with the command's status:
     kero wait "$pane" --exit || kero read "$pane" -n 80
     kero split --down --wait -- make build    # the same, in one step
 
+## Worktrees
+
+What git worktree list doesn't tell: the sessions in each worktree, which
+Kero made, what removing one would lose, and what the automatic cleanup
+will do with it; and of your own session, the worktree Kero made for it,
+its setup script's state, its pull request, and whether a handoff would go:
+
+    kero worktree list                 # --json for all of it
+    kero worktree status               # read it before a handoff
+
 ## Move into a worktree
 
 To go on with this conversation in a git worktree of its own, on a new
@@ -97,7 +107,8 @@ starts you again in the worktree, resuming this conversation, and types
 --prompt, if given, for you to go on with. Changes not committed stay in
 this checkout: to take your work along, commit it first and hand off with
 --base HEAD, which starts the branch from this checkout's. A session that
-has a worktree of its own already can't move again.
+has a worktree of its own already, or works in a linked worktree, can't
+move again: kero worktree status says so.
 
 ## Hand work to another machine
 
@@ -211,6 +222,27 @@ another by hand, or see how it stands:
     kero pr link 123        # or its URL; with neither, the branch's
     kero pr status          # --json for all of it
     kero pr unlink
+
+## Act on a pull request
+
+These act on GitHub as the user, through gh, on the pull request given by
+its number, else the one your session is linked to:
+
+    kero pr state                      # open, draft, mergeable, methods
+    kero pr ready                      # or draft, close, reopen
+    kero pr update-branch --rebase     # bring it up to date with its base
+    kero pr merge --head "$(git rev-parse HEAD)"   # the repository's default method
+    kero pr merge 123 --squash --delete-branch     # or --merge, --rebase
+    kero pr merge --auto               # once its checks and reviews pass
+    kero pr delete-branch              # once it is closed or merged
+    kero pr checkout 123               # its branch here: refuses changes
+    kero pr checkout 123 --worktree -- claude      # a new session in a worktree
+
+Merge, close and delete a branch only when the user asked for it: a
+merge can't be undone. Pass --head with the commit you checked, so
+that a merge refuses commits pushed since. A worktree that has the pull
+request already is used as it is: kero pr checkout says where, rather
+than check it out twice.
 
 ## Tell the user
 

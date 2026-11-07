@@ -72,6 +72,24 @@ pane=$(kero split --down -- go test ./...)
 kero wait "$pane" --exit || kero read "$pane" -n 80
 ```
 
+See the repository's worktrees, with what `git worktree list` doesn't tell: the sessions in each, which Kero made, what removing one would lose and what the automatic cleanup will do with it; check their own session's worktree, setup and pull request; and move their own session, with its conversation, into a new git worktree, to go on there once their turn ends ([more](./changes.md#moving-a-session-into-a-worktree)):
+
+```sh
+kero worktree list
+kero worktree status
+kero worktree handoff fix-login --prompt "go on with the fix"
+```
+
+Work with pull requests: write a [review guide](./changes.md#review-guides), see the session's linked pull request, which Kero watches for them, typing a message starting "Kero PR watch:" into their prompt when its checks fail, and merge, update or check one out when you ask them to ([all of it](./cli.md)):
+
+```sh
+kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
+kero pr status                  # the linked pull request: checks, conflicts
+kero pr update-branch --rebase
+kero pr merge --squash          # only when you ask: a merge can't be undone
+kero pr checkout 123 --worktree -- claude
+```
+
 Tell you what's going on:
 
 ```sh

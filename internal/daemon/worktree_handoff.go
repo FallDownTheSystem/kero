@@ -60,8 +60,17 @@ func (d *Daemon) handoff(p proto.HandoffParams) (proto.HandoffResult, error) {
 		as = *pn.info.AgentSession
 	}
 	dir, terminal := pn.info.WorkDir(), pn.info.Terminal()
+	linked := ""
+	if g := pn.info.Git; g != nil && g.Linked {
+		linked = g.Root
+	}
 	pn.mu.Unlock()
 	d.mu.Unlock()
+	if linked != "" {
+		// As t3code's handoff: one worktree a session, which the agent
+		// works on in place (kero worktree status).
+		return proto.HandoffResult{}, fmt.Errorf("pane %s works in the worktree %s already: go on there, or kero new --worktree starts a session in another", pn.info.ID, proto.ShortDir(linked))
+	}
 	if !terminal || !resumable(&as) {
 		return proto.HandoffResult{}, fmt.Errorf("pane %s runs no agent's conversation that kero resumes: kero new --worktree starts a session in a worktree instead", pn.info.ID)
 	}

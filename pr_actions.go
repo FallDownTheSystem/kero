@@ -1,7 +1,6 @@
 package main
 
 import (
-	"slices"
 	"strings"
 	"time"
 
@@ -46,24 +45,11 @@ type prMerge struct {
 	remember     bool // make method the repository's default
 }
 
-// mergeOrder is the order the default merge method is taken in, of those
-// the repository allows, when the repository's setup names none: squash
-// first, as most repositories that allow it prefer it.
-var mergeOrder = []string{github.MethodSquash, github.MethodMerge, github.MethodRebase}
-
 // defaultMerge is how a pull request of slug merges unless the user says
 // otherwise: the setup's method, if the repository allows it, else the
-// first it allows of mergeOrder.
+// first it allows of github.DefaultMethod's order.
 func (a *App) defaultMerge(slug string, allowed []string) string {
-	if m := a.set.Reviews[strings.ToLower(slug)].MergeMethod; m != "" && (allowed == nil || slices.Contains(allowed, m)) {
-		return m
-	}
-	for _, m := range mergeOrder {
-		if allowed == nil || slices.Contains(allowed, m) {
-			return m
-		}
-	}
-	return github.MethodMerge
+	return github.DefaultMethod(a.set.Reviews[strings.ToLower(slug)].MergeMethod, allowed)
 }
 
 // mergeLabel is the button that merges with method.
@@ -524,7 +510,7 @@ func (a *App) pullRowActions(m *ui.Menu, pane *proto.Pane, remote, slug string, 
 }
 
 // mergeDefaultField is the repository setup's default merge method, ""
-// for the first GitHub allows of mergeOrder.
+// for the first GitHub allows of github.DefaultMethod's order.
 func mergeDefaultField(c *ui.Context, pal *palette, method *string) {
 	ui.Text(c.Key("merge-label"), locales.PrsSetupMerge()).FontSize(12.5).FontWeight(600).TextColor(pal.text).Margin(8, 0, 0, 0)
 	ui.Row(c.Key("merge")).Children(func() {
