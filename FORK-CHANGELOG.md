@@ -5,6 +5,15 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.10
+
+- Customize Theme has an Accent: the color of Kero's buttons and
+  highlights, apart from the cursor's, so a bright cursor can have
+  quieter buttons. It is the cursor's color, or the theme's blue when the
+  cursor is gray, unless you choose another, and the Background glow
+  follows it. Kero saves it on a `# kero-accent:` line, which Ghostty
+  reads as a comment
+
 ## 2.1.34-fork.9
 
 - Fixed: in a narrow pane or right sidebar, the header's buttons no
