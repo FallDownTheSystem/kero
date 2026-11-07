@@ -852,6 +852,34 @@ func TestAdListToggles(t *testing.T) {
 	}
 }
 
+// Importing a browser's sign-ins that has no remote debugging on, as a
+// browser that isn't running hasn't, says where to turn it on, in the
+// row of that browser, and leaves the other's as it was.
+func TestImportSignInsOff(t *testing.T) {
+	t.Setenv("LOCALAPPDATA", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	a := testApp(t)
+	a.ss.page = "browser"
+	tt := ui.NewTester(a.settingsView, 820, 1200)
+	tt.Frame()
+	if !tt.HasText("Import the cookies of Edge as it runs.") {
+		t.Fatalf("no Edge row; texts %q", tt.Texts())
+	}
+	a.importSignIns("edge")
+	for i := 0; i < 100 && a.ss.importing != ""; i++ {
+		time.Sleep(10 * time.Millisecond)
+		a.runEarly()
+	}
+	tt.Frame()
+	if !slices.ContainsFunc(tt.Texts(), func(s string) bool { return strings.Contains(s, "edge://inspect/#remote-debugging") }) {
+		t.Errorf("no way to turn it on; texts %q", tt.Texts())
+	}
+	if !tt.HasText("Import the cookies of Chrome as it runs.") {
+		t.Errorf("Chrome's row changed too; texts %q", tt.Texts())
+	}
+}
+
 // The font features field keeps what it can read as it is submitted, and
 // leaves a tag it can't in the field, unapplied ($KERO_SHOTS).
 func TestFontFeaturesField(t *testing.T) {

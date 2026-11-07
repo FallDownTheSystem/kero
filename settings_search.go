@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
+	"kero/internal/localbrowser"
 
 	"kero/locales"
 )
@@ -98,6 +99,7 @@ func settingsIndex() []searchEntry {
 		{"shell", locales.SetEnvironment(), "env variables path"},
 
 		{"browser", locales.SetBlockAds(), "browser-block-ads browser-filter-list ad blocker adblock trackers filter lists easylist easyprivacy peter lowe fanboy cookie annoyances social china privacy web"},
+		{"browser", localbrowser.Title("chrome"), "cookies sign in login import chrome edge profile session remote debugging"},
 
 		{"notifications", locales.SetNotifyWaiting(), "notify-on-waiting attention blocked permission"},
 		{"notifications", locales.SetNotifyDone(), "notify-on-done done complete"},

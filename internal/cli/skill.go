@@ -139,10 +139,19 @@ you built: open it with kero split --url, then
     kero browser screenshot -o /tmp/page.png   # shown or not, without the focus
     kero browser back|forward|reload
     kero browser cookies save state.json       # or load: Playwright's, or cookies.txt
+    kero browser cookies import chrome         # or edge: the user's sign-ins, as it runs
     kero browser pick                          # the user picks elements, with notes, for you
 
 Refs last until the page goes to another; one whose element is gone
 fails: take a new snapshot.
+
+When a page needs the user signed in, don't ask for their password: ask
+them to turn on remote debugging in their browser, at
+chrome://inspect/#remote-debugging (edge://inspect/#remote-debugging),
+then run kero browser cookies import chrome (or edge) and have them
+allow Kero in the browser's dialog; the import waits two minutes for it.
+It copies their browser's cookies into the panes, which keep them; or
+they can click Import in Settings › Browser themselves.
 
 To have the user show you what to change on a page, rather than describe
 it, turn on Pick mode: kero browser pick. The user clicks elements and
