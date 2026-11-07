@@ -1736,7 +1736,7 @@ func TestPaneHeaderNarrow(t *testing.T) {
 	if !tt.HasText("feature-login") || tt.HasText("More") {
 		t.Errorf("a wide header folds, or has no branch; texts %q", tt.Texts())
 	}
-	tt.SetSize(600, 720)
+	tt.SetSize(800, 720)
 	tt.Frame()
 	tt.Frame()
 	if tt.HasText("feature-login") {
@@ -1750,6 +1750,22 @@ func TestPaneHeaderNarrow(t *testing.T) {
 	}
 	if items := tt.Menu(); !slices.Equal(items, []string{"Split Right", "Split Down"}) {
 		t.Errorf("the folded controls' menu: %q", items)
+	}
+	tt.Key(0, ui.KeyEscape)
+
+	// Narrower than its least title and three buttons, zooming and closing
+	// go in the menu too, rather than run past the pane's edge.
+	tt.SetSize(600, 720)
+	tt.Frame()
+	tt.Frame()
+	if tt.HasText("Zoom Pane") || tt.HasText("Close Pane") {
+		t.Errorf("a header too narrow keeps zoom and close as buttons; texts %q", tt.Texts())
+	}
+	if err := tt.Click("More"); err != nil {
+		t.Fatal(err)
+	}
+	if items := tt.Menu(); !slices.Equal(items, []string{"Split Right", "Split Down", "Zoom Pane", "Close Pane"}) {
+		t.Errorf("the controls' menu, folded whole: %q", items)
 	}
 }
 
