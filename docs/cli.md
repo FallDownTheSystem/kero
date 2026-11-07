@@ -235,6 +235,15 @@ kero pr guide clear                       # start the tour again
 
 In a guide started from Kero, the pane knows its pull request; elsewhere, name it with `--pr <number>`.
 
+A session's [pull request](./changes.md#a-session-s-pull-request), which Kero watches for the session's agent:
+
+```sh
+kero pr link                 # the open pull request of the session's branch
+kero pr link 123             # or its number, or its URL
+kero pr status --json        # how it stands: checks, failed checks, conflicts
+kero pr unlink
+```
+
 ## Configuration and setup
 
 ```sh

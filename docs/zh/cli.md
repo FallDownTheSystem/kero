@@ -229,6 +229,15 @@ kero pr guide clear                       # start the tour again
 
 在从 Kero 开始的导览中，窗格知道它的拉取请求；在其他地方，用 `--pr <编号>` 指定。
 
+Kero 为会话的智能体关注的会话[拉取请求](./changes.md#会话的拉取请求)：
+
+```sh
+kero pr link                 # 会话分支上打开的拉取请求
+kero pr link 123             # 或它的编号、URL
+kero pr status --json        # 状态：检查、失败的检查、冲突
+kero pr unlink
+```
+
 ## 配置与设置
 
 ```sh

@@ -199,6 +199,19 @@ are the pull request's head's (the base's with --base) and must show some
 of the diff; a path with no lines is the whole file. Outside a guide the
 user started in your pane, name the pull request: --pr 123.
 
+## Your pull request
+
+Kero links your session to the pull request of its branch once you push
+it and open one, and watches it while the session is open: it types a
+message starting "Kero PR watch:" into your prompt when its checks fail,
+and, as the user set it, when they pass, when comments or reviews come,
+and when it has merge conflicts. Act on it as the user's request. Link
+another by hand, or see how it stands:
+
+    kero pr link 123        # or its URL; with neither, the branch's
+    kero pr status          # --json for all of it
+    kero pr unlink
+
 ## Tell the user
 
     kero report working "Migrating the database" --progress 40

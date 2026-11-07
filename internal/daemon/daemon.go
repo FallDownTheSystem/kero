@@ -90,6 +90,7 @@ type Daemon struct {
 	// setups are the setups of worktrees kero made, by id, as the app
 	// shows them (worktree_setup.go); d.mu.
 	setups map[string]*worktreeSetup
+	prw    *prWatcher // the sessions' pull requests' watch (prwatch.go)
 }
 
 // Options are how kerod runs.
@@ -175,6 +176,7 @@ func Run(opts Options) error {
 		idleAt:   time.Now(),
 	}
 	d.git = newGitFollow(d)
+	d.prw = newPRWatcher(d)
 	empty := ""
 	d.viewed.Store(&empty)
 	lg.Print("--- daemon run ---")
@@ -221,6 +223,7 @@ func Run(opts Options) error {
 	go d.tickLoop()
 	go d.git.loop()
 	go d.worktreeCleanupLoop()
+	go d.prw.loop()
 	uid := os.Getuid()
 	go func() {
 		for {

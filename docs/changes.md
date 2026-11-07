@@ -242,6 +242,12 @@ Kero checks the GitHub repositories of your projects every 5 minutes, and notifi
 
 <a id="new-pull-request"></a>
 
+### A session's pull request
+
+A session knows its pull request. Once the session's branch is pushed and has an open pull request on GitHub, Kero links it to the session, at once when you make it with **New Pull Request**; another branch lets it go. You can link one by hand too, which no change of branch replaces: the watch button on a pull request's page links it to the session you're in, or unlinks it, and so do `kero pr link` and `kero pr unlink`. The session's tooltip says how its checks stand, and its menu shows or unlinks it.
+
+While the session is open, Kero watches its pull request, every minute, and wakes the agent in the session by typing into its prompt, as `kero prompt` does: when its checks fail, and when it can't merge for conflicts. The agent hears once it's at its prompt, never while it works or asks you something. Settings › Git sets what wakes it, `pr-watch-wake`: `all` also wakes it when the checks pass and when comments or reviews come, other than your own; `failures` only for failing checks and conflicts; `off`, nothing. Comments alone wake it 10 times at most for a pull request, so that a bot that answers the agent can't keep it going. In a session with no agent, Kero notifies you instead.
+
 ### New pull request
 
 **New Pull Request** makes a pull request of the branch of the pane you're in. The form shows the branch it goes into, the default branch of the push remote's repository at first; click it to choose another branch, or another remote's repository. It lists the default branch first, then the most recently changed, and typing filters the list. Under the title and the description, it lists the commits the pull request brings, and the files they change, each of whose diff a click unfolds. Only commits go in: the form says how many files you haven't committed, and how many commits the push remote doesn't have yet. The sparkles beside the title have the title and the description written, as **Write Message** writes a commit message, by `commit-message-command`. A branch with only one commit takes its subject as the title.
