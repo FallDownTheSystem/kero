@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Linked worktrees of a session's own (plans/git.md, Phase 3): what kero
@@ -195,7 +198,10 @@ func (r Repo) State(ctx context.Context, branch, base string) (WorktreeState, er
 // included, from the repository whose main checkout is main; then its
 // branch, when base has every commit of it.
 func RemoveWorktree(ctx context.Context, main, path, branch, base string) error {
-	if _, err := run(ctx, main, nil, "worktree", "remove", "--force", "--", path); err != nil {
+	if _, err := removeWorktree(ctx, main, path, func() (string, error) {
+		_, err := run(ctx, main, nil, "worktree", "remove", "--force", "--", path)
+		return "", err
+	}); err != nil {
 		return err
 	}
 	if branch == "" || base == "" {
@@ -221,7 +227,9 @@ func (r Repo) RemoveCheckout(ctx context.Context, path string, force bool, branc
 	if force {
 		args = append(args, "--force")
 	}
-	if out, err := r.write(ctx, "", nil, append(args, "--", path)...); err != nil {
+	if out, err := removeWorktree(ctx, r.Root, path, func() (string, error) {
+		return r.write(ctx, "", nil, append(args, "--", path)...)
+	}); err != nil {
 		return out, err
 	}
 	if branch == "" {
@@ -237,4 +245,92 @@ func (r Repo) RemoveCheckout(ctx context.Context, path string, force bool, branc
 // PruneCheckouts forgets the worktrees whose folders are gone.
 func (r Repo) PruneCheckouts(ctx context.Context) (string, error) {
 	return r.write(ctx, "", nil, "worktree", "prune")
+}
+
+// lockWait is how long removing a worktree tries again while its folder
+// is in use: Windows deletes no folder that a process works in, nor a
+// file that one has open, and an agent's programs, or git run by Kero,
+// may take a moment to let go of it.
+var lockWait = 5 * time.Second
+
+// removeWorktree runs remove, git's removing of the linked worktree at
+// path of the repository with a worktree at root, again while its folder
+// is in use, for up to lockWait. Git forgets the worktree even when it
+// fails to delete the folder, leaving it empty, or with the files it
+// couldn't delete: those go then, as git meant them to; and so does an
+// empty folder that such a removal left before.
+func removeWorktree(ctx context.Context, root, path string, remove func() (string, error)) (string, error) {
+	r := Repo{Root: root}
+	known := r.registers(ctx, path)
+	// An empty folder git doesn't know goes alone, never what fills it
+	// meanwhile.
+	leftover := !known && emptyDir(path)
+	forgot := leftover
+	deadline := time.Now().Add(lockWait)
+	var out string
+	for {
+		var err error
+		if !forgot {
+			out, err = remove()
+			forgot = err != nil && known && !r.registers(ctx, path)
+		}
+		switch {
+		case leftover:
+			err = os.Remove(path)
+		case forgot:
+			err = os.RemoveAll(path)
+		}
+		if err == nil || !forgot && !inUse(err) || time.Now().After(deadline) {
+			if err == nil && forgot {
+				out = ""
+			}
+			return out, err
+		}
+		select {
+		case <-time.After(200 * time.Millisecond):
+		case <-ctx.Done():
+			return out, err
+		}
+	}
+}
+
+// registers reports whether git has a worktree at path; true when it
+// can't tell, which deletes nothing on its word.
+func (r Repo) registers(ctx context.Context, path string) bool {
+	cos, err := r.Checkouts(ctx)
+	if err != nil {
+		return true
+	}
+	return slices.ContainsFunc(cos, func(co Checkout) bool { return samePath(co.Path, path) })
+}
+
+// samePath reports whether a and b are one path, as git and the system
+// may spell it apart: in case on Windows and macOS, and git through the
+// links, junctions and subst drives on the way, which it resolves.
+func samePath(a, b string) bool {
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if a == b || (runtime.GOOS == "windows" || runtime.GOOS == "darwin") && strings.EqualFold(a, b) {
+		return true
+	}
+	sa, errA := os.Stat(a)
+	sb, errB := os.Stat(b)
+	return errA == nil && errB == nil && os.SameFile(sa, sb)
+}
+
+// emptyDir reports whether path is a folder with nothing in it.
+func emptyDir(path string) bool {
+	entries, err := os.ReadDir(path)
+	return err == nil && len(entries) == 0
+}
+
+// inUse reports whether git failed on a folder or file in use, as
+// Windows says of one that a process works in or has open.
+func inUse(err error) bool {
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{"permission denied", "access is denied", "being used by another process", "resource busy", "directory not empty"} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
 }

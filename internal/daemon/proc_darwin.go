@@ -96,3 +96,18 @@ func procParent(pid int) int {
 	}
 	return int(kp.Eproc.Ppid)
 }
+
+// sessionProcs returns the processes of the session that sid leads: on
+// macOS, which lists no session's, those of its process group alone,
+// which is all a removal of a worktree needs of it (awaitTrees).
+func sessionProcs(sid int) []int {
+	kps, _ := unix.SysctlKinfoProcSlice("kern.proc.pgrp", sid)
+	var pids []int
+	for _, kp := range kps {
+		// A zombie, its parent yet to wait for it, holds nothing.
+		if kp.Proc.P_stat != 5 { // SZOMB
+			pids = append(pids, int(kp.Proc.P_pid))
+		}
+	}
+	return pids
+}

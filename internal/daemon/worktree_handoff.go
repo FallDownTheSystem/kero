@@ -121,7 +121,7 @@ func (d *Daemon) handoff(p proto.HandoffParams) (proto.HandoffResult, error) {
 		// Nothing is in it yet: it goes as it came.
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		if err := git.RemoveWorktree(ctx, wt.Main, wt.Path, wt.Branch, wt.Base); err != nil {
+		if err := d.removeWorktree(ctx, wt.Main, wt.Path, wt.Branch, wt.Base, nil); err != nil {
 			d.log.Printf("removing worktree %s: %v", wt.Path, err)
 		}
 		if gone {

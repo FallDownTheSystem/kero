@@ -148,7 +148,7 @@ func (d *Daemon) cleanRepo(cr *cleanupRepo, dir string, seen map[string]int64, n
 		if reason == "" || d.worktreeInUse(co.Path) {
 			continue
 		}
-		if err := git.RemoveWorktree(ctx, main, co.Path, co.Branch, base); err != nil {
+		if err := d.removeWorktree(ctx, main, co.Path, co.Branch, base, nil); err != nil {
 			res.Failed = append(res.Failed, proto.ShortDir(co.Path)+": "+err.Error())
 			d.log.Printf("worktree cleanup: removing %s: %v", co.Path, err)
 			continue

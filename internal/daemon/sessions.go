@@ -535,11 +535,17 @@ func (d *Daemon) removePane(id string) error {
 
 // removeSession closes a session and its panes.
 func (d *Daemon) removeSession(ref string) error {
+	_, err := d.closePanes(ref)
+	return err
+}
+
+// closePanes closes a session and its panes, which it returns.
+func (d *Daemon) closePanes(ref string) ([]*pane, error) {
 	d.mu.Lock()
 	s := d.findSessionLocked(ref)
 	if s == nil {
 		d.mu.Unlock()
-		return fmt.Errorf("no session %s", ref)
+		return nil, fmt.Errorf("no session %s", ref)
 	}
 	d.sessions = slices.DeleteFunc(d.sessions, func(o *session) bool { return o == s })
 	panes := s.panes
@@ -553,7 +559,7 @@ func (d *Daemon) removeSession(ref string) error {
 	}
 	d.changed()
 	d.log.Printf("session %s closed", s.id)
-	return nil
+	return panes, nil
 }
 
 func (d *Daemon) move(p proto.MoveParams) error {

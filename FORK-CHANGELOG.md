@@ -5,6 +5,20 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.16
+
+- Closing a session with its worktree removes it on Windows too: Kero
+  waits for the agent and whatever it started, as MCP servers, node and
+  git, to exit (killing what is left after 5 seconds) instead of a fixed
+  200 ms, and tries again for a few seconds while the folder is still in
+  use. Git, failing so with "Permission denied", had forgotten the
+  worktree and emptied it, but left its folder and the merged branch:
+  both go now. Removing a review's worktree or one in the History tab,
+  the automatic cleanup and a handoff's try again too, and Kero's own git
+  status stays out of a worktree while it goes
+- An empty folder that such a removal left takes no new worktree's place:
+  one of its name goes in it
+
 ## 2.1.34-fork.15
 
 - Agents can act on pull requests: `kero pr state`, `merge` (with the
