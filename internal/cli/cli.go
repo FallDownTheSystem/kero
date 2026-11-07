@@ -160,6 +160,20 @@ Usage:
       --pr <number>               the pull request, when the review wasn't
                                   started in this pane from Kero
       --remote <name>             its repository's remote
+  kero pr guide stop <path>[:<line>[-<end>]] --title <title> [note…|-]
+                                add a stop to the pull request's review
+                                guide, the tour of it in Kero's Guide tab;
+                                a path alone is the whole file; --at <n>
+                                puts it nth, --closely marks it Look
+                                Closely, --base: on the base's lines
+  kero pr guide edit <id> [--title t] [--closely|--not-closely] [note…|-]
+  kero pr guide move <id> --at <n>
+  kero pr guide delete <id>     delete a stop
+  kero pr guide summary <text…|->
+                                what the change does, atop the guide
+  kero pr guide clear           remove its summary and stops, to rewrite it
+  kero pr guide show [--json]   the guide: summary and stops, with ids;
+                                --pr and --remote as for kero pr
   kero report <state> [message] [--kind k] [--progress n] [--app a] [--id i]
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear

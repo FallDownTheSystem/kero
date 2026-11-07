@@ -133,6 +133,9 @@ type Settings struct {
 	CommitMessagePrompt string `json:"commitMessagePrompt"`
 	PRMessagePrompt     string `json:"prMessagePrompt"`
 	ReviewPrompt        string `json:"reviewPrompt"`
+	// GuidePrompt is what the agent writing a pull request's review guide,
+	// the tour of the Guide tab, is asked; "" for Kero's own.
+	GuidePrompt string `json:"guidePrompt"`
 	// Reviews are a repository's own setup, by its repository on GitHub
 	// (OWNER/NAME, in lower case): how the Review view has an agent
 	// review its pull requests, and how its messages are written.

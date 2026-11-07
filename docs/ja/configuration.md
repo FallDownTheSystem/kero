@@ -176,6 +176,7 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `review-command` |  | リポジトリのプルリクエストを[レビュー](./changes.md#review)するエージェントのコマンド（`owner/name=codex --full-auto` など）。空なら `claude`。エージェントはプロンプトを 1 つの引数として、`{prompt}` の位置に、なければコマンドの後に受け取ります。プルリクエストのプレースホルダーも使えます。リポジトリごとに繰り返します |
 | `review-prompt` |  | レビューするエージェントへの指示（`owner/name=/code-review {ticket} #{number}` など）。空なら Kero のもの。改行は `\n` と書きます。リポジトリごとに繰り返します |
 | `pr-review-prompt` |  | 自分の `review-prompt` がないリポジトリで、[レビュー](./changes.md#review)するエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
+| `pr-guide-prompt` |  | プルリクエストの[レビューガイド](./changes.md#review-guides)を書くエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
 | `repo-commit-message-prompt` |  | リポジトリ独自の `commit-message-prompt`（`owner/name=Write in Finnish` など）。リポジトリごとに繰り返します |
 | `repo-pr-message-prompt` |  | リポジトリ独自の `pr-message-prompt`。`repo-commit-message-prompt` と同様です |
 | `repo-merge-method` |  | リポジトリのプルリクエストを[マージ](./changes.md#review)する既定の方法。`owner/name=rebase` のように、`merge`、`squash`、`rebase` のいずれか。なければ、スカッシュ、マージ、リベースのうちリポジトリが許す最初のもの |
