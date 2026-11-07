@@ -81,6 +81,11 @@ type settingsState struct {
 	// prompts are the commit message's and the pull request's prompts as
 	// typed, kept while their fields have the focus.
 	prompts [3]promptDraft
+	// branchStatic and branchPrompt are the worktree branch name's prefix
+	// and prompt as typed (settings_branch.go).
+	branchStatic     string
+	branchStaticEdit bool
+	branchPrompt     promptDraft
 	// resumeDraft is each agent's resume command as typed, and
 	// resumeEdit the agent whose field has the focus.
 	resumeDraft map[string]*string
@@ -731,6 +736,7 @@ func (a *App) gitPage(c *ui.Context, pal *palette) {
 		})
 		promptSetting(c, pal, "commit-prompt", locales.SetCommitPrompt(), locales.SetCommitPromptDetail(), &s.CommitMessagePrompt, commitmsg.DefaultCommitPrompt, &a.ss.prompts[0])
 	})
+	a.branchNameGroup(c, pal)
 	settingsGroup(c, pal, locales.SetPullRequests(), "", func() {
 		settingRow(c, pal, locales.SetPRNotify(), locales.SetPRNotifyDetail(), func() {
 			segmented(c, "pr-notify", &s.PRNotify, []string{"review", "all", "off"},
