@@ -218,6 +218,7 @@ func Run(opts Options) error {
 	go d.saveLoop()
 	go d.tickLoop()
 	go d.git.loop()
+	go d.worktreeCleanupLoop()
 	uid := os.Getuid()
 	go func() {
 		for {

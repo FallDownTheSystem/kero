@@ -162,6 +162,12 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `worktree-branch-prefix` | `semantic` | Kero [根据新工作树的任务](./sessions.md#new-session-dialog)命名的分支前缀：`semantic` 为工作类型，如 `feat/` 或 `fix/`；`static` 为 `worktree-branch-static-prefix`；`custom` 则按 `worktree-branch-prompt` 的要求 |
 | `worktree-branch-static-prefix` | `kero/` | `worktree-branch-prefix` 为 `static` 时的前缀；其中的 `{type}` 是工作类型 |
 | `worktree-branch-prompt` |        | 如何根据任务为新工作树的分支命名，替代 Kero 自带的，行之间用 `\n` |
+| `worktree-cleanup-enabled` | `false` | 在 Kero 启动时和每小时一次，按下方任一规则[删除 Kero 创建的工作树](./changes.md#cleaning-up-worktrees) |
+| `worktree-cleanup-inactive-days` | `30` | 删除这么多天里没有提交、检出或会话的工作树；`0` 表示从不 |
+| `worktree-cleanup-merged` | `true` | 分支在 GitHub 上的拉取请求按工作树所在的提交合并后，删除该工作树 |
+| `worktree-cleanup-unchanged` | `false` | 删除没有默认分支之外提交的工作树 |
+| `worktree-cleanup-closed` | `false` | 删除已没有会话的工作树 |
+| `worktree-cleanup-project` |  | 项目自己的清理，按文件夹：`<文件夹>=off`，或 `<文件夹>=` 加上逗号分隔的 `inactive:<天数>`、`merged`、`unchanged`、`closed`；可重复 |
 | `commit-message-command` |  | 为已暂存的改动[撰写提交信息](./changes.md#committing)的命令，在你的 shell 中运行，提示通过标准输入传入，如 `llm -m gpt-5`；其中的 `{session}` 会换成要分叉的窗格中智能体对话的 ID，如 `cc -p --resume {session} --fork-session`；留空则分叉窗格中智能体的对话，没有对话时新运行 Claude Code 或 Codex |
 | `commit-message-prompt` |  | 智能体撰写提交信息的方式：放在最近的提交和已暂存的差异之前的说明；留空则用 Kero 自己的（显示在 设置 › Git 中）。换行写作 `\n` |
 | `pr-message-prompt` |  | 智能体撰写[拉取请求](./changes.md#new-pull-request)标题和描述的方式，同 `commit-message-prompt` |
