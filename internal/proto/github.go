@@ -127,6 +127,30 @@ type (
 		PushBranch string `json:"pushBranch,omitempty"`
 	}
 
+	// PRCheckoutParams check an open pull request out (pr.checkout) on a
+	// branch of its own name, Head, or pr-<number> of another repository's
+	// (CrossRepo): in Pane's worktree when Here, which refuses one with
+	// changes, else for a session in a new worktree of its own.
+	PRCheckoutParams struct {
+		Pane      string `json:"pane"`
+		Remote    string `json:"remote"`
+		Number    int    `json:"number"`
+		Head      string `json:"head"`
+		CrossRepo bool   `json:"crossRepo,omitempty"`
+		Here      bool   `json:"here,omitempty"`
+	}
+	// PRCheckedOut is where the pull request is checked out: Worktree, a
+	// worktree of the repository's that has it already, which nothing
+	// changed; else on Branch, in the pane's worktree (Here), or to check
+	// out in a new worktree, from Base, pushing where PRFetched's does.
+	PRCheckedOut struct {
+		Branch     string `json:"branch"`
+		Worktree   string `json:"worktree,omitempty"`
+		Base       string `json:"base,omitempty"`
+		PushRemote string `json:"pushRemote,omitempty"`
+		PushBranch string `json:"pushBranch,omitempty"`
+	}
+
 	// PRMessageParams ask for a pull request's title and description of
 	// what a pane's branch brings into Base of Remote's repository,
 	// written as GitMessageParams' commit message is: by Command, after

@@ -126,6 +126,18 @@ func (r Repo) Switch(ctx context.Context, name string, remote bool, at string) (
 	return r.write(ctx, "", nil, "switch", name)
 }
 
+// FastForward moves a branch no worktree has checked out up to rev when
+// it is behind it, as that loses nothing; one with commits of its own
+// stays where it is.
+func (r Repo) FastForward(ctx context.Context, branch, rev string) error {
+	ref := "refs/heads/" + branch
+	if _, err := run(ctx, r.Root, nil, "merge-base", "--is-ancestor", ref, rev); err != nil {
+		return nil
+	}
+	_, err := r.write(ctx, "", nil, "update-ref", ref, rev)
+	return err
+}
+
 // CreateBranch makes a branch at start, HEAD when "", and checks it out
 // when checkout is set.
 func (r Repo) CreateBranch(ctx context.Context, name, start string, checkout bool) (string, error) {

@@ -410,6 +410,8 @@ func (a *App) pullRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto
 		}
 		reviewItems(m, launch)
 		m.Separator()
+		checkoutItems(m, func(here bool) { a.checkoutPR(s, pane, res.Remote, pr, here) })
+		m.Separator()
 		if m.Item(locales.PrsOpen()).Chosen() {
 			openURL(pr.URL)
 		}
