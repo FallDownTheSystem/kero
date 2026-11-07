@@ -11094,6 +11094,66 @@ func (msgs Messages) AgentSendFailed(error string) string {
 	return Catalog.Format(msgs.locale, "agentSendFailed", map[string]any{"error": error})
 }
 
+// TermSendToSession says "Send to Session…"
+// in the language the app shows.
+func TermSendToSession() string { return In(i18n.Locale()).TermSendToSession() }
+
+// TermSendToSession says "Send to Session…"
+// in the language of msgs.
+func (msgs Messages) TermSendToSession() string {
+	return Catalog.Format(msgs.locale, "termSendToSession", nil)
+}
+
+// AgentChooseTitle says "Send to which agent?"
+// in the language the app shows.
+func AgentChooseTitle() string { return In(i18n.Locale()).AgentChooseTitle() }
+
+// AgentChooseTitle says "Send to which agent?"
+// in the language of msgs.
+func (msgs Messages) AgentChooseTitle() string {
+	return Catalog.Format(msgs.locale, "agentChooseTitle", nil)
+}
+
+// AgentChoosePlaceholder says "Find a session with an agent…"
+// in the language the app shows.
+func AgentChoosePlaceholder() string { return In(i18n.Locale()).AgentChoosePlaceholder() }
+
+// AgentChoosePlaceholder says "Find a session with an agent…"
+// in the language of msgs.
+func (msgs Messages) AgentChoosePlaceholder() string {
+	return Catalog.Format(msgs.locale, "agentChoosePlaceholder", nil)
+}
+
+// AgentChooseNone says "No agent runs in a session here"
+// in the language the app shows.
+func AgentChooseNone() string { return In(i18n.Locale()).AgentChooseNone() }
+
+// AgentChooseNone says "No agent runs in a session here"
+// in the language of msgs.
+func (msgs Messages) AgentChooseNone() string {
+	return Catalog.Format(msgs.locale, "agentChooseNone", nil)
+}
+
+// AgentSent says "Sent to {agent}"
+// in the language the app shows.
+func AgentSent(agent string) string { return In(i18n.Locale()).AgentSent(agent) }
+
+// AgentSent says "Sent to {agent}"
+// in the language of msgs.
+func (msgs Messages) AgentSent(agent string) string {
+	return Catalog.Format(msgs.locale, "agentSent", map[string]any{"agent": agent})
+}
+
+// AgentQueued says "{agent} gets it once it is at its prompt"
+// in the language the app shows.
+func AgentQueued(agent string) string { return In(i18n.Locale()).AgentQueued(agent) }
+
+// AgentQueued says "{agent} gets it once it is at its prompt"
+// in the language of msgs.
+func (msgs Messages) AgentQueued(agent string) string {
+	return Catalog.Format(msgs.locale, "agentQueued", map[string]any{"agent": agent})
+}
+
 // SideReview says "Review"
 // in the language the app shows.
 func SideReview() string { return In(i18n.Locale()).SideReview() }
