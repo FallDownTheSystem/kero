@@ -1499,7 +1499,7 @@ func (a *App) closeSession(id string, ask bool) {
 		return
 	}
 	if ask && s.Worktree != nil && a.hostOf(id).cl != nil {
-		a.askCloseWorktree(id)
+		a.askCloseWorktree(id, nil)
 		return
 	}
 	if ask && a.set.ConfirmClose && busy(s) {
@@ -1514,11 +1514,12 @@ func (a *App) closeSession(id string, ask bool) {
 		}
 		return
 	}
-	a.endSession(id, proto.CloseParams{ID: id})
+	a.endSession(id, proto.CloseParams{ID: id}, nil)
 }
 
-// endSession closes a session, as p says, without asking.
-func (a *App) endSession(id string, p proto.CloseParams) {
+// endSession closes a session, as p says, without asking; closed, unless
+// nil, runs once its host closed it, its worktree removed or kept.
+func (a *App) endSession(id string, p proto.CloseParams, closed func()) {
 	s := a.session(id)
 	if s == nil {
 		return
@@ -1543,13 +1544,19 @@ func (a *App) endSession(id string, p proto.CloseParams) {
 		a.dropTerm(p.ID)
 	}
 	// A review's worktree, kept, shows in the Review view once it closes.
+	review := s.Review != nil
 	var done func(error)
-	if s.Review != nil {
+	if review || closed != nil {
 		done = func(err error) {
 			if err != nil {
 				a.toast(err.Error())
 			}
-			a.refetchReviewWorktrees()
+			if review {
+				a.refetchReviewWorktrees()
+			}
+			if closed != nil {
+				closed()
+			}
 		}
 	}
 	a.st.Sessions = slices.DeleteFunc(a.st.Sessions, func(x proto.Session) bool { return x.ID == id })
