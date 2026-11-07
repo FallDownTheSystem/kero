@@ -160,6 +160,14 @@ Usage:
       --pr <number>               the pull request, when the review wasn't
                                   started in this pane from Kero
       --remote <name>             its repository's remote
+  kero pr link [<number>|<url>] [--session s] [--remote r] [--json]
+                                link the session to a pull request, which
+                                Kero watches for its agent; with neither,
+                                the open one of the session's branch
+  kero pr unlink [--session s]  unlink it, which Kero then leaves unlinked
+  kero pr status [--session s] [--json]
+                                the session's pull request: its checks,
+                                and whether it merges
   kero report <state> [message] [--kind k] [--progress n] [--app a] [--id i]
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear

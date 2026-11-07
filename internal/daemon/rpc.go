@@ -772,6 +772,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.prMessage(p)
 
+	case "pr.link":
+		var p proto.PRLinkParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prLink(p)
+
 	case "fs.list":
 		var p proto.FSListParams
 		if err := decode(&p); err != nil {

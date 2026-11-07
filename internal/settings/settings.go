@@ -141,6 +141,11 @@ type Settings struct {
 	// polled every PRPollMinutes.
 	PRNotify      string `json:"prNotify"`
 	PRPollMinutes int    `json:"prPollMinutes"`
+	// PRWatchWake is what of a session's pull request wakes the agent in
+	// the session: "all", its checks failing or passing, new comments and
+	// reviews, and merge conflicts; "failures", its checks failing and
+	// merge conflicts; "off", nothing, which watches it no more.
+	PRWatchWake string `json:"prWatchWake"`
 	// WorktreeBase is what a new branch the user names for a session's
 	// own worktree starts from: "default", the repository's default
 	// branch, or "current", the project folder's. WorktreeDir is where its
@@ -296,6 +301,7 @@ func Default() Settings {
 		WorktreeBase:    "default",
 		PRNotify:        "review",
 		PRPollMinutes:   5,
+		PRWatchWake:     "all",
 		HiddenFiles:     true,
 		FileLightTheme:  "terminal",
 		FileDarkTheme:   "terminal",
@@ -620,6 +626,7 @@ func (s *Settings) normalize() {
 	if s.PRPollMinutes < 1 || s.PRPollMinutes > 1440 {
 		s.PRPollMinutes = d.PRPollMinutes
 	}
+	oneOf(&s.PRWatchWake, d.PRWatchWake, "all", "failures", "off")
 	oneOf(&s.AppIcon, d.AppIcon, AppIcons...)
 	oneOf(&s.SessionsSide, d.SessionsSide, "left", "right")
 	oneOf(&s.ExplorerFolder, d.ExplorerFolder, "hidden", "folder", "full", "fit")

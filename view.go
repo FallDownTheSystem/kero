@@ -707,6 +707,9 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	if linked {
 		tip += "\n" + locales.SidebarInWorktree()
 	}
+	if t := prLinkTip(s); t != "" {
+		tip += "\n" + t
+	}
 	pointerTooltip(c, row, "tip-"+s.ID, tip)
 	row.ContextMenu(func(m *ui.Menu) { a.sessionMenu(m, s) })
 	row.Children(func() {
@@ -966,6 +969,7 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 	if m.Item(locales.SessionRevealIn(fileManager())).Disabled(s.WorkDir() == "" || h.remote()).Chosen() {
 		a.openLink(id, s.WorkDir())
 	}
+	a.prLinkMenu(m, s)
 	m.Separator()
 	if a.menuShortcut(m.Item(locales.ActionCloseSession()), "session.close").Chosen() {
 		a.defer_(func() { a.closeSession(id, true) })

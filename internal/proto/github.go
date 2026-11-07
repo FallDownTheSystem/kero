@@ -334,3 +334,53 @@ type (
 		Resolve bool   `json:"resolve,omitempty"`
 	}
 )
+
+// A session's pull request, which Session.PR has: the one its branch is
+// the head of, as kerod finds it, or one linked by hand; and what kerod's
+// watch last found of it (internal/daemon/prwatch.go).
+type (
+	// SessionPR is the pull request a session works on: Number of Slug's
+	// repository (as GitHubRepo's, OWNER/NAME), of Remote, a remote of the
+	// session's repository on GitHub, "" when linked by a URL of none.
+	// Head is its branch, which kerod found it by unless Manual, which
+	// the user, or an agent, linked by hand, and no change of branch
+	// replaces. State, Checks, Failed, Mergeable and Checked are as the
+	// watch last found it: State OPEN, CLOSED or MERGED; Checks as
+	// PullRequest's; Failed the names of the checks that failed; Mergeable
+	// MERGEABLE, CONFLICTING or UNKNOWN; Checked when, unix ms, 0 before.
+	SessionPR struct {
+		Slug      string   `json:"slug"`
+		Number    int      `json:"number"`
+		URL       string   `json:"url,omitempty"`
+		Title     string   `json:"title,omitempty"`
+		Remote    string   `json:"remote,omitempty"`
+		Head      string   `json:"head,omitempty"`
+		Base      string   `json:"base,omitempty"`
+		Manual    bool     `json:"manual,omitempty"`
+		State     string   `json:"state,omitempty"`
+		Checks    string   `json:"checks,omitempty"`
+		Failed    []string `json:"failed,omitempty"`
+		Mergeable string   `json:"mergeable,omitempty"`
+		Checked   int64    `json:"checked,omitempty"`
+	}
+	// PRLinkParams link a session (or a pane's) to a pull request, by
+	// pr.link: Number of Remote's repository ("" for the one the branch
+	// pushes to), or the pull request URL names; with neither, the open
+	// one of the session's branch, which kerod looks for now. Unlink
+	// unlinks it, and keeps kerod from linking it again by its branch.
+	// pr.link answers with the session's SessionPR, nil for none.
+	PRLinkParams struct {
+		Session string `json:"session"`
+		Number  int    `json:"number,omitempty"`
+		URL     string `json:"url,omitempty"`
+		Remote  string `json:"remote,omitempty"`
+		Unlink  bool   `json:"unlink,omitempty"`
+	}
+)
+
+// Ref names the pull request as PRReviewRef does.
+func (p *SessionPR) Ref() PRReviewRef { return PRReviewRef{Slug: p.Slug, Number: p.Number} }
+
+// Open is whether the pull request is open, as last found: before the
+// watch first looks too.
+func (p *SessionPR) Open() bool { return p.State == "" || p.State == "OPEN" }

@@ -337,6 +337,9 @@ type Session struct {
 	// Review is the pull request the session was started to review, from
 	// the Review view; nil for any other session.
 	Review *PRReviewRef `json:"review,omitempty"`
+	// PR is the pull request the session works on, found by its branch or
+	// linked by hand, and how it stands (SessionPR); nil for none.
+	PR *SessionPR `json:"pr,omitempty"`
 }
 
 // Worktree is a linked git worktree kero made for a session: Path checks

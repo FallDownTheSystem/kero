@@ -13263,3 +13263,143 @@ func WorktreeSetupShowTerminal() string { return In(i18n.Locale()).WorktreeSetup
 func (msgs Messages) WorktreeSetupShowTerminal() string {
 	return Catalog.Format(msgs.locale, "worktreeSetupShowTerminal", nil)
 }
+
+// PrLinkTip says "Pull request #{number}"
+// in the language the app shows.
+func PrLinkTip(number int) string { return In(i18n.Locale()).PrLinkTip(number) }
+
+// PrLinkTip says "Pull request #{number}"
+// in the language of msgs.
+func (msgs Messages) PrLinkTip(number int) string {
+	return Catalog.Format(msgs.locale, "prLinkTip", map[string]any{"number": number})
+}
+
+// PrLinkConflicts says "merge conflicts"
+// in the language the app shows.
+func PrLinkConflicts() string { return In(i18n.Locale()).PrLinkConflicts() }
+
+// PrLinkConflicts says "merge conflicts"
+// in the language of msgs.
+func (msgs Messages) PrLinkConflicts() string {
+	return Catalog.Format(msgs.locale, "prLinkConflicts", nil)
+}
+
+// PrLinkChecksFailed says "checks failed"
+// in the language the app shows.
+func PrLinkChecksFailed() string { return In(i18n.Locale()).PrLinkChecksFailed() }
+
+// PrLinkChecksFailed says "checks failed"
+// in the language of msgs.
+func (msgs Messages) PrLinkChecksFailed() string {
+	return Catalog.Format(msgs.locale, "prLinkChecksFailed", nil)
+}
+
+// PrLinkChecksRunning says "checks running"
+// in the language the app shows.
+func PrLinkChecksRunning() string { return In(i18n.Locale()).PrLinkChecksRunning() }
+
+// PrLinkChecksRunning says "checks running"
+// in the language of msgs.
+func (msgs Messages) PrLinkChecksRunning() string {
+	return Catalog.Format(msgs.locale, "prLinkChecksRunning", nil)
+}
+
+// PrLinkChecksPassed says "checks passed"
+// in the language the app shows.
+func PrLinkChecksPassed() string { return In(i18n.Locale()).PrLinkChecksPassed() }
+
+// PrLinkChecksPassed says "checks passed"
+// in the language of msgs.
+func (msgs Messages) PrLinkChecksPassed() string {
+	return Catalog.Format(msgs.locale, "prLinkChecksPassed", nil)
+}
+
+// PrLinkShow says "Show Pull Request #{number}"
+// in the language the app shows.
+func PrLinkShow(number int) string { return In(i18n.Locale()).PrLinkShow(number) }
+
+// PrLinkShow says "Show Pull Request #{number}"
+// in the language of msgs.
+func (msgs Messages) PrLinkShow(number int) string {
+	return Catalog.Format(msgs.locale, "prLinkShow", map[string]any{"number": number})
+}
+
+// PrLinkUnlink says "Unlink Pull Request #{number}"
+// in the language the app shows.
+func PrLinkUnlink(number int) string { return In(i18n.Locale()).PrLinkUnlink(number) }
+
+// PrLinkUnlink says "Unlink Pull Request #{number}"
+// in the language of msgs.
+func (msgs Messages) PrLinkUnlink(number int) string {
+	return Catalog.Format(msgs.locale, "prLinkUnlink", map[string]any{"number": number})
+}
+
+// PrLinkLink says "Link to this session, which then wakes its agent when the checks fail"
+// in the language the app shows.
+func PrLinkLink() string { return In(i18n.Locale()).PrLinkLink() }
+
+// PrLinkLink says "Link to this session, which then wakes its agent when the checks fail"
+// in the language of msgs.
+func (msgs Messages) PrLinkLink() string {
+	return Catalog.Format(msgs.locale, "prLinkLink", nil)
+}
+
+// PrLinkLinked says "Linked to this session, which wakes its agent when the checks fail. Click to unlink."
+// in the language the app shows.
+func PrLinkLinked() string { return In(i18n.Locale()).PrLinkLinked() }
+
+// PrLinkLinked says "Linked to this session, which wakes its agent when the checks fail. Click to unlink."
+// in the language of msgs.
+func (msgs Messages) PrLinkLinked() string {
+	return Catalog.Format(msgs.locale, "prLinkLinked", nil)
+}
+
+// SetPRWatchWake says "Wake the session's agent"
+// in the language the app shows.
+func SetPRWatchWake() string { return In(i18n.Locale()).SetPRWatchWake() }
+
+// SetPRWatchWake says "Wake the session's agent"
+// in the language of msgs.
+func (msgs Messages) SetPRWatchWake() string {
+	return Catalog.Format(msgs.locale, "setPRWatchWake", nil)
+}
+
+// SetPRWatchWakeDetail says "When the pull request of a session's branch, or one you linked, fails its checks or can't merge for conflicts; with A…"
+// in the language the app shows.
+func SetPRWatchWakeDetail() string { return In(i18n.Locale()).SetPRWatchWakeDetail() }
+
+// SetPRWatchWakeDetail says "When the pull request of a session's branch, or one you linked, fails its checks or can't merge for conflicts; with A…"
+// in the language of msgs.
+func (msgs Messages) SetPRWatchWakeDetail() string {
+	return Catalog.Format(msgs.locale, "setPRWatchWakeDetail", nil)
+}
+
+// SetPRWatchWakeAll says "All"
+// in the language the app shows.
+func SetPRWatchWakeAll() string { return In(i18n.Locale()).SetPRWatchWakeAll() }
+
+// SetPRWatchWakeAll says "All"
+// in the language of msgs.
+func (msgs Messages) SetPRWatchWakeAll() string {
+	return Catalog.Format(msgs.locale, "setPRWatchWakeAll", nil)
+}
+
+// SetPRWatchWakeFailures says "Failures"
+// in the language the app shows.
+func SetPRWatchWakeFailures() string { return In(i18n.Locale()).SetPRWatchWakeFailures() }
+
+// SetPRWatchWakeFailures says "Failures"
+// in the language of msgs.
+func (msgs Messages) SetPRWatchWakeFailures() string {
+	return Catalog.Format(msgs.locale, "setPRWatchWakeFailures", nil)
+}
+
+// SetPRWatchWakeOff says "Off"
+// in the language the app shows.
+func SetPRWatchWakeOff() string { return In(i18n.Locale()).SetPRWatchWakeOff() }
+
+// SetPRWatchWakeOff says "Off"
+// in the language of msgs.
+func (msgs Messages) SetPRWatchWakeOff() string {
+	return Catalog.Format(msgs.locale, "setPRWatchWakeOff", nil)
+}

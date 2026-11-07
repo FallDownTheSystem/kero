@@ -760,6 +760,10 @@ func (a *App) gitPage(c *ui.Context, pal *palette) {
 		}
 		promptSetting(c, pal, "pr-prompt", locales.SetPRPrompt(), locales.SetPRPromptDetail(), &s.PRMessagePrompt, commitmsg.DefaultPRPrompt, &a.ss.prompts[1])
 		promptSetting(c, pal, "review-prompt", locales.SetReviewPrompt(), locales.SetReviewPromptDetail(), &s.ReviewPrompt, DefaultReviewPrompt, &a.ss.prompts[2])
+		settingRow(c, pal, locales.SetPRWatchWake(), locales.SetPRWatchWakeDetail(), func() {
+			segmented(c, "pr-watch-wake", &s.PRWatchWake, []string{"all", "failures", "off"},
+				[]string{locales.SetPRWatchWakeAll(), locales.SetPRWatchWakeFailures(), locales.SetPRWatchWakeOff()})
+		})
 	})
 }
 
