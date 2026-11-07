@@ -24,9 +24,9 @@ func TestThemeFileRoundTrip(t *testing.T) {
 	}
 }
 
-// A theme's accent and background glow go in lines Ghostty takes as
+// A theme's highlights, glow and wash go in lines Ghostty takes as
 // comments, which kero reads back; ones the theme gives anyway aren't
-// written, so they follow its cursor.
+// written, so they follow its cursor and background.
 func TestThemeExtras(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	dir := ghosttyThemesDir()
@@ -34,7 +34,8 @@ func TestThemeExtras(t *testing.T) {
 		t.Fatal(err)
 	}
 	th := editable(*darkTermTheme)
-	x := themeExtras{accent: ui.Hex("#5a6f9e"), glow: ui.Hex("#c0306a")}
+	x := themeExtras{highlight: ui.Hex("#e0b030"), highlightBg: ui.Hex("#5a6f9e"), glow: ui.Hex("#c0306a"),
+		wash: [maxWash]ui.Color{ui.Hex("#001f13"), ui.Hex("#06192b"), ui.Hex("#1e122a")}}
 	data := ghosttyThemeFile(&th, x, "Kero")
 	if got, err := terminal.ParseGhosttyTheme(data); err != nil || *got != th {
 		t.Fatalf("the extras' lines changed the theme: %v", err)
@@ -49,18 +50,24 @@ func TestThemeExtras(t *testing.T) {
 	if l.glow.Stops[0].Color.R != x.glow.R || l.glow.Stops[0].Color.B != x.glow.B {
 		t.Errorf("the look glows %v", l.glow.Stops[0].Color)
 	}
-	if l.pal.accent != x.accent || l.term.Cursor != th.Cursor {
-		t.Errorf("accent %v, cursor %v: want the accent saved, the cursor kept", l.pal.accent, l.term.Cursor)
+	if l.pal.accent != x.highlight || l.pal.accentBg != x.highlightBg || l.term.Cursor != th.Cursor {
+		t.Errorf("highlight %v on %v, cursor %v: want the ones saved, the cursor kept", l.pal.accent, l.pal.accentBg, l.term.Cursor)
+	}
+	if n := len(l.base.Stops); n != 3 || l.base.Stops[1].Color != x.wash[1] {
+		t.Errorf("the wash has %d stops, %+v", n, l.base.Stops)
 	}
 
-	// A glow of the accent chosen follows the accent, not the cursor.
-	if got := string(ghosttyThemeFile(&th, themeExtras{accent: x.accent, glow: x.accent}, "Kero")); strings.Contains(got, glowLine) {
-		t.Errorf("the accent's glow was written:\n%s", got)
+	// The glow and the highlight's background follow the highlight chosen,
+	// not the cursor.
+	if got := string(ghosttyThemeFile(&th, themeExtras{highlight: x.highlight, highlightBg: x.highlight, glow: x.highlight}, "Kero")); strings.Contains(got, glowLine) || strings.Contains(got, highlightBgLine) {
+		t.Errorf("colors the highlight gives were written:\n%s", got)
 	}
 
-	plain := ghosttyThemeFile(&th, themeExtras{accent: themeAccent(&th), glow: themeAccent(&th)}, "Kero")
-	if strings.Contains(string(plain), glowLine) || strings.Contains(string(plain), accentLine) {
-		t.Errorf("the cursor's extras were written:\n%s", plain)
+	plain := ghosttyThemeFile(&th, themeExtras{}.resolved(&th), "Kero")
+	for _, line := range []string{highlightLine, highlightBgLine, glowLine, washLine} {
+		if strings.Contains(string(plain), line) {
+			t.Errorf("the theme's own extras were written:\n%s", plain)
+		}
 	}
 	if err := os.WriteFile(filepath.Join(dir, "Plain"), plain, 0o644); err != nil {
 		t.Fatal(err)
@@ -70,6 +77,66 @@ func TestThemeExtras(t *testing.T) {
 	}
 	if got := readThemeExtras("Dracula"); got != (themeExtras{}) {
 		t.Errorf("a theme of Ghostty's has %+v", got)
+	}
+
+	// 2.1.34-fork.10 saved one highlight as kero-accent.
+	old := parseThemeExtras([]byte("# kero-accent: #5a6f9e\nbackground = #101010\n"))
+	if old.highlight != ui.Hex("#5a6f9e") || old.highlightBg != ui.Hex("#5a6f9e") {
+		t.Errorf("an accent line reads as %+v, want both highlights", old)
+	}
+	// A wash of one color isn't a wash.
+	if w := parseThemeExtras([]byte("# kero-wash: #101010 #zz\n")).wash; w != ([maxWash]ui.Color{}) {
+		t.Errorf("a wash of one color read as %v", w)
+	}
+}
+
+// Text on the highlight's background reads: white on a deep color, as
+// kero's buttons had, near black on a light one.
+func TestOnColor(t *testing.T) {
+	for _, tc := range []struct {
+		bg    string
+		white bool
+	}{{"#3b6cf6", true}, {"#1e1e2e", true}, {"#d93a35", true}, {"#ffe082", false}, {"#a6e3a1", false}, {"#ffffff", false}} {
+		if got := onColor(ui.Hex(tc.bg)) == ui.Hex("#ffffff"); got != tc.white {
+			t.Errorf("on %s white %v, want %v", tc.bg, got, tc.white)
+		}
+	}
+}
+
+// A draft's extras the theme gives follow it as its colors change; one
+// the user chose stays.
+func TestThemeDraftFollowsCursor(t *testing.T) {
+	d := newThemeDraft("dark", "Kero", *darkTermTheme, themeExtras{})
+	d.th.Cursor = ui.Hex("#e0b030")
+	d.sync()
+	if d.extras.highlight != ui.Hex("#e0b030") || d.extras.glow != ui.Hex("#e0b030") {
+		t.Errorf("highlight %v, glow %v: want the new cursor's", d.extras.highlight, d.extras.glow)
+	}
+	d.extras.highlightBg = ui.Hex("#5a6f9e")
+	d.sync()
+	d.th.Cursor = ui.Hex("#30b0e0")
+	d.sync()
+	if d.extras.highlight != ui.Hex("#30b0e0") || d.extras.highlightBg != ui.Hex("#5a6f9e") || d.extras.glow != ui.Hex("#5a6f9e") {
+		t.Errorf("extras %+v: want the highlight the cursor's, its background and glow the one chosen", d.extras)
+	}
+	if s := d.set(); s.highlight.A != 0 || s.highlightBg != ui.Hex("#5a6f9e") {
+		t.Errorf("set %+v: want only the background chosen", s)
+	}
+}
+
+// What Export copies, Import reads back, and text that isn't a theme
+// changes nothing.
+func TestImportTheme(t *testing.T) {
+	th := editable(*darkTermTheme)
+	x := themeExtras{highlightBg: ui.Hex("#5a6f9e")}
+	got, gx, err := importTheme(string(ghosttyThemeFile(&th, x, "Kero")))
+	if err != nil || got != th || gx != x {
+		t.Errorf("import: %v, %+v, extras %+v", err, got, gx)
+	}
+	for _, bad := range []string{"", "hello there", "background = #12345g", "# only a comment"} {
+		if _, _, err := importTheme(bad); err == nil {
+			t.Errorf("imported %q", bad)
+		}
 	}
 }
 
@@ -201,6 +268,58 @@ func TestThemeEditorShows(t *testing.T) {
 	}
 }
 
+// Export copies the theme as edited; Import reads a pasted one into the
+// draft, and text that isn't a theme leaves it and says why.
+func TestThemeExportImport(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	a := testApp(t)
+	a.ss.page = "appearance"
+	a.editTheme("dark")
+	d := a.ss.themeEdit
+	tt := ui.NewTester(a.settingsView, 820, 3000)
+	tt.Frame()
+	for _, txt := range []string{"Background colors", "Highlight", "Highlight background"} {
+		if !tt.HasText(txt) {
+			t.Errorf("no %q", txt)
+		}
+	}
+	if err := tt.Click("Export"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := tt.Clipboard(); !strings.Contains(got, "background = ") || !strings.Contains(got, washLine) {
+		t.Errorf("Export copied %q", got)
+	}
+
+	importText := func(text string) {
+		t.Helper()
+		if err := tt.Click("Import…"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Type(text)
+		tt.Frame()
+		if err := tt.Click("Import"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+	}
+	importText("nonsense")
+	shot(t, tt, "theme-import-error")
+	if !d.importing || d.importProblem == "" || d.th.Background != editable(*keroLook("paper", true).term).Background {
+		t.Errorf("text that isn't a theme: open %v, problem %q, background %v", d.importing, d.importProblem, d.th.Background)
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if d.importing {
+		t.Fatalf("Escape left the Import dialog open")
+	}
+	importText("background = #102030")
+	if d.importing || d.th.Background != ui.Hex("#102030") || d.name != "Paper Dark" {
+		t.Errorf("after import: open %v, background %v, name %q", d.importing, d.th.Background, d.name)
+	}
+}
+
 // Code takes the terminal theme's colors, but none the background hides,
 // as Solarized Dark's bright black, its comments' color, is its background.
 func TestEditorThemeFromTerminal(t *testing.T) {
@@ -286,7 +405,7 @@ func TestSaveThemeChoosesIt(t *testing.T) {
 		t.Fatalf("draft %+v, want one named Paper Dark", d)
 	}
 	d.th.Background = ui.Hex("#123456")
-	d.extras = themeExtras{accent: ui.Hex("#5a6f9e"), glow: ui.Hex("#c0306a")}
+	d.extras.highlightBg, d.extras.glow = ui.Hex("#5a6f9e"), ui.Hex("#c0306a")
 	a.saveTheme(d)
 	if a.ss.themeEdit != nil {
 		t.Fatalf("draft kept after saving: %s", a.ss.toast)
@@ -302,7 +421,7 @@ func TestSaveThemeChoosesIt(t *testing.T) {
 	if a.ss.themeEdit.name != "Paper Dark" || !userTheme("Paper Dark") {
 		t.Errorf("draft named %q, want the theme itself", a.ss.themeEdit.name)
 	}
-	if x := a.ss.themeEdit.extras; x != (themeExtras{accent: ui.Hex("#5a6f9e"), glow: ui.Hex("#c0306a")}) {
+	if x := a.ss.themeEdit.set(); x.highlightBg != ui.Hex("#5a6f9e") || x.glow != ui.Hex("#c0306a") {
 		t.Errorf("draft extras %+v, want the ones saved", x)
 	}
 }

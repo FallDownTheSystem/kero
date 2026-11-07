@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -40,10 +41,66 @@ type themePreview struct {
 }
 
 // themeExtras are the colors a theme of the user's gives kero beyond
-// Ghostty's keys: the accent of its buttons and highlights, and the glow
-// that lights the window's background from the top right. A zero color is
-// the theme's own: its accent (themeAccent), and a glow of the accent.
-type themeExtras struct{ accent, glow ui.Color }
+// Ghostty's keys: the highlight of icons, rings and faint washes, the
+// highlight's background under text, as a primary button's face, the
+// glow that lights the window from the top right, and the wash, from top
+// to bottom under the cards. A zero color is the theme's own (resolved).
+// The wash is an array, not a slice, so that extras compare with ==.
+type themeExtras struct {
+	highlight, highlightBg, glow ui.Color
+	wash                         [maxWash]ui.Color // its first colors, the rest zero
+}
+
+// minWash and maxWash bound a wash's colors, as kero's own have 2 to 4.
+const minWash, maxWash = 2, 4
+
+// resolved is x with each color it leaves to the theme filled in: the
+// highlight the cursor's (themeAccent), its background the highlight, the
+// glow the highlight's background, the wash the theme's (defaultWash).
+func (x themeExtras) resolved(th *terminal.Theme) themeExtras {
+	if x.highlight.A == 0 {
+		x.highlight = themeAccent(th)
+	}
+	if x.highlightBg.A == 0 {
+		x.highlightBg = x.highlight
+	}
+	if x.glow.A == 0 {
+		x.glow = x.highlightBg
+	}
+	if x.wash[0].A == 0 {
+		x.wash = defaultWash(th)
+	}
+	return x
+}
+
+// explicit is x with each color that is the one the theme gives anyway
+// left zero (resolved), so that it follows the theme: a theme's file
+// holds these.
+func (x themeExtras) explicit(th *terminal.Theme) themeExtras {
+	r := x.resolved(th)
+	var e themeExtras
+	if r.highlight != themeAccent(th) {
+		e.highlight = r.highlight
+	}
+	if r.highlightBg != r.highlight {
+		e.highlightBg = r.highlightBg
+	}
+	if r.glow != r.highlightBg {
+		e.glow = r.glow
+	}
+	if r.wash != defaultWash(th) {
+		e.wash = r.wash
+	}
+	return e
+}
+
+func (x themeExtras) washColors() []ui.Color {
+	n := 0
+	for n < maxWash && x.wash[n].A != 0 {
+		n++
+	}
+	return x.wash[:n]
+}
 
 // chosenThemes returns the terminals' themes the settings name, whatever
 // Settings previews.
@@ -114,16 +171,16 @@ func cardPalette(pal *palette, th *terminal.Theme) *palette {
 	if pal.card == th.Background && pal.text == th.Foreground {
 		p = *pal
 	} else {
-		// The window's accent, unless the card is of the other appearance,
-		// where kero's own reads.
-		accent := pal.accent
+		// The window's highlights, unless the card is of the other
+		// appearance, where kero's own read.
+		hl := pal
 		if d := darkColor(th.Background); d != pal.dark {
-			accent = lightPalette.accent
+			hl = &lightPalette
 			if d {
-				accent = darkPalette.accent
+				hl = &darkPalette
 			}
 		}
-		p = *tinted(th, accent)
+		p = *tinted(th, hl.accent, hl.accentBg, hl.onAccent)
 	}
 	p.code = th
 	return &p
@@ -404,9 +461,9 @@ func (a *App) colorSettings(c *ui.Context, pal *palette) {
 	if d := a.ss.themeEdit; d != nil {
 		th := d.th
 		if d.slot == "light" {
-			want.light, want.lightExtras = &th, d.extras
+			want.light, want.lightExtras = &th, d.set()
 		} else {
-			want.dark, want.darkExtras = &th, d.extras
+			want.dark, want.darkExtras = &th, d.set()
 		}
 	}
 }
@@ -513,10 +570,61 @@ type themeDraft struct {
 	base     string // the theme it started from
 	name     string
 	th       terminal.Theme
-	extras   themeExtras // both set, as each has a well
-	checked  string      // the name problem and replaces are of
-	problem  string      // why the name can't be saved, "" when it can
-	replaces bool        // a theme of the user's has the name
+	checked  string // the name problem and replaces are of
+	problem  string // why the name can't be saved, "" when it can
+	replaces bool   // a theme of the user's has the name
+
+	// extras are what the wells hold, which MyGo's color wells keep a
+	// pointer to; shown what they held when last resolved from given, the
+	// ones the user gave. A well the user hasn't changed follows the theme
+	// (sync).
+	extras, shown, given themeExtras
+
+	// The Import dialog: open, the text pasted, and why it can't be read.
+	importing                 bool
+	importText, importProblem string
+}
+
+// newThemeDraft is a draft of th with the extras x, for slot's windows.
+func newThemeDraft(slot, base string, th terminal.Theme, x themeExtras) *themeDraft {
+	d := &themeDraft{slot: slot, base: base}
+	d.load(th, x)
+	return d
+}
+
+// load gives the draft th's colors and the extras x, its name aside.
+func (d *themeDraft) load(th terminal.Theme, x themeExtras) {
+	d.th, d.given = editable(th), x
+	d.extras = x.resolved(&d.th)
+	d.shown = d.extras
+}
+
+// set is the extras the user gave the draft: the ones given before, and
+// each well changed since.
+func (d *themeDraft) set() themeExtras {
+	s := d.given
+	if d.extras.highlight != d.shown.highlight {
+		s.highlight = d.extras.highlight
+	}
+	if d.extras.highlightBg != d.shown.highlightBg {
+		s.highlightBg = d.extras.highlightBg
+	}
+	if d.extras.glow != d.shown.glow {
+		s.glow = d.extras.glow
+	}
+	if d.extras.wash != d.shown.wash {
+		s.wash = d.extras.wash
+	}
+	return s
+}
+
+// sync resolves the extras against the theme as it is now, after a well
+// changed, so that those not given follow: the highlight a new cursor,
+// the glow a new highlight background.
+func (d *themeDraft) sync() {
+	d.given = d.set()
+	d.extras = d.given.resolved(&d.th)
+	d.shown = d.extras
 }
 
 // editTheme starts a theme of the user's from slot's theme: the theme
@@ -527,13 +635,15 @@ func (a *App) editTheme(slot string) {
 	if slot == "dark" {
 		name, th = a.set.DarkTheme, *dark
 	}
-	d := &themeDraft{slot: slot, base: name, th: editable(th), extras: readThemeExtras(name)}
-	if d.extras.accent.A == 0 {
-		d.extras.accent = themeAccent(&th)
+	x := readThemeExtras(name)
+	if id := keroID(name); id != "" {
+		// The copy keeps the wash of kero's theme, as Aurora's colors.
+		stops := keroLook(id, slot == "dark").base.Stops
+		for i, st := range stops[:min(len(stops), maxWash)] {
+			x.wash[i] = st.Color
+		}
 	}
-	if d.extras.glow.A == 0 {
-		d.extras.glow = d.extras.accent
-	}
+	d := newThemeDraft(slot, name, th, x)
 	switch {
 	case keroID(name) != "":
 		// "Paper Light", as kero names its themes.
@@ -623,35 +733,72 @@ func themeColors(th *terminal.Theme) []*ui.Color {
 	return cs
 }
 
-// accentLine and glowLine start the lines of a theme of the user's that
-// give its extras (themeExtras). Ghostty has no such keys and warns of
-// keys it doesn't know, so the lines are comments to it, which kero alone
-// reads.
+// The lines of a theme of the user's that give its extras (themeExtras):
+// "# kero-<key>: <value>". Ghostty has no such keys and warns of keys it
+// doesn't know, so the lines are comments to it, which kero alone reads.
+// accent is 2.1.34-fork.10's single highlight, both highlights in a theme
+// that gives neither.
 const (
-	accentLine = "# kero-accent:"
-	glowLine   = "# kero-glow:"
+	extrasPrefix    = "# kero-"
+	highlightLine   = extrasPrefix + "highlight:"
+	highlightBgLine = extrasPrefix + "highlight-bg:"
+	glowLine        = extrasPrefix + "glow:"
+	washLine        = extrasPrefix + "wash:"
 )
 
-// readThemeExtras is the extras a theme of the user's gives (accentLine,
-// glowLine), none when it gives none or isn't the user's.
+// readThemeExtras is the extras a theme of the user's gives, none when it
+// gives none or isn't the user's.
 func readThemeExtras(name string) themeExtras {
-	var x themeExtras
 	if !userTheme(name) {
-		return x
+		return themeExtras{}
 	}
 	data, err := os.ReadFile(filepath.Join(ghosttyThemesDir(), name))
 	if err != nil {
-		return x
+		return themeExtras{}
 	}
+	return parseThemeExtras(data)
+}
+
+// parseThemeExtras reads the extras' lines of a theme's file, skipping a
+// color it can't read, as a file edited by hand can hold.
+func parseThemeExtras(data []byte) themeExtras {
+	var x themeExtras
+	var accent ui.Color
 	for line := range strings.Lines(string(data)) {
-		line = strings.TrimSpace(line)
-		for prefix, c := range map[string]*ui.Color{accentLine: &x.accent, glowLine: &x.glow} {
-			if v, ok := strings.CutPrefix(line, prefix); ok {
-				if col, ok := parseHex(strings.TrimSpace(v)); ok {
-					*c = col
+		rest, ok := strings.CutPrefix(strings.TrimSpace(line), extrasPrefix)
+		if !ok {
+			continue
+		}
+		key, v, _ := strings.Cut(rest, ":")
+		var c *ui.Color
+		switch key {
+		case "highlight":
+			c = &x.highlight
+		case "highlight-bg":
+			c = &x.highlightBg
+		case "glow":
+			c = &x.glow
+		case "accent":
+			c = &accent
+		case "wash":
+			var wash [maxWash]ui.Color
+			n := 0
+			for _, h := range strings.Fields(v) {
+				if col, ok := parseHex(h); ok && n < maxWash {
+					wash[n] = col
+					n++
 				}
 			}
+			if n >= minWash {
+				x.wash = wash
+			}
 		}
+		if col, ok := parseHex(strings.TrimSpace(v)); ok && c != nil {
+			*c = col
+		}
+	}
+	if x.highlight.A == 0 && x.highlightBg.A == 0 {
+		x.highlight, x.highlightBg = accent, accent
 	}
 	return x
 }
@@ -672,20 +819,27 @@ func parseHex(s string) (ui.Color, bool) {
 
 // ghosttyThemeFile writes th in Ghostty's format, as ParseGhosttyTheme
 // reads it, noting the theme it was made from, and each of its extras
-// unless it is the one the theme gives anyway: the accent its cursor
-// gives (themeAccent), the glow its accent gives, so that a theme without
-// them follows its cursor as it changes.
+// unless it is the one the theme gives anyway (explicit), so that one left
+// to the theme follows it as it changes.
 func ghosttyThemeFile(th *terminal.Theme, x themeExtras, base string) []byte {
 	hex := func(c ui.Color) string { return fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B) }
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Made in Kero from %s.\n", base)
-	accent := themeAccent(th)
-	if x.accent.A != 0 && x.accent != accent {
-		accent = x.accent
-		fmt.Fprintf(&b, "%s %s\n", accentLine, hex(accent))
+	e := x.explicit(th)
+	for _, l := range []struct {
+		prefix string
+		c      ui.Color
+	}{{highlightLine, e.highlight}, {highlightBgLine, e.highlightBg}, {glowLine, e.glow}} {
+		if l.c.A != 0 {
+			fmt.Fprintf(&b, "%s %s\n", l.prefix, hex(l.c))
+		}
 	}
-	if x.glow.A != 0 && x.glow != accent {
-		fmt.Fprintf(&b, "%s %s\n", glowLine, hex(x.glow))
+	if wash := e.washColors(); len(wash) > 0 {
+		hexes := make([]string, len(wash))
+		for i, c := range wash {
+			hexes[i] = hex(c)
+		}
+		fmt.Fprintf(&b, "%s %s\n", washLine, strings.Join(hexes, " "))
 	}
 	for i, c := range th.Palette {
 		fmt.Fprintf(&b, "palette = %d=%s\n", i, hex(c))
@@ -712,7 +866,7 @@ func (a *App) saveTheme(d *themeDraft) {
 	dir := ghosttyThemesDir()
 	err := os.MkdirAll(dir, 0o755)
 	if err == nil {
-		err = os.WriteFile(filepath.Join(dir, name), ghosttyThemeFile(&d.th, d.extras, d.base), 0o644)
+		err = os.WriteFile(filepath.Join(dir, name), ghosttyThemeFile(&d.th, d.set(), d.base), 0o644)
 	}
 	if err != nil {
 		a.ss.toast = locales.SetThemeSaveFailed(err.Error())
@@ -735,6 +889,7 @@ func (a *App) saveTheme(d *themeDraft) {
 // of it, which the terminals show too.
 func (a *App) themeEditor(c *ui.Context, pal *palette, d *themeDraft) {
 	d.opaque()
+	d.sync()
 	if d.checked != d.name {
 		d.checked = d.name
 		d.problem, d.replaces = checkThemeName(strings.TrimSpace(d.name))
@@ -779,11 +934,28 @@ func (a *App) themeEditor(c *ui.Context, pal *palette, d *themeDraft) {
 		ui.Column(c).Padding(4, 0, 12, 0).Children(func() { a.terminalPreview(c, pal, &d.th) })
 		groupRows = 0
 		pair("base", locales.SetThemeBase(), &d.th.Background, &d.th.Foreground, locales.SetThemeBackground(), locales.SetThemeForeground())
-		settingRow(c, pal, locales.SetThemeAccent(), "", func() {
-			well("accent", &d.extras.accent, locales.SetThemeAccent())
+		settingRow(c, pal, locales.SetThemeWash(), "", func() {
+			ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+				n := len(d.extras.washColors())
+				for i := range n {
+					well(fmt.Sprint("wash", i), &d.extras.wash[i], locales.SetThemeWashColor(i+1))
+				}
+				if n > minWash {
+					iconButton(c, "wash-less", minusIcon, locales.SetThemeWashLess(), pal, func() { d.extras.wash[n-1] = ui.Color{} })
+				}
+				if n < maxWash {
+					iconButton(c, "wash-more", plusIcon, locales.SetThemeWashMore(), pal, func() { d.extras.wash[n] = d.extras.wash[n-1] })
+				}
+			})
 		})
 		settingRow(c, pal, locales.SetThemeGlow(), "", func() {
 			well("glow", &d.extras.glow, locales.SetThemeGlow())
+		})
+		settingRow(c, pal, locales.SetThemeHighlight(), "", func() {
+			well("highlight", &d.extras.highlight, locales.SetThemeHighlight())
+		})
+		settingRow(c, pal, locales.SetThemeHighlightBg(), "", func() {
+			well("highlight-bg", &d.extras.highlightBg, locales.SetThemeHighlightBg())
 		})
 		pair("cursor", locales.SetCursor(), &d.th.Cursor, &d.th.CursorText, locales.SetCursor(), locales.SetThemeCursorText())
 		pair("sel", locales.SetThemeSelection(), &d.th.Selection, &d.th.SelectionText, locales.SetThemeSelection(), locales.SetThemeSelectionText())
@@ -793,6 +965,13 @@ func (a *App) themeEditor(c *ui.Context, pal *palette, d *themeDraft) {
 		palette("bright", locales.SetThemeBright(), 8, true)
 	})
 	ui.Row(c.Key("theme-actions")).Gap(8).AlignItems(ui.Center).Children(func() {
+		if button(c, "theme-export", locales.SetThemeExport(), "", false, pal) {
+			c.WriteClipboard(string(ghosttyThemeFile(&d.th, d.set(), d.base)))
+			a.ss.toast = locales.ToastCopiedToClipboard()
+		}
+		if button(c, "theme-import", locales.SetThemeImport(), "", false, pal) {
+			d.importing, d.importText, d.importProblem = true, "", ""
+		}
 		ui.Spacer(c)
 		if button(c, "theme-cancel", locales.CommonCancel(), "", false, pal) {
 			a.ss.themeEdit = nil
@@ -801,14 +980,86 @@ func (a *App) themeEditor(c *ui.Context, pal *palette, d *themeDraft) {
 			a.saveTheme(d)
 		}
 	})
+	if d.importing {
+		a.importThemeDialog(c, pal, d)
+	}
 	d.opaque()
 }
 
+// importThemeDialog takes a theme pasted as Ghostty's text, the extras'
+// lines too, into the draft, which keeps its name; text it can't read
+// leaves the draft as it was and says why.
+func (a *App) importThemeDialog(c *ui.Context, pal *palette, d *themeDraft) {
+	ui.DialogBase(c.Key("theme-import-dialog"), &d.importing, func(backdrop, panel ui.Element) {
+		backdrop.Background(pal.overlay)
+		winW, _ := c.Size()
+		floating(panel.Width(min(520, winW-40)).Padding(22).Gap(10).Radius(14).Background(pal.popover), pal).Label(locales.SetThemeImportTitle())
+		ui.Text(c, locales.SetThemeImportTitle()).FontSize(15).FontWeight(650).TextColor(pal.text)
+		ui.Text(c, locales.SetThemeImportDetail()).FontSize(13).TextColor(pal.textMuted).LineHeight(1.4)
+		var in ui.Element
+		frame := ui.Row(c.Key("text")).AlignItems(ui.Start).Cursor(ui.CursorText)
+		frame.Children(func() {
+			in = ui.TextAreaBase(c.Key("in"), &d.importText).Grow(1).MinWidth(0).MinHeight(180).MaxHeight(320).Padding(6, 8).
+				Font(a.termFamily()).FontSize(12).Placeholder("background = #1e1e2e").Label(locales.SetThemeImportTitle()).AutoFocus()
+		})
+		fieldLook(c, frame, in.Focused(), pal).Padding(0)
+		if d.importProblem != "" {
+			ui.Text(c, d.importProblem).FontSize(12).TextColor(pal.danger).LineHeight(1.35).Selectable()
+		}
+		dialogButtons(c, func() {
+			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
+				d.importing = false
+			}
+			if button(c, "ok", locales.SetThemeImportAction(), "", true, pal) {
+				th, x, err := importTheme(d.importText)
+				if err != nil {
+					d.importProblem = locales.SetThemeImportFailed(err.Error())
+					return
+				}
+				d.load(th, x)
+				d.importing = false
+			}
+		})
+	})
+}
+
+// errNoBackground is a pasted theme's without a background: anything but
+// a theme, as Ghostty's parser takes text without colors for its default.
+var errNoBackground = errors.New("no background color")
+
+// importTheme reads a theme pasted as the text of Ghostty's file, as
+// ghosttyThemeFile writes it.
+func importTheme(text string) (terminal.Theme, themeExtras, error) {
+	data := []byte(text)
+	th, err := terminal.ParseGhosttyTheme(data)
+	if err != nil {
+		return terminal.Theme{}, themeExtras{}, err
+	}
+	hasBackground := false
+	for line := range strings.Lines(text) {
+		if k, _, ok := strings.Cut(line, "="); ok && strings.TrimSpace(k) == "background" {
+			hasBackground = true
+		}
+	}
+	if !hasBackground {
+		return terminal.Theme{}, themeExtras{}, errNoBackground
+	}
+	return *th, parseThemeExtras(data), nil
+}
+
 // opaque makes every color of the draft opaque, its extras too, as a
-// theme's colors are (opaque).
+// theme's colors are (opaque); a wash's unused colors stay none.
 func (d *themeDraft) opaque() {
 	opaque(&d.th)
-	for _, c := range []*ui.Color{&d.extras.accent, &d.extras.glow} {
-		*c = ui.RGB(c.R, c.G, c.B)
+	op := func(c *ui.Color) {
+		if c.A != 0 {
+			*c = ui.RGB(c.R, c.G, c.B)
+		}
+	}
+	op(&d.extras.highlight)
+	op(&d.extras.highlightBg)
+	op(&d.extras.glow)
+	for i := range d.extras.wash {
+		op(&d.extras.wash[i])
 	}
 }

@@ -6838,14 +6838,44 @@ func (msgs Messages) SetThemeBackground() string {
 	return Catalog.Format(msgs.locale, "setThemeBackground", nil)
 }
 
-// SetThemeAccent says "Accent"
+// SetThemeWash says "Background colors"
 // in the language the app shows.
-func SetThemeAccent() string { return In(i18n.Locale()).SetThemeAccent() }
+func SetThemeWash() string { return In(i18n.Locale()).SetThemeWash() }
 
-// SetThemeAccent says "Accent"
+// SetThemeWash says "Background colors"
 // in the language of msgs.
-func (msgs Messages) SetThemeAccent() string {
-	return Catalog.Format(msgs.locale, "setThemeAccent", nil)
+func (msgs Messages) SetThemeWash() string {
+	return Catalog.Format(msgs.locale, "setThemeWash", nil)
+}
+
+// SetThemeWashColor says "Background color {n}"
+// in the language the app shows.
+func SetThemeWashColor(n int) string { return In(i18n.Locale()).SetThemeWashColor(n) }
+
+// SetThemeWashColor says "Background color {n}"
+// in the language of msgs.
+func (msgs Messages) SetThemeWashColor(n int) string {
+	return Catalog.Format(msgs.locale, "setThemeWashColor", map[string]any{"n": n})
+}
+
+// SetThemeWashMore says "Add a color"
+// in the language the app shows.
+func SetThemeWashMore() string { return In(i18n.Locale()).SetThemeWashMore() }
+
+// SetThemeWashMore says "Add a color"
+// in the language of msgs.
+func (msgs Messages) SetThemeWashMore() string {
+	return Catalog.Format(msgs.locale, "setThemeWashMore", nil)
+}
+
+// SetThemeWashLess says "Remove the last color"
+// in the language the app shows.
+func SetThemeWashLess() string { return In(i18n.Locale()).SetThemeWashLess() }
+
+// SetThemeWashLess says "Remove the last color"
+// in the language of msgs.
+func (msgs Messages) SetThemeWashLess() string {
+	return Catalog.Format(msgs.locale, "setThemeWashLess", nil)
 }
 
 // SetThemeGlow says "Background glow"
@@ -6856,6 +6886,86 @@ func SetThemeGlow() string { return In(i18n.Locale()).SetThemeGlow() }
 // in the language of msgs.
 func (msgs Messages) SetThemeGlow() string {
 	return Catalog.Format(msgs.locale, "setThemeGlow", nil)
+}
+
+// SetThemeHighlight says "Highlight"
+// in the language the app shows.
+func SetThemeHighlight() string { return In(i18n.Locale()).SetThemeHighlight() }
+
+// SetThemeHighlight says "Highlight"
+// in the language of msgs.
+func (msgs Messages) SetThemeHighlight() string {
+	return Catalog.Format(msgs.locale, "setThemeHighlight", nil)
+}
+
+// SetThemeHighlightBg says "Highlight background"
+// in the language the app shows.
+func SetThemeHighlightBg() string { return In(i18n.Locale()).SetThemeHighlightBg() }
+
+// SetThemeHighlightBg says "Highlight background"
+// in the language of msgs.
+func (msgs Messages) SetThemeHighlightBg() string {
+	return Catalog.Format(msgs.locale, "setThemeHighlightBg", nil)
+}
+
+// SetThemeExport says "Export"
+// in the language the app shows.
+func SetThemeExport() string { return In(i18n.Locale()).SetThemeExport() }
+
+// SetThemeExport says "Export"
+// in the language of msgs.
+func (msgs Messages) SetThemeExport() string {
+	return Catalog.Format(msgs.locale, "setThemeExport", nil)
+}
+
+// SetThemeImport says "Import…"
+// in the language the app shows.
+func SetThemeImport() string { return In(i18n.Locale()).SetThemeImport() }
+
+// SetThemeImport says "Import…"
+// in the language of msgs.
+func (msgs Messages) SetThemeImport() string {
+	return Catalog.Format(msgs.locale, "setThemeImport", nil)
+}
+
+// SetThemeImportAction says "Import"
+// in the language the app shows.
+func SetThemeImportAction() string { return In(i18n.Locale()).SetThemeImportAction() }
+
+// SetThemeImportAction says "Import"
+// in the language of msgs.
+func (msgs Messages) SetThemeImportAction() string {
+	return Catalog.Format(msgs.locale, "setThemeImportAction", nil)
+}
+
+// SetThemeImportTitle says "Import Theme"
+// in the language the app shows.
+func SetThemeImportTitle() string { return In(i18n.Locale()).SetThemeImportTitle() }
+
+// SetThemeImportTitle says "Import Theme"
+// in the language of msgs.
+func (msgs Messages) SetThemeImportTitle() string {
+	return Catalog.Format(msgs.locale, "setThemeImportTitle", nil)
+}
+
+// SetThemeImportDetail says "Paste a theme in Ghostty's format, as Export copies it. Its colors replace the ones here; nothing is saved until you …"
+// in the language the app shows.
+func SetThemeImportDetail() string { return In(i18n.Locale()).SetThemeImportDetail() }
+
+// SetThemeImportDetail says "Paste a theme in Ghostty's format, as Export copies it. Its colors replace the ones here; nothing is saved until you …"
+// in the language of msgs.
+func (msgs Messages) SetThemeImportDetail() string {
+	return Catalog.Format(msgs.locale, "setThemeImportDetail", nil)
+}
+
+// SetThemeImportFailed says "Couldn’t read the theme: {error}"
+// in the language the app shows.
+func SetThemeImportFailed(error string) string { return In(i18n.Locale()).SetThemeImportFailed(error) }
+
+// SetThemeImportFailed says "Couldn’t read the theme: {error}"
+// in the language of msgs.
+func (msgs Messages) SetThemeImportFailed(error string) string {
+	return Catalog.Format(msgs.locale, "setThemeImportFailed", map[string]any{"error": error})
 }
 
 // SetThemeForeground says "Text"
