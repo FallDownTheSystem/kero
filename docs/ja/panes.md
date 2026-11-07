@@ -23,6 +23,8 @@ description: セッションをペインに分割して、開発サーバー、�
 
 ペインのプログラムが終了しても、出力を読めるようにペインは残ります。**ペインを再起動** は、同じディレクトリでシェルを再び開始します。
 
+失敗したテストの出力など、ターミナルに表示されたものをエージェントに見せるには、テキストを選択して右クリックし、**セッションに送る…** を選んでから、エージェントのセッションを選びます。エージェントは、送り元のペインとともにコードブロックとしてテキストを受け取ります。エージェントがプロンプトに戻った時点で入力されます。
+
 ## コマンドラインから
 
 `kero split` は、別のペインの横にペインを開始し、その ID を出力します:
@@ -101,6 +103,57 @@ kero split --url .backlog/pages/brief.html
 kero browser type 'input[name=q]' "kero" --enter
 kero browser text main
 ```
+
+<a id="sending-to-an-agent-from-a-page"></a>
+### ページからエージェントに送る
+
+ブラウザペインのローカルページ（`file:`）は、エージェントにメッセージを送れます。たとえば、エージェントが見せた判断資料（decision brief）で選んだ答えです。ページが `window.kero.send(message, options)` を呼ぶと、Kero はそのページを `kero split --url` で開いた（あるいは再表示した）エージェントのペインに、エージェントがプロンプトに戻った時点でメッセージを入力します。エージェントが [`kero browser wait-message`](./cli.md#browsing) で待っていれば、そのエージェントに渡します。エージェントが開いたのではないページでは、**セッションに送る…** と同じようにどのエージェントに送るかを尋ね、以後はそこに送ります。
+
+メッセージには送り元が付きます: `Kero: message from database pick, from the page "Pick and send" (file:///…/send-to-agent.html) in browser pane 3f2a:` の後にテキストが続きます。`send` が返す Promise はエージェントがメッセージを受け取ると解決するので、ページは「送信済み」と表示できます。先にエージェントのペインが閉じると reject されます。
+
+| オプション | 内容 |
+| --------- | ---- |
+| `label`   | メッセージが何か。ページのタイトルと URL の前に付きます |
+| `mode`    | `"push"` は常にプロンプトに入力します。`"wait"` は `kero browser wait-message` のためだけに取っておきます。指定しなければ、待っているエージェントに渡し、いなければプロンプトに入力します |
+| `onState` | Promise が解決する前に `"queued"`（エージェントが作業中: プロンプトに戻ったら届く）または `"waiting"`（`wait-message` のために保持）を受け取ります |
+
+文字列でないメッセージは JSON として送られます。`window.kero` は Kero の中にだけあるので、ページはそれで送れるかどうかを判断し、送れないところではメッセージをクリップボードにコピーします:
+
+```html
+<!doctype html>
+<meta charset="utf-8">
+<title>Pick and send</title>
+<h1>Which database?</h1>
+<label><input type="radio" name="d1" value="A" checked> A: SQLite</label>
+<label><input type="radio" name="d1" value="B"> B: Postgres</label>
+<p><button id="send">Send</button> <span id="status"></span></p>
+<script>
+const send = document.getElementById("send");
+const status = document.getElementById("status");
+send.onclick = async () => {
+  const text = "D1: " + document.querySelector('input[name="d1"]:checked').value;
+  if (!window.kero) {
+    await navigator.clipboard.writeText(text);
+    status.textContent = "Copied: paste it to the agent";
+    return;
+  }
+  status.textContent = "Sending…";
+  try {
+    await window.kero.send(text, {
+      label: "database pick",
+      onState: (state) => {
+        status.textContent = state === "queued" ? "Queued: the agent is working" : "Waiting for the agent";
+      },
+    });
+    status.textContent = "Sent";
+  } catch (err) {
+    status.textContent = "Not sent: " + err.message;
+  }
+};
+</script>
+```
+
+`window` の `kero:delivery` イベントも、各メッセージの配信を `id`、`state`（`delivered` または `failed`）、`error` とともに伝えます。
 
 <a id="blocking-ads"></a>
 

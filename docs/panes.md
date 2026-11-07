@@ -23,6 +23,8 @@ In the sidebar, a split session's row shows how many panes it has, after its nam
 
 When a pane's program exits, the pane stays so you can read its output. **Restart Pane** starts its shell again in the same directory.
 
+To show an agent what a terminal printed, such as a failing test's output, select the text, right-click it and choose **Send to Session…**, then the agent's session. The agent gets the text as a code block, with the pane it came from, typed into its prompt once it is at it.
+
 ## From the command line
 
 `kero split` starts a pane beside another and prints its id:
@@ -101,6 +103,56 @@ An agent can then use the page as you would, with `kero browser`: click, type, r
 kero browser type 'input[name=q]' "kero" --enter
 kero browser text main
 ```
+
+### Sending to an agent from a page
+
+A local page (`file:`) in a browser pane can send a message to an agent, such as the choices you made on a decision brief the agent showed you. The page calls `window.kero.send(message, options)`; Kero types the message into the prompt of the agent whose pane opened the page with `kero split --url` (or showed it again), once the agent is at its prompt, or hands it to the agent while it waits with [`kero browser wait-message`](./cli.md#browsing). A page no agent opened asks you which agent to send to, as **Send to Session…** does, and keeps sending there.
+
+Each message tells the agent where it came from: `Kero: message from database pick, from the page "Pick and send" (file:///…/send-to-agent.html) in browser pane 3f2a:`, then its text. The promise `send` returns resolves once the agent has the message, so the page can say it's sent, and rejects if the agent's pane closes first.
+
+| Option    | What it does |
+| --------- | ------------ |
+| `label`   | What the message is, before the page's title and URL |
+| `mode`    | `"push"` always types it into the prompt; `"wait"` keeps it for `kero browser wait-message` alone; unset, it goes to an agent waiting for it, else into the prompt |
+| `onState` | Hears `"queued"` (the agent is working: it gets it at its prompt) or `"waiting"` (kept for `wait-message`) before the promise resolves |
+
+A message that isn't a string is sent as JSON. `window.kero` is there only in Kero, so a page tells by it whether it can send, and copies the message to the clipboard where it can't:
+
+```html
+<!doctype html>
+<meta charset="utf-8">
+<title>Pick and send</title>
+<h1>Which database?</h1>
+<label><input type="radio" name="d1" value="A" checked> A: SQLite</label>
+<label><input type="radio" name="d1" value="B"> B: Postgres</label>
+<p><button id="send">Send</button> <span id="status"></span></p>
+<script>
+const send = document.getElementById("send");
+const status = document.getElementById("status");
+send.onclick = async () => {
+  const text = "D1: " + document.querySelector('input[name="d1"]:checked').value;
+  if (!window.kero) {
+    await navigator.clipboard.writeText(text);
+    status.textContent = "Copied: paste it to the agent";
+    return;
+  }
+  status.textContent = "Sending…";
+  try {
+    await window.kero.send(text, {
+      label: "database pick",
+      onState: (state) => {
+        status.textContent = state === "queued" ? "Queued: the agent is working" : "Waiting for the agent";
+      },
+    });
+    status.textContent = "Sent";
+  } catch (err) {
+    status.textContent = "Not sent: " + err.message;
+  }
+};
+</script>
+```
+
+A `kero:delivery` event on `window` tells each message's delivery too, with its `id`, `state` (`delivered` or `failed`) and `error`.
 
 ### Blocking ads
 

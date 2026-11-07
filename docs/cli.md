@@ -164,6 +164,9 @@ kero browser eval 'document.title'
 | `screenshot [-o file.png]`      | Save a picture of the page, and print where; `-o -` writes it to stdout |
 | `cookies save [file]`           | Save the browser's cookies to a file, or print them; `--domain` keeps a site's |
 | `cookies load <file>`           | Load cookies from a file; `--domain` loads a site's |
+| `wait-message [--json]`         | Wait for the next message the page sends with [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page), and print it, labelled with the page; `--json` prints its `id`, `from`, `label`, `url`, `title`, `text` and `at` |
+
+`wait-message` waits as long as it takes, unless `--timeout` says otherwise, and fails with `timed out` when nothing came: an agent waits again, with a timeout under its shell tool's own. It needs no Remote Control.
 
 Selectors are CSS selectors; quote them in the shell. Anywhere a command takes a selector, `--ref` takes a ref from `snapshot` in its place: `kero browser click --ref e5`. An element keeps its ref until the page goes to another, and a ref whose element is gone fails rather than guess another. Commands that need an element wait for it to appear, and `--timeout` (default `10s`) sets how long they, and the page loads, may take. `type` and `eval` take `-` for text from stdin.
 
