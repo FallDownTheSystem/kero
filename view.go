@@ -702,6 +702,10 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	if g != nil {
 		tip += "\n" + gitSummary(g)
 	}
+	linked := inWorktree(s, g)
+	if linked {
+		tip += "\n" + locales.SidebarInWorktree()
+	}
 	pointerTooltip(c, row, "tip-"+s.ID, tip)
 	row.ContextMenu(func(m *ui.Menu) { a.sessionMenu(m, s) })
 	row.Children(func() {
@@ -762,11 +766,19 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 				if msg {
 					fg = pal.textMuted
 				}
-				ui.Text(c, line).FontSize(12).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0)
+				ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+					if linked {
+						worktreeMark(c, pal)
+					}
+					ui.Text(c, line).FontSize(12).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+				})
 			})
 		} else {
 			name()
 			reviewBadge(c, pal, s)
+			if linked {
+				worktreeMark(c, pal)
+			}
 			// A branch of its own, as an agent's in a worktree, by the name.
 			if b := offBranch(g); b != "" {
 				ui.Text(c, b).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(3).MinWidth(24).MaxWidth(120)
@@ -884,6 +896,18 @@ func (a *App) paneRow(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pa
 // rowDetail is the second line of a session's detailed row: its program's
 // status message, else its worktree's branch and changes, else its folder,
 // dir. msg tells it is a message, which reads stronger than the others.
+// inWorktree reports whether a session works in a linked git worktree:
+// one kero made for it, or one it was started in.
+func inWorktree(s *proto.Session, g *proto.GitInfo) bool {
+	return s.Worktree != nil || g != nil && g.Linked
+}
+
+// worktreeMark marks a session's row as in a worktree of its own, apart
+// from the project's folder.
+func worktreeMark(c *ui.Context, pal *palette) {
+	ui.Icon(c, worktreeIcon).Size(12, 12).TextColor(pal.accent).Shrink(0)
+}
+
 func rowDetail(s *proto.Session, g *proto.GitInfo, dir string) (line string, msg bool) {
 	if s.Message != "" {
 		// A notification's text can run over lines: the row has one.

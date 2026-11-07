@@ -1790,6 +1790,16 @@ func (msgs Messages) SidebarShowPanes() string {
 	return Catalog.Format(msgs.locale, "sidebarShowPanes", nil)
 }
 
+// SidebarInWorktree says "In a git worktree of its own"
+// in the language the app shows.
+func SidebarInWorktree() string { return In(i18n.Locale()).SidebarInWorktree() }
+
+// SidebarInWorktree says "In a git worktree of its own"
+// in the language of msgs.
+func (msgs Messages) SidebarInWorktree() string {
+	return Catalog.Format(msgs.locale, "sidebarInWorktree", nil)
+}
+
 // SidebarHidePanes says "Hide Panes"
 // in the language the app shows.
 func SidebarHidePanes() string { return In(i18n.Locale()).SidebarHidePanes() }
@@ -6130,6 +6140,48 @@ func (msgs Messages) NewSessionPickBranch() string {
 	return Catalog.Format(msgs.locale, "newSessionPickBranch", nil)
 }
 
+// NewSessionStartFrom says "Start from"
+// in the language the app shows.
+func NewSessionStartFrom() string { return In(i18n.Locale()).NewSessionStartFrom() }
+
+// NewSessionStartFrom says "Start from"
+// in the language of msgs.
+func (msgs Messages) NewSessionStartFrom() string {
+	return Catalog.Format(msgs.locale, "newSessionStartFrom", nil)
+}
+
+// NewSessionNewBranch says "New branch"
+// in the language the app shows.
+func NewSessionNewBranch() string { return In(i18n.Locale()).NewSessionNewBranch() }
+
+// NewSessionNewBranch says "New branch"
+// in the language of msgs.
+func (msgs Messages) NewSessionNewBranch() string {
+	return Catalog.Format(msgs.locale, "newSessionNewBranch", nil)
+}
+
+// NewSessionBranchPlaceholder says "feature/name"
+// in the language the app shows.
+func NewSessionBranchPlaceholder() string { return In(i18n.Locale()).NewSessionBranchPlaceholder() }
+
+// NewSessionBranchPlaceholder says "feature/name"
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchPlaceholder() string {
+	return Catalog.Format(msgs.locale, "newSessionBranchPlaceholder", nil)
+}
+
+// NewSessionBranchUnnamed says "Name the branch, and Kero creates it from {base}, in a new worktree."
+// in the language the app shows.
+func NewSessionBranchUnnamed(base string) string {
+	return In(i18n.Locale()).NewSessionBranchUnnamed(base)
+}
+
+// NewSessionBranchUnnamed says "Name the branch, and Kero creates it from {base}, in a new worktree."
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchUnnamed(base string) string {
+	return Catalog.Format(msgs.locale, "newSessionBranchUnnamed", map[string]any{"base": base})
+}
+
 // NewSessionDefaultBranch says "the default branch"
 // in the language the app shows.
 func NewSessionDefaultBranch() string { return In(i18n.Locale()).NewSessionDefaultBranch() }
@@ -6176,16 +6228,6 @@ func (msgs Messages) NewSessionBranchInUse(branch string, path string) string {
 	return Catalog.Format(msgs.locale, "newSessionBranchInUse", map[string]any{"branch": branch, "path": path})
 }
 
-// NewSessionBranchInUseChoice says "Where to start the session"
-// in the language the app shows.
-func NewSessionBranchInUseChoice() string { return In(i18n.Locale()).NewSessionBranchInUseChoice() }
-
-// NewSessionBranchInUseChoice says "Where to start the session"
-// in the language of msgs.
-func (msgs Messages) NewSessionBranchInUseChoice() string {
-	return Catalog.Format(msgs.locale, "newSessionBranchInUseChoice", nil)
-}
-
 // NewSessionOpenThere says "Open in that worktree"
 // in the language the app shows.
 func NewSessionOpenThere() string { return In(i18n.Locale()).NewSessionOpenThere() }
@@ -6194,18 +6236,6 @@ func NewSessionOpenThere() string { return In(i18n.Locale()).NewSessionOpenThere
 // in the language of msgs.
 func (msgs Messages) NewSessionOpenThere() string {
 	return Catalog.Format(msgs.locale, "newSessionOpenThere", nil)
-}
-
-// NewSessionNewBranchFrom says "New branch from {branch}"
-// in the language the app shows.
-func NewSessionNewBranchFrom(branch string) string {
-	return In(i18n.Locale()).NewSessionNewBranchFrom(branch)
-}
-
-// NewSessionNewBranchFrom says "New branch from {branch}"
-// in the language of msgs.
-func (msgs Messages) NewSessionNewBranchFrom(branch string) string {
-	return Catalog.Format(msgs.locale, "newSessionNewBranchFrom", map[string]any{"branch": branch})
 }
 
 // NewSessionBranchExists says "A branch named {branch} already exists."

@@ -50,6 +50,7 @@ var (
 	closeIcon        = glyph("f7-xmark")
 	swapIcon         = glyph("f7-arrow-right-arrow-left")
 	branchIcon       = glyph("f7-arrow-branch")
+	worktreeIcon     = glyph("lucide-folder-git-2")
 	diffIcon         = glyph("octicon-file-diff-16")
 	treeIcon         = glyph("f7-list-bullet-indent")
 	collapseIcon     = glyph("f7-rectangle-compress-vertical")

@@ -240,6 +240,8 @@ type GitInfo struct {
 	// Default is the repository's default branch: origin's HEAD, else
 	// main or master.
 	Default string `json:"default,omitempty"`
+	// Linked is whether Root is a linked worktree, not the main checkout.
+	Linked bool `json:"linked,omitempty"`
 	// Files changed since HEAD, untracked ones too, and the lines they
 	// add and remove.
 	Files   int `json:"files,omitempty"`

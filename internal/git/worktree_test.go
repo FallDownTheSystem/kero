@@ -12,7 +12,8 @@ import (
 
 // A session's worktree starts on a new branch from its base; what
 // removing it would lose counts its changes and the commits nothing else
-// has, and removing it deletes its branch only once the base has it.
+// has, and removing it deletes its branch only once the base has it; it
+// is linked, the main checkout not.
 func TestWorktree(t *testing.T) {
 	ctx := context.Background()
 	r := repo(t, map[string]string{"a.txt": "a\n"})
@@ -51,6 +52,9 @@ func TestWorktree(t *testing.T) {
 	}
 	if wt.Main() != r.Root {
 		t.Errorf("the worktree's main checkout %q", wt.Main())
+	}
+	if !wt.Linked() || r.Linked() {
+		t.Errorf("linked: the worktree %v, the main checkout %v", wt.Linked(), r.Linked())
 	}
 	cos, err := r.Checkouts(ctx)
 	if err != nil {

@@ -602,15 +602,24 @@ func TestNewSessionDialog(t *testing.T) {
 	}
 
 	w = open("New Session in Worktree…")
-	if w.sel.name != "main" || w.sel.worktree != "/tmp" || !tt.HasText("Open in that worktree") {
-		t.Fatalf("chose %+v; texts %q", w.sel, tt.Texts())
+	if w.sel.name != "main" || !w.fresh || w.newBranch != "" || !tt.HasText("Start from") || !tt.HasText("Name the branch, and Kero creates it from main, in a new worktree.") {
+		t.Fatalf("chose %+v, new branch %v %q; texts %q", w.sel, w.fresh, w.newBranch, tt.Texts())
 	}
 	shot(t, tt, "new-session-worktree")
 	tt.Key(0, ui.KeyEnter)
 	tt.Frame()
 	if a.newAsk == nil {
-		t.Fatal("started a session on a branch checked out in the main folder")
+		t.Fatal("started a session on a new branch of no name")
 	}
+	// Without a new branch, the folder's branch, checked out there, may
+	// only open that worktree.
+	w.fresh = false
+	tt.Frame()
+	if !tt.HasText("Open in that worktree") || tt.HasText("Start from") {
+		t.Fatalf("texts %q", tt.Texts())
+	}
+	w.fresh = true
+	tt.Frame()
 	// The branch list, the switcher's, names a new branch; Escape closes
 	// it alone.
 	if err := tt.Click("main"); err != nil {
@@ -631,8 +640,8 @@ func TestNewSessionDialog(t *testing.T) {
 	tt.Frame()
 	tt.Key(0, ui.KeyEnter)
 	tt.Frame()
-	if w.sel.name != "topic" || !w.sel.create || !tt.HasText("Kero creates the branch topic from the default branch") {
-		t.Fatalf("chose %+v; texts %q", w.sel, tt.Texts())
+	if w.sel.name != "main" || !w.fresh || w.newBranch != "topic" || !tt.HasText("Kero creates the branch topic from main") {
+		t.Fatalf("chose %+v, new branch %v %q; texts %q", w.sel, w.fresh, w.newBranch, tt.Texts())
 	}
 	if err := tt.Click("feat"); err != nil {
 		t.Fatalf("%v; texts %q", err, tt.Texts())
@@ -716,19 +725,31 @@ func TestNewSessionRemoveWorktree(t *testing.T) {
 	}
 }
 
-// A branch checked out in another worktree, as git checks a branch out in
-// one alone, starts the session in that worktree, or in a new one on a new
-// branch from it, of a name no branch has; another branch is checked out
-// as it is, a remote's as its local branch, and one the user names is made
-// from the dialog's base.
+// A new branch, of a name no branch has, starts from the branch chosen, a
+// remote's too; with none chosen, from the dialog's base. Without a new
+// branch, a branch checked out in another worktree, as git checks a branch
+// out in one alone, starts nothing; another is checked out as it is, a
+// remote's as its local branch. The branch chosen first is the default
+// branch, else the folder's, or with the base "HEAD" the folder's.
 func TestNewSessionBranch(t *testing.T) {
-	list := &proto.GitBranches{Branches: []proto.GitBranch{
+	list := &proto.GitBranches{Default: "dev", Branches: []proto.GitBranch{
 		{Name: "main", Current: true, Worktree: "/src/app"},
 		{Name: "main-2"},
 		{Name: "fix", Worktree: "/src/wt/fix"},
 		{Name: "origin/feat", Remote: true},
+		{Name: "origin/dev", Remote: true},
 	}}
-	w := &newSessionAsk{kind: kindTerminal, worktree: true, dir: "/src/app", base: "HEAD", p: proto.CreateParams{Project: "p1"}}
+	if b := startBranch(list, ""); b == nil || b.Name != "origin/dev" {
+		t.Errorf("the default branch's remote: %+v", b)
+	}
+	if b := startBranch(list, "HEAD"); b == nil || b.Name != "main" {
+		t.Errorf("the folder's branch: %+v", b)
+	}
+	if b := startBranch(&proto.GitBranches{Branches: list.Branches}, ""); b == nil || b.Name != "main" {
+		t.Errorf("no default branch: %+v", b)
+	}
+
+	w := &newSessionAsk{kind: kindTerminal, worktree: true, dir: "/src/app", base: "HEAD", fresh: true, p: proto.CreateParams{Project: "p1"}}
 	w.branches.list = list
 	row := func(name string) branchRow {
 		for i := range list.Branches {
@@ -740,37 +761,42 @@ func TestNewSessionBranch(t *testing.T) {
 		return branchRow{}
 	}
 
-	w.pickBranch(row("main"))
 	if _, ok := w.params(""); ok {
-		t.Error("starts on a branch in use, unasked")
+		t.Error("starts a new branch of no name")
 	}
-	if w.newBranch != "main-3" {
-		t.Errorf("the new branch's name %q, want one no branch has", w.newBranch)
+	w.newBranch = "topic"
+	if p, ok := w.params(""); !ok || p.Dir != "/src/app" || p.Worktree != "topic" || p.Base != "HEAD" {
+		t.Errorf("from the base: %+v %v", p, ok)
 	}
-	w.choice = "open"
-	if p, ok := w.params(""); !ok || p.Dir != "/src/app" || p.Worktree != "" {
-		t.Errorf("open there: %+v %v", p, ok)
+	w.pickBranch(row("main"))
+	if p, ok := w.params(""); !ok || p.Worktree != "topic" || p.Base != "main" || !w.fresh {
+		t.Errorf("from a branch in use: %+v %v", p, ok)
 	}
-	w.choice = "new"
-	if p, ok := w.params(""); !ok || p.Dir != "/src/app" || p.Worktree != "main-3" || p.Base != "main" {
-		t.Errorf("a new branch: %+v %v", p, ok)
+	w.pickBranch(row("origin/feat"))
+	if p, ok := w.params(""); !ok || p.Worktree != "topic" || p.Base != "origin/feat" {
+		t.Errorf("from a remote's branch: %+v %v", p, ok)
 	}
-	w.newBranch = "main-2"
+	w.newBranch = " main-2 "
 	if _, ok := w.params(""); ok {
 		t.Error("makes a branch there is")
 	}
+	w.pickBranch(branchRow{create: "named"})
+	if p, ok := w.params(""); !ok || p.Worktree != "named" || p.Base != "origin/feat" {
+		t.Errorf("a branch named in the list: %+v %v", p, ok)
+	}
 
+	w.fresh = false
+	w.pickBranch(row("main"))
+	if _, ok := w.params(""); ok {
+		t.Error("starts on a branch in use")
+	}
 	w.pickBranch(row("main-2"))
-	if p, ok := w.params(""); !ok || p.Worktree != "main-2" || p.Base != "" || w.choice != "" {
+	if p, ok := w.params(""); !ok || p.Worktree != "main-2" || p.Base != "" {
 		t.Errorf("a free branch: %+v %v", p, ok)
 	}
 	w.pickBranch(row("origin/feat"))
 	if p, ok := w.params(""); !ok || p.Worktree != "feat" || p.Base != "origin/feat" || !w.sel.is(&list.Branches[3]) {
 		t.Errorf("a remote's branch: %+v %v", p, ok)
-	}
-	w.pickBranch(branchRow{create: "topic"})
-	if p, ok := w.params(""); !ok || p.Worktree != "topic" || p.Base != "HEAD" || p.Dir != "/src/app" {
-		t.Errorf("a branch named: %+v %v", p, ok)
 	}
 	if p, ok := w.params("/src/wt/fix"); !ok || p.Dir != "/src/wt/fix" || p.Worktree != "" {
 		t.Errorf("an existing worktree: %+v %v", p, ok)
@@ -780,6 +806,25 @@ func TestNewSessionBranch(t *testing.T) {
 	w.kind = kindBrowser
 	if p, ok := w.params(""); !ok || p.Worktree != "" || p.Dir != "" || p.URL != proto.BlankURL {
 		t.Errorf("a browser: %+v %v", p, ok)
+	}
+}
+
+// A session's row marks it as in a worktree: one kero made for it, or a
+// linked one it was started in, not the main checkout.
+func TestInWorktree(t *testing.T) {
+	for _, c := range []struct {
+		s    proto.Session
+		g    *proto.GitInfo
+		want bool
+	}{
+		{proto.Session{}, nil, false},
+		{proto.Session{}, &proto.GitInfo{Root: "/src/app"}, false},
+		{proto.Session{}, &proto.GitInfo{Root: "/src/wt", Linked: true}, true},
+		{proto.Session{Worktree: &proto.Worktree{Path: "/src/app/.kero/worktrees/x"}}, nil, true},
+	} {
+		if got := inWorktree(&c.s, c.g); got != c.want {
+			t.Errorf("%+v %+v: %v", c.s.Worktree, c.g, got)
+		}
 	}
 }
 
