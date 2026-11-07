@@ -233,7 +233,7 @@ func (g *gitFollow) refresh(rs *repoStatus, stamp string, now time.Time) {
 	rs.slow = 0
 	info := &proto.GitInfo{
 		Root: rs.repo.Root, Branch: st.Branch, Head: st.Head, Upstream: st.Upstream,
-		Ahead: st.Ahead, Behind: st.Behind, Default: rs.repo.DefaultBranch(),
+		Ahead: st.Ahead, Behind: st.Behind, Default: rs.repo.DefaultBranch(), Linked: rs.repo.Linked(),
 		Files: st.Files, Added: st.Added, Removed: st.Removed, Staged: st.Staged, State: st.State,
 	}
 	if rs.info == nil || *rs.info != *info {

@@ -23,6 +23,10 @@ func (r Repo) Main() string {
 	return filepath.Dir(r.Common)
 }
 
+// Linked reports whether the worktree is a linked one, whose git directory
+// is its own under the repository's, not the main checkout.
+func (r Repo) Linked() bool { return r.GitDir != r.Common }
+
 // CheckBranch reports whether name may name a new branch.
 func CheckBranch(ctx context.Context, dir, name string) error {
 	if name == "" || strings.HasPrefix(name, "-") {

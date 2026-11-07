@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"errors"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,8 +17,8 @@ import (
 
 // The New Session dialog, which a project's + opens: an agent session, a
 // terminal, a new file or a browser, in the project's folder; an agent or
-// a terminal also in a git worktree, a new one on the branch the user
-// picks, or one the repository has already.
+// a terminal also in a git worktree, a new one on a new branch the user
+// names or on the branch they pick, or one the repository has already.
 
 // The kinds of session the dialog starts.
 const (
@@ -42,17 +41,15 @@ type newSessionAsk struct {
 	kind     string
 	agent    string
 	worktree bool
-	// base is what a branch the user names starts from: "" the default
+	// base is what a new branch starts from by default: "" the default
 	// branch, "HEAD" dir's (the worktree-base setting).
 	base string
 	// branches are the repository's, but its tags, which the branch list
-	// shows; sel the one chosen.
-	branches branchMenu
-	sel      branchSel
-	// choice is what a branch checked out in another worktree does, as git
-	// checks a branch out in one alone: "open" starts the session in that
-	// worktree, "new" makes newBranch from the branch in a new one.
-	choice    string
+	// shows; sel the one chosen, which a new worktree checks out, or with
+	// fresh, which the new branch newBranch starts from.
+	branches  branchMenu
+	sel       branchSel
+	fresh     bool
 	newBranch string
 	trees     *proto.GitWorktrees
 	// loads counts the loads of the branches and worktrees, of which the
@@ -62,14 +59,12 @@ type newSessionAsk struct {
 	gitErr string
 }
 
-// branchSel is the branch a new worktree checks out: name, a local branch
-// as it is, unless create makes it from the dialog's base, or from names
-// what it starts at, a remote's branch for its local one. worktree is
-// where the local branch is checked out already, "" for nowhere.
+// branchSel is a branch of the branch list: name, a local branch, unless
+// from names the remote's branch it is the local one of. worktree is where
+// the local branch is checked out already, "" for nowhere.
 type branchSel struct {
 	name     string
 	from     string
-	create   bool
 	worktree string
 }
 
@@ -78,8 +73,11 @@ func (s branchSel) is(b *proto.GitBranch) bool {
 	if b.Remote {
 		return s.from == b.Name
 	}
-	return !s.create && s.from == "" && s.name == b.Name
+	return s.from == "" && s.name == b.Name
 }
+
+// ref is the branch as git names it, a remote's by its remote.
+func (s branchSel) ref() string { return cmp.Or(s.from, s.name) }
 
 // newWorktreeSession opens the New Session dialog with its worktree
 // option on, for the project of the session the user is in.
@@ -101,7 +99,7 @@ func (a *App) askNewSession(h *host, project, dir string, worktree bool) {
 			dir = pr.Dir
 		}
 	}
-	w := &newSessionAsk{open: true, host: h, p: p, dir: dir, kind: kindAgent, agent: a.set.DefaultAgent, worktree: worktree}
+	w := &newSessionAsk{open: true, host: h, p: p, dir: dir, kind: kindAgent, agent: a.set.DefaultAgent, worktree: worktree, fresh: true}
 	if a.set.WorktreeBase == "current" {
 		w.base = "HEAD"
 	}
@@ -136,8 +134,8 @@ func (a *App) loadNewSession(w *newSessionAsk) {
 			}
 			bs.Branches = slices.DeleteFunc(bs.Branches, func(b proto.GitBranch) bool { return b.Tag })
 			w.branches.list, w.trees = &bs, dialogTrees(trees)
-			for i := range bs.Branches {
-				if b := &bs.Branches[i]; b.Current && w.sel.name == "" {
+			if w.sel.name == "" {
+				if b := startBranch(&bs, w.base); b != nil {
 					w.pickBranch(branchRow{b: b})
 				}
 			}
@@ -198,30 +196,41 @@ func (a *App) removeDialogWorktree(w *newSessionAsk, t proto.GitWorktree, branch
 	a.askRemoveWorktree(h, t, branch, run, nil)
 }
 
-// pickBranch chooses a row of the branch list.
+// startBranch is the branch the dialog chooses first, as base says: the
+// repository's default branch, its remote's when it has no local one, or
+// the folder's; the folder's, too, when the default is unknown.
+func startBranch(list *proto.GitBranches, base string) *proto.GitBranch {
+	var cur, def, remote *proto.GitBranch
+	for i := range list.Branches {
+		b := &list.Branches[i]
+		if b.Current {
+			cur = b
+		}
+		switch {
+		case list.Default == "":
+		case !b.Remote && b.Name == list.Default:
+			def = b
+		case b.Remote && b.Name == "origin/"+list.Default:
+			remote = b
+		}
+	}
+	if base == "HEAD" {
+		return cur
+	}
+	return cmp.Or(def, remote, cur)
+}
+
+// pickBranch chooses a row of the branch list; the row naming a branch to
+// make names the new branch, which starts from the branch chosen.
 func (w *newSessionAsk) pickBranch(r branchRow) {
-	w.choice = ""
 	switch {
 	case r.create != "":
-		w.sel = branchSel{name: r.create, create: true}
+		w.fresh, w.newBranch = true, r.create
 	case r.b.Remote:
 		_, name, _ := strings.Cut(r.b.Name, "/")
 		w.sel = branchSel{name: name, from: r.b.Name}
 	default:
 		w.sel = branchSel{name: r.b.Name, worktree: r.b.Worktree}
-		if r.b.Worktree != "" {
-			w.newBranch = freeBranch(w.branches.list, r.b.Name)
-		}
-	}
-}
-
-// freeBranch is a name for a new branch from branch that no local branch
-// has: branch-2, else branch-3 and on.
-func freeBranch(list *proto.GitBranches, branch string) string {
-	for i := 2; ; i++ {
-		if name := branch + "-" + strconv.Itoa(i); !hasLocalBranch(list, name) {
-			return name
-		}
 	}
 }
 
@@ -243,9 +252,9 @@ func (w *newSessionAsk) worktreeKind() bool { return w.kind == kindAgent || w.ki
 
 // params are the session the dialog starts as it stands, in there when
 // it isn't "", one of the repository's worktrees; ok, whether it may
-// start: not while the branch it would check out is unknown, or is
-// checked out in another worktree and the user didn't say what to do. A
-// new file's path is found as it starts.
+// start: not while the new branch has no name, or one a branch has, nor
+// while the branch it would check out is unknown or checked out in
+// another worktree. A new file's path is found as it starts.
 func (w *newSessionAsk) params(there string) (p proto.CreateParams, ok bool) {
 	p = w.p
 	switch w.kind {
@@ -269,23 +278,16 @@ func (w *newSessionAsk) params(there string) (p proto.CreateParams, ok bool) {
 	p.Dir = w.dir
 	s := w.sel
 	switch {
-	case s.name == "":
-		return p, false
-	case s.create:
-		p.Worktree, p.Base = s.name, w.base
-	case s.worktree != "":
-		switch w.choice {
-		case "open":
-			p.Dir = s.worktree
-		case "new":
-			name := strings.TrimSpace(w.newBranch)
-			if name == "" || hasLocalBranch(w.branches.list, name) {
-				return p, false
-			}
-			p.Worktree, p.Base = name, s.name
-		default:
+	case w.fresh:
+		name := strings.TrimSpace(w.newBranch)
+		if name == "" || hasLocalBranch(w.branches.list, name) {
 			return p, false
 		}
+		// With no branch to start from, as a detached folder with no
+		// default branch, the new one starts from the dialog's base.
+		p.Worktree, p.Base = name, cmp.Or(s.ref(), w.base)
+	case s.name == "", s.worktree != "":
+		return p, false
 	default:
 		p.Worktree, p.Base = s.name, s.from
 	}
@@ -439,9 +441,9 @@ func (a *App) kindDetail(w *newSessionAsk) string {
 }
 
 // worktreeFields are the worktree option of an agent's or a terminal's
-// session: the switch; then the branch, with what checking it out does,
-// and the repository's worktrees, a click on one starting the session
-// there.
+// session: the switch; then the branch, the New Branch switch and the new
+// branch's name, with what starting does, and the repository's worktrees,
+// a click on one starting the session there.
 func (a *App) worktreeFields(c *ui.Context, pal *palette, w *newSessionAsk, start *bool, there *string) {
 	formRow(c, pal, "worktree", locales.NewSessionWorktree(), func() { toggle(c, &w.worktree, pal) })
 	if !w.worktree {
@@ -455,16 +457,17 @@ func (a *App) worktreeFields(c *ui.Context, pal *palette, w *newSessionAsk, star
 		ui.Row(c).Height(40).Center().Children(func() { ui.Spinner(c) })
 		return
 	}
-	formRow(c, pal, "branch", locales.NewSessionBranch(), func() {
+	branchLabel := locales.NewSessionBranch()
+	if w.fresh {
+		branchLabel = locales.NewSessionStartFrom()
+	}
+	formRow(c, pal, "branch", branchLabel, func() {
 		m := &w.branches
-		label := w.sel.name
-		switch {
-		case w.sel.from != "":
-			label = w.sel.from
-		case label == "":
+		label := w.sel.ref()
+		if label == "" {
 			label = locales.NewSessionPickBranch()
 		}
-		trig := ui.ButtonBase(c.Key("branch")).MaxWidth(260).Label(locales.NewSessionBranch())
+		trig := ui.ButtonBase(c.Key("branch")).MaxWidth(260).Label(branchLabel)
 		popupFace(c, trig, label, m.open, pal)
 		if trig.Clicked() {
 			if m.open {
@@ -480,7 +483,16 @@ func (a *App) worktreeFields(c *ui.Context, pal *palette, w *newSessionAsk, star
 		}
 		a.branchList(c, pal, m, trig, branchListOpts{key: "wt-branch", host: w.host, checked: w.sel.is, pick: w.pickBranch})
 	})
-	a.branchNote(c, pal, w, start)
+	formRow(c, pal, "fresh", locales.NewSessionNewBranch(), func() { toggle(c, &w.fresh, pal).Label(locales.NewSessionNewBranch()) })
+	if w.fresh {
+		formRow(c, pal, "name", locales.GitBranchName(), func() {
+			in := textField(c, "new-branch", &w.newBranch, locales.NewSessionBranchPlaceholder(), 260, pal)
+			if in.Submitted() {
+				*start = true
+			}
+		})
+	}
+	a.branchNote(c, pal, w, there)
 	if w.trees == nil || len(w.trees.Worktrees) == 0 {
 		return
 	}
@@ -517,26 +529,33 @@ func (a *App) worktreeFields(c *ui.Context, pal *palette, w *newSessionAsk, star
 	})
 }
 
-// branchNote says what the branch chosen does: made, from what; checked
-// out as it is; or, checked out in another worktree, the choice of that
-// worktree or a new branch from it.
-func (a *App) branchNote(c *ui.Context, pal *palette, w *newSessionAsk, start *bool) {
+// branchNote says what starting does: make the new branch, from what;
+// check the branch chosen out as it is; or, as it is checked out in another
+// worktree, nothing, but open that worktree.
+func (a *App) branchNote(c *ui.Context, pal *palette, w *newSessionAsk, there *string) {
 	s := w.sel
 	note := func(text string) { ui.Text(c, text).FontSize(12.5).TextColor(pal.textMuted).LineHeight(1.4) }
+	if w.fresh {
+		base := s.ref()
+		switch {
+		case base != "":
+		case w.base == "HEAD":
+			base = "HEAD"
+		default:
+			base = locales.NewSessionDefaultBranch()
+		}
+		switch name := strings.TrimSpace(w.newBranch); {
+		case name == "":
+			note(locales.NewSessionBranchUnnamed(base))
+		case hasLocalBranch(w.branches.list, name):
+			ui.Text(c, locales.NewSessionBranchExists(name)).FontSize(12.5).TextColor(pal.attention).LineHeight(1.4)
+		default:
+			note(locales.NewSessionBranchNew(name, base))
+		}
+		return
+	}
 	switch {
 	case s.name == "":
-		return
-	case s.create:
-		base := locales.NewSessionDefaultBranch()
-		if w.base == "HEAD" {
-			base = "HEAD"
-			for _, b := range w.branches.list.Branches {
-				if b.Current {
-					base = b.Name
-				}
-			}
-		}
-		note(locales.NewSessionBranchNew(s.name, base))
 		return
 	case s.from != "":
 		note(locales.NewSessionBranchNew(s.name, s.from))
@@ -545,28 +564,17 @@ func (a *App) branchNote(c *ui.Context, pal *palette, w *newSessionAsk, start *b
 		note(locales.NewSessionBranchAsIs(s.name))
 		return
 	}
-	box := ui.Column(c.Key("in-use")).Padding(10, 12).Gap(8).Radius(8).AlignItems(ui.Stretch).Background(pal.attention.Alpha(0.1))
+	box := ui.Column(c.Key("in-use")).Padding(10, 12).Gap(8).Radius(8).AlignItems(ui.Start).Background(pal.attention.Alpha(0.1))
 	box.Children(func() {
-		ui.Row(c).Gap(8).AlignItems(ui.Start).Children(func() {
+		ui.Row(c).Gap(8).AlignItems(ui.Start).AlignSelf(ui.Stretch).Children(func() {
 			ui.Icon(c, warningIcon).Size(13, 13).TextColor(pal.attention).Shrink(0).Margin(2, 0, 0, 0)
 			ui.Text(c, locales.NewSessionBranchInUse(s.name, w.host.shortDir(s.worktree))).FontSize(12.5).TextColor(pal.text).LineHeight(1.4).Grow(1).MinWidth(0)
 		})
-		ui.RadioGroup(c.Key("choice"), func() {
-			choiceRow(c, pal, &w.choice, "open", locales.NewSessionOpenThere())
-			choiceRow(c, pal, &w.choice, "new", locales.NewSessionNewBranchFrom(s.name))
-		}).Gap(4).Label(locales.NewSessionBranchInUseChoice())
-		if w.choice != "new" {
-			return
-		}
-		ui.Row(c).Margin(0, 0, 0, 22).Children(func() {
-			in := textField(c, "new-branch", &w.newBranch, locales.GitBranchName(), 0, pal)
-			if in.Submitted() {
-				*start = true
+		ui.Row(c).Margin(0, 0, 0, 21).Children(func() {
+			if sizedButton(c, "open-there", locales.NewSessionOpenThere(), "", false, 26, 7, pal) {
+				*there = s.worktree
 			}
 		})
-		if name := strings.TrimSpace(w.newBranch); hasLocalBranch(w.branches.list, name) {
-			ui.Text(c, locales.NewSessionBranchExists(name)).FontSize(12).TextColor(pal.attention).Margin(0, 0, 0, 22)
-		}
 	})
 }
 
@@ -753,20 +761,5 @@ func (a *App) branchList(c *ui.Context, pal *palette, m *branchMenu, trig ui.Ele
 				}
 			}
 		})
-	})
-}
-
-// choiceRow is a radio button of value, with its label, in a radio group.
-func choiceRow(c *ui.Context, pal *palette, choice *string, value, label string) {
-	r := ui.RadioBase(c.Key(value), choice, value).Gap(8).Padding(3, 0).AlignItems(ui.Center).Label(label)
-	on := *choice == value
-	r.Children(func() {
-		dot := ui.Box(c).Size(14, 14).Radius(7).Center().Shrink(0)
-		if on {
-			dot.Background(pal.accentBg).Children(func() { ui.Box(c).Size(6, 6).Radius(3).Background(pal.onAccent) })
-		} else {
-			dot.InsetShadow(0, 0, 0, 1, pal.text.Alpha(0.3))
-		}
-		ui.Text(c, label).FontSize(12.5).TextColor(pal.text).SingleLine().Ellipsis("…").MinWidth(0)
 	})
 }
