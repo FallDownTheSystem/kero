@@ -453,6 +453,30 @@ func (a *App) rightSidebar(c *ui.Context, pal *palette, s *proto.Session) {
 	case full > w:
 		compact = tabsIcons
 	}
+	// Narrower than their icons, zoom and hide fold into a menu, and
+	// narrower still, the tabs but the chosen one: they would go under
+	// the window controls.
+	tabsW := float32(len(tabs)) * (tabIconW + 2)
+	trailMenu := compact == tabsIcons && 2*controlW+12+tabsW > w
+	tabsMenu := trailMenu && controlW+12+tabsW > w
+	hide := locales.RightSidebarHide()
+	// The tabs that show: all of them, else as many as fit beside the
+	// menu's button, the chosen one among them, in their order.
+	shownTabs := tabs
+	if tabsMenu {
+		fit := max(int((w-controlW-12)/(tabIconW+2)), 1)
+		shownTabs = nil
+		others := fit - 1
+		for _, t := range tabs {
+			switch {
+			case t.id == tabOf(tab):
+				shownTabs = append(shownTabs, t)
+			case others > 0:
+				shownTabs = append(shownTabs, t)
+				others--
+			}
+		}
+	}
 	ui.Row(c.Key("right-bar")).Height(topBar).Shrink(0).AlignItems(ui.Stretch).DragWindow().Children(func() {
 		bar := ui.Row(c.Key("shown")).Width(shown).Shrink(0).AlignItems(ui.Stretch).ClipX()
 		if left {
@@ -461,24 +485,50 @@ func (a *App) rightSidebar(c *ui.Context, pal *palette, s *proto.Session) {
 		}
 		bar.Children(func() {
 			ui.Row(c.Key("tabs")).Width(w).Shrink(0).AlignItems(ui.Center).Padding(0, 0, 0, 10).Gap(2).Children(func() {
-				for _, t := range tabs {
+				for _, t := range shownTabs {
 					a.tabButton(c, pal, t, tab, compact)
 				}
 				ui.Spacer(c)
+				zoomLabel, zoomSVG := locales.SideBarZoom(), zoomIcon
 				if a.side.barWide {
-					iconButton(c, "zoom-right", unzoomIcon, locales.PaneShowAll(), pal, func() { a.side.barWide = false })
-				} else {
-					iconButton(c, "zoom-right", zoomIcon, locales.SideBarZoom(), pal, func() {
-						a.side.barWide = true
+					zoomLabel, zoomSVG = locales.PaneShowAll(), unzoomIcon
+				}
+				zoom := func() {
+					a.side.barWide = !a.side.barWide
+					if a.side.barWide {
 						// The panes it hides can't keep the keyboard.
 						a.paneRef("side-bar").Focus()
-					})
+					}
 				}
+				if trailMenu {
+					moreButton(c, pal, "more-right", func(m *ui.Menu) {
+						if tabsMenu {
+							for _, t := range tabs {
+								if slices.ContainsFunc(shownTabs, func(s sideTabInfo) bool { return s.id == t.id }) {
+									continue
+								}
+								if a.menuShortcut(m.Item(t.label), sideAction(t.id)).Chosen() {
+									id := t.id
+									a.defer_(func() { a.showTab(id) })
+								}
+							}
+							m.Separator()
+						}
+						if m.Item(zoomLabel).Chosen() {
+							zoom()
+						}
+						if a.menuShortcut(m.Item(hide), "rightSidebar.toggle").Chosen() {
+							a.toggleRight()
+						}
+					})
+					return
+				}
+				iconButton(c, "zoom-right", zoomSVG, zoomLabel, pal, zoom)
 				svg := sidebarRightIcon
 				if left {
 					svg = sidebarIcon
 				}
-				iconButton(c, "hide-right", svg, a.tip(locales.RightSidebarHide(), "rightSidebar.toggle"), pal, a.toggleRight)
+				iconButton(c, "hide-right", svg, a.tip(hide, "rightSidebar.toggle"), pal, a.toggleRight)
 			})
 		})
 	})

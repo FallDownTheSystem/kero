@@ -596,7 +596,7 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		a.paneRef(p.ID).Focus()
 	}
 	h.Children(func() {
-		room := a.headerRoom(c, p, pad, titleRoom, top && right, multi)
+		room := a.headerRoom(c, p, pad, titleRoom, titleLeast, top && right, multi)
 		if top && left {
 			a.sidebarButtons(c, pal, bar, shown)
 		}
@@ -688,10 +688,7 @@ func (a *App) paneHeader(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 			if p.Editor() {
 				a.editorTools(c, pal, s, p)
 			}
-			a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold)
-			if top && right {
-				a.cornerButtons(c, pal, "-h")
-			}
+			a.paneControls(c, pal, s, p, (hovered || focused && multi) && !dragging, multi, room.fold, top && right, nil)
 		})
 		if top && right {
 			a.controlsRoom(c, 8)
@@ -799,34 +796,76 @@ func shortTitle(c *ui.Context, name ui.Element, title string, size float32) {
 	name.Shrink(1).MinWidth(keep)
 }
 
-// paneRoom is how a pane's header fits its width: whether its controls
-// fold into a menu, the width they take as they show, and the room left
-// for its git chip.
+// paneRoom is how a pane's header fits its width: how far its controls
+// fold into a menu, the room it has for them, the width they take as they
+// show, and the room left for its git chip.
 type paneRoom struct {
-	fold     bool
+	fold     paneFold
+	free     float32
 	controls float32
 	chip     float32
+}
+
+// paneFold is how far a header's controls fold into its menu, as its pane
+// narrows.
+type paneFold int
+
+const (
+	foldNone   paneFold = iota // every button shows
+	foldSplits                 // the split buttons go in the menu
+	// foldAll leaves the menu's button alone: zooming and closing go in
+	// the menu too, and the buttons of the window's corner the header has.
+	foldAll
+)
+
+// foldFor is how far controls fold in free room: of a header of one pane
+// of several (multi), with zoom and close.
+func foldFor(free float32, multi bool) paneFold {
+	full, folded := float32(2), float32(1)
+	if multi {
+		full, folded = 4, 3
+	}
+	switch {
+	case free >= full*controlW:
+		return foldNone
+	case free >= folded*controlW:
+		return foldSplits
+	}
+	return foldAll
 }
 
 const (
 	// titleRoom is what a header keeps for its title and folder, which give
 	// up the rest of theirs as the header narrows.
 	titleRoom = 140
+	// titleLeast is the least a title and its status icon narrow to, as a
+	// long title keeps a few letters (shortTitle).
+	titleLeast = 80
 	// editorTitleRoom is what an editor pane's header keeps for its title
 	// beside its file's buttons, which fold into a menu before it has less.
 	editorTitleRoom = 72
 	controlW        = 28 // an icon button's width
-	// browserAddressRoom is what a browser's header keeps for its address.
-	browserAddressRoom = 200
+	// browserAddressRoom is what a browser's header keeps for its address,
+	// browserAddressMin the least it narrows to beside its back, forward
+	// and reload buttons, which fold into the pane's menu before, and
+	// browserAddressNarrow the least it narrows to without them.
+	browserAddressRoom   = 200
+	browserAddressMin    = 120
+	browserAddressNarrow = 56
+	// browserNavW is the width of a browser's back, forward and reload
+	// buttons, with the gap after them.
+	browserNavW = 3*controlW + 8
 )
 
 // headerRoom measures a pane's header as it was last laid out: its card's
 // width, less its padding, lead (what the header keeps for what leads it:
 // its title, or a browser's buttons and address), the corner's buttons and
-// the room of the window's controls (controlsRoom), the status chips, and the controls, folded when
-// they don't fit whole. The controls count while they hide too, so that
-// the chip keeps its form as the pointer comes and goes.
-func (a *App) headerRoom(c *ui.Context, p *proto.Pane, pad, lead float32, controls, multi bool) paneRoom {
+// the room of the window's controls (controlsRoom), the status chips, and
+// the controls, folded when they don't fit whole, and folded whole
+// (foldAll) only where they don't fit beside what leads at its least. The
+// controls count while they hide too, so that the chip keeps its form as
+// the pointer comes and goes.
+func (a *App) headerRoom(c *ui.Context, p *proto.Pane, pad, lead, least float32, controls, multi bool) paneRoom {
 	w := a.paneRef("card-" + p.ID).Bounds(c).W
 	if w <= 0 {
 		// Not laid out yet: as wide as it may be.
@@ -843,20 +882,33 @@ func (a *App) headerRoom(c *ui.Context, p *proto.Pane, pad, lead float32, contro
 	if b := a.paneRef("chips-" + p.ID).Bounds(c).W; b > 0 {
 		used += b + gap
 	}
-	full, folded := float32(2), float32(1)
-	if multi {
-		full, folded = 4, 3
-	}
 	var r paneRoom
-	r.controls = full * controlW
 	// An editor pane's file's buttons take room too, its title keeping
 	// less of its own (editorTitleRoom): a file's name is short.
 	need := float32(0)
 	if f := a.edits[p.ID]; p.Editor() && f != nil && f.toolsW > 0 {
 		need = f.toolsW - (titleRoom - editorTitleRoom)
 	}
-	if w-used < full*controlW+gap+need {
-		r.fold, r.controls = true, folded*controlW
+	r.free = w - used - gap - need
+	r.fold = foldFor(r.free, multi)
+	if r.fold == foldAll && foldFor(r.free+lead-least, multi) != foldAll {
+		// What leads gives up its room before the buttons go.
+		r.fold = foldSplits
+	}
+	switch r.fold {
+	case foldNone:
+		r.controls = 2 * controlW
+	case foldSplits:
+		r.controls = controlW
+	default:
+		r.controls = controlW
+		if controls {
+			// The corner's buttons are in the menu.
+			used -= a.cornerButtonsW() + gap
+		}
+	}
+	if multi && r.fold != foldAll {
+		r.controls += 2 * controlW
 	}
 	if f := a.edits[p.ID]; p.Editor() && f != nil {
 		// An editor pane's file's buttons fold into a menu where the
@@ -874,9 +926,11 @@ func (a *App) headerRoom(c *ui.Context, p *proto.Pane, pad, lead float32, contro
 }
 
 // paneControls are a header's buttons acting on its pane, which show while
-// the pointer is over it. Folded, those that make panes go in a menu, and
-// zooming and closing stay.
-func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, show, multi, fold bool) {
+// the pointer is over it, then the buttons of the window's corner when
+// corner, which always show. Folded, those that make panes go in a menu;
+// folded whole (foldAll), the others too. more, when not nil, adds what
+// else of the header folded to the menu's top.
+func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, show, multi bool, fold paneFold, corner bool, more func(*ui.Menu)) {
 	// The item chosen of a button's menu reaches it only as the button is
 	// built again, which the pointer, over the menu, may have left.
 	show = show || a.menuPane == p.ID
@@ -885,10 +939,10 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 		// An editor pane's file's buttons, before them, stay where they
 		// are as these show and hide.
 		n := float32(2)
-		if fold {
+		if fold != foldNone {
 			n = 1
 		}
-		if multi {
+		if multi && fold != foldAll {
 			n += 2
 		}
 		ctl.Width(n * controlW)
@@ -897,13 +951,13 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 		if !show {
 			return
 		}
-		if fold {
-			a.moreControls(c, pal, s, p)
+		if fold != foldNone {
+			a.moreControls(c, pal, s, p, multi && fold == foldAll, corner && fold == foldAll, more)
 		} else {
 			a.splitButton(c, pal, s, p, "right")
 			a.splitButton(c, pal, s, p, "down")
 		}
-		if multi {
+		if multi && fold != foldAll {
 			sid, pid := s.ID, p.ID
 			zoom := func() { a.defer_(func() { a.zoomPane(a.session(sid), pid) }) }
 			if s.Zoomed == p.ID {
@@ -914,6 +968,9 @@ func (a *App) paneControls(c *ui.Context, pal *palette, s *proto.Session, p *pro
 			iconButton(c, "close", closeIcon, a.tip(locales.PaneClose(), "pane.close"), pal, func() { a.defer_(func() { a.closePane(a.session(sid), pid, true) }) })
 		}
 	})
+	if corner && fold != foldAll {
+		a.cornerButtons(c, pal, "-h")
+	}
 }
 
 // splitButton is a header's button that splits its pane, right or down,
@@ -1033,21 +1090,79 @@ func (a *App) chooseFile(fn func(path string)) {
 }
 
 // moreControls is the button of a narrow header's folded controls: a menu
-// of what makes panes beside it, each a menu of what goes there.
-func (a *App) moreControls(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane) {
+// of what makes panes beside it, each a menu of what goes there; with
+// pane, zooming and closing the pane, and with corner, what the buttons of
+// the window's corner do (cornerMenu).
+func (a *App) moreControls(c *ui.Context, pal *palette, s *proto.Session, p *proto.Pane, pane, corner bool, more func(*ui.Menu)) {
 	sid, pid := s.ID, p.ID
-	b := ui.ButtonBase(c.Key("more")).Size(controlW, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.PaneMore()).Tooltip(locales.PaneMore())
+	moreButton(c, pal, "more", func(m *ui.Menu) {
+		a.menuPane = pid
+		if more != nil {
+			more(m)
+			m.Separator()
+		}
+		m.Submenu(locales.ActionSplitRight(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "right", "pane.split.right") })
+		m.Submenu(locales.ActionSplitDown(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "down", "pane.split.down") })
+		if pane {
+			label := locales.ActionZoomPane()
+			if s.Zoomed == pid {
+				label = locales.PaneShowAll()
+			}
+			if a.menuShortcut(m.Item(label), "pane.zoom").Chosen() {
+				a.menuPane = ""
+				a.defer_(func() { a.zoomPane(a.session(sid), pid) })
+			}
+			if a.menuShortcut(m.Item(locales.PaneClose()), "pane.close").Chosen() {
+				a.menuPane = ""
+				a.defer_(func() { a.closePane(a.session(sid), pid, true) })
+			}
+		}
+		if corner {
+			a.cornerMenu(m)
+		}
+	})
+}
+
+// moreButton is a header's button of what folded into a menu, as it
+// narrowed: the menu fill builds.
+func moreButton(c *ui.Context, pal *palette, key string, fill func(*ui.Menu)) {
+	b := ui.ButtonBase(c.Key(key)).Size(controlW, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.PaneMore()).Tooltip(locales.PaneMore())
 	if b.Pressed() {
 		b.Background(pal.rowHover.Alpha(0.12))
 	} else if b.Hovered() {
 		b.Background(pal.rowHover).TextColor(pal.text)
 	}
 	b.Children(func() { ui.Icon(c, moreIcon).Size(16, 16) })
-	b.Menu(func(m *ui.Menu) {
-		a.menuPane = pid
-		m.Submenu(locales.ActionSplitRight(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "right", "pane.split.right") })
-		m.Submenu(locales.ActionSplitDown(), func(m *ui.Menu) { a.splitMenu(m, sid, pid, "down", "pane.split.down") })
-	})
+	b.Menu(fill)
+}
+
+// cornerMenu holds what the buttons of the window's corner do
+// (cornerButtons), for a header too narrow for them, after a separator:
+// nothing when they have nothing to show.
+func (a *App) cornerMenu(m *ui.Menu) {
+	if a.chrome.right {
+		if !a.chrome.cardsRight() {
+			return
+		}
+		m.Separator()
+		if a.menuShortcut(m.Item(locales.ActionNewSession()), "session.new").Chosen() {
+			a.newSession("")
+		}
+		label := locales.SidebarHide()
+		if a.prefs.SidebarHidden {
+			label = locales.SidebarShow()
+		}
+		if a.menuShortcut(m.Item(label), "sidebar.toggle").Chosen() {
+			a.toggleSidebar()
+		}
+		return
+	}
+	if !a.rightShown() {
+		m.Separator()
+		if a.menuShortcut(m.Item(locales.RightSidebarShow()), "rightSidebar.toggle").Chosen() {
+			a.toggleRight()
+		}
+	}
 }
 
 // paneChips says what the pane is doing. With several panes the title

@@ -924,12 +924,49 @@ func TestNarrowWindowKeepsViewerBesideSidebar(t *testing.T) {
 	shot(t, tt, "narrow")
 }
 
+// A right sidebar too narrow for its tabs' icons and its two buttons folds
+// the buttons into a menu, rather than run them under the window controls.
+func TestRightSidebarNarrowMenu(t *testing.T) {
+	a := testApp(t)
+	a.prefs.Side = sideFiles
+	s := &a.st.Sessions[0]
+	s.Panes, s.Layout = s.Panes[:1], nil
+	tt := ui.NewTester(a.view, 1280, 720)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	if tt.HasText("More") || !tt.HasText(a.tip("Hide Right Sidebar", "rightSidebar.toggle")) {
+		t.Fatalf("a wide sidebar folds its buttons; texts %q", tt.Texts())
+	}
+	a.prefs.RightWidth = minSidebar
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	if err := tt.Click("More"); err != nil {
+		t.Fatalf("a narrow sidebar's buttons don't fold: %v; texts %q", err, tt.Texts())
+	}
+	if items := tt.Menu(); !slices.Equal(items, []string{"Zoom Sidebar", "Hide Right Sidebar"}) {
+		t.Errorf("the sidebar's menu: %q", items)
+	}
+	if err := tt.ChooseMenuItem("Hide Right Sidebar"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.rightShown() {
+		t.Error("Hide Right Sidebar from the menu left it shown")
+	}
+}
+
 // A window too narrow for the right sidebar beside the cards hides it,
 // shown as it is, with the button that shows it, which shows it anyway;
 // the window widening shows it again, and narrowing hides it again.
 func TestRightSidebarMakesRoom(t *testing.T) {
 	a := testApp(t)
 	a.prefs.Side = sideFiles
+	// One pane, whose header has room for the corner's button: two side
+	// by side in a narrow window fold it into their menu.
+	s := &a.st.Sessions[0]
+	s.Panes, s.Layout = s.Panes[:1], nil
 	tt := ui.NewTester(a.view, 1280, 720)
 	settle := func() {
 		tt.Frame()
