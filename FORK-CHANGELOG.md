@@ -5,6 +5,25 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.15
+
+- Agents can act on pull requests: `kero pr state`, `merge` (with the
+  repository's default method unless given one, `--auto` for
+  auto-merge), `ready`, `draft`, `close`, `reopen`, `update-branch` and
+  `delete-branch`, of the pull request given or the session's linked
+  one, and `kero pr checkout`, here or `--worktree` in a new session,
+  reusing a worktree that has it already
+- `kero worktree list` tells of each worktree what `git worktree list`
+  doesn't: the sessions in it, whether Kero made it, what removing it
+  would lose, and what the automatic cleanup will do with it. `kero
+  worktree status` tells an agent of its own session's worktree, its
+  setup script, its pull request, the settings new worktrees take, and
+  whether a handoff would go. Both take `--json`
+- `kero worktree handoff` refuses a session already in a linked worktree
+- Kero's agent skill (`kero skill setup`) describes all of these, and
+  fork.14's handoff, review guide and pull request watch, so agents pick
+  them up; an installed skill follows the update by itself
+
 ## 2.1.34-fork.14
 
 - New worktrees start from origin: a session's new branch fetches the
