@@ -155,6 +155,15 @@ type Settings struct {
 	// still when the fetch fails, as offline, or the local branch has
 	// commits the remote's lacks.
 	WorktreeFromOrigin bool `json:"worktreeFromOrigin"`
+
+	// WorktreeBranchPrefix is what goes before a branch named from a new
+	// worktree's task: "semantic", the kind of the work (feat/, fix/);
+	// "static", WorktreeBranchStatic; "custom", what WorktreeBranchPrompt
+	// says. WorktreeBranchPrompt is how the name is written, "" for
+	// kerod's own (commitmsg.DefaultBranchPrompt).
+	WorktreeBranchPrefix string `json:"worktreeBranchPrefix"`
+	WorktreeBranchStatic string `json:"worktreeBranchStatic"`
+	WorktreeBranchPrompt string `json:"worktreeBranchPrompt"`
 	// BranchMaxWeeks hides from the branch switcher the branches with no
 	// commit in that many weeks, unless its filter finds them; 0 hides
 	// none.
@@ -297,6 +306,10 @@ func Default() Settings {
 		AdLists:         slices.Clone(adblock.DefaultLists),
 
 		WorktreeFromOrigin: true,
+
+		// A new worktree's branch named from its task.
+		WorktreeBranchPrefix: "semantic",
+		WorktreeBranchStatic: "kero/",
 	}
 }
 
@@ -595,6 +608,10 @@ func (s *Settings) normalize() {
 	oneOf(&s.DiffLayout, d.DiffLayout, "auto", "unified", "split")
 	s.BranchMaxWeeks = max(s.BranchMaxWeeks, 0)
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
+	oneOf(&s.WorktreeBranchPrefix, d.WorktreeBranchPrefix, "semantic", "static", "custom")
+	if s.WorktreeBranchStatic = strings.TrimSpace(s.WorktreeBranchStatic); s.WorktreeBranchStatic == "" {
+		s.WorktreeBranchStatic = d.WorktreeBranchStatic
+	}
 	var agents []string
 	for _, cmd := range s.Agents {
 		if cmd = strings.TrimSpace(cmd); cmd != "" && !slices.Contains(agents, cmd) {

@@ -6310,6 +6310,90 @@ func (msgs Messages) NewSessionBranchExists(branch string) string {
 	return Catalog.Format(msgs.locale, "newSessionBranchExists", map[string]any{"branch": branch})
 }
 
+// NewSessionTask says "Task"
+// in the language the app shows.
+func NewSessionTask() string { return In(i18n.Locale()).NewSessionTask() }
+
+// NewSessionTask says "Task"
+// in the language of msgs.
+func (msgs Messages) NewSessionTask() string {
+	return Catalog.Format(msgs.locale, "newSessionTask", nil)
+}
+
+// NewSessionTaskPlaceholder says "What should the agent do? Kero names the branch from it and gives it to the agent."
+// in the language the app shows.
+func NewSessionTaskPlaceholder() string { return In(i18n.Locale()).NewSessionTaskPlaceholder() }
+
+// NewSessionTaskPlaceholder says "What should the agent do? Kero names the branch from it and gives it to the agent."
+// in the language of msgs.
+func (msgs Messages) NewSessionTaskPlaceholder() string {
+	return Catalog.Format(msgs.locale, "newSessionTaskPlaceholder", nil)
+}
+
+// NewSessionBranchAuto says "Named from the task"
+// in the language the app shows.
+func NewSessionBranchAuto() string { return In(i18n.Locale()).NewSessionBranchAuto() }
+
+// NewSessionBranchAuto says "Named from the task"
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchAuto() string {
+	return Catalog.Format(msgs.locale, "newSessionBranchAuto", nil)
+}
+
+// NewSessionNameBranch says "Name the branch from the task"
+// in the language the app shows.
+func NewSessionNameBranch() string { return In(i18n.Locale()).NewSessionNameBranch() }
+
+// NewSessionNameBranch says "Name the branch from the task"
+// in the language of msgs.
+func (msgs Messages) NewSessionNameBranch() string {
+	return Catalog.Format(msgs.locale, "newSessionNameBranch", nil)
+}
+
+// NewSessionStopNaming says "Stop naming the branch"
+// in the language the app shows.
+func NewSessionStopNaming() string { return In(i18n.Locale()).NewSessionStopNaming() }
+
+// NewSessionStopNaming says "Stop naming the branch"
+// in the language of msgs.
+func (msgs Messages) NewSessionStopNaming() string {
+	return Catalog.Format(msgs.locale, "newSessionStopNaming", nil)
+}
+
+// NewSessionBranchFromTask says "Kero names the branch from the task, then creates it from {base}, in a new worktree."
+// in the language the app shows.
+func NewSessionBranchFromTask(base string) string {
+	return In(i18n.Locale()).NewSessionBranchFromTask(base)
+}
+
+// NewSessionBranchFromTask says "Kero names the branch from the task, then creates it from {base}, in a new worktree."
+// in the language of msgs.
+func (msgs Messages) NewSessionBranchFromTask(base string) string {
+	return Catalog.Format(msgs.locale, "newSessionBranchFromTask", map[string]any{"base": base})
+}
+
+// NewSessionNamingBranch says "Naming the branch from the task…"
+// in the language the app shows.
+func NewSessionNamingBranch() string { return In(i18n.Locale()).NewSessionNamingBranch() }
+
+// NewSessionNamingBranch says "Naming the branch from the task…"
+// in the language of msgs.
+func (msgs Messages) NewSessionNamingBranch() string {
+	return Catalog.Format(msgs.locale, "newSessionNamingBranch", nil)
+}
+
+// NewSessionNameFailed says "Couldn't name the branch: {error}. Kero suggests {branch} instead; change it if you like."
+// in the language the app shows.
+func NewSessionNameFailed(error string, branch string) string {
+	return In(i18n.Locale()).NewSessionNameFailed(error, branch)
+}
+
+// NewSessionNameFailed says "Couldn't name the branch: {error}. Kero suggests {branch} instead; change it if you like."
+// in the language of msgs.
+func (msgs Messages) NewSessionNameFailed(error string, branch string) string {
+	return Catalog.Format(msgs.locale, "newSessionNameFailed", map[string]any{"error": error, "branch": branch})
+}
+
 // NewSessionWorktrees says "Existing worktrees"
 // in the language the app shows.
 func NewSessionWorktrees() string { return In(i18n.Locale()).NewSessionWorktrees() }
@@ -11026,6 +11110,106 @@ func SetCommitPromptDetail() string { return In(i18n.Locale()).SetCommitPromptDe
 // in the language of msgs.
 func (msgs Messages) SetCommitPromptDetail() string {
 	return Catalog.Format(msgs.locale, "setCommitPromptDetail", nil)
+}
+
+// SetBranchNames says "Worktree branch names"
+// in the language the app shows.
+func SetBranchNames() string { return In(i18n.Locale()).SetBranchNames() }
+
+// SetBranchNames says "Worktree branch names"
+// in the language of msgs.
+func (msgs Messages) SetBranchNames() string {
+	return Catalog.Format(msgs.locale, "setBranchNames", nil)
+}
+
+// SetBranchNamesDetail says "When a new worktree's agent session has a task, the commit message command names its branch from it. Type a name in t…"
+// in the language the app shows.
+func SetBranchNamesDetail() string { return In(i18n.Locale()).SetBranchNamesDetail() }
+
+// SetBranchNamesDetail says "When a new worktree's agent session has a task, the commit message command names its branch from it. Type a name in t…"
+// in the language of msgs.
+func (msgs Messages) SetBranchNamesDetail() string {
+	return Catalog.Format(msgs.locale, "setBranchNamesDetail", nil)
+}
+
+// SetBranchPrefixSemantic says "Kind of work"
+// in the language the app shows.
+func SetBranchPrefixSemantic() string { return In(i18n.Locale()).SetBranchPrefixSemantic() }
+
+// SetBranchPrefixSemantic says "Kind of work"
+// in the language of msgs.
+func (msgs Messages) SetBranchPrefixSemantic() string {
+	return Catalog.Format(msgs.locale, "setBranchPrefixSemantic", nil)
+}
+
+// SetBranchPrefixStatic says "Fixed"
+// in the language the app shows.
+func SetBranchPrefixStatic() string { return In(i18n.Locale()).SetBranchPrefixStatic() }
+
+// SetBranchPrefixStatic says "Fixed"
+// in the language of msgs.
+func (msgs Messages) SetBranchPrefixStatic() string {
+	return Catalog.Format(msgs.locale, "setBranchPrefixStatic", nil)
+}
+
+// SetBranchPrefixCustom says "From the prompt"
+// in the language the app shows.
+func SetBranchPrefixCustom() string { return In(i18n.Locale()).SetBranchPrefixCustom() }
+
+// SetBranchPrefixCustom says "From the prompt"
+// in the language of msgs.
+func (msgs Messages) SetBranchPrefixCustom() string {
+	return Catalog.Format(msgs.locale, "setBranchPrefixCustom", nil)
+}
+
+// SetBranchPrefix says "Prefix"
+// in the language the app shows.
+func SetBranchPrefix() string { return In(i18n.Locale()).SetBranchPrefix() }
+
+// SetBranchPrefix says "Prefix"
+// in the language of msgs.
+func (msgs Messages) SetBranchPrefix() string {
+	return Catalog.Format(msgs.locale, "setBranchPrefix", nil)
+}
+
+// SetBranchStatic says "Fixed prefix"
+// in the language the app shows.
+func SetBranchStatic() string { return In(i18n.Locale()).SetBranchStatic() }
+
+// SetBranchStatic says "Fixed prefix"
+// in the language of msgs.
+func (msgs Messages) SetBranchStatic() string {
+	return Catalog.Format(msgs.locale, "setBranchStatic", nil)
+}
+
+// SetBranchStaticDetail says "Put before every named branch, as kero/. '{type}' in it is the kind of the work, as feat or fix."
+// in the language the app shows.
+func SetBranchStaticDetail() string { return In(i18n.Locale()).SetBranchStaticDetail() }
+
+// SetBranchStaticDetail says "Put before every named branch, as kero/. '{type}' in it is the kind of the work, as feat or fix."
+// in the language of msgs.
+func (msgs Messages) SetBranchStaticDetail() string {
+	return Catalog.Format(msgs.locale, "setBranchStaticDetail", nil)
+}
+
+// SetBranchPrompt says "Branch name prompt"
+// in the language the app shows.
+func SetBranchPrompt() string { return In(i18n.Locale()).SetBranchPrompt() }
+
+// SetBranchPrompt says "Branch name prompt"
+// in the language of msgs.
+func (msgs Messages) SetBranchPrompt() string {
+	return Catalog.Format(msgs.locale, "setBranchPrompt", nil)
+}
+
+// SetBranchPromptDetail says "How the agent names a branch. Kero adds the prefix, the recent branches and the task after it."
+// in the language the app shows.
+func SetBranchPromptDetail() string { return In(i18n.Locale()).SetBranchPromptDetail() }
+
+// SetBranchPromptDetail says "How the agent names a branch. Kero adds the prefix, the recent branches and the task after it."
+// in the language of msgs.
+func (msgs Messages) SetBranchPromptDetail() string {
+	return Catalog.Format(msgs.locale, "setBranchPromptDetail", nil)
 }
 
 // SetPRPrompt says "Pull request prompt"
