@@ -5,6 +5,24 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.7
+
+Built on MyGo 0.8.1, MyGo's latest release, in place of the unreleased
+commit Kero 2.1.34 requires, with the fork's MyGo changes on top:
+
+- Menus have Windows 11's look: rounded corners and, with transparency
+  effects on, Acrylic behind them (a solid color elsewhere), and their
+  shortcuts in WinUI's caption font. The tray icon's menu opens above
+  the taskbar, centered on the icon
+- Scrolling the other way at the end of a list or a diff turns at once
+- The terminal links more paths: in Chinese text, in quotes, and with a
+  `(line,col)` or `#L` place after them
+- Changed: the fork's menus keep their compact rows (26 DIPs) and the
+  system's menu font size, now on MyGo's new menus: a highlighted item's
+  highlight is a little shorter than its row, as in Windows 11's own
+  menus, and a menu has a little room above its first item and below its
+  last
+
 ## 2.1.34-fork.6
 
 - History's chosen commit keeps its graph in line with the rows around
