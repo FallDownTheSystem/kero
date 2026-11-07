@@ -166,10 +166,15 @@ func dialogTrees(trees proto.GitWorktrees) *proto.GitWorktrees {
 }
 
 // removeDialogWorktree removes one of the dialog's worktrees, as
-// askRemoveWorktree asks, in the dialog's folder's repository, then lists
-// them anew.
+// askRemoveWorktree asks, in the dialog's folder's repository, or by
+// closing the session it was made for, then lists them anew.
 func (a *App) removeDialogWorktree(w *newSessionAsk, t proto.GitWorktree, branch bool) {
 	h := w.host
+	reload := func() {
+		if a.newAsk == w {
+			a.loadNewSession(w)
+		}
+	}
 	run := func(p proto.GitOpParams) {
 		cl := h.cl
 		if cl == nil {
@@ -187,13 +192,11 @@ func (a *App) removeDialogWorktree(w *newSessionAsk, t proto.GitWorktree, branch
 				if err != nil {
 					a.toast(locales.WorktreeRemoveFailed(err.Error()))
 				}
-				if a.newAsk == w {
-					a.loadNewSession(w)
-				}
+				reload()
 			})
 		}()
 	}
-	a.askRemoveWorktree(h, t, branch, run, nil)
+	a.askRemoveWorktree(h, t, branch, run, nil, reload)
 }
 
 // startBranch is the branch the dialog chooses first, as base says: the
