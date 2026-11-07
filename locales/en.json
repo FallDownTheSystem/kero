@@ -2172,5 +2172,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "worktreeSetupRunning": "Setting up {name}",
+  "worktreeSetupDone": "{name} is set up",
+  "worktreeSetupFailed": "Setting up {name} failed",
+  "worktreeSetupCancelled": "Setting up {name} was cancelled",
+  "worktreeSetupStageFetch": "Fetch the base branch",
+  "worktreeSetupStageCheckout": "Check out the files",
+  "worktreeSetupStageSubmodules": "Check out the submodules",
+  "worktreeSetupStageScript": "Run {script}",
+  "worktreeSetupStageAgent": "Start the session",
+  "worktreeSetupStageCancelled": "Cancelled",
+  "worktreeSetupShowTerminal": "Show Terminal"
 }
