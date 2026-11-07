@@ -161,7 +161,7 @@ func commitKeys() string {
 // enabled tells whether this part takes clicks. rl and rr are its
 // corners at the left and the right.
 func commitFace(b ui.Element, pal *palette, on, enabled bool, rl, rr float32) {
-	bg, fg := pal.accent, ui.Hex("#ffffff")
+	bg, fg := pal.accentBg, pal.onAccent
 	if !on {
 		bg, fg = pal.text.Alpha(0.08), pal.textFaint
 	}
@@ -172,11 +172,8 @@ func commitFace(b ui.Element, pal *palette, on, enabled bool, rl, rr float32) {
 	case !enabled:
 	case !on && (b.Hovered() || b.Pressed()):
 		bg, fg = pal.text.Alpha(0.12), pal.textMuted
-	case !on:
-	case b.Pressed():
-		bg = bg.Mix(ui.Hex("#000000"), 0.08)
-	case b.Hovered():
-		bg = bg.Mix(ui.Hex("#ffffff"), 0.08)
+	case on:
+		bg = accentFace(pal, b.Hovered(), b.Pressed())
 	}
 	b.Radius(rl, rr, rr, rl).Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 90 * time.Millisecond})).TextColor(fg)
 }

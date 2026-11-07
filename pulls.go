@@ -464,16 +464,16 @@ func (a *App) draftPill(c *ui.Context, pal *palette, dr proto.PRReviewDraft) {
 	working := a.reviewing(dr)
 	n := len(dr.Comments)
 	pill := ui.Row(c.Key("draft")).Height(22).Padding(0, 9, 0, 8).Gap(6).Radius(11).AlignItems(ui.Center).MinWidth(0)
-	label, fg := locales.PrsReviewReady(), ui.Hex("#ffffff")
+	label, fg := locales.PrsReviewReady(), pal.onAccent
 	switch {
 	case working:
 		label, fg = locales.PrsReviewing(), pal.accent
 		pill.Background(pal.accent.Alpha(0.16)).InsetShadow(0, 0, 0, 1, pal.accent.Alpha(0.45))
 	case dr.Agent == "":
 		label = locales.PrsInReview()
-		pill.Background(pal.accent)
+		pill.Background(pal.accentBg)
 	default:
-		pill.Background(pal.accent)
+		pill.Background(pal.accentBg)
 	}
 	pill.TextColor(fg).Children(func() {
 		switch {

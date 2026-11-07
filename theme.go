@@ -55,7 +55,12 @@ type palette struct {
 	done      ui.Color // the filled check
 	onDone    ui.Color
 	danger    ui.Color
-	accent    ui.Color
+	// accent is the highlight of icons, rings, links and faint washes;
+	// accentBg the face of what is drawn on it, as a primary button or a
+	// highlighted menu row, with onAccent its text (onColor).
+	accent   ui.Color
+	accentBg ui.Color
+	onAccent ui.Color
 
 	overlay   ui.Color // behind dialogs
 	popover   ui.Color
@@ -97,6 +102,8 @@ var lightPalette = palette{
 	onDone:    ui.Hex("#ffffff"),
 	danger:    ui.Hex("#d93a35"),
 	accent:    ui.Hex("#3b6cf6"),
+	accentBg:  ui.Hex("#3b6cf6"),
+	onAccent:  onColor(ui.Hex("#3b6cf6")),
 
 	overlay:   ui.RGBA(10, 10, 30, 0.12),
 	popover:   ui.Hex("#ffffff"),
@@ -137,6 +144,8 @@ var darkPalette = palette{
 	onDone:    ui.Hex("#161618"),
 	danger:    ui.Hex("#ff6961"),
 	accent:    ui.Hex("#6b93ff"),
+	accentBg:  ui.Hex("#6b93ff"),
+	onAccent:  onColor(ui.Hex("#6b93ff")),
 
 	overlay:   ui.RGBA(0, 0, 0, 0.35),
 	popover:   ui.Hex("#232327"),
@@ -340,11 +349,11 @@ var keroLooks = func() map[string][2]*look {
 			if dark {
 				hexes, glow = w.dark, w.darkGlow
 			}
-			stops := make([]ui.GradientStop, len(hexes))
+			colors := make([]ui.Color, len(hexes))
 			for j, h := range hexes {
-				stops[j] = ui.GradientStop{Color: ui.Hex(h), At: float32(j) / float32(len(hexes)-1)}
+				colors[j] = ui.Hex(h)
 			}
-			l := &look{base: ui.LinearGradient{Angle: 180, Oklab: true, Stops: stops}, glow: glowOf(glow), plain: id == "plain"}
+			l := &look{base: washGradient(colors), glow: glowOf(glow), plain: id == "plain"}
 			if l.plain {
 				// kero's colors as they were, on the card's white or gray.
 				l.term, l.pal = lightTermTheme, &lightPalette
@@ -354,7 +363,7 @@ var keroLooks = func() map[string][2]*look {
 			} else {
 				var accent ui.Color
 				l.term, accent = toneTheme(w.tone, dark)
-				l.pal = tinted(l.term, accent)
+				l.pal = tinted(l.term, accent, accent, onColor(accent))
 			}
 			both[i] = l
 		}
@@ -367,27 +376,51 @@ func glowOf(c ui.Color) ui.LinearGradient {
 	return ui.LinearGradient{Angle: 225, Oklab: true, Stops: []ui.GradientStop{{Color: c, At: 0}, {Color: c.Alpha(0), At: 0.5}}}
 }
 
-// ghosttyLook washes the window in a Ghostty theme's background, a shade
-// under its cards, with the extras x: the accent of x, else its own, and
-// lit from the top right by the glow of x, else by the accent.
+// ghosttyLook washes the window in a Ghostty theme's colors, with the
+// extras x, each the theme's own where x gives none (resolved): the wash
+// from top to bottom under its cards, lit from the top right by the glow.
 func ghosttyLook(th *terminal.Theme, x themeExtras) *look {
-	bl, bc, bh := oklch(th.Background)
-	accent, glow := x.accent, x.glow
-	if accent.A == 0 {
-		accent = themeAccent(th)
-	}
-	if glow.A == 0 {
-		glow = accent
-	}
-	l := &look{term: th, pal: tinted(th, accent)}
-	shade, strength := float32(0.03), float32(0.16)
+	r := x.resolved(th)
+	l := &look{term: th, pal: tinted(th, r.highlight, r.highlightBg, onColor(r.highlightBg))}
+	strength := float32(0.16)
 	if l.pal.dark {
-		shade, strength = 0.04, 0.2
+		strength = 0.2
 	}
-	l.base = ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
-		{Color: ui.Oklch(max(bl-shade, 0), bc, bh), At: 0}, {Color: ui.Oklch(max(bl-shade/2, 0), bc, bh), At: 1}}}
-	l.glow = glowOf(glow.Alpha(strength))
+	l.base = washGradient(r.washColors())
+	l.glow = glowOf(r.glow.Alpha(strength))
 	return l
+}
+
+// washGradient runs the colors from top to bottom, evenly, as kero's own
+// themes' washes (washTable).
+func washGradient(colors []ui.Color) ui.LinearGradient {
+	stops := make([]ui.GradientStop, len(colors))
+	for i, c := range colors {
+		stops[i] = ui.GradientStop{Color: c, At: float32(i) / float32(max(len(colors)-1, 1))}
+	}
+	return ui.LinearGradient{Angle: 180, Oklab: true, Stops: stops}
+}
+
+// defaultWash is a Ghostty theme's wash: its background, a shade darker
+// at the top than at the bottom.
+func defaultWash(th *terminal.Theme) [maxWash]ui.Color {
+	bl, bc, bh := oklch(th.Background)
+	shade := float32(0.03)
+	if bl < 0.5 {
+		shade = 0.04
+	}
+	return [maxWash]ui.Color{ui.Oklch(max(bl-shade, 0), bc, bh), ui.Oklch(max(bl-shade/2, 0), bc, bh)}
+}
+
+// onColor is the text that reads on a face of the color c: white, as
+// kero's buttons had, unless white is too faint on it and a near black
+// reads better, as on a light blue or a yellow.
+func onColor(c ui.Color) ui.Color {
+	white, black := ui.Hex("#ffffff"), ui.Hex("#161618")
+	if w := contrast(white, c); w < 3 && contrast(black, c) > w {
+		return black
+	}
+	return white
 }
 
 // themeAccent is a Ghostty theme's accent: its cursor's color, unless that
@@ -405,8 +438,8 @@ func themeAccent(th *terminal.Theme) ui.Color {
 
 // tinted is kero's palette for the light or the dark, as a terminal
 // theme's background is, on the theme's colors: the cards its background,
-// the text its foreground, with the accent.
-func tinted(th *terminal.Theme, accent ui.Color) *palette {
+// the text its foreground, with the highlight colors (palette.accent).
+func tinted(th *terminal.Theme, accent, accentBg, onAccent ui.Color) *palette {
 	p := lightPalette
 	if l, _, _ := oklch(th.Background); l < 0.5 {
 		p = darkPalette
@@ -416,7 +449,7 @@ func tinted(th *terminal.Theme, accent ui.Color) *palette {
 	p.cardDim = bg.Alpha(float32(p.cardDim.A) / 255)
 	p.text, p.textMuted, p.textFaint = fg, fg.Mix(bg, 0.38), fg.Mix(bg, 0.56)
 	p.done, p.onDone = fg, bg
-	p.accent = accent
+	p.accent, p.accentBg, p.onAccent = accent, accentBg, onAccent
 	if p.dark {
 		p.popover = bg.Mix(white, 0.04)
 	} else {

@@ -141,8 +141,7 @@ func menuRow(c *ui.Context, item ui.Element, label string, current, highlighted 
 	item.Height(menuItemH).Padding(0, 12, 0, 6).Gap(5).Radius(7).AlignItems(ui.Center)
 	fg := pal.text
 	if highlighted {
-		item.Background(pal.accent)
-		fg = ui.Hex("#ffffff")
+		fg, _ = highlightRow(item, pal)
 	}
 	item.TextColor(fg).Children(func() {
 		mark := ui.Icon(c, checkIcon).Size(12, 12).Shrink(0)

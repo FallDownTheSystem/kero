@@ -710,8 +710,7 @@ func (a *App) branchList(c *ui.Context, pal *palette, m *branchMenu, trig ui.Ele
 				row.Height(menuItemH+2).Padding(0, 10, 0, 6).Gap(6).Radius(7).AlignItems(ui.Center)
 				fg, faint := pal.text, pal.textFaint
 				if hi {
-					row.Background(pal.accent)
-					fg, faint = ui.Hex("#ffffff"), ui.Hex("#ffffff").Alpha(0.75)
+					fg, faint = highlightRow(row, pal)
 				}
 				if r.b != nil && r.b.Worktree != "" && !r.b.Current {
 					// Checked out in another worktree, where git won't let
@@ -764,7 +763,7 @@ func choiceRow(c *ui.Context, pal *palette, choice *string, value, label string)
 	r.Children(func() {
 		dot := ui.Box(c).Size(14, 14).Radius(7).Center().Shrink(0)
 		if on {
-			dot.Background(pal.accent).Children(func() { ui.Box(c).Size(6, 6).Radius(3).Background(ui.Hex("#ffffff")) })
+			dot.Background(pal.accentBg).Children(func() { ui.Box(c).Size(6, 6).Radius(3).Background(pal.onAccent) })
 		} else {
 			dot.InsetShadow(0, 0, 0, 1, pal.text.Alpha(0.3))
 		}

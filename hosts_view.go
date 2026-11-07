@@ -208,7 +208,7 @@ func smallButton(c *ui.Context, key, label string, primary bool, pal *palette) b
 	b := ui.ButtonBase(c.Key(key)).Height(24).Padding(0, 10).Radius(6).AlignItems(ui.Center).Label(label)
 	bg, fg := pal.control, pal.text
 	if primary {
-		bg, fg = pal.accent, ui.Hex("#ffffff")
+		bg, fg = pal.accentBg, pal.onAccent
 	}
 	if b.Hovered() {
 		bg = bg.Mix(pal.text, 0.06)

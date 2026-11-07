@@ -436,15 +436,10 @@ func (a *App) reviewBar(c *ui.Context, pal *palette, pane *proto.Pane, root stri
 			// The primary button's look (sizedButton), with the icon of
 			// what an agent does.
 			b := ui.ButtonBase(c.Key("send")).Height(26).Padding(0, 10).Gap(6).Radius(6).AlignItems(ui.Center).
-				Label(locales.ReviewSend()).Tooltip(tip).TextColor(ui.Hex("#ffffff"))
-			bg := pal.accent
-			switch {
-			case agent == nil:
+				Label(locales.ReviewSend()).Tooltip(tip).TextColor(pal.onAccent)
+			bg := accentFace(pal, agent != nil && b.Hovered(), agent != nil && b.Pressed())
+			if agent == nil {
 				b.Opacity(0.45)
-			case b.Pressed():
-				bg = bg.Mix(ui.Hex("#000000"), 0.08)
-			case b.Hovered():
-				bg = bg.Mix(ui.Hex("#ffffff"), 0.08)
 			}
 			face(b, pal, b.AnimateColor("bg", bg, ui.Animation{Duration: 90e6}))
 			b.Children(func() {
