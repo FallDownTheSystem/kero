@@ -852,9 +852,9 @@ const (
 	browserAddressRoom   = 200
 	browserAddressMin    = 120
 	browserAddressNarrow = 56
-	// browserNavW is the width of a browser's back, forward and reload
-	// buttons, with the gap after them.
-	browserNavW = 3*controlW + 8
+	// browserNavW is the width of a browser's back, forward, reload and
+	// Pick Elements buttons, with the gap after them.
+	browserNavW = 4*controlW + 8
 )
 
 // headerRoom measures a pane's header as it was last laid out: its card's

@@ -90,7 +90,10 @@ var (
 	warningIcon      = glyph("f7-exclamationmark-triangle")
 	clockIcon        = glyph("f7-clock")
 	sparklesIcon     = glyph("f7-sparkles")
-	turnsIcon        = icon(`<path d="M3 3h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7.5L4.5 13.5V11H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>`)
+	// pickIcon is Pick Elements': a pointer on a dashed box, as browsers'
+	// inspectors draw it.
+	pickIcon  = icon(`<path d="M6 13.5H3.5a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1V6"/><path d="M8 8l6 2.2-2.6 1.1L10.2 14z"/>`)
+	turnsIcon = icon(`<path d="M3 3h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7.5L4.5 13.5V11H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>`)
 )
 
 // programIcons are the logos of programs a pane may run, by the name kerod

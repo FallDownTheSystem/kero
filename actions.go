@@ -108,6 +108,8 @@ func (a *App) run(id string, args map[string]string) {
 		a.openBrowser(args["url"])
 	case "browser.address":
 		a.focusAddress()
+	case "browser.pick":
+		a.pick(a.pickPane())
 	case "pane.zoom":
 		a.zoomPane(s, "")
 	case "pane.preview":
@@ -218,6 +220,7 @@ var actionTitles = map[string]func() string{
 	"pane.split.down":     locales.ActionSplitDown,
 	"pane.browser":        locales.ActionNewBrowser,
 	"browser.address":     locales.ActionOpenLocation,
+	"browser.pick":        locales.ActionPickElements,
 	"pane.zoom":           locales.ActionZoomPane,
 	"pane.preview":        locales.ActionTogglePreview,
 	"pane.next":           locales.ActionNextPane,
@@ -316,7 +319,7 @@ func (a *App) menuBar() []*mygo.MenuItem {
 			a.items("Edit", []string{"find.open", "find.next", "find.previous"})...)},
 		{Label: locales.MenuPane(), Submenu: a.items("Pane",
 			[]string{"pane.split.right", "pane.split.down"},
-			[]string{"pane.browser", "browser.address"},
+			[]string{"pane.browser", "browser.address", "browser.pick"},
 			[]string{"pane.zoom", "pane.preview"},
 			[]string{"pane.next", "pane.previous", "pane.left", "pane.right", "pane.up", "pane.down"})},
 		{Label: locales.MenuView(), Submenu: view},
