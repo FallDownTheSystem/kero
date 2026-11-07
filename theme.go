@@ -249,27 +249,27 @@ func (a *App) looks() *looks {
 	}
 	l.light, l.dark = l.chosenLight, l.chosenDark
 	if a.preview.light != nil {
-		l.light = lookOf(a.preview.light, a.preview.lightGlow, false)
+		l.light = lookOf(a.preview.light, a.preview.lightExtras, false)
 	}
 	if a.preview.dark != nil {
-		l.dark = lookOf(a.preview.dark, a.preview.darkGlow, true)
+		l.dark = lookOf(a.preview.dark, a.preview.darkExtras, true)
 	}
 	currentLooks.Store(l)
 	return l
 }
 
 // lookOf is the look of a terminal theme Settings previews: kero's whose
-// colors it has, with its wash, else the one a Ghostty theme has, lit by
-// glow unless it is none.
-func lookOf(th *terminal.Theme, glow ui.Color, dark bool) *look {
-	if glow.A == 0 {
+// colors it has, with its wash, else the one a Ghostty theme has, with
+// the extras x unless they are none.
+func lookOf(th *terminal.Theme, x themeExtras, dark bool) *look {
+	if x == (themeExtras{}) {
 		for _, t := range settings.KeroThemes {
 			if l := keroLook(t.ID, dark); *l.term == *th {
 				return l
 			}
 		}
 	}
-	return ghosttyLook(th, glow)
+	return ghosttyLook(th, x)
 }
 
 // lookFor is the look of the window c draws, by its appearance.
@@ -292,7 +292,7 @@ func lookNamed(name string, dark bool) *look {
 		return keroLook(id, dark)
 	}
 	if th, err := terminal.GhosttyTheme(name); err == nil {
-		return ghosttyLook(th, themeGlow(name))
+		return ghosttyLook(th, readThemeExtras(name))
 	}
 	return keroLook("paper", dark)
 }
@@ -368,10 +368,14 @@ func glowOf(c ui.Color) ui.LinearGradient {
 }
 
 // ghosttyLook washes the window in a Ghostty theme's background, a shade
-// under its cards, lit from the top right by glow, else by its accent.
-func ghosttyLook(th *terminal.Theme, glow ui.Color) *look {
+// under its cards, with the extras x: the accent of x, else its own, and
+// lit from the top right by the glow of x, else by the accent.
+func ghosttyLook(th *terminal.Theme, x themeExtras) *look {
 	bl, bc, bh := oklch(th.Background)
-	accent := themeAccent(th)
+	accent, glow := x.accent, x.glow
+	if accent.A == 0 {
+		accent = themeAccent(th)
+	}
 	if glow.A == 0 {
 		glow = accent
 	}
