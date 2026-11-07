@@ -80,7 +80,7 @@ type settingsState struct {
 	messageEdit     bool
 	// prompts are the commit message's and the pull request's prompts as
 	// typed, kept while their fields have the focus.
-	prompts [3]promptDraft
+	prompts [4]promptDraft
 	// branchStatic and branchPrompt are the worktree branch name's prefix
 	// and prompt as typed (settings_branch.go).
 	branchStatic     string
@@ -761,6 +761,7 @@ func (a *App) gitPage(c *ui.Context, pal *palette) {
 		}
 		promptSetting(c, pal, "pr-prompt", locales.SetPRPrompt(), locales.SetPRPromptDetail(), &s.PRMessagePrompt, commitmsg.DefaultPRPrompt, &a.ss.prompts[1])
 		promptSetting(c, pal, "review-prompt", locales.SetReviewPrompt(), locales.SetReviewPromptDetail(), &s.ReviewPrompt, DefaultReviewPrompt, &a.ss.prompts[2])
+		promptSetting(c, pal, "guide-prompt", locales.SetGuidePrompt(), locales.SetGuidePromptDetail(), &s.GuidePrompt, DefaultGuidePrompt, &a.ss.prompts[3])
 	})
 	a.worktreeCleanupGroups(c, pal)
 }

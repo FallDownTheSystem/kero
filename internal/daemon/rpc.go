@@ -733,6 +733,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return repoReviews(p.Slug)
 
+	case "pr.guide":
+		var p proto.PRGuideParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.prGuide(p)
+
 	case "pr.draft":
 		var p proto.PRDraftParams
 		if err := decode(&p); err != nil {

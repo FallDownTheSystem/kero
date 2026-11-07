@@ -380,6 +380,7 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 			return
 		}
 		a.fetchDraftReview(g)
+		a.fetchGuide(g)
 	}
 }
 

@@ -52,6 +52,7 @@ func settingsIndex() []searchEntry {
 		{"git", locales.SetWorktreeCleanupClosed(), "worktree-cleanup-closed worktree cleanup session closed deleted last"},
 		{"git", locales.SetWorktreeCleanupProject(), "worktree-cleanup-project worktree cleanup project per project own rules inherit off custom"},
 		{"git", locales.SetWorktreeCleanupNow(), "worktree cleanup delete now remove now run prune"},
+		{"git", locales.SetGuidePrompt(), "pr-guide-prompt guide tour review pull request pr prompt agent walkthrough default"},
 		{"files", locales.SetEditor(), "editor open in editor code vscode zed files"},
 		{"files", locales.SetHiddenFiles(), "files-hidden dotfiles hidden files dot"},
 		{"general", locales.AwakeTitle(), "keep-computer-awake awake sleep caffeinate power agents idle lid"},

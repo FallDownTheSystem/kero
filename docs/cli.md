@@ -219,6 +219,22 @@ kero pr delete 3
 
 In a review started from Kero, the pane knows its pull request; elsewhere, name it with `--pr <number>`, once the review has a draft: **Start Draft** on the pull request starts one.
 
+## Review guides
+
+An agent writes a pull request's [review guide](./changes.md#review-guides), the tour of its Guide tab, with `kero pr guide`. Stops go in the order added, or nth with `--at <n>`; lines must show some of the pull request's diff, and a path alone is the whole file. Nothing of it goes to GitHub:
+
+```sh
+kero pr guide summary "Moves retries onto a queue."
+kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
+kero pr guide stop src/api.go:88 --title "Who enqueues" --closely   # Look closely
+kero pr guide stop testdata/golden.txt --title "Snapshots"          # the whole file
+kero pr guide show                        # the guide, each stop with its id
+kero pr guide edit 2 --title "Clearer"    # or move 2 --at 1, delete 2
+kero pr guide clear                       # start the tour again
+```
+
+In a guide started from Kero, the pane knows its pull request; elsewhere, name it with `--pr <number>`.
+
 ## Configuration and setup
 
 ```sh
