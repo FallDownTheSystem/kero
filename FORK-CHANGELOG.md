@@ -5,6 +5,17 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.12
+
+- New Session in a worktree has a New branch switch, on by default: name
+  the branch, and pick what it starts from in Start from, which first
+  shows the default branch (or the folder's branch, when Settings ›
+  worktree base is current). Turn it off to check out an existing branch
+  as it is
+- Sessions in a git worktree show a worktree mark in the sidebar, next to
+  their branch, and say so in their tooltip. Hosts show it after their
+  next update
+
 ## 2.1.34-fork.11
 
 - Customize Theme has Background colors: 2 to 4 colors blended from top
