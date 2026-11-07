@@ -136,6 +136,17 @@ kero close fix-login --remove-worktree    # 关闭会话并删除工作树
 kero close fix-login --remove-worktree --force   # 即使有未提交的改动
 ```
 
+<a id="moving-a-session-into-a-worktree"></a>
+
+### 把会话移入工作树
+
+已经在你的检出中工作的代理，可以把自己的会话连同对话一起移入专属的工作树，而不必新建会话。代理在自己的窗格中运行 `kero worktree handoff <branch>`，Kero 就会像为新会话那样创建工作树（新分支默认从默认分支创建，或按 `worktree-base` 的设置，或从 `--base`），并把它归给该会话。代理的这一轮结束后，Kero 会在工作树的同一文件夹中重新启动代理、恢复它的对话，并输入给定的 `--prompt`（如果有）。它的其他窗格和未提交的改动都留在原处。Kero 的技能会教代理使用它。已经有专属工作树的会话不能再次移动。
+
+```sh
+kero worktree handoff fix-login                          # 从默认分支创建
+kero worktree handoff fix-login --base HEAD --prompt "go on with the fix"
+```
+
 ## 文件
 
 右侧边栏的**文件**标签，或 <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd>（Windows 和 Linux 上为 <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd>），显示你所在窗格的工作树中的文件；不在仓库中时，显示它所在文件夹的文件。在远程主机上，显示的是该主机的文件。git 忽略的内容显示为淡色，`.git` 不会显示。除非关闭 `files-hidden`，否则会显示点文件。

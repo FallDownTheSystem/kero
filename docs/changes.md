@@ -138,6 +138,17 @@ kero close fix-login --remove-worktree    # close it and remove the worktree
 kero close fix-login --remove-worktree --force   # even with uncommitted changes
 ```
 
+<a id="moving-a-session-into-a-worktree"></a>
+
+### Moving a session into a worktree
+
+An agent already at work in your checkout can move its own session, with its conversation, into a worktree of its own, rather than start another. `kero worktree handoff <branch>`, run by the agent in its pane, makes the worktree as a new session's is made, on a new branch from the default branch (or as `worktree-base` says, or `--base`), and makes it the session's. Once the agent's turn ends, Kero starts it again in the same folder of the worktree, resuming its conversation, and types the `--prompt` it was given, if any. Its other panes stay where they are, and so do changes it didn't commit. Kero's skill teaches agents to use it. A session with a worktree of its own already can't move again.
+
+```sh
+kero worktree handoff fix-login                          # from the default branch
+kero worktree handoff fix-login --base HEAD --prompt "go on with the fix"
+```
+
 ## Files
 
 The right sidebar's **Files** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> on Windows and Linux), shows the files of the worktree of the pane you're in, or of its folder outside a repository. On a remote host, they're that host's. What git ignores shows faded, and `.git` doesn't show. Dotfiles show unless `files-hidden` is off.

@@ -138,6 +138,13 @@ Usage:
                                   and its branch once merged
       --force                     even if that loses changes or commits
   kero restart <target>         start an exited pane's shell again
+  kero worktree handoff <branch> [--base <ref>] [--prompt <text|->]
+                                move this session into a git worktree of
+                                its own, on a new branch from the default
+                                branch (or as worktree-base says, or
+                                --base): once this agent's turn ends, it
+                                starts again there, resuming its
+                                conversation, then goes on with --prompt
   kero notify [target] <message>
                                 flag the pane as needing you
   kero pr comment <path>[:<line>[-<end>]] <text…|->
@@ -205,7 +212,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "pr", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -1008,6 +1015,8 @@ func run(args []string, host string) error {
 		return c.Call("notify", proto.NotifyParams{ID: t.ref(), Title: f.vals["title"], Body: strings.Join(append(f.pos, f.rest...), " ")}, nil)
 	case "pr":
 		return prCommand(c, args)
+	case "worktree":
+		return worktreeCommand(c, args)
 	}
 	return usageErr("unknown command %q (see kero help)", cmd)
 }
