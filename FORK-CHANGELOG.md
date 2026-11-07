@@ -5,6 +5,46 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.14
+
+- New worktrees start from origin: a session's new branch fetches the
+  remote's copy of its base first and starts from it, unless the fetch
+  fails or the local branch has commits the remote's lacks (Settings ›
+  Git, on by default)
+- A worktree's setup script runs as Kero makes the worktree: the first
+  `runOnWorktreeCreate` of the repository's `kero.json`, else its
+  `t3.json`, in a terminal below the session, with a progress card that
+  can cancel it. Submodules are checked out first. `"async": false`
+  holds the agent until the script ends
+- Kero can name a new worktree's branch: New Session has a Task box,
+  passed to the agent as its first prompt; leave the branch empty, or
+  click the sparkle, and the model names it from the task. Settings ›
+  Git picks its prefix: the kind of the work (feat/, fix/), a fixed one,
+  or your own prompt's
+- An agent can move its own session, with its conversation, into a new
+  worktree: `kero worktree handoff <branch>` (Claude Code, Codex and
+  OpenCode; uncommitted changes stay in the old checkout)
+- Automatic worktree cleanup (Settings › Git, off by default): as Kero
+  starts, hourly and on Delete Now, it removes the worktrees it made
+  once inactive for some days, their pull request merged, with no
+  commits of their own, or with their last session closed, and never
+  one a session works in or one with changes. Projects can have rules
+  of their own, or none
+- Sessions know their pull request, found from their pushed branch or
+  linked with `kero pr link`, and Kero watches it while the session is
+  open: failed checks, merge conflicts and, as Settings › Git › Wake the
+  session's agent has it, passing checks and new comments type a message
+  into the agent's prompt
+- Pull request actions on the PR page and in the list: Merge (with the
+  repository's default method, which Review setup can change), auto-merge,
+  Ready for Review, Convert to Draft, Update Branch, Close, Reopen,
+  Delete Branch, Revert, and approving a fork's waiting workflow runs
+- Check Out a pull request here, in the pane's folder, or in a new
+  worktree; a worktree that already has it is reused
+- Review guides: Write Guide has an agent write a tour of a pull request,
+  which the PR page's Guide tab shows stop by stop, with Full Diff,
+  Comment and Ask Agent
+
 ## 2.1.34-fork.13
 
 - Removing a worktree from the New Session dialog's Existing worktrees
