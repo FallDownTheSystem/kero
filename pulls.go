@@ -409,6 +409,7 @@ func (a *App) pullRow(c *ui.Context, pal *palette, s *proto.Session, pane *proto
 			m.Separator()
 		}
 		reviewItems(m, launch)
+		a.pullRowActions(m, pane, res.Remote, slug, pr)
 		m.Separator()
 		checkoutItems(m, func(here bool) { a.checkoutPR(s, pane, res.Remote, pr, here) })
 		m.Separator()
@@ -928,6 +929,7 @@ type prSetup struct {
 	slug    string
 	command string
 	prompts [3]string
+	merge   string // the default merge method, "" for GitHub's first
 }
 
 // globalPrompts are the prompts of all repositories, of a review, a commit
@@ -961,7 +963,7 @@ func (a *App) repoPrompts(field func(settings.ReviewSetup) string) map[string]st
 // where it has none of its own.
 func (a *App) openReviewSetup(slug string) {
 	r := a.set.Reviews[strings.ToLower(slug)]
-	w := &prSetup{open: true, slug: slug, command: r.Command, prompts: [3]string{r.Prompt, r.CommitPrompt, r.PRPrompt}}
+	w := &prSetup{open: true, slug: slug, command: r.Command, prompts: [3]string{r.Prompt, r.CommitPrompt, r.PRPrompt}, merge: r.MergeMethod}
 	for i, g := range a.globalPrompts() {
 		if strings.TrimSpace(w.prompts[i]) == "" {
 			w.prompts[i] = g
@@ -1019,6 +1021,7 @@ func (a *App) prSetupView(c *ui.Context, pal *palette) {
 				setupPrompt(c, pal, "commit-prompt", locales.SetCommitPrompt(), &w.prompts[1], global[1], 90, &save)
 				setupPrompt(c, pal, "pr-prompt", locales.SetPRPrompt(), &w.prompts[2], global[2], 90, &save)
 				ui.Text(c, locales.PrsSetupGlobal()).FontSize(12).TextColor(pal.textFaint).LineHeight(1.4)
+				mergeDefaultField(c, pal, &w.merge)
 			})
 		})
 		dialogButtons(c, func() {
@@ -1043,7 +1046,7 @@ func (a *App) prSetupView(c *ui.Context, pal *palette) {
 				own[k] = v
 			}
 		}
-		r := settings.ReviewSetup{Command: strings.TrimSpace(w.command), Prompt: own[0], CommitPrompt: own[1], PRPrompt: own[2]}
+		r := settings.ReviewSetup{Command: strings.TrimSpace(w.command), Prompt: own[0], CommitPrompt: own[1], PRPrompt: own[2], MergeMethod: w.merge}
 		key := strings.ToLower(w.slug)
 		if r == (settings.ReviewSetup{}) {
 			delete(set.Reviews, key)

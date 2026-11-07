@@ -170,6 +170,7 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `pr-review-prompt` |  | 没有自己的 `review-prompt` 的仓库中，交给[审查](./changes.md#review)智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
 | `repo-commit-message-prompt` |  | 仓库自己的 `commit-message-prompt`，如 `owner/name=Write in Finnish`。每个仓库重复一行 |
 | `repo-pr-message-prompt` |  | 仓库自己的 `pr-message-prompt`，同 `repo-commit-message-prompt` |
+| `repo-merge-method` |  | 仓库拉取请求默认的[合并](./changes.md#review)方式，例如 `owner/name=rebase`：`merge`、`squash` 或 `rebase`。未设置时，使用仓库允许的压缩、合并、变基中的第一个 |
 
 ## 文件
 

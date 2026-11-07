@@ -13327,3 +13327,541 @@ func WorktreeSetupShowTerminal() string { return In(i18n.Locale()).WorktreeSetup
 func (msgs Messages) WorktreeSetupShowTerminal() string {
 	return Catalog.Format(msgs.locale, "worktreeSetupShowTerminal", nil)
 }
+
+// PrsActions says "Pull Request Actions"
+// in the language the app shows.
+func PrsActions() string { return In(i18n.Locale()).PrsActions() }
+
+// PrsActions says "Pull Request Actions"
+// in the language of msgs.
+func (msgs Messages) PrsActions() string {
+	return Catalog.Format(msgs.locale, "prsActions", nil)
+}
+
+// PrsActionFailed says "#{number}: {error}"
+// in the language the app shows.
+func PrsActionFailed(number int, error string) string {
+	return In(i18n.Locale()).PrsActionFailed(number, error)
+}
+
+// PrsActionFailed says "#{number}: {error}"
+// in the language of msgs.
+func (msgs Messages) PrsActionFailed(number int, error string) string {
+	return Catalog.Format(msgs.locale, "prsActionFailed", map[string]any{"number": number, "error": error})
+}
+
+// PrsMethodMerge says "Merge"
+// in the language the app shows.
+func PrsMethodMerge() string { return In(i18n.Locale()).PrsMethodMerge() }
+
+// PrsMethodMerge says "Merge"
+// in the language of msgs.
+func (msgs Messages) PrsMethodMerge() string {
+	return Catalog.Format(msgs.locale, "prsMethodMerge", nil)
+}
+
+// PrsMethodSquash says "Squash and Merge"
+// in the language the app shows.
+func PrsMethodSquash() string { return In(i18n.Locale()).PrsMethodSquash() }
+
+// PrsMethodSquash says "Squash and Merge"
+// in the language of msgs.
+func (msgs Messages) PrsMethodSquash() string {
+	return Catalog.Format(msgs.locale, "prsMethodSquash", nil)
+}
+
+// PrsMethodRebase says "Rebase and Merge"
+// in the language the app shows.
+func PrsMethodRebase() string { return In(i18n.Locale()).PrsMethodRebase() }
+
+// PrsMethodRebase says "Rebase and Merge"
+// in the language of msgs.
+func (msgs Messages) PrsMethodRebase() string {
+	return Catalog.Format(msgs.locale, "prsMethodRebase", nil)
+}
+
+// PrsMethodMergeShort says "Merge Commit"
+// in the language the app shows.
+func PrsMethodMergeShort() string { return In(i18n.Locale()).PrsMethodMergeShort() }
+
+// PrsMethodMergeShort says "Merge Commit"
+// in the language of msgs.
+func (msgs Messages) PrsMethodMergeShort() string {
+	return Catalog.Format(msgs.locale, "prsMethodMergeShort", nil)
+}
+
+// PrsMethodSquashShort says "Squash"
+// in the language the app shows.
+func PrsMethodSquashShort() string { return In(i18n.Locale()).PrsMethodSquashShort() }
+
+// PrsMethodSquashShort says "Squash"
+// in the language of msgs.
+func (msgs Messages) PrsMethodSquashShort() string {
+	return Catalog.Format(msgs.locale, "prsMethodSquashShort", nil)
+}
+
+// PrsMethodRebaseShort says "Rebase"
+// in the language the app shows.
+func PrsMethodRebaseShort() string { return In(i18n.Locale()).PrsMethodRebaseShort() }
+
+// PrsMethodRebaseShort says "Rebase"
+// in the language of msgs.
+func (msgs Messages) PrsMethodRebaseShort() string {
+	return Catalog.Format(msgs.locale, "prsMethodRebaseShort", nil)
+}
+
+// PrsMergeTitle says "Merge #{number}"
+// in the language the app shows.
+func PrsMergeTitle(number int) string { return In(i18n.Locale()).PrsMergeTitle(number) }
+
+// PrsMergeTitle says "Merge #{number}"
+// in the language of msgs.
+func (msgs Messages) PrsMergeTitle(number int) string {
+	return Catalog.Format(msgs.locale, "prsMergeTitle", map[string]any{"number": number})
+}
+
+// PrsMergeMenu says "Merge…"
+// in the language the app shows.
+func PrsMergeMenu() string { return In(i18n.Locale()).PrsMergeMenu() }
+
+// PrsMergeMenu says "Merge…"
+// in the language of msgs.
+func (msgs Messages) PrsMergeMenu() string {
+	return Catalog.Format(msgs.locale, "prsMergeMenu", nil)
+}
+
+// PrsMergeReady says "Ready to merge."
+// in the language the app shows.
+func PrsMergeReady() string { return In(i18n.Locale()).PrsMergeReady() }
+
+// PrsMergeReady says "Ready to merge."
+// in the language of msgs.
+func (msgs Messages) PrsMergeReady() string {
+	return Catalog.Format(msgs.locale, "prsMergeReady", nil)
+}
+
+// PrsMergeBehind says "Behind {base}: update the branch, or merge as it is if the repository allows."
+// in the language the app shows.
+func PrsMergeBehind(base string) string { return In(i18n.Locale()).PrsMergeBehind(base) }
+
+// PrsMergeBehind says "Behind {base}: update the branch, or merge as it is if the repository allows."
+// in the language of msgs.
+func (msgs Messages) PrsMergeBehind(base string) string {
+	return Catalog.Format(msgs.locale, "prsMergeBehind", map[string]any{"base": base})
+}
+
+// PrsMergeBlocked says "Waiting on required reviews or checks."
+// in the language the app shows.
+func PrsMergeBlocked() string { return In(i18n.Locale()).PrsMergeBlocked() }
+
+// PrsMergeBlocked says "Waiting on required reviews or checks."
+// in the language of msgs.
+func (msgs Messages) PrsMergeBlocked() string {
+	return Catalog.Format(msgs.locale, "prsMergeBlocked", nil)
+}
+
+// PrsMergeUnstable says "Some checks failed, which the repository doesn't require."
+// in the language the app shows.
+func PrsMergeUnstable() string { return In(i18n.Locale()).PrsMergeUnstable() }
+
+// PrsMergeUnstable says "Some checks failed, which the repository doesn't require."
+// in the language of msgs.
+func (msgs Messages) PrsMergeUnstable() string {
+	return Catalog.Format(msgs.locale, "prsMergeUnstable", nil)
+}
+
+// PrsMergeUnknown says "GitHub is still checking whether it merges."
+// in the language the app shows.
+func PrsMergeUnknown() string { return In(i18n.Locale()).PrsMergeUnknown() }
+
+// PrsMergeUnknown says "GitHub is still checking whether it merges."
+// in the language of msgs.
+func (msgs Messages) PrsMergeUnknown() string {
+	return Catalog.Format(msgs.locale, "prsMergeUnknown", nil)
+}
+
+// PrsMergeConflicts says "Conflicts with {base}: resolve them before merging."
+// in the language the app shows.
+func PrsMergeConflicts(base string) string { return In(i18n.Locale()).PrsMergeConflicts(base) }
+
+// PrsMergeConflicts says "Conflicts with {base}: resolve them before merging."
+// in the language of msgs.
+func (msgs Messages) PrsMergeConflicts(base string) string {
+	return Catalog.Format(msgs.locale, "prsMergeConflicts", map[string]any{"base": base})
+}
+
+// PrsMergeDraft says "A draft: mark it ready for review to merge it."
+// in the language the app shows.
+func PrsMergeDraft() string { return In(i18n.Locale()).PrsMergeDraft() }
+
+// PrsMergeDraft says "A draft: mark it ready for review to merge it."
+// in the language of msgs.
+func (msgs Messages) PrsMergeDraft() string {
+	return Catalog.Format(msgs.locale, "prsMergeDraft", nil)
+}
+
+// PrsMergeNoAccess says "You can't merge pull requests of this repository."
+// in the language the app shows.
+func PrsMergeNoAccess() string { return In(i18n.Locale()).PrsMergeNoAccess() }
+
+// PrsMergeNoAccess says "You can't merge pull requests of this repository."
+// in the language of msgs.
+func (msgs Messages) PrsMergeNoAccess() string {
+	return Catalog.Format(msgs.locale, "prsMergeNoAccess", nil)
+}
+
+// PrsMergeDeleteBranch says "Delete the branch after merging"
+// in the language the app shows.
+func PrsMergeDeleteBranch() string { return In(i18n.Locale()).PrsMergeDeleteBranch() }
+
+// PrsMergeDeleteBranch says "Delete the branch after merging"
+// in the language of msgs.
+func (msgs Messages) PrsMergeDeleteBranch() string {
+	return Catalog.Format(msgs.locale, "prsMergeDeleteBranch", nil)
+}
+
+// PrsMergeRemember says "Make this the repository's default"
+// in the language the app shows.
+func PrsMergeRemember() string { return In(i18n.Locale()).PrsMergeRemember() }
+
+// PrsMergeRemember says "Make this the repository's default"
+// in the language of msgs.
+func (msgs Messages) PrsMergeRemember() string {
+	return Catalog.Format(msgs.locale, "prsMergeRemember", nil)
+}
+
+// PrsAutoMergeOn says "Merges by {method} once its requirements are met."
+// in the language the app shows.
+func PrsAutoMergeOn(method string) string { return In(i18n.Locale()).PrsAutoMergeOn(method) }
+
+// PrsAutoMergeOn says "Merges by {method} once its requirements are met."
+// in the language of msgs.
+func (msgs Messages) PrsAutoMergeOn(method string) string {
+	return Catalog.Format(msgs.locale, "prsAutoMergeOn", map[string]any{"method": method})
+}
+
+// PrsEnableAutoMerge says "Enable Auto-Merge"
+// in the language the app shows.
+func PrsEnableAutoMerge() string { return In(i18n.Locale()).PrsEnableAutoMerge() }
+
+// PrsEnableAutoMerge says "Enable Auto-Merge"
+// in the language of msgs.
+func (msgs Messages) PrsEnableAutoMerge() string {
+	return Catalog.Format(msgs.locale, "prsEnableAutoMerge", nil)
+}
+
+// PrsEnableAutoMergeMenu says "Enable Auto-Merge…"
+// in the language the app shows.
+func PrsEnableAutoMergeMenu() string { return In(i18n.Locale()).PrsEnableAutoMergeMenu() }
+
+// PrsEnableAutoMergeMenu says "Enable Auto-Merge…"
+// in the language of msgs.
+func (msgs Messages) PrsEnableAutoMergeMenu() string {
+	return Catalog.Format(msgs.locale, "prsEnableAutoMergeMenu", nil)
+}
+
+// PrsDisableAutoMerge says "Disable Auto-Merge"
+// in the language the app shows.
+func PrsDisableAutoMerge() string { return In(i18n.Locale()).PrsDisableAutoMerge() }
+
+// PrsDisableAutoMerge says "Disable Auto-Merge"
+// in the language of msgs.
+func (msgs Messages) PrsDisableAutoMerge() string {
+	return Catalog.Format(msgs.locale, "prsDisableAutoMerge", nil)
+}
+
+// PrsMarkReady says "Ready for Review"
+// in the language the app shows.
+func PrsMarkReady() string { return In(i18n.Locale()).PrsMarkReady() }
+
+// PrsMarkReady says "Ready for Review"
+// in the language of msgs.
+func (msgs Messages) PrsMarkReady() string {
+	return Catalog.Format(msgs.locale, "prsMarkReady", nil)
+}
+
+// PrsConvertToDraft says "Convert to Draft"
+// in the language the app shows.
+func PrsConvertToDraft() string { return In(i18n.Locale()).PrsConvertToDraft() }
+
+// PrsConvertToDraft says "Convert to Draft"
+// in the language of msgs.
+func (msgs Messages) PrsConvertToDraft() string {
+	return Catalog.Format(msgs.locale, "prsConvertToDraft", nil)
+}
+
+// PrsUpdateBranch says "Update Branch"
+// in the language the app shows.
+func PrsUpdateBranch() string { return In(i18n.Locale()).PrsUpdateBranch() }
+
+// PrsUpdateBranch says "Update Branch"
+// in the language of msgs.
+func (msgs Messages) PrsUpdateBranch() string {
+	return Catalog.Format(msgs.locale, "prsUpdateBranch", nil)
+}
+
+// PrsUpdateBranchRebase says "Update Branch with Rebase"
+// in the language the app shows.
+func PrsUpdateBranchRebase() string { return In(i18n.Locale()).PrsUpdateBranchRebase() }
+
+// PrsUpdateBranchRebase says "Update Branch with Rebase"
+// in the language of msgs.
+func (msgs Messages) PrsUpdateBranchRebase() string {
+	return Catalog.Format(msgs.locale, "prsUpdateBranchRebase", nil)
+}
+
+// PrsClosePR says "Close Pull Request"
+// in the language the app shows.
+func PrsClosePR() string { return In(i18n.Locale()).PrsClosePR() }
+
+// PrsClosePR says "Close Pull Request"
+// in the language of msgs.
+func (msgs Messages) PrsClosePR() string {
+	return Catalog.Format(msgs.locale, "prsClosePR", nil)
+}
+
+// PrsClosePRMenu says "Close Pull Request…"
+// in the language the app shows.
+func PrsClosePRMenu() string { return In(i18n.Locale()).PrsClosePRMenu() }
+
+// PrsClosePRMenu says "Close Pull Request…"
+// in the language of msgs.
+func (msgs Messages) PrsClosePRMenu() string {
+	return Catalog.Format(msgs.locale, "prsClosePRMenu", nil)
+}
+
+// PrsCloseTitle says "Close #{number}?"
+// in the language the app shows.
+func PrsCloseTitle(number int) string { return In(i18n.Locale()).PrsCloseTitle(number) }
+
+// PrsCloseTitle says "Close #{number}?"
+// in the language of msgs.
+func (msgs Messages) PrsCloseTitle(number int) string {
+	return Catalog.Format(msgs.locale, "prsCloseTitle", map[string]any{"number": number})
+}
+
+// PrsCloseDetail says "It stays on GitHub, closed, with its branch, and you can reopen it."
+// in the language the app shows.
+func PrsCloseDetail() string { return In(i18n.Locale()).PrsCloseDetail() }
+
+// PrsCloseDetail says "It stays on GitHub, closed, with its branch, and you can reopen it."
+// in the language of msgs.
+func (msgs Messages) PrsCloseDetail() string {
+	return Catalog.Format(msgs.locale, "prsCloseDetail", nil)
+}
+
+// PrsReopenPR says "Reopen"
+// in the language the app shows.
+func PrsReopenPR() string { return In(i18n.Locale()).PrsReopenPR() }
+
+// PrsReopenPR says "Reopen"
+// in the language of msgs.
+func (msgs Messages) PrsReopenPR() string {
+	return Catalog.Format(msgs.locale, "prsReopenPR", nil)
+}
+
+// PrsRevert says "Revert"
+// in the language the app shows.
+func PrsRevert() string { return In(i18n.Locale()).PrsRevert() }
+
+// PrsRevert says "Revert"
+// in the language of msgs.
+func (msgs Messages) PrsRevert() string {
+	return Catalog.Format(msgs.locale, "prsRevert", nil)
+}
+
+// PrsRevertMenu says "Revert…"
+// in the language the app shows.
+func PrsRevertMenu() string { return In(i18n.Locale()).PrsRevertMenu() }
+
+// PrsRevertMenu says "Revert…"
+// in the language of msgs.
+func (msgs Messages) PrsRevertMenu() string {
+	return Catalog.Format(msgs.locale, "prsRevertMenu", nil)
+}
+
+// PrsRevertTitle says "Revert #{number}?"
+// in the language the app shows.
+func PrsRevertTitle(number int) string { return In(i18n.Locale()).PrsRevertTitle(number) }
+
+// PrsRevertTitle says "Revert #{number}?"
+// in the language of msgs.
+func (msgs Messages) PrsRevertTitle(number int) string {
+	return Catalog.Format(msgs.locale, "prsRevertTitle", map[string]any{"number": number})
+}
+
+// PrsRevertDetail says "GitHub opens a new pull request into {base} that undoes this one's changes, for you to merge."
+// in the language the app shows.
+func PrsRevertDetail(base string) string { return In(i18n.Locale()).PrsRevertDetail(base) }
+
+// PrsRevertDetail says "GitHub opens a new pull request into {base} that undoes this one's changes, for you to merge."
+// in the language of msgs.
+func (msgs Messages) PrsRevertDetail(base string) string {
+	return Catalog.Format(msgs.locale, "prsRevertDetail", map[string]any{"base": base})
+}
+
+// PrsDeleteBranch says "Delete Branch"
+// in the language the app shows.
+func PrsDeleteBranch() string { return In(i18n.Locale()).PrsDeleteBranch() }
+
+// PrsDeleteBranch says "Delete Branch"
+// in the language of msgs.
+func (msgs Messages) PrsDeleteBranch() string {
+	return Catalog.Format(msgs.locale, "prsDeleteBranch", nil)
+}
+
+// PrsDeleteBranchMenu says "Delete Branch…"
+// in the language the app shows.
+func PrsDeleteBranchMenu() string { return In(i18n.Locale()).PrsDeleteBranchMenu() }
+
+// PrsDeleteBranchMenu says "Delete Branch…"
+// in the language of msgs.
+func (msgs Messages) PrsDeleteBranchMenu() string {
+	return Catalog.Format(msgs.locale, "prsDeleteBranchMenu", nil)
+}
+
+// PrsDeleteBranchTitle says "Delete {branch}?"
+// in the language the app shows.
+func PrsDeleteBranchTitle(branch string) string {
+	return In(i18n.Locale()).PrsDeleteBranchTitle(branch)
+}
+
+// PrsDeleteBranchTitle says "Delete {branch}?"
+// in the language of msgs.
+func (msgs Messages) PrsDeleteBranchTitle(branch string) string {
+	return Catalog.Format(msgs.locale, "prsDeleteBranchTitle", map[string]any{"branch": branch})
+}
+
+// PrsDeleteBranchDetail says "This deletes the pull request's branch on GitHub, unless it has commits the pull request hasn't. Your local branches …"
+// in the language the app shows.
+func PrsDeleteBranchDetail() string { return In(i18n.Locale()).PrsDeleteBranchDetail() }
+
+// PrsDeleteBranchDetail says "This deletes the pull request's branch on GitHub, unless it has commits the pull request hasn't. Your local branches …"
+// in the language of msgs.
+func (msgs Messages) PrsDeleteBranchDetail() string {
+	return Catalog.Format(msgs.locale, "prsDeleteBranchDetail", nil)
+}
+
+// PrsApproveRuns says "{count, plural, =0 {Approve Runs} one {Approve # Run} other {Approve # Runs}}"
+// in the language the app shows.
+func PrsApproveRuns(count int) string { return In(i18n.Locale()).PrsApproveRuns(count) }
+
+// PrsApproveRuns says "{count, plural, =0 {Approve Runs} one {Approve # Run} other {Approve # Runs}}"
+// in the language of msgs.
+func (msgs Messages) PrsApproveRuns(count int) string {
+	return Catalog.Format(msgs.locale, "prsApproveRuns", map[string]any{"count": count})
+}
+
+// PrsApproveTitle says "Approve the workflow runs of #{number}?"
+// in the language the app shows.
+func PrsApproveTitle(number int) string { return In(i18n.Locale()).PrsApproveTitle(number) }
+
+// PrsApproveTitle says "Approve the workflow runs of #{number}?"
+// in the language of msgs.
+func (msgs Messages) PrsApproveTitle(number int) string {
+	return Catalog.Format(msgs.locale, "prsApproveTitle", map[string]any{"number": number})
+}
+
+// PrsApproveDetail says "They run the fork's code with the repository's workflows. Look at its changes first."
+// in the language the app shows.
+func PrsApproveDetail() string { return In(i18n.Locale()).PrsApproveDetail() }
+
+// PrsApproveDetail says "They run the fork's code with the repository's workflows. Look at its changes first."
+// in the language of msgs.
+func (msgs Messages) PrsApproveDetail() string {
+	return Catalog.Format(msgs.locale, "prsApproveDetail", nil)
+}
+
+// PrsRunsWaiting says "{count, plural, one {A workflow run waits on your approval.} other {# workflow runs wait on your approval.}}"
+// in the language the app shows.
+func PrsRunsWaiting(count int) string { return In(i18n.Locale()).PrsRunsWaiting(count) }
+
+// PrsRunsWaiting says "{count, plural, one {A workflow run waits on your approval.} other {# workflow runs wait on your approval.}}"
+// in the language of msgs.
+func (msgs Messages) PrsRunsWaiting(count int) string {
+	return Catalog.Format(msgs.locale, "prsRunsWaiting", map[string]any{"count": count})
+}
+
+// PrsDoneMerged says "Merged #{number}"
+// in the language the app shows.
+func PrsDoneMerged(number int) string { return In(i18n.Locale()).PrsDoneMerged(number) }
+
+// PrsDoneMerged says "Merged #{number}"
+// in the language of msgs.
+func (msgs Messages) PrsDoneMerged(number int) string {
+	return Catalog.Format(msgs.locale, "prsDoneMerged", map[string]any{"number": number})
+}
+
+// PrsDoneAutoMerge says "#{number} merges once its requirements are met"
+// in the language the app shows.
+func PrsDoneAutoMerge(number int) string { return In(i18n.Locale()).PrsDoneAutoMerge(number) }
+
+// PrsDoneAutoMerge says "#{number} merges once its requirements are met"
+// in the language of msgs.
+func (msgs Messages) PrsDoneAutoMerge(number int) string {
+	return Catalog.Format(msgs.locale, "prsDoneAutoMerge", map[string]any{"number": number})
+}
+
+// PrsDoneReverted says "Opened a revert of #{number}: {url}"
+// in the language the app shows.
+func PrsDoneReverted(number int, url string) string {
+	return In(i18n.Locale()).PrsDoneReverted(number, url)
+}
+
+// PrsDoneReverted says "Opened a revert of #{number}: {url}"
+// in the language of msgs.
+func (msgs Messages) PrsDoneReverted(number int, url string) string {
+	return Catalog.Format(msgs.locale, "prsDoneReverted", map[string]any{"number": number, "url": url})
+}
+
+// PrsDoneApproved says "{count, plural, =0 {No runs were waiting} one {Approved # run} other {Approved # runs}}"
+// in the language the app shows.
+func PrsDoneApproved(count int) string { return In(i18n.Locale()).PrsDoneApproved(count) }
+
+// PrsDoneApproved says "{count, plural, =0 {No runs were waiting} one {Approved # run} other {Approved # runs}}"
+// in the language of msgs.
+func (msgs Messages) PrsDoneApproved(count int) string {
+	return Catalog.Format(msgs.locale, "prsDoneApproved", map[string]any{"count": count})
+}
+
+// PrsDoneBranchDeleted says "Deleted {branch}"
+// in the language the app shows.
+func PrsDoneBranchDeleted(branch string) string {
+	return In(i18n.Locale()).PrsDoneBranchDeleted(branch)
+}
+
+// PrsDoneBranchDeleted says "Deleted {branch}"
+// in the language of msgs.
+func (msgs Messages) PrsDoneBranchDeleted(branch string) string {
+	return Catalog.Format(msgs.locale, "prsDoneBranchDeleted", map[string]any{"branch": branch})
+}
+
+// PrsSetupMerge says "Default merge method"
+// in the language the app shows.
+func PrsSetupMerge() string { return In(i18n.Locale()).PrsSetupMerge() }
+
+// PrsSetupMerge says "Default merge method"
+// in the language of msgs.
+func (msgs Messages) PrsSetupMerge() string {
+	return Catalog.Format(msgs.locale, "prsSetupMerge", nil)
+}
+
+// PrsSetupMergeAuto says "GitHub's"
+// in the language the app shows.
+func PrsSetupMergeAuto() string { return In(i18n.Locale()).PrsSetupMergeAuto() }
+
+// PrsSetupMergeAuto says "GitHub's"
+// in the language of msgs.
+func (msgs Messages) PrsSetupMergeAuto() string {
+	return Catalog.Format(msgs.locale, "prsSetupMergeAuto", nil)
+}
+
+// PrsSetupMergeHint says "How Merge merges this repository's pull requests. GitHub's is the first the repository allows of squash, merge commit…"
+// in the language the app shows.
+func PrsSetupMergeHint() string { return In(i18n.Locale()).PrsSetupMergeHint() }
+
+// PrsSetupMergeHint says "How Merge merges this repository's pull requests. GitHub's is the first the repository allows of squash, merge commit…"
+// in the language of msgs.
+func (msgs Messages) PrsSetupMergeHint() string {
+	return Catalog.Format(msgs.locale, "prsSetupMergeHint", nil)
+}
