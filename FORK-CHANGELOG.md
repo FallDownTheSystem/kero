@@ -5,6 +5,18 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.34-fork.9
+
+- Fixed: in a narrow pane or right sidebar, the header's buttons no
+  longer run under the window's minimize, maximize and close buttons.
+  They fold into the More (…) menu as the room runs out:
+  - A browser pane's back, forward and reload go there once its split
+    buttons have, and the address bar narrows further
+  - Narrower still, a pane's Zoom and Close go there too, with the
+    buttons of the window's corner
+  - The right sidebar puts its Zoom and Hide buttons there once its tabs
+    show as icons, and then the tabs that don't fit
+
 ## 2.1.34-fork.8
 
 - Fixed: the divider beside a browser pane couldn't be dragged while the
