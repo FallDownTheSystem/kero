@@ -16,11 +16,15 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/transfer"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/math/fixed"
 
 	"kero/internal/proto"
 
@@ -54,8 +58,15 @@ type pickResult struct {
 		H   float64 `json:"h"`
 		DPR float64 `json:"dpr"`
 	} `json:"viewport"`
-	Screenshots bool         `json:"screenshots"`
-	Picks       []pickedElem `json:"picks"`
+	// Screenshots asks for a picture of each element, PageShot for one
+	// of the page as the user saw it; Scroll is where the page was.
+	Screenshots bool                   `json:"screenshots"`
+	PageShot    bool                   `json:"pageShot"`
+	Scroll      struct{ X, Y float64 } `json:"scroll"`
+	Picks       []pickedElem           `json:"picks"`
+
+	// pageShot is the file of the page's picture.
+	pageShot string
 }
 
 type pickedElem struct {
@@ -157,7 +168,8 @@ func (a *App) togglePick(id string) error {
 	e.picking = true
 	e.pickSeq++
 	seq := e.pickSeq
-	opts, _ := json.Marshal(map[string]any{"screenshots": true})
+	// The pictures are taken as the user last chose.
+	opts, _ := json.Marshal(map[string]any{"screenshots": !a.pickNoShots, "page": !a.pickNoPage})
 	script := "(" + pickScript + ")(" + string(opts) + ")"
 	go func() {
 		// The picker waits for the user: as long as they take.
@@ -182,6 +194,7 @@ func (a *App) togglePick(id string) error {
 			if json.Unmarshal(b, &res) != nil || len(res.Picks) == 0 {
 				return
 			}
+			a.pickNoShots, a.pickNoPage = !res.Screenshots, !res.PageShot
 			a.sendPicks(id, e, &res)
 		})
 	}()
@@ -225,13 +238,8 @@ func (a *App) sendPicks(id string, e *webEntry, res *pickResult) {
 			for i := range res.Picks {
 				res.Picks[i].sources = pickSources(&res.Picks[i], res.URL, dirs)
 			}
-			if res.Screenshots && view != nil {
-				// The picker's boxes are gone from the page by its next
-				// frame.
-				time.Sleep(150 * time.Millisecond)
-				if shot, err := view.CapturePage(); err == nil && len(shot) > 0 {
-					cropPicks(shot, res, id)
-				}
+			if view != nil {
+				pickShots(view, res, id)
 			}
 		}
 		text := pickMessage(res, dirs)
@@ -570,32 +578,110 @@ func startTags(text string) []startTag {
 	return out
 }
 
-// cropPicks cuts each picked element out of the page's picture, with a
-// margin around it and a box drawn on it, and writes it to a file of the
-// temporary directory, for the agent to look at.
-func cropPicks(shot []byte, res *pickResult, pane string) {
-	img, err := png.Decode(bytes.NewReader(shot))
-	if err != nil || res.Viewport.W <= 0 {
+// pickShots takes the pictures the user asked for, to files of the
+// temporary directory the agent opens by their paths: the page as they
+// saw it, each element boxed and numbered, and each element with a
+// margin around it, boxed. An element out of sight is scrolled into it
+// for its picture, and the page scrolled back after.
+func pickShots(view *mygo.WebView, res *pickResult, pane string) {
+	page := view.Page()
+	moved := false
+	defer func() {
+		restore := ""
+		if moved {
+			restore = fmt.Sprintf("scrollTo({left: %g, top: %g, behavior: \"instant\"});", res.Scroll.X, res.Scroll.Y)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		page.EvalContext(ctx, restore+"delete window.__keroPicked")
+	}()
+	if !res.Screenshots && !res.PageShot || res.Viewport.W <= 0 {
 		return
 	}
-	b := img.Bounds()
-	scale := float64(b.Dx()) / res.Viewport.W
+	// The picker's boxes are gone from the page by its next frame.
+	time.Sleep(150 * time.Millisecond)
+	img, err := capture(view)
+	if err != nil {
+		return
+	}
+	scale := float64(img.Bounds().Dx()) / res.Viewport.W
 	stamp := time.Now().Format("20060102-150405")
+	save := func(img image.Image, name string) string {
+		var buf bytes.Buffer
+		if png.Encode(&buf, img) != nil {
+			return ""
+		}
+		path := filepath.Join(os.TempDir(), fmt.Sprintf("kero-pick-%s-%s-%s.png", pane, stamp, name))
+		if os.WriteFile(path, buf.Bytes(), 0o644) != nil {
+			return ""
+		}
+		return path
+	}
+	if res.PageShot {
+		res.pageShot = save(pagePicture(img, res.Picks, scale), "page")
+	}
+	if !res.Screenshots {
+		return
+	}
 	for i := range res.Picks {
 		el := &res.Picks[i]
-		out := highlight(img, el.Rect, scale)
-		if out == nil {
-			continue
+		src, at := img, el.Rect
+		if !inSight(at, res.Viewport.W, res.Viewport.H) {
+			r, ok := scrollToPick(page, i)
+			if !ok {
+				continue
+			}
+			moved = true
+			time.Sleep(200 * time.Millisecond) // for the page to paint
+			if src, err = capture(view); err != nil {
+				continue
+			}
+			at = r
 		}
-		var buf bytes.Buffer
-		if png.Encode(&buf, out) != nil {
-			continue
-		}
-		path := filepath.Join(os.TempDir(), fmt.Sprintf("kero-pick-%s-%s-%d.png", pane, stamp, i+1))
-		if os.WriteFile(path, buf.Bytes(), 0o644) == nil {
-			el.shot = path
+		if out := highlight(src, at, scale); out != nil {
+			el.shot = save(out, strconv.Itoa(i+1))
 		}
 	}
+}
+
+// capture is the picture of the page the view shows.
+func capture(view *mygo.WebView) (image.Image, error) {
+	b, err := view.CapturePage()
+	if err != nil {
+		return nil, err
+	}
+	if len(b) == 0 {
+		return nil, errors.New("no picture")
+	}
+	return png.Decode(bytes.NewReader(b))
+}
+
+// inSight tells that an element's box is in the viewport, as much of it
+// as fits there.
+func inSight(r pickRect, vw, vh float64) bool {
+	fitsX := r.X >= -1 && r.X+r.W <= vw+1 || r.W > vw && r.X < vw && r.X+r.W > 0
+	fitsY := r.Y >= -1 && r.Y+r.H <= vh+1 || r.H > vh && r.Y < vh && r.Y+r.H > 0
+	return r.W > 0 && r.H > 0 && fitsX && fitsY
+}
+
+// scrollToPick scrolls the page's i'th picked element into sight and
+// returns where it is now.
+func scrollToPick(page *mygo.Page, i int) (pickRect, bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	v, err := page.EvalContext(ctx, fmt.Sprintf(`(() => {
+  const el = (window.__keroPicked || [])[%d];
+  if (!el || !el.isConnected) return null;
+  el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+  const r = el.getBoundingClientRect();
+  return { x: r.left, y: r.top, w: r.width, h: r.height };
+})()`, i))
+	if err != nil || v == nil {
+		return pickRect{}, false
+	}
+	var r pickRect
+	b, _ := json.Marshal(v)
+	return r, json.Unmarshal(b, &r) == nil && r.W > 0 && r.H > 0
 }
 
 // pickAccent is the picker's blue, as browserpick.js draws its boxes.
@@ -606,7 +692,7 @@ var pickAccent = color.RGBA{0x2f, 0x80, 0xed, 0xff}
 // for an element out of sight.
 func highlight(img image.Image, r pickRect, scale float64) *image.RGBA {
 	b := img.Bounds()
-	box := image.Rect(int(r.X*scale), int(r.Y*scale), int((r.X+r.W)*scale+0.5), int((r.Y+r.H)*scale+0.5)).Add(b.Min)
+	box := scaled(r, scale).Add(b.Min)
 	pad := int(24 * scale)
 	area := image.Rect(box.Min.X-pad, box.Min.Y-pad, box.Max.X+pad, box.Max.Y+pad).Intersect(b)
 	if area.Empty() || box.Intersect(b).Empty() {
@@ -614,7 +700,34 @@ func highlight(img image.Image, r pickRect, scale float64) *image.RGBA {
 	}
 	out := image.NewRGBA(image.Rect(0, 0, area.Dx(), area.Dy()))
 	draw.Draw(out, out.Bounds(), img, area.Min, draw.Src)
-	box = box.Sub(area.Min)
+	drawBox(out, box.Sub(area.Min), scale)
+	return out
+}
+
+// pagePicture is the page's picture with each picked element in it boxed
+// and numbered, as the message numbers them.
+func pagePicture(img image.Image, picks []pickedElem, scale float64) *image.RGBA {
+	b := img.Bounds()
+	out := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(out, out.Bounds(), img, b.Min, draw.Src)
+	for i, el := range picks {
+		box := scaled(el.Rect, scale)
+		if box.Intersect(out.Bounds()).Empty() {
+			continue
+		}
+		drawBox(out, box, scale)
+		badge(out, i+1, box, scale)
+	}
+	return out
+}
+
+// scaled is a box of CSS pixels in the picture's.
+func scaled(r pickRect, scale float64) image.Rectangle {
+	return image.Rect(int(r.X*scale), int(r.Y*scale), int((r.X+r.W)*scale+0.5), int((r.Y+r.H)*scale+0.5))
+}
+
+// drawBox draws a box around box, outside it, 2 CSS pixels wide.
+func drawBox(out *image.RGBA, box image.Rectangle, scale float64) {
 	w := max(int(2*scale), 2)
 	edge := image.NewUniform(pickAccent)
 	for _, s := range []image.Rectangle{
@@ -625,7 +738,33 @@ func highlight(img image.Image, r pickRect, scale float64) *image.RGBA {
 	} {
 		draw.Draw(out, s.Intersect(out.Bounds()), edge, image.Point{}, draw.Src)
 	}
-	return out
+}
+
+// badge writes an element's number, white on the picker's blue, at its
+// box's top left corner, inside the picture.
+func badge(out *image.RGBA, n int, box image.Rectangle, scale float64) {
+	text := strconv.Itoa(n)
+	face := basicfont.Face7x13
+	// The font's pixels drawn k times as big: about 13 CSS pixels tall.
+	k := max(int(scale+0.5), 1)
+	tw := font.MeasureString(face, text).Ceil()
+	small := image.NewRGBA(image.Rect(0, 0, tw+6, 15))
+	draw.Draw(small, small.Bounds(), image.NewUniform(pickAccent), image.Point{}, draw.Src)
+	d := font.Drawer{Dst: small, Src: image.NewUniform(color.White), Face: face, Dot: fixed.P(3, 12)}
+	d.DrawString(text)
+	sz := image.Pt(small.Bounds().Dx()*k, small.Bounds().Dy()*k)
+	at := image.Pt(box.Min.X-2*k, box.Min.Y-sz.Y-2*k)
+	if at.Y < 0 {
+		at.Y = box.Min.Y + 2*k // no room above: inside the box
+	}
+	at.X = max(0, min(at.X, out.Bounds().Dx()-sz.X))
+	for y := range sz.Y {
+		for x := range sz.X {
+			if p := at.Add(image.Pt(x, y)); p.In(out.Bounds()) {
+				out.SetRGBA(p.X, p.Y, small.RGBAAt(x/k, y/k))
+			}
+		}
+	}
 }
 
 // pickStyleOrder is the order the computed styles are told in.
@@ -644,7 +783,14 @@ func pickMessage(res *pickResult, dirs []string) string {
 	} else {
 		fmt.Fprintf(&b, "The user picked %d elements on the page and wrote what they want of each. Find each", n)
 	}
-	b.WriteString(" in the source by its source location, else by grepping for its search hints; the selector is the page's, not the source's.\n")
+	b.WriteString(" in the source by its source location, else by grepping for its search hints; the selector is the page's, not the source's.")
+	if res.pageShot != "" || slices.ContainsFunc(res.Picks, func(el pickedElem) bool { return el.shot != "" }) {
+		b.WriteString(" The screenshots are image files: open them to see what the user saw.")
+	}
+	b.WriteString("\n")
+	if res.pageShot != "" {
+		b.WriteString("Page screenshot (each element boxed in blue and numbered as below): " + res.pageShot + "\n")
+	}
 	for i := range res.Picks {
 		el := &res.Picks[i]
 		title := "<" + el.Tag + ">"

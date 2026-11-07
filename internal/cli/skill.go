@@ -154,8 +154,11 @@ Source, the file and line from the framework's development build or the
 page's own HTML file, checked against the file; Search hints, strings
 likely written in the source as they are (★ marks one no other element
 on the page has), to grep for; where it sits on the page and its HTML;
-then the page's selector, which is not the source's, and its styles, and
-a screenshot of it you can open. Go to Source first, then grep the hints.
+then the page's selector, which is not the source's, and its styles.
+Screenshots are PNG files whose paths the message gives: one of each
+element, boxed, and one of the page with the elements boxed and numbered
+as the message numbers them. Open them to see what the user means. Go
+to Source first, then grep the hints.
 
 With no target, kero browser drives your session's browser pane; name
 one (kero browser <target> text) when there are several. It needs the app

@@ -7,7 +7,7 @@ async (o) => {
   const ui = document.createElement("kero-picker");
   const root = ui.attachShadow({ mode: "open" });
   const picks = []; // { el, note }
-  let hover = null, open = null, shots = o.screenshots !== false, done;
+  let hover = null, open = null, shots = o.screenshots !== false, whole = o.page !== false, done;
   const finished = new Promise((r) => (done = r));
   const accent = "#2f80ed";
   const css = `:host { all: initial; position: fixed; inset: 0; z-index: 2147483647; pointer-events: none;
@@ -57,7 +57,9 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
   root.innerHTML += `<div class="layer"></div>
 <div class="tray">
   <span class="hint"></span>
-  <label><input type="checkbox" class="shots"> Screenshots</label>
+  <span class="hint">Screenshots:</span>
+  <label title="A picture of each element, boxed"><input type="checkbox" class="shots"> Elements</label>
+  <label title="A picture of the page as you see it, the elements boxed and numbered"><input type="checkbox" class="whole"> Page</label>
   <button class="cancel">Cancel</button>
   <button class="primary send">Send</button>
 </div>`;
@@ -65,6 +67,8 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
   const layer = $(".layer"), hint = $(".hint"), send = $(".send");
   $(".shots").checked = shots;
   $(".shots").onchange = (e) => (shots = e.target.checked);
+  $(".whole").checked = whole;
+  $(".whole").onchange = (e) => (whole = e.target.checked);
   const mine = (e) => e.composedPath().includes(ui);
   // What the page shows under the pointer: inside its shadow roots too.
   const under = (e) => {
@@ -197,6 +201,9 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
     cancelAnimationFrame(frame);
     ui.remove();
     delete window.__keroPick;
+    // The picked elements stay known to the page, for Kero to scroll
+    // one out of sight into it for its picture; Kero lets them go after.
+    if (sending) window.__keroPicked = picks.map((p) => p.el);
     done(sending ? collect() : null);
   };
   $(".cancel").onclick = () => finish(false);
@@ -572,6 +579,8 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
       title: document.title,
       viewport: { w: innerWidth, h: innerHeight, dpr: devicePixelRatio },
       screenshots: shots,
+      pageShot: whole,
+      scroll: { x: scrollX, y: scrollY },
       picks: list,
     }));
   }

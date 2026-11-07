@@ -116,8 +116,9 @@ func TestPickMessage(t *testing.T) {
 		Context: "in <main>, the 2nd of 3 div.card",
 		sources: []string{"src/Card.vue:8 (Vue component Card)"},
 	}}
+	res.pageShot = "/tmp/kero-pick-p1-page.png"
 	msg := pickMessage(res, nil)
-	order := []string{"Note: make it green", "Source: src/Card.vue:8", "Search hints", `aria-label="Buy Pro" ★`, "Where: in <main>", "Selector: div.card", "Page: http://localhost:5173/, viewport 1280×720"}
+	order := []string{"open them to see", "Page screenshot (each element boxed in blue and numbered as below): /tmp/kero-pick-p1-page.png", "Note: make it green", "Source: src/Card.vue:8", "Search hints", `aria-label="Buy Pro" ★`, "Where: in <main>", "Selector: div.card", "Page: http://localhost:5173/, viewport 1280×720"}
 	at := 0
 	for _, s := range order {
 		i := strings.Index(msg[at:], s)
@@ -153,5 +154,45 @@ func TestPickHighlight(t *testing.T) {
 	}
 	if highlight(img, pickRect{X: 500, Y: 50, W: 20, H: 10}, 2) != nil {
 		t.Error("an element out of sight has a picture")
+	}
+
+	// The page's picture boxes the elements in sight, numbered; one the
+	// page scrolled away from is scrolled to for its own picture.
+	picks := []pickedElem{{Rect: pickRect{X: 100, Y: 50, W: 20, H: 10}}, {Rect: pickRect{X: 10, Y: -400, W: 20, H: 10}}}
+	page := pagePicture(img, picks, 2)
+	if c := page.RGBAAt(200-2, 110); c != pickAccent {
+		t.Errorf("the page's picture: element 1's edge %v", c)
+	}
+	// The badge "1" sits above the box, a white digit on blue, where
+	// nothing else is drawn: its 15 font pixels at 2x, 30 tall.
+	blue, white := 0, 0
+	for y := 66; y < 95; y++ {
+		for x := 196; x < 220; x++ {
+			switch page.RGBAAt(x, y) {
+			case pickAccent:
+				blue++
+			case color.RGBA{255, 255, 255, 255}:
+				white++
+			}
+		}
+	}
+	if blue < 200 || white == 0 {
+		t.Errorf("no badge above element 1: %d blue, %d white pixels", blue, white)
+	}
+	if img.RGBAAt(198, 96) == pickAccent {
+		t.Error("the page's picture drew on the capture itself")
+	}
+	for _, tc := range []struct {
+		r    pickRect
+		want bool
+	}{
+		{picks[0].Rect, true},
+		{picks[1].Rect, false},
+		{pickRect{X: 10, Y: 290, W: 20, H: 20}, false},  // cut off at the bottom
+		{pickRect{X: 0, Y: -100, W: 200, H: 900}, true}, // taller than the viewport
+	} {
+		if got := inSight(tc.r, 200, 300); got != tc.want {
+			t.Errorf("inSight(%v) = %v", tc.r, got)
+		}
 	}
 }

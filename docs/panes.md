@@ -166,7 +166,9 @@ A CSS selector rarely leads an agent to the source, so each element comes with w
 1. **Where it is in the source**, when the page can tell: the file and line of Svelte's and React 18's development builds, the line React 19's stack leads to through the source map, the component's file for Vue, with the line of its tag in it, and the attributes inspector plugins add, such as `data-v-inspector`. Kero checks a line against the file and corrects it when the tag is elsewhere. For a page of a local file, it is the line of the element's start tag in the file.
 2. **Search hints**: the strings likely written in the source as they are, to grep for: the class attribute, the id, test id, label, name, link and placeholder, and the element's own text, marked when no other element on the page has them.
 3. **Where it is on the page**: the landmark and heading above it and which of its like it is ("in `<main>`, below the heading "Pricing", the 2nd of 3 `div.card`"), its parent and siblings, and its HTML, cut short.
-4. Its selector and DOM path, the page's URL and viewport, its main computed styles, and with **Screenshots** on, a picture of it, boxed, for the agent to look at.
+4. Its selector and DOM path, the page's URL and viewport, its main computed styles, and a picture of it, boxed.
+
+The pictures are PNG files in the temporary folder, which the message names, so an agent in a terminal opens them by their paths. **Screenshots** in the picker's bar takes two: **Elements**, a picture of each element with a margin around it, boxed (one you scrolled away from is scrolled back into sight for it, and the page back after), and **Page**, the page as you see it, every element boxed and numbered as the message numbers them. Both are on; Kero remembers what you turn off for your next picks.
 
 The component chain comes from development builds only: a production build tells the hints and the rest.
 
