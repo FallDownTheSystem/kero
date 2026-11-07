@@ -173,6 +173,7 @@ var actionWords = map[string]string{
 	"pane.split.down":     "horizontal vertical below new pane",
 	"pane.browser":        "browser web page url preview localhost open",
 	"browser.address":     "browser web url address go to navigate",
+	"browser.pick":        "browser pick element inspect select send agent note css",
 	"pane.zoom":           "maximize fullscreen focus expand",
 	"pane.next":           "switch focus forward",
 	"pane.previous":       "switch focus back backward",

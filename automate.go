@@ -139,6 +139,21 @@ func (a *App) browse(h *host, r *proto.BrowserRequest, answer func(*proto.Browse
 			return
 		}
 		eval(r.Text)
+	case "pick":
+		// Pick mode, for the user to pick elements: the picks come to the
+		// page's agent as a message (browserpick.go).
+		if e.picking {
+			answer(&proto.BrowserResult{Text: "Pick mode is on already in pane " + r.Pane}, nil)
+			return
+		}
+		do(func() (*proto.BrowserResult, error) {
+			on := make(chan error, 1)
+			a.update(func() { on <- a.togglePick(r.Pane) })
+			if err := <-on; err != nil {
+				return nil, err
+			}
+			return &proto.BrowserResult{Text: "Pick mode is on in pane " + r.Pane + ": the user's picks come to you as a message, in your prompt or to kero browser wait-message"}, nil
+		})
 	case "screenshot":
 		do(func() (*proto.BrowserResult, error) {
 			png, err := view.CapturePage()

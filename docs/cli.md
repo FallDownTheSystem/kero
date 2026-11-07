@@ -165,6 +165,7 @@ kero browser eval 'document.title'
 | `cookies save [file]`           | Save the browser's cookies to a file, or print them; `--domain` keeps a site's |
 | `cookies load <file>`           | Load cookies from a file; `--domain` loads a site's |
 | `wait-message [--json]`         | Wait for the next message the page sends with [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page), and print it, labelled with the page; `--json` prints its `id`, `from`, `label`, `url`, `title`, `text` and `at` |
+| `pick`                          | Turn on Pick mode, for the user to pick elements and write a note on each; the picks come to the page's agent as a message ([more](./panes.md#picking-elements-for-an-agent)) |
 
 `wait-message` waits as long as it takes, unless `--timeout` says otherwise, and fails with `timed out` when nothing came: an agent waits again, with a timeout under its shell tool's own. It needs no Remote Control.
 

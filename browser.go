@@ -57,6 +57,10 @@ type webEntry struct {
 	// as kerod found none, while the pane's opener was agentOpener
 	// (pageSend).
 	agent, agentOpener string
+	// picking is Pick mode's (browserpick.go): the page runs the picker
+	// that pickSeq started; a navigation ends it.
+	picking bool
+	pickSeq int
 }
 
 // diskMark is what tells a file changed: its path, when it was written,
@@ -108,6 +112,11 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 				return
 			}
 			e.url, e.err, e.iconURL = url, "", ""
+			// The page that ran the picker is gone, and its picker.
+			if e.picking {
+				e.picking = false
+				e.pickSeq++
+			}
 			if !e.editing {
 				e.address = url
 			}
@@ -410,6 +419,9 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 				navButton(c, "reload", reloadIcon, locales.BrowserReload(), canReload, pal, reload)
 			}
 		}
+		if !navFold {
+			a.pickButton(c, pal, p, e, canReload)
+		}
 		gap := ui.Box(c.Key("drag-l")).Width(8).Shrink(0).AlignSelf(ui.Stretch)
 		dragging = a.addressBar(c, pal, s, p, e, multi, navFold)
 		// The room the address bar leaves moves the window, and zooms it
@@ -435,6 +447,9 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 				} else if m.Item(locales.BrowserReload()).Disabled(!canReload).Chosen() {
 					reload()
 				}
+				if m.Item(actionTitle("browser.pick")).Checked(e.picking).Disabled(!canReload).Chosen() {
+					a.pick(p.ID)
+				}
 			}
 		}
 		// The buttons of the window's top right corner sit by the pane's
@@ -447,6 +462,26 @@ func (a *App) browserBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 		}
 	})
 	return h, dragging
+}
+
+// pickButton turns the page's Pick mode on and off, lit while it is on.
+func (a *App) pickButton(c *ui.Context, pal *palette, p *proto.Pane, e *webEntry, enabled bool) {
+	label := a.tip(actionTitle("browser.pick"), "browser.pick")
+	b := ui.ButtonBase(c.Key("pick")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(label).Tooltip(label).Disabled(!enabled)
+	switch {
+	case !enabled:
+		b.TextColor(pal.textFaint.Alpha(0.6))
+	case e.picking:
+		b.Background(pal.accent.Alpha(0.18)).TextColor(pal.accent)
+	case b.Pressed():
+		b.Background(pal.rowHover.Alpha(0.12))
+	case b.Hovered():
+		b.Background(pal.rowHover).TextColor(pal.text)
+	}
+	b.Children(func() { ui.Icon(c, pickIcon).Size(15, 15) })
+	if enabled && b.Clicked() {
+		a.pick(p.ID)
+	}
 }
 
 // navButton is a toolbar's button, faint while it can do nothing.

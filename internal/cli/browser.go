@@ -16,7 +16,7 @@ import (
 
 // browserCommands are what kero browser does to a page, which name no
 // target: kero browser text is this session's browser's text.
-var browserCommands = []string{"open", "back", "forward", "reload", "text", "html", "snapshot", "click", "type", "wait", "eval", "screenshot", "cookies", "wait-message"}
+var browserCommands = []string{"open", "back", "forward", "reload", "text", "html", "snapshot", "click", "type", "wait", "eval", "screenshot", "cookies", "wait-message", "pick"}
 
 // browserCmd drives a browser pane's page, which the app has: kerod asks
 // the app, and hands its answer back.
@@ -26,7 +26,7 @@ func browserCmd(c *client.Client, st proto.State, args []string) error {
 	if err != nil {
 		return err
 	}
-	const use = "kero browser [target] <open|back|forward|reload|text|html|snapshot|click|type|wait|eval|screenshot|cookies|wait-message> [args…]"
+	const use = "kero browser [target] <open|back|forward|reload|text|html|snapshot|click|type|wait|eval|screenshot|cookies|wait-message|pick> [args…]"
 	pos := f.pos
 	var t target
 	if len(pos) > 0 && !slices.Contains(browserCommands, pos[0]) {
@@ -89,7 +89,7 @@ func browserCmd(c *client.Client, st proto.State, args []string) error {
 		if strings.TrimSpace(p.Text) == "" {
 			return usageErr("kero browser [target] open <url>")
 		}
-	case "back", "forward", "reload", "screenshot":
+	case "back", "forward", "reload", "screenshot", "pick":
 		if len(pos) > 0 || len(f.rest) > 0 {
 			return usageErr("kero browser [target] %s takes no arguments", op)
 		}
