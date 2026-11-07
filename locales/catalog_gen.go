@@ -12995,3 +12995,117 @@ func SetBranchMaxAgeWeeks(count int) string { return In(i18n.Locale()).SetBranch
 func (msgs Messages) SetBranchMaxAgeWeeks(count int) string {
 	return Catalog.Format(msgs.locale, "setBranchMaxAgeWeeks", map[string]any{"count": count})
 }
+
+// WorktreeSetupRunning says "Setting up {name}"
+// in the language the app shows.
+func WorktreeSetupRunning(name string) string { return In(i18n.Locale()).WorktreeSetupRunning(name) }
+
+// WorktreeSetupRunning says "Setting up {name}"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupRunning(name string) string {
+	return Catalog.Format(msgs.locale, "worktreeSetupRunning", map[string]any{"name": name})
+}
+
+// WorktreeSetupDone says "{name} is set up"
+// in the language the app shows.
+func WorktreeSetupDone(name string) string { return In(i18n.Locale()).WorktreeSetupDone(name) }
+
+// WorktreeSetupDone says "{name} is set up"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupDone(name string) string {
+	return Catalog.Format(msgs.locale, "worktreeSetupDone", map[string]any{"name": name})
+}
+
+// WorktreeSetupFailed says "Setting up {name} failed"
+// in the language the app shows.
+func WorktreeSetupFailed(name string) string { return In(i18n.Locale()).WorktreeSetupFailed(name) }
+
+// WorktreeSetupFailed says "Setting up {name} failed"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupFailed(name string) string {
+	return Catalog.Format(msgs.locale, "worktreeSetupFailed", map[string]any{"name": name})
+}
+
+// WorktreeSetupCancelled says "Setting up {name} was cancelled"
+// in the language the app shows.
+func WorktreeSetupCancelled(name string) string {
+	return In(i18n.Locale()).WorktreeSetupCancelled(name)
+}
+
+// WorktreeSetupCancelled says "Setting up {name} was cancelled"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupCancelled(name string) string {
+	return Catalog.Format(msgs.locale, "worktreeSetupCancelled", map[string]any{"name": name})
+}
+
+// WorktreeSetupStageFetch says "Fetch the base branch"
+// in the language the app shows.
+func WorktreeSetupStageFetch() string { return In(i18n.Locale()).WorktreeSetupStageFetch() }
+
+// WorktreeSetupStageFetch says "Fetch the base branch"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupStageFetch() string {
+	return Catalog.Format(msgs.locale, "worktreeSetupStageFetch", nil)
+}
+
+// WorktreeSetupStageCheckout says "Check out the files"
+// in the language the app shows.
+func WorktreeSetupStageCheckout() string { return In(i18n.Locale()).WorktreeSetupStageCheckout() }
+
+// WorktreeSetupStageCheckout says "Check out the files"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupStageCheckout() string {
+	return Catalog.Format(msgs.locale, "worktreeSetupStageCheckout", nil)
+}
+
+// WorktreeSetupStageSubmodules says "Check out the submodules"
+// in the language the app shows.
+func WorktreeSetupStageSubmodules() string { return In(i18n.Locale()).WorktreeSetupStageSubmodules() }
+
+// WorktreeSetupStageSubmodules says "Check out the submodules"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupStageSubmodules() string {
+	return Catalog.Format(msgs.locale, "worktreeSetupStageSubmodules", nil)
+}
+
+// WorktreeSetupStageScript says "Run {script}"
+// in the language the app shows.
+func WorktreeSetupStageScript(script string) string {
+	return In(i18n.Locale()).WorktreeSetupStageScript(script)
+}
+
+// WorktreeSetupStageScript says "Run {script}"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupStageScript(script string) string {
+	return Catalog.Format(msgs.locale, "worktreeSetupStageScript", map[string]any{"script": script})
+}
+
+// WorktreeSetupStageAgent says "Start the session"
+// in the language the app shows.
+func WorktreeSetupStageAgent() string { return In(i18n.Locale()).WorktreeSetupStageAgent() }
+
+// WorktreeSetupStageAgent says "Start the session"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupStageAgent() string {
+	return Catalog.Format(msgs.locale, "worktreeSetupStageAgent", nil)
+}
+
+// WorktreeSetupStageCancelled says "Cancelled"
+// in the language the app shows.
+func WorktreeSetupStageCancelled() string { return In(i18n.Locale()).WorktreeSetupStageCancelled() }
+
+// WorktreeSetupStageCancelled says "Cancelled"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupStageCancelled() string {
+	return Catalog.Format(msgs.locale, "worktreeSetupStageCancelled", nil)
+}
+
+// WorktreeSetupShowTerminal says "Show Terminal"
+// in the language the app shows.
+func WorktreeSetupShowTerminal() string { return In(i18n.Locale()).WorktreeSetupShowTerminal() }
+
+// WorktreeSetupShowTerminal says "Show Terminal"
+// in the language of msgs.
+func (msgs Messages) WorktreeSetupShowTerminal() string {
+	return Catalog.Format(msgs.locale, "worktreeSetupShowTerminal", nil)
+}

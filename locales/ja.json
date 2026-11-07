@@ -1279,5 +1279,16 @@
   "setBranchMaxAge": "古いブランチを隠す",
   "setBranchMaxAgeDetail": "ブランチの切り替えで非表示にします。検索すると表示されます。",
   "setBranchMaxAgeAll": "すべて表示",
-  "setBranchMaxAgeWeeks": "{count} 週間より古い"
+  "setBranchMaxAgeWeeks": "{count} 週間より古い",
+  "worktreeSetupRunning": "{name} をセットアップ中",
+  "worktreeSetupDone": "{name} のセットアップが完了しました",
+  "worktreeSetupFailed": "{name} のセットアップに失敗しました",
+  "worktreeSetupCancelled": "{name} のセットアップをキャンセルしました",
+  "worktreeSetupStageFetch": "ベースブランチを取得",
+  "worktreeSetupStageCheckout": "ファイルをチェックアウト",
+  "worktreeSetupStageSubmodules": "サブモジュールをチェックアウト",
+  "worktreeSetupStageScript": "{script} を実行",
+  "worktreeSetupStageAgent": "セッションを開始",
+  "worktreeSetupStageCancelled": "キャンセルしました",
+  "worktreeSetupShowTerminal": "ターミナルを表示"
 }

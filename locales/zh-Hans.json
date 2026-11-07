@@ -1279,5 +1279,16 @@
   "setBranchMaxAge": "隐藏旧分支",
   "setBranchMaxAgeDetail": "在分支切换器中隐藏，搜索时仍会显示。",
   "setBranchMaxAgeAll": "全部显示",
-  "setBranchMaxAgeWeeks": "超过 {count} 周"
+  "setBranchMaxAgeWeeks": "超过 {count} 周",
+  "worktreeSetupRunning": "正在设置 {name}",
+  "worktreeSetupDone": "{name} 已设置完成",
+  "worktreeSetupFailed": "设置 {name} 失败",
+  "worktreeSetupCancelled": "已取消设置 {name}",
+  "worktreeSetupStageFetch": "获取基础分支",
+  "worktreeSetupStageCheckout": "检出文件",
+  "worktreeSetupStageSubmodules": "检出子模块",
+  "worktreeSetupStageScript": "运行 {script}",
+  "worktreeSetupStageAgent": "启动会话",
+  "worktreeSetupStageCancelled": "已取消",
+  "worktreeSetupShowTerminal": "显示终端"
 }

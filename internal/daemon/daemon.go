@@ -86,6 +86,9 @@ type Daemon struct {
 	saveCh     chan struct{}
 	quit       chan struct{}
 	quitOnce   sync.Once
+	// setups are the setups of worktrees kero made, by id, as the app
+	// shows them (worktree_setup.go); d.mu.
+	setups map[string]*worktreeSetup
 }
 
 // Options are how kerod runs.
