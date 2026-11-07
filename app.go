@@ -362,6 +362,10 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 			title = h.name + ": " + title
 		}
 		a.showNotification(n.Session, title, n.Body)
+	case "delivery":
+		if m.Delivery != nil {
+			a.delivered(h, *m.Delivery)
+		}
 	case "review":
 		// A draft review changed, as its agent wrote to it: the list that
 		// marks it, and the page that shows it, ask for it anew.

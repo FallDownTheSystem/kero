@@ -292,6 +292,24 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.browse(c, pn, p)
 
+	case "agent.send":
+		var p proto.AgentSendParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.agentSend(p)
+
+	case "browser.message":
+		var p proto.MessageParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return d.waitMessage(c, pn, time.Duration(p.Timeout)*time.Millisecond)
+
 	case "browser.answer":
 		var p proto.BrowserAnswer
 		if err := decode(&p); err != nil {

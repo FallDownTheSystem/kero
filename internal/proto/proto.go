@@ -74,7 +74,7 @@ type Message struct {
 	Result any    `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 
-	Event string `json:"event,omitempty"` // "state", "select", "action", "notice", "browser", "review"
+	Event string `json:"event,omitempty"` // "state", "select", "action", "notice", "browser", "review", "delivery"
 	State *State `json:"state,omitempty"`
 	// Select asks the app to show a session ("kero focus").
 	Select string `json:"select,omitempty"`
@@ -90,6 +90,8 @@ type Message struct {
 	// Review tells a pull request's draft review changed, for the app to
 	// ask for it anew where it shows it.
 	Review *PRReviewRef `json:"review,omitempty"`
+	// Delivery tells a message's delivery to an agent (agent.send).
+	Delivery *Delivery `json:"delivery,omitempty"`
 }
 
 // Notice is a desktop notification a program in a session sent.
@@ -168,6 +170,10 @@ type Pane struct {
 	// URL is the page a browser pane shows, as the app last told: set,
 	// the pane runs no shell.
 	URL string `json:"url,omitempty"`
+	// Opener is the terminal pane that opened a browser pane's page, as
+	// an agent's kero split --url does, or showed it again: where its
+	// page's messages go (agent.send).
+	Opener string `json:"opener,omitempty"`
 	// File is the file an editor pane shows, absolute, of the host: set,
 	// the pane runs no shell.
 	File string `json:"file,omitempty"`
@@ -1106,3 +1112,76 @@ type (
 // Submitted is kerod's answer to a send with Submit, which an older one,
 // pasting alone, answers true to.
 const Submitted = "submitted"
+
+// AgentSendParams send a message to a coding agent (agent.send), as the
+// fork's Send to Session…, review's Send to Agent and the page bridge
+// (window.kero.send) do, labelled with where it comes from.
+//
+// To is the agent's pane, or a session, which stands for its agent's
+// pane. Empty, From's opener takes it: the pane that opened From's page
+// with kero split --url. From is the pane the message comes from, to
+// tell of its delivery (Delivery), "" for none.
+//
+// Mode is how: "push" types it into the agent's prompt once the agent is
+// at its prompt, as PR watch does; "wait" keeps it for the agent to take
+// with kero browser wait-message, From's; "" pushes it, unless an agent
+// waits for From's messages already.
+type AgentSendParams struct {
+	To    string `json:"to,omitempty"`
+	From  string `json:"from,omitempty"`
+	Label string `json:"label,omitempty"`
+	Text  string `json:"text"`
+	Mode  string `json:"mode,omitempty"`
+	// URL and Title are the page's, of a message from one, which the
+	// label tells too: wait-message's JSON has them apart.
+	URL   string `json:"url,omitempty"`
+	Title string `json:"title,omitempty"`
+}
+
+// AgentSendResult tells how a message went: State is "delivered", typed
+// in already, or taken by an agent waiting; "queued", to be typed in once
+// the agent is at its prompt; or "waiting", kept for wait-message. To is
+// the agent's pane, "" for one kept.
+type AgentSendResult struct {
+	ID    int64  `json:"id"`
+	To    string `json:"to,omitempty"`
+	State string `json:"state"`
+}
+
+// AgentMessage is a message for an agent, as kero browser wait-message
+// returns it.
+type AgentMessage struct {
+	ID    int64  `json:"id"`
+	From  string `json:"from,omitempty"`
+	Label string `json:"label,omitempty"`
+	URL   string `json:"url,omitempty"`
+	Title string `json:"title,omitempty"`
+	Text  string `json:"text"`
+	At    int64  `json:"at"` // unix ms
+}
+
+// Prompt is the message as the agent reads it: its label, then its text.
+func (m AgentMessage) Prompt() string {
+	if m.Label == "" {
+		return m.Text
+	}
+	return "Kero: message from " + m.Label + ":\n\n" + m.Text
+}
+
+// MessageParams wait for the next message to a browser pane's agent
+// (browser.message), Timeout ms at most, 0 for as long as it takes.
+type MessageParams struct {
+	ID      string `json:"id"`
+	Timeout int64  `json:"timeout,omitempty"`
+}
+
+// Delivery tells the app that a message from pane From reached its agent,
+// or never will (State "failed", Error why), for the app to tell the page
+// it came from.
+type Delivery struct {
+	ID    int64  `json:"id"`
+	From  string `json:"from"`
+	To    string `json:"to,omitempty"`
+	State string `json:"state"` // delivered, failed
+	Error string `json:"error,omitempty"`
+}

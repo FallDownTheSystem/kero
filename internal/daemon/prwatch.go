@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"kero/internal/detect"
 	"kero/internal/git"
 	"kero/internal/github"
 	"kero/internal/proto"
@@ -160,10 +159,7 @@ func prSessionLocked(s *session) prSession {
 		if ps.agent == nil && p.term != nil && !p.closed && p.info.Agent != "" {
 			ps.agent = p
 			ps.git = p.info.Git
-			// At its prompt, or done and waiting for the user to look; not
-			// asking for a permission or an answer, which typing would give.
-			st := p.info.Status
-			ps.ready = st == proto.Idle || st == proto.Waiting && p.seen != detect.Blocked && !p.declared() && p.info.Kind == ""
+			ps.ready = p.agentReady()
 		}
 		p.mu.Unlock()
 	}
@@ -601,8 +597,17 @@ func (w *prWatcher) deliver(s prSession) {
 		w.d.notice(proto.Notice{Session: s.id, Title: title, Body: body})
 		return
 	}
-	s.agent.paste(msg)
-	go s.agent.submit(time.Now())
+	if _, err := w.d.agentSend(proto.AgentSendParams{To: s.agent.info.ID, Text: msg, Mode: "push"}); err != nil {
+		// As the agent quit meanwhile: kept for the next.
+		w.d.log.Printf("pull request watch of %s: %v", s.id, err)
+		w.update(s.id, func(ps *prState) (*prState, bool) {
+			if ps == nil {
+				return ps, false
+			}
+			ps.Watch.Pending = append([]string{msg}, ps.Watch.Pending...)
+			return ps, true
+		})
+	}
 }
 
 // prLink links a session to a pull request, or unlinks it (pr.link).

@@ -383,8 +383,19 @@ func (d *Daemon) split(p proto.CreateParams) (proto.Session, error) {
 		d.mu.Unlock()
 		return proto.Session{}, fmt.Errorf("no session or pane %q", p.Split)
 	}
+	// The terminal a page is opened from, as an agent's kero split --url,
+	// is where the page's messages go (agent.send).
+	opener := ""
+	if p.URL != "" && at.term != nil {
+		opener = at.info.ID
+	}
 	if shown := showingLocked(s, file, page); shown != nil {
 		d.mu.Unlock()
+		if opener != "" {
+			shown.mu.Lock()
+			shown.info.Opener = opener
+			shown.mu.Unlock()
+		}
 		return d.reuse(s, shown, p.Preview)
 	}
 	dir := at.info.Dir
@@ -409,6 +420,7 @@ func (d *Daemon) split(p proto.CreateParams) (proto.Session, error) {
 	if err != nil {
 		return proto.Session{}, err
 	}
+	pn.info.Opener = opener
 	d.mu.Lock()
 	if !slices.Contains(d.sessions, s) {
 		d.mu.Unlock()
