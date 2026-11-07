@@ -86,6 +86,9 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.handoff(p)
 
+	case "worktree.cleanup":
+		return d.cleanWorktrees(), nil
+
 	case "pane.close":
 		var p proto.IDParams
 		if err := decode(&p); err != nil {
