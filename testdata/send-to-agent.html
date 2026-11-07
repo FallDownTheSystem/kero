@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pick and send</title>
+<!-- A page that sends the user's pick to the agent that opened it, with
+     window.kero.send, in a Kero browser pane, and copies it elsewhere.
+     Open it with: kero split --url testdata/send-to-agent.html -->
+<h1>Which database?</h1>
+<label><input type="radio" name="d1" value="A" checked> A: SQLite</label>
+<label><input type="radio" name="d1" value="B"> B: Postgres</label>
+<p><button id="send">Send</button> <span id="status"></span></p>
+<script>
+const send = document.getElementById("send");
+const status = document.getElementById("status");
+send.onclick = async () => {
+  const text = "D1: " + document.querySelector('input[name="d1"]:checked').value;
+  if (!window.kero) {
+    await navigator.clipboard.writeText(text);
+    status.textContent = "Copied: paste it to the agent";
+    return;
+  }
+  status.textContent = "Sending…";
+  try {
+    await window.kero.send(text, {
+      label: "database pick",
+      onState: (state) => {
+        status.textContent = state === "queued" ? "Queued: the agent is working" : "Waiting for the agent";
+      },
+    });
+    status.textContent = "Sent";
+  } catch (err) {
+    status.textContent = "Not sent: " + err.message;
+  }
+};
+</script>

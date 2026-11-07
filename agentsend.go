@@ -29,6 +29,9 @@ func (a *App) sendToAgent(cl *client.Client, p proto.AgentSendParams) (proto.Age
 // delivered hears how a message from a pane went (proto.Delivery), once
 // it reached its agent or never will.
 func (a *App) delivered(h *host, d proto.Delivery) {
+	if a.tellPageDelivery(d) {
+		return // the page tells it
+	}
 	if d.State == "failed" {
 		a.toast(locales.AgentSendFailed(d.Error))
 	}

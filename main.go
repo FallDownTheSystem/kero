@@ -141,6 +141,8 @@ func runApp() {
 		a.syncHosts()
 		go a.watchConfig()
 	})
+	// window.kero.send of local pages in browser panes (bridge.go).
+	mygo.BindAs("Kero", &pageBridge{a: a})
 	err := mygo.App.Run()
 	heapdump.Dump()
 	if err != nil {

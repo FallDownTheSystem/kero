@@ -82,7 +82,7 @@ func (a *App) worktreeInUse(h *host, path string) bool {
 		if a.hostOf(s.ID) != h {
 			continue
 		}
-		if s.Worktree != nil && samePath(s.Worktree.Path, path) {
+		if s.Worktree != nil && sameHostPath(s.Worktree.Path, path) {
 			return true
 		}
 		for _, p := range s.Panes {

@@ -75,12 +75,12 @@ func (a *App) worktreeSession(h *host, path string) string {
 		if a.hostOf(s.ID) != h {
 			continue
 		}
-		if s.Worktree != nil && samePath(s.Worktree.Path, path) {
+		if s.Worktree != nil && sameHostPath(s.Worktree.Path, path) {
 			return s.ID
 		}
 		for _, p := range s.Panes {
 			// By its worktree's root: the main checkout holds the others.
-			if in == "" && p.Git != nil && samePath(p.Git.Root, path) {
+			if in == "" && p.Git != nil && sameHostPath(p.Git.Root, path) {
 				in = s.ID
 			}
 		}
