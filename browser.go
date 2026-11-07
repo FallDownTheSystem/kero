@@ -327,9 +327,12 @@ func (a *App) paneBrowser(c *ui.Context, pal *palette, bar ui.TitleBar, shown fl
 				a.setFocus(s, p.ID)
 			}
 			// The focus came to its element, from the keyboard or the
-			// app: the page takes it.
+			// app: the page takes it. A press elsewhere that keeps the
+			// focus here, as a divider's drag, gives the window the
+			// keyboard: the page takes it back once the press ends, as the
+			// window losing it ends the press.
 			switch {
-			case ref.Focused(c) && !e.focused:
+			case ref.Focused(c) && !e.focused && !c.PointerHeld():
 				e.focused = true
 				e.view.Focus()
 				if a.focusOf(s) != p.ID {
