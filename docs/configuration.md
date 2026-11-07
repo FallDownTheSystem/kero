@@ -173,6 +173,7 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `pr-review-prompt` |  | What a [review](./changes.md#review) agent is asked, for every repository without its own `review-prompt`; empty for Kero's own. Write a line break as `\n` |
 | `repo-commit-message-prompt` |  | A repository's own `commit-message-prompt`, as `owner/name=Write in Finnish`. Repeat it for each repository |
 | `repo-pr-message-prompt` |  | A repository's own `pr-message-prompt`, as `repo-commit-message-prompt` |
+| `repo-merge-method` |  | How a repository's pull requests [merge](./changes.md#review) by default, as `owner/name=rebase`: `merge`, `squash` or `rebase`. Without one, the first the repository allows of squash, merge and rebase |
 
 ## Files
 

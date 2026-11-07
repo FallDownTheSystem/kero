@@ -2224,5 +2224,135 @@
   "worktreeSetupStageScript": "Run {script}",
   "worktreeSetupStageAgent": "Start the session",
   "worktreeSetupStageCancelled": "Cancelled",
-  "worktreeSetupShowTerminal": "Show Terminal"
+  "worktreeSetupShowTerminal": "Show Terminal",
+  "prsActions": "Pull Request Actions",
+  "prsActionFailed": "#{number}: {error}",
+  "@prsActionFailed": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsMethodMerge": "Merge",
+  "prsMethodSquash": "Squash and Merge",
+  "prsMethodRebase": "Rebase and Merge",
+  "prsMethodMergeShort": "Merge Commit",
+  "prsMethodSquashShort": "Squash",
+  "prsMethodRebaseShort": "Rebase",
+  "prsMergeTitle": "Merge #{number}",
+  "@prsMergeTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsMergeMenu": "Merge…",
+  "prsMergeReady": "Ready to merge.",
+  "prsMergeBehind": "Behind {base}: update the branch, or merge as it is if the repository allows.",
+  "prsMergeBlocked": "Waiting on required reviews or checks.",
+  "prsMergeUnstable": "Some checks failed, which the repository doesn't require.",
+  "prsMergeUnknown": "GitHub is still checking whether it merges.",
+  "prsMergeConflicts": "Conflicts with {base}: resolve them before merging.",
+  "prsMergeDraft": "A draft: mark it ready for review to merge it.",
+  "prsMergeNoAccess": "You can't merge pull requests of this repository.",
+  "prsMergeDeleteBranch": "Delete the branch after merging",
+  "prsMergeRemember": "Make this the repository's default",
+  "prsAutoMergeOn": "Merges by {method} once its requirements are met.",
+  "prsEnableAutoMerge": "Enable Auto-Merge",
+  "prsEnableAutoMergeMenu": "Enable Auto-Merge…",
+  "prsDisableAutoMerge": "Disable Auto-Merge",
+  "prsMarkReady": "Ready for Review",
+  "prsConvertToDraft": "Convert to Draft",
+  "prsUpdateBranch": "Update Branch",
+  "prsUpdateBranchRebase": "Update Branch with Rebase",
+  "prsClosePR": "Close Pull Request",
+  "prsClosePRMenu": "Close Pull Request…",
+  "prsCloseTitle": "Close #{number}?",
+  "@prsCloseTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsCloseDetail": "It stays on GitHub, closed, with its branch, and you can reopen it.",
+  "prsReopenPR": "Reopen",
+  "prsRevert": "Revert",
+  "prsRevertMenu": "Revert…",
+  "prsRevertTitle": "Revert #{number}?",
+  "@prsRevertTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsRevertDetail": "GitHub opens a new pull request into {base} that undoes this one's changes, for you to merge.",
+  "prsDeleteBranch": "Delete Branch",
+  "prsDeleteBranchMenu": "Delete Branch…",
+  "prsDeleteBranchTitle": "Delete {branch}?",
+  "prsDeleteBranchDetail": "This deletes the pull request's branch on GitHub, unless it has commits the pull request hasn't. Your local branches stay.",
+  "prsApproveRuns": "{count, plural, =0 {Approve Runs} one {Approve # Run} other {Approve # Runs}}",
+  "@prsApproveRuns": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsApproveTitle": "Approve the workflow runs of #{number}?",
+  "@prsApproveTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsApproveDetail": "They run the fork's code with the repository's workflows. Look at its changes first.",
+  "prsRunsWaiting": "{count, plural, one {A workflow run waits on your approval.} other {# workflow runs wait on your approval.}}",
+  "@prsRunsWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDoneMerged": "Merged #{number}",
+  "@prsDoneMerged": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDoneAutoMerge": "#{number} merges once its requirements are met",
+  "@prsDoneAutoMerge": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDoneReverted": "Opened a revert of #{number}: {url}",
+  "@prsDoneReverted": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDoneApproved": "{count, plural, =0 {No runs were waiting} one {Approved # run} other {Approved # runs}}",
+  "@prsDoneApproved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prsDoneBranchDeleted": "Deleted {branch}",
+  "prsSetupMerge": "Default merge method",
+  "prsSetupMergeAuto": "GitHub's",
+  "prsSetupMergeHint": "How Merge merges this repository's pull requests. GitHub's is the first the repository allows of squash, merge commit and rebase."
 }

@@ -485,6 +485,7 @@ var keys = []key{
 	reviewKey("review-prompt", "<owner>/<name>=<prompt>: what that agent is asked, with \\n between lines; {number}, {url}, {title}, {branch}, {base}, {author} and {ticket} in it are the pull request's", func(r *ReviewSetup) *string { return &r.Prompt }),
 	reviewKey("repo-commit-message-prompt", "<owner>/<name>=<prompt>: how a commit message of that GitHub repository is written, over commit-message-prompt, with \\n between lines", func(r *ReviewSetup) *string { return &r.CommitPrompt }),
 	reviewKey("repo-pr-message-prompt", "<owner>/<name>=<prompt>: how a pull request's title and description of that GitHub repository are written, over pr-message-prompt, with \\n between lines", func(r *ReviewSetup) *string { return &r.PRPrompt }),
+	reviewKey("repo-merge-method", "<owner>/<name>=<method>: how a pull request of that GitHub repository merges by default, merge, squash or rebase; none for the first the repository allows of squash, merge and rebase", func(r *ReviewSetup) *string { return &r.MergeMethod }),
 	stringKey("editor", "the command Open in Editor runs with a file's path, as code or zed: empty for the app the system opens the file with, or a folder in the one it opens text files with", func(s *Settings) *string { return &s.Editor }),
 	boolKey("files-hidden", "show dotfiles in the Files view", func(s *Settings) *bool { return &s.HiddenFiles }),
 	boolKey("browser-block-ads", "block ads and trackers in browser panes, with the browser-filter-list lists", func(s *Settings) *bool { return &s.BlockAds }),

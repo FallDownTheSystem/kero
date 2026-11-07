@@ -164,6 +164,7 @@ type App struct {
 	// sets up a repository's reviews (pulls.go).
 	prReview *prReview
 	prSetup  *prSetup
+	prMerge  *prMerge
 	poll     prPoll
 	// endedAll shows all of the sidebar's Ended; skillMissing tells, as
 	// of skillsAt, that no kind of agent has Kero's skill (ended.go).
