@@ -153,6 +153,11 @@ type Settings struct {
 	// still when the fetch fails, as offline, or the local branch has
 	// commits the remote's lacks.
 	WorktreeFromOrigin bool `json:"worktreeFromOrigin"`
+	// WorktreeCleanup is when kerod removes the worktrees it made, at its
+	// start and hourly; ProjectCleanup a project's own rules over it, by
+	// the project's folder, one turned off keeping its worktrees.
+	WorktreeCleanup WorktreeCleanup            `json:"worktreeCleanup"`
+	ProjectCleanup  map[string]WorktreeCleanup `json:"projectCleanup,omitempty"`
 	// BranchMaxWeeks hides from the branch switcher the branches with no
 	// commit in that many weeks, unless its filter finds them; 0 hides
 	// none.
@@ -285,6 +290,7 @@ func Default() Settings {
 		GitStatus:       true,
 		DiffLayout:      "auto",
 		WorktreeBase:    "default",
+		WorktreeCleanup: WorktreeCleanup{InactiveDays: 30, Merged: true},
 		PRNotify:        "review",
 		PRPollMinutes:   5,
 		HiddenFiles:     true,
@@ -491,6 +497,89 @@ type ReviewSetup struct {
 	PRPrompt     string `json:"prPrompt,omitempty"`
 }
 
+// WorktreeCleanup is when kerod removes a worktree it made, which no
+// session works in and which holds nothing of its own: no change, no
+// untracked file, no ignored one but what can be made again. On, any of
+// its rules removes one: no commit or checkout in it for InactiveDays
+// (0 never), its pull request merged at the commit it's on, no commit
+// of its own beyond the default branch, or no session left in it.
+type WorktreeCleanup struct {
+	On           bool `json:"on"`
+	InactiveDays int  `json:"inactiveDays"`
+	Merged       bool `json:"merged"`
+	Unchanged    bool `json:"unchanged"`
+	Closed       bool `json:"closed"`
+}
+
+// Removes reports whether the rules remove any worktree.
+func (w WorktreeCleanup) Removes() bool {
+	return w.On && (w.InactiveDays > 0 || w.Merged || w.Unchanged || w.Closed)
+}
+
+// CleanupFor returns the cleanup of the project in dir: its own, else
+// WorktreeCleanup's.
+func (s Settings) CleanupFor(dir string) WorktreeCleanup {
+	if w, ok := s.ProjectCleanup[CleanupKey(dir)]; ok {
+		return w
+	}
+	return s.WorktreeCleanup
+}
+
+// CleanupKey is a project's folder as ProjectCleanup has it.
+func CleanupKey(dir string) string { return filepath.Clean(strings.TrimSpace(dir)) }
+
+// cleanupRules writes a project's cleanup as worktree-cleanup-project has
+// it: off, else on and its rules, as inactive:30,merged.
+func cleanupRules(w WorktreeCleanup) string {
+	if !w.On {
+		return "off"
+	}
+	rules := []string{"on"}
+	if w.InactiveDays > 0 {
+		rules = append(rules, "inactive:"+strconv.Itoa(w.InactiveDays))
+	}
+	for _, r := range []struct {
+		on   bool
+		name string
+	}{{w.Merged, "merged"}, {w.Unchanged, "unchanged"}, {w.Closed, "closed"}} {
+		if r.on {
+			rules = append(rules, r.name)
+		}
+	}
+	return strings.Join(rules, ",")
+}
+
+// parseCleanupRules reads what cleanupRules writes; rules alone turn it
+// on, without on.
+func parseCleanupRules(text string) (WorktreeCleanup, error) {
+	var w WorktreeCleanup
+	for _, r := range strings.Split(text, ",") {
+		r = strings.ToLower(strings.TrimSpace(r))
+		name, value, _ := strings.Cut(r, ":")
+		switch name {
+		case "", "on":
+		case "off":
+			return WorktreeCleanup{}, nil
+		case "inactive":
+			n, err := strconv.Atoi(value)
+			if err != nil || n < 0 {
+				return w, fmt.Errorf("inactive:%s is no number of days", value)
+			}
+			w.InactiveDays = n
+		case "merged":
+			w.Merged = true
+		case "unchanged":
+			w.Unchanged = true
+		case "closed":
+			w.Closed = true
+		default:
+			return w, fmt.Errorf("%q is none of off, on, inactive:<days>, merged, unchanged, closed", r)
+		}
+	}
+	w.On = true
+	return w, nil
+}
+
 // Clone returns a copy that shares nothing with s.
 func (s Settings) Clone() Settings { return clone(s) }
 
@@ -520,6 +609,7 @@ func clone(s Settings) Settings {
 		s.Shortcuts = m
 	}
 	s.Reviews = maps.Clone(s.Reviews)
+	s.ProjectCleanup = maps.Clone(s.ProjectCleanup)
 	return s
 }
 
@@ -585,6 +675,11 @@ func (s *Settings) normalize() {
 	oneOf(&s.RightClick, d.RightClick, "menu", "paste", "copyOrPaste")
 	oneOf(&s.DiffLayout, d.DiffLayout, "auto", "unified", "split")
 	s.BranchMaxWeeks = max(s.BranchMaxWeeks, 0)
+	s.WorktreeCleanup.InactiveDays = max(s.WorktreeCleanup.InactiveDays, 0)
+	for dir, w := range s.ProjectCleanup {
+		w.InactiveDays = max(w.InactiveDays, 0)
+		s.ProjectCleanup[dir] = w
+	}
 	oneOf(&s.WorktreeBase, d.WorktreeBase, "default", "current")
 	var agents []string
 	for _, cmd := range s.Agents {

@@ -138,6 +138,21 @@ kero close fix-login --remove-worktree    # close it and remove the worktree
 kero close fix-login --remove-worktree --force   # even with uncommitted changes
 ```
 
+<a id="cleaning-up-worktrees"></a>
+
+### Cleaning up worktrees
+
+Worktrees add up. **Settings › Git › Worktree cleanup** has Kero remove the ones it made, as it starts, every hour, and when you click **Delete Now**. It's off until you turn it on. A worktree goes when any rule you choose matches:
+
+- **Inactive for** some days: no commit, checkout or session in it for that long.
+- **Pull request merged**: its branch's pull request on GitHub merged, at the commit the worktree is on. Kero asks `gh`, so this needs it signed in.
+- **No commits of its own**: nothing on its branch beyond the default branch.
+- **Last session closed**: no session works in it anymore, as when you closed the session and kept the worktree.
+
+Kero removes only worktrees in its own folder (`.kero/worktrees`, or `worktree-dir`), and never one a session works in, one git keeps locked, one made in the last ten minutes, or one with anything of its own: uncommitted changes, untracked files, or ignored files a build can't make again. Ignored files that are copies of the main checkout's, as `.worktreeinclude` brings, and folders such as `node_modules`, `dist`, `build`, `target` and `.venv` don't count. A branch goes with its worktree once the default branch has all of it; otherwise it stays, with its commits.
+
+**Project** picks a project of this computer to give rules of its own, **Custom**, or none, **Off**, which keeps its worktrees. A repository with a project turned off keeps its worktrees, whatever its other projects say.
+
 ## Files
 
 The right sidebar's **Files** tab, or <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>E</kbd> (<kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>E</kbd> on Windows and Linux), shows the files of the worktree of the pane you're in, or of its folder outside a repository. On a remote host, they're that host's. What git ignores shows faded, and `.git` doesn't show. Dotfiles show unless `files-hidden` is off.
