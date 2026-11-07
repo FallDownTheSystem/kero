@@ -96,3 +96,8 @@ func procParent(pid int) int {
 	}
 	return int(kp.Eproc.Ppid)
 }
+
+// sessionProcs returns the processes of the session that sid leads:
+// none on macOS, which lists no session's, and waits for none as it
+// removes a worktree (awaitTrees).
+func sessionProcs(sid int) []int { return nil }

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // A session's worktree starts on a new branch from its base; what
@@ -219,5 +220,66 @@ func TestRemoveCheckout(t *testing.T) {
 	}
 	if cos, _ := r.Checkouts(ctx); len(cos) != 1 {
 		t.Errorf("after pruning %+v", cos)
+	}
+}
+
+// A worktree's folder in use, as one an agent's programs still work in
+// on Windows as its session closes, fails git's removal of it, which
+// forgets the worktree all the same and leaves the folder empty: removing
+// tries again until the folder is free, then deletes it, and the merged
+// branch after it. An empty folder that such a removal left before goes
+// too.
+func TestRemoveBusyWorktree(t *testing.T) {
+	ctx := context.Background()
+	r := repo(t, map[string]string{"a.txt": "a\n"})
+	path := filepath.Join(r.Root, ".kero", "worktrees", "review-pr-350")
+	if err := r.AddWorktree(ctx, path, "review/pr-350", "main"); err != nil {
+		t.Fatal(err)
+	}
+	release := holdBusy(t, path)
+	go func() {
+		time.Sleep(time.Second)
+		release()
+	}()
+	start := time.Now()
+	if err := RemoveWorktree(ctx, r.Root, path, "review/pr-350", "main"); err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(start) < time.Second {
+		t.Error("removed the folder while it was in use")
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("the folder stays: %v", err)
+	}
+	if r.HasBranch("review/pr-350") {
+		t.Error("kept the merged branch")
+	}
+	if cos, _ := r.Checkouts(ctx); len(cos) != 1 {
+		t.Errorf("checkouts %+v", cos)
+	}
+
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.RemoveCheckout(ctx, path, false, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("the empty folder stays: %v", err)
+	}
+
+	// A folder in use past lockWait stays, and says so; git forgot the
+	// worktree, and its merged branch goes all the same.
+	lockWait = 300 * time.Millisecond
+	t.Cleanup(func() { lockWait = 5 * time.Second })
+	if err := r.AddWorktree(ctx, path, "review/pr-351", "main"); err != nil {
+		t.Fatal(err)
+	}
+	holdBusy(t, path)
+	if err := RemoveWorktree(ctx, r.Root, path, "review/pr-351", "main"); err == nil {
+		t.Error("a folder still in use went")
+	}
+	if r.HasBranch("review/pr-351") {
+		t.Error("kept the merged branch of a worktree git forgot")
 	}
 }

@@ -91,6 +91,9 @@ type Daemon struct {
 	setups map[string]*worktreeSetup
 	prw    *prWatcher // the sessions' pull requests' watch (prwatch.go)
 	mail   mailbox    // the messages on their way to agents (deliver.go)
+	// removing are the worktrees a session's close removes, from before
+	// its panes close, which the cleanup leaves to it; d.mu.
+	removing map[string]int
 }
 
 // Options are how kerod runs.
