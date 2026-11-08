@@ -242,6 +242,10 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		} else {
 			pn.input([]byte(p.Data))
 		}
+		if p.Submit && p.Sync {
+			pn.submit(time.Now())
+			return proto.SubmittedSync, nil
+		}
 		if p.Submit {
 			go pn.submit(time.Now())
 			return proto.Submitted, nil
@@ -342,6 +346,16 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		pn, err := findPane(p.ID)
 		if err != nil {
 			return nil, err
+		}
+		if p.Reply {
+			r, err := d.lastReply(pn)
+			if err != nil {
+				return nil, err
+			}
+			if r.Text == "" {
+				return nil, errors.New("its agent's last turn has no reply yet")
+			}
+			return proto.ReadResult{Text: r.Text + "\n"}, nil
 		}
 		return proto.ReadResult{Text: pn.readText(p.Scrollback, p.Lines)}, nil
 

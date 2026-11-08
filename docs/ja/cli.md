@@ -74,7 +74,10 @@ kero send api -e 'y\n'                    # \n \r \t \e \xHH のエスケープ�
 kero key api ctrl+c                       # キーを押す
 kero read api -n 40                       # 画面の最後の 40 行
 kero read api -a                          # スクロールバックを含む画面
+kero read review --reply                  # エージェントの最後の返答の全文
 ```
+
+`kero read --reply` は最後の返答を Claude Code、Codex、Pi のトランスクリプトから読むので、画面より長い返答も全文で表示されます。
 
 `kero key` は `enter`、`tab`、`escape`、`up`、`down`、`left`、`right`、`backspace` と、`ctrl+c` や `ctrl+d` のような修飾キーを理解します。
 
@@ -86,7 +89,7 @@ kero wait api --for waiting,error --timeout 10m
 kero prompt review "summarize the diff"   # 送信 + Enter、待機、画面を出力
 ```
 
-`kero wait` は戻るときにペインの状態を出力します。`kero prompt` はテキストと Enter を送り、ペインの作業が止まるまで待ってから画面を出力します。ほかのエージェントに何かを尋ねる最も手早い方法です。
+`kero wait` は戻るときにペインの状態を出力します。`kero prompt` はテキストを貼り付けて（複数行でも 1 つのプロンプトとしてエージェントに届きます）、エージェントが受け取ってから Enter を押し、ペインの作業が止まるまで待ってから画面を出力します。ほかのエージェントに何かを尋ねる最も手早い方法です。
 
 ### コマンドの終了を待つ
 

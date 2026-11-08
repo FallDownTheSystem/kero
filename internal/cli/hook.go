@@ -160,8 +160,9 @@ func hookContext(c *client.Client, pane, sid string, away bool) string {
 			fmt.Fprintf(&b, " This session is an orchestrator: plan and delegate, starting sessions for the work with kero new, "+
 				"which become your children; Kero types their reports into your conversation. Goal: %s", orDash(s.Goal))
 		case s.Parent != "":
-			fmt.Fprintf(&b, " This session is a child of orchestrator session %s, which Kero tells when you finish, wait for input or fail: "+
-				"once your task is done, send it a short summary of the result with `kero report --to-parent \"<summary>\"`.", s.Parent)
+			fmt.Fprintf(&b, " This session is a child of orchestrator session %s. Kero sends it the last reply of each of your turns, "+
+				"and tells it when you wait for input or fail: end a turn with what the orchestrator needs, your result or your question. "+
+				"Once your task is done, send it a short summary of the result with `kero report --to-parent \"<summary>\"`.", s.Parent)
 		}
 	}
 	return b.String()

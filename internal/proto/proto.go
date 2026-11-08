@@ -894,22 +894,27 @@ type (
 		Project string `json:"project,omitempty"`
 		Index   int    `json:"index"` // within the project; -1 last
 	}
-	// SendParams type Data into a pane; Paste pastes it, bracketed when the
-	// program asks, so that its newlines do not run it line by line, as
-	// they would an agent's prompt.
-	// SendParams send Data to a pane, as typed or, with Paste, pasted;
-	// with Submit, kerod presses Enter after the paste, as an agent takes
-	// it, and answers Submitted.
+	// SendParams send Data to a pane, as typed or, with Paste, pasted,
+	// bracketed when the program asks, so that its newlines do not run it
+	// line by line, as they would an agent's prompt. With Submit, kerod
+	// presses Enter after the paste, as an agent takes it, and answers
+	// Submitted; with Sync too, SubmittedSync once it did, and the agent
+	// started on it or never would, so that a wait for the agent to
+	// finish starts after it began.
 	SendParams struct {
 		ID     string `json:"id"`
 		Data   string `json:"data"`
 		Paste  bool   `json:"paste,omitempty"`
 		Submit bool   `json:"submit,omitempty"`
+		Sync   bool   `json:"sync,omitempty"`
 	}
+	// ReadParams read a pane's screen; with Reply, its agent's last reply
+	// instead, from the agent's transcript.
 	ReadParams struct {
 		ID         string `json:"id"`
 		Scrollback bool   `json:"scrollback,omitempty"`
 		Lines      int    `json:"lines,omitempty"`
+		Reply      bool   `json:"reply,omitempty"`
 	}
 	ViewParams struct {
 		ID string `json:"id"` // "" when no window shows a session
@@ -1272,8 +1277,13 @@ type (
 )
 
 // Submitted is kerod's answer to a send with Submit, which an older one,
-// pasting alone, answers true to.
-const Submitted = "submitted"
+// pasting alone, answers true to; SubmittedSync its answer to one with
+// Sync too, once it pressed Enter, which a kerod that knows no Sync
+// answers Submitted to at once.
+const (
+	Submitted     = "submitted"
+	SubmittedSync = "submitted-sync"
+)
 
 // AgentSendParams send a message to a coding agent (agent.send), as the
 // fork's Send to Session…, review's Send to Agent and the page bridge
