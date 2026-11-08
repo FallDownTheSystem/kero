@@ -501,9 +501,24 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
     for (const a of el.attributes) s += " " + a.name + (a.value === "" ? "" : '="' + cut(a.value, n).replace(/"/g, "&quot;") + '"');
     return s + ">";
   };
+  // What a script, a stylesheet, a template, a noscript or an inline
+  // picture holds is noise to an agent finding the element, and may run
+  // long: it shows as its size, its tag and attributes kept. null for an
+  // element of another kind, "" for one that holds nothing.
+  const hushed = /^(script|style|template|noscript|svg)$/;
+  const size = (n) => (n < 1024 ? n + " bytes" : (n / 1024).toFixed(1) + " KB");
+  function omitted(e) {
+    if (!hushed.test(e.localName)) return null;
+    const code = e.localName === "script" || e.localName === "style";
+    const n = new TextEncoder().encode(code ? e.textContent : e.innerHTML).length;
+    if (!n) return "";
+    return code ? "/* " + size(n) + " omitted */" : "<!-- " + size(n) + " omitted -->";
+  }
   // The element's HTML, cut short: its first children, two deep.
   function excerpt(el) {
     const walk = (e, depth, pad) => {
+      const hidden = omitted(e);
+      if (hidden != null) return pad + openTag(e, 120) + hidden + "</" + e.localName + ">";
       const kids = [...e.childNodes].filter((n) => n.nodeType === 1 || (n.nodeType === 3 && norm(n.data)));
       const text = kids.length === 1 && kids[0].nodeType === 3;
       if (text) return pad + openTag(e, 120) + cut(norm(kids[0].data), 100) + "</" + e.localName + ">";
@@ -523,7 +538,8 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
     const up = el.parentElement;
     if (!up || up === document.documentElement) return "";
     const line = (e) => {
-      const t = e.children.length ? "…" : cut(norm(e.textContent), 40);
+      const hidden = omitted(e);
+      const t = hidden != null ? hidden : e.children.length ? "…" : cut(norm(e.textContent), 40);
       return openTag(e, 50) + t + "</" + e.localName + ">";
     };
     const sibs = [...up.children].filter((e) => e !== ui);
