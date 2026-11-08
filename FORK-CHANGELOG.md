@@ -5,6 +5,34 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.1
+
+Upstream 2.1.35 (CHANGELOG.md): **wrap long lines** in the viewer's diffs
+and files (`wrap-lines`); a **close button** on a session in the sidebar
+as you hover it; `window-padding-color` picks what the padding around a
+terminal's text shows; on a pane of a remote host, pasted JPEG, GIF and
+WebP images, and **files dropped on the pane**, are uploaded to the host
+rather than pasting this computer's paths; updating Kero while an SSH
+bridge is connected no longer loses the saved sessions; the Kero skill
+teaches agents to run short commands themselves and reuse their panes.
+MyGo now follows the unreleased commit Kero 2.1.35 requires (46089cb,
+after MyGo 0.8.3), with the fork's MyGo changes on top: it brings MyGo's
+fixes since 0.8.1, among them Chinese text in one font on English
+Windows, and terminals that let an app take dropped files first.
+
+- Wrapping long lines is upstream's now, in place of the fork's own: one
+  button wraps the viewer's diffs and files, editor panes, History's
+  diffs and the merge editor alike, and the setting is `wrap-lines`
+  (Settings › Git, beside Diff layout), kept with your settings rather
+  than the app's window state. Its icon is upstream's, and its tooltip
+  says Wrap Lines or Don't Wrap Lines. If you had wrapping on, turn it on
+  once more: the fork's old choice is not carried over
+- The session's close button closes it as its menu's Close does: a
+  session in a worktree still asks what to do with the worktree
+- Dragging files from another app onto a local pane opens them, or pastes
+  their paths into a terminal, as before; on a remote host's terminal,
+  they are now uploaded there, as upstream does
+
 ## 2.1.34-fork.16
 
 - Send what a terminal printed to an agent: select it, right-click and
