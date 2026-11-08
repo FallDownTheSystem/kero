@@ -154,7 +154,7 @@ endings only (`git diff` shows nothing): `git checkout -- locales/catalog_gen.go
 
 - MyGo is forked too: `FallDownTheSystem/mygo`, its branch `kero`, on
   whichever is newer of MyGo's latest release and the commit Kero's
-  `go.mod` requires (upstream Kero may require an unreleased one, as 2.1.34
+  `go.mod` requires (upstream Kero may require an unreleased one, as 2.1.35
   does), and never on a commit past both. `go.mod` replaces MyGo with it.
   Kero builds and tests against it before it is pushed. A fix or a feature Kero needs of MyGo goes there,
   a commit each, and a bug is reported upstream too. Work on both with a
