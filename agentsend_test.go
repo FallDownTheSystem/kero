@@ -92,6 +92,9 @@ func TestPaneSource(t *testing.T) {
 		{proto.Pane{Shell: "zsh", Process: "claude", Agent: "claude", Title: "✳ Fix login"}, ` (Claude Code, titled "✳ Fix login")`},
 		{proto.Pane{Shell: "fish", Title: "FISH"}, " (fish)"},
 		{proto.Pane{Title: "build"}, ` (titled "build")`},
+		// As written, not as Go quotes it, and on one line with no " of its own.
+		{proto.Pane{Shell: "pwsh", Title: `C:\Program Files\PowerShell\7\pwsh.exe`}, ` (pwsh, titled "C:\Program Files\PowerShell\7\pwsh.exe")`},
+		{proto.Pane{Shell: "bash", Title: "say \"hi\"\r\n\tnext"}, ` (bash, titled "say 'hi' next")`},
 		{proto.Pane{}, ""},
 	} {
 		if got := paneSource(&c.p); got != c.want {

@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/egoist/mygo"
 )
@@ -1334,7 +1335,20 @@ func (m AgentMessage) Prompt() string {
 	if m.Label == "" {
 		return m.Text
 	}
-	return "Kero: message from " + m.Label + ":\n\n" + m.Text
+	return "Kero: message from " + oneLine(m.Label) + ":\n\n" + m.Text
+}
+
+// Quoted is s in double quotes as written, for a label to name a title or
+// a name with: unlike %q, it leaves a Windows path's backslashes alone. On
+// one line, with its own " made ', it cannot end the quote or the label.
+func Quoted(s string) string {
+	return `"` + strings.ReplaceAll(oneLine(s), `"`, "'") + `"`
+}
+
+// oneLine is s with its runs of spaces, line breaks and other control
+// characters made one space, trimmed.
+func oneLine(s string) string {
+	return strings.Join(strings.FieldsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }), " ")
 }
 
 // MessageParams wait for the next message to a browser pane's agent
