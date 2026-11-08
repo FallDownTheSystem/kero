@@ -751,7 +751,8 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 			if s.Status == proto.Exited && !s.Unread {
 				name.TextColor(pal.textMuted)
 			}
-			if s.Orchestrator {
+			// A detailed row has it on its second line, under the time.
+			if s.Orchestrator && !detailed {
 				a.orchestratorMark(c, pal, s)
 			}
 			if len(s.Panes) > 1 {
@@ -807,6 +808,10 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 						worktreeMark(c, pal)
 					}
 					ui.Text(c, line).FontSize(12).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
+					if s.Orchestrator {
+						ui.Spacer(c)
+						a.orchestratorMark(c, pal, s)
+					}
 				})
 			})
 		} else {

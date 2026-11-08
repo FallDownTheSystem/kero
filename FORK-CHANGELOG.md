@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.4
+
+- With detailed sidebar rows, an orchestrator's mark and the chevron that
+  folds its children sit at the right end of its second line, under the
+  time and status, so its name keeps the first line; compact rows keep
+  them by the name
+
 ## 2.1.35-fork.3
 
 - **Orchestrator sessions**: an agent session that plans the work, starts
