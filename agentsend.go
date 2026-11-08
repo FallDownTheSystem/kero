@@ -2,7 +2,6 @@ package main
 
 import (
 	"cmp"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -103,7 +102,7 @@ func (a *App) sendExcerpt(from, text string) {
 	h := a.hostOf(from)
 	label := "the terminal pane " + from
 	if s := a.sessionOfPane(from); s != nil {
-		label += paneSource(s.PaneByID(from)) + fmt.Sprintf(" of session %q", s.DisplayName(a.set.SessionName))
+		label += paneSource(s.PaneByID(from)) + " of session " + proto.Quoted(s.DisplayName(a.set.SessionName))
 	}
 	a.chooseAgent(h, locales.AgentChooseTitle(), func(to string) {
 		if to == "" {
@@ -127,11 +126,11 @@ func paneSource(p *proto.Pane) string {
 	case program == "" && title == "":
 		return ""
 	case program == "":
-		return fmt.Sprintf(" (titled %q)", title)
+		return " (titled " + proto.Quoted(title) + ")"
 	case title == "" || strings.EqualFold(title, program):
 		return " (" + program + ")"
 	}
-	return fmt.Sprintf(" (%s, titled %q)", program, title)
+	return " (" + program + ", titled " + proto.Quoted(title) + ")"
 }
 
 // sendTo sends a message to an agent off the main thread, and tells the

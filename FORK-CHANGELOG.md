@@ -5,6 +5,14 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.4
+
+- A message to an agent names the pane's title, the session and the page
+  as they are written, `titled "C:\Program Files\PowerShell\7\pwsh.exe"`
+  rather than with every backslash doubled, and on one line: a line break
+  in a title, or in a label a page sends with, reads as a space, and a `"`
+  in it as `'`
+
 ## 2.1.35-fork.3
 
 - **Orchestrator sessions**: an agent session that plans the work, starts
