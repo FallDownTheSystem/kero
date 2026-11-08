@@ -5,6 +5,54 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.2
+
+MyGo's fork adds `Page.CallDevTools` and `OnDevToolsEvent` (for `kero
+browser console`, `network` and `emulate`), `App.SetBrowserArguments`
+(for the DevTools port) and the theme's `LineAccent` (for the cursor's
+color).
+
+- Send to Session… tells the agent what the pane runs as well as its id:
+  its agent (Claude Code), else its program, else its shell (pwsh), and
+  the title the program set, so the agent knows at once what output it
+  reads
+- The picker's note keeps the keyboard as the pointer moves; pointing at
+  Parent outlines what it would pick, and the note stays put so Parent can
+  be clicked again
+- Picks' text hints are short phrases that grep, and an element with no
+  source location says so
+- Picker screenshots go to a kero-picks folder in the temporary folder
+  and are deleted a day later, as are older builds' kero-pick-*.png
+- Importing sign-ins from Chrome or Edge also brings the localStorage and
+  IndexedDB of the sites open in the browser, where many web apps keep
+  their sign-in: open the app in the browser first, then Import in
+  Settings › Browser, or `kero browser cookies import chrome --domain
+  app.example.com`, which opens a hidden tab of the site if none is open.
+  Reload the pane afterwards
+- Browser panes on Windows can open a DevTools port (Settings › Browser ›
+  DevTools port, or `browser-devtools`/`browser-devtools-port`) for
+  Playwright's `connectOverCDP`, chrome-devtools-mcp, Puppeteer and
+  Lighthouse; `kero browser devtools [--json]` prints the endpoint and
+  each pane's page there
+- `kero browser console`, `network` and `emulate`: an agent reads a
+  browser pane's console (console.*, uncaught errors, promise rejections
+  nothing caught, CORS and failed loads, each with its file and line), its
+  requests (status, type, size, time, and why one failed: CORS, blocked,
+  `net::ERR_…`, with `network body <id>` for a response's body), and shows
+  the page as a phone or tablet (`emulate device iphone-15`, or a viewport
+  with `--scale`, `--mobile`, `--touch`), with another user agent, or on
+  a slow network or none (`emulate network slow-3g`, `offline`); `emulate
+  reset` undoes it. They log from the pane's first load, keep the last
+  1,000 of each until `--clear`, and take `--json`. `network` and
+  `emulate` are Windows only; on macOS and Linux `console` has what the
+  current document logged
+- Text fields' cursor (the URL bar, the branch name box, the conversation
+  search and the others) is the theme's Highlight color again, not its
+  Highlight background, which stays the fill of highlighted menu rows,
+  checked boxes and primary buttons. When the two highlight colors
+  differ, links and the borders of focused fields change color too, from
+  the Highlight background to the Highlight
+
 ## 2.1.35-fork.1
 
 Upstream 2.1.35 (CHANGELOG.md): **wrap long lines** in the viewer's diffs
