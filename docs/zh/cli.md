@@ -74,7 +74,10 @@ kero send api -e 'y\n'                    # 解析 \n \r \t \e \xHH 转义
 kero key api ctrl+c                       # 按键
 kero read api -n 40                       # 屏幕上最后 40 行
 kero read api -a                          # 屏幕内容连同回滚缓冲
+kero read review --reply                  # 智能体最后一条回复的全文
 ```
+
+`kero read --reply` 从 Claude Code、Codex 和 Pi 的记录文件读取最后一条回复，因此比屏幕更长的回复也能完整显示。
 
 `kero key` 支持 `enter`、`tab`、`escape`、`up`、`down`、`left`、`right`、`backspace`，以及 `ctrl+c`、`ctrl+d` 这类带修饰键的组合。
 
@@ -86,7 +89,7 @@ kero wait api --for waiting,error --timeout 10m
 kero prompt review "summarize the diff"   # 发送并回车，等待，然后打印屏幕
 ```
 
-`kero wait` 返回时会打印窗格的状态。`kero prompt` 发送文本并回车，等到窗格不再工作，再打印它的屏幕。这是向另一个智能体提问最快的方式。
+`kero wait` 返回时会打印窗格的状态。`kero prompt` 粘贴文本（多行文本也作为一条提示送达智能体），在智能体收到后回车，等到窗格不再工作，再打印它的屏幕。这是向另一个智能体提问最快的方式。
 
 ### 等待命令结束
 

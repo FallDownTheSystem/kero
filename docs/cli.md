@@ -74,7 +74,10 @@ kero send api -e 'y\n'                    # interpret \n \r \t \e \xHH escapes
 kero key api ctrl+c                       # press keys
 kero read api -n 40                       # the last 40 lines on screen
 kero read api -a                          # the screen with its scrollback
+kero read review --reply                  # its agent's last reply, whole
 ```
+
+`kero read --reply` reads the last reply from the agent's transcript, of Claude Code, Codex and Pi, so a reply longer than the screen comes whole.
 
 `kero key` understands `enter`, `tab`, `escape`, `up`, `down`, `left`, `right`, `backspace`, and modifiers such as `ctrl+c` or `ctrl+d`.
 
@@ -86,7 +89,7 @@ kero wait api --for waiting,error --timeout 10m
 kero prompt review "summarize the diff"   # send + Enter, wait, print the screen
 ```
 
-`kero wait` prints the pane's status when it returns. `kero prompt` sends text and Enter, waits until the pane stops working, then prints its screen. It's the quickest way to ask another agent something.
+`kero wait` prints the pane's status when it returns. `kero prompt` pastes the text, so that its lines reach an agent as one prompt, presses Enter once the agent has it, waits until the pane stops working, then prints its screen. It's the quickest way to ask another agent something.
 
 ### Waiting for a command
 

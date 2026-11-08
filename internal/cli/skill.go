@@ -127,16 +127,20 @@ lists. Kero's hook tells you when you are one, or a child of one.
 As an orchestrator, don't do the detailed work yourself: start a child for
 each piece, with a task it can finish alone. Kero types its reports into
 your prompt ("Kero: message from your child sessions:"): a child waiting
-for input, idle after its turn, failed, exited or closed, and the
-summaries children send. Read one with kero read <id>, answer it with
-kero prompt <id> "<answer>", and ask the user only what you can't answer.
+for input, idle after its turn, with the reply it ended the turn with
+and the background work it left running, failed, exited or closed, and
+the summaries children send. A long reply comes cut in the middle: kero
+read <id> --reply prints it whole, kero read <id> the child's screen.
+Answer a child with kero prompt <id> "<answer>", and ask the user only
+what you can't answer.
 When a report needs nothing from you, as a child gone idle with nothing
 to act on, reply just "OK": no summary of it.
 There is one level: a child's kero new starts another child of the same
 orchestrator, and orchestrator-max-children may refuse more running at
-once. As a child, finish your task, then send your orchestrator a short
-summary with kero report --to-parent; it already hears when you wait or
-fail.
+once. As a child, end each turn with what your orchestrator needs, your
+result or your question: Kero sends it the last reply of each turn, and
+tells it when you wait or fail. Once your task is done, send it a short
+summary with kero report --to-parent.
 
 ## Hand work to another machine
 

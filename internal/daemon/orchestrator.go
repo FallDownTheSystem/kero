@@ -3,12 +3,15 @@ package daemon
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"kero/internal/commitmsg"
+	"kero/internal/convsearch"
 	"kero/internal/orchestrator"
 	"kero/internal/proto"
 	"kero/internal/settings"
@@ -51,13 +54,24 @@ type reports struct {
 
 // kid is a child as the reports last saw it: its orchestrator and name;
 // the status it is in since since; told, the status it was last held to
-// be, which a report may have told; worked, that it worked since.
+// be, which a report may have told; worked, that it worked since;
+// reported, that it sent its orchestrator a report while it worked, and
+// reportAt, how long its transcript was then, -1 for none; replyAt,
+// where its last reply a report told of ends in its transcript.
 type kid struct {
 	parent, name string
 	status, told proto.Status
 	since        time.Time
 	worked       bool
+	reported     bool
+	reportAt     int64
+	replyAt      int64
 }
+
+// replyWait is how long after a child went idle its idle line waits for
+// the reply to reach its transcript, which an agent may write after its
+// screen shows the turn's end.
+const replyWait = 8 * time.Second
 
 // report is what waits to go to an orchestrator: lines, the first come at
 // first, the last at last. It waits in kerod, not in the mailbox, until
@@ -362,14 +376,29 @@ func (d *Daemon) reportToParent(p proto.AgentSendParams) (proto.AgentSendResult,
 	parent := d.parentLocked(s)
 	info := d.sessionInfo(s)
 	name, id := info.DisplayName(proto.NameLead), s.id
+	var as *proto.AgentSession
+	if a := prSessionLocked(s).agent; a != nil {
+		a.mu.Lock()
+		as = a.info.AgentSession
+		a.mu.Unlock()
+	}
 	d.mu.Unlock()
 	if parent == "" {
 		return proto.AgentSendResult{}, fmt.Errorf("session %s is no orchestrator's child", id)
+	}
+	at := int64(-1)
+	if as != nil {
+		at = convsearch.TranscriptSize(proto.Home(), as.Agent, as.ID)
 	}
 	r := &d.reports
 	r.mu.Lock()
 	r.initLocked()
 	r.addLocked(parent, "", fmt.Sprintf("- session %s %s reports:\n%s", id, proto.Quoted(name), indent(strings.TrimSpace(p.Text))), time.Now())
+	// A report at the turn's end tells it: its idle line would add
+	// nothing, unless the child went on after it (idleLine).
+	if k := r.kids[id]; k != nil && k.status == proto.Working {
+		k.reported, k.reportAt = true, at
+	}
 	r.mu.Unlock()
 	return proto.AgentSendResult{State: "queued"}, nil
 }
@@ -396,10 +425,11 @@ func (d *Daemon) reportLoop() {
 }
 
 // childNow is a child as it is now: its orchestrator, name and status, of
-// its agent's pane, else of its lead.
+// its agent's pane, else of its lead, and that pane.
 type childNow struct {
 	parent, name, msg, kind string
 	status                  proto.Status
+	pane                    *pane
 }
 
 // followChildren notes what the children did since the last look, which
@@ -418,12 +448,15 @@ func (d *Daemon) followChildren(now time.Time) {
 		}
 		info := d.sessionInfo(s)
 		p := info.Pane
-		if a := prSessionLocked(s).agent; a != nil {
+		a := prSessionLocked(s).agent
+		if a != nil {
 			if ap := info.PaneByID(a.info.ID); ap != nil {
 				p = *ap
 			}
+		} else {
+			a = d.findPaneLocked(p.ID)
 		}
-		seen[s.id] = childNow{parent: parent, name: info.DisplayName(proto.NameLead), msg: p.Message, kind: p.Kind, status: p.Status}
+		seen[s.id] = childNow{parent: parent, name: info.DisplayName(proto.NameLead), msg: p.Message, kind: p.Kind, status: p.Status, pane: a}
 	}
 	d.mu.Unlock()
 
@@ -488,7 +521,13 @@ func (d *Daemon) followChildren(now time.Time) {
 			line = fmt.Sprintf("- session %s %s %s", id, proto.Quoted(c.name), what)
 		case proto.Idle:
 			if k.worked {
-				line = fmt.Sprintf("- session %s %s finished its turn: it is idle", id, proto.Quoted(c.name))
+				retry := false
+				line, retry = idleLine(id, c, k)
+				if retry && now.Sub(k.since) < replyWait {
+					// Look again next time, as it worked still.
+					k.told = proto.Working
+					continue
+				}
 			}
 		case proto.Failed:
 			line = fmt.Sprintf("- session %s %s failed", id, proto.Quoted(c.name))
@@ -496,22 +535,121 @@ func (d *Daemon) followChildren(now time.Time) {
 			line = fmt.Sprintf("- session %s %s exited: its program ended", id, proto.Quoted(c.name))
 		}
 		if c.status != proto.Working {
-			k.worked = false
+			k.worked, k.reported = false, false
 		}
 		if line == "" {
 			continue
 		}
-		if msg := strings.Join(strings.Fields(c.msg), " "); msg != "" && c.status != proto.Idle {
-			line += ": " + msg
-		} else {
-			line += "."
+		if c.status != proto.Idle {
+			if msg := strings.Join(strings.Fields(c.msg), " "); msg != "" {
+				line += ": " + msg
+			} else {
+				line += "."
+			}
 		}
 		r.addLocked(c.parent, id, line, now)
 	}
 }
 
+// idleLine is the line of child id that finished its turn, "" for none:
+// with the reply it ended the turn with, which the orchestrator acts on,
+// and the work it left running in the background, which tells it is not
+// done. A turn with no new reply, as one that only compacted the
+// conversation or ran a command, is no news, nor is one whose report
+// told its end, unless work still runs; retry tells that the reply may
+// not be in the transcript yet. Of an agent whose transcript Kero cannot
+// read, the line tells the turn's end alone. r.mu is held.
+func idleLine(id string, c childNow, k *kid) (line string, retry bool) {
+	head := fmt.Sprintf("- session %s %s finished its turn: it is idle", id, proto.Quoted(c.name))
+	bg := ""
+	if c.pane != nil {
+		bg = backgroundWork(c.pane.readText(false, 0))
+	}
+	if bg != "" {
+		head += ", but " + bg + " still running"
+	}
+	var as *proto.AgentSession
+	if c.pane != nil {
+		c.pane.mu.Lock()
+		as = c.pane.info.AgentSession
+		c.pane.mu.Unlock()
+	}
+	var reply convsearch.Reply
+	err := convsearch.ErrNoTranscript
+	if as != nil {
+		reply, err = convsearch.LastReply(proto.Home(), as.Agent, as.ID)
+	}
+	switch {
+	case err != nil:
+		if k.reported && bg == "" {
+			return "", false
+		}
+		return head + ".", false
+	case reply.Text == "" || reply.At == k.replyAt:
+		return "", true
+	}
+	k.replyAt = reply.At
+	// The report told the turn's end when nothing but its own tool call's
+	// result came after it.
+	if k.reported && k.reportAt >= 0 {
+		if n, err := convsearch.TurnsAfter(proto.Home(), as.Agent, as.ID, k.reportAt); err != nil || n > 1 {
+			k.reported = false
+		}
+	}
+	switch {
+	case k.reported && bg == "":
+		return "", false
+	case k.reported:
+		return head + ".", false
+	}
+	return head + ". Its reply:\n" + indent(clipReply(reply.Text, id)), false
+}
+
+// clipHalf is how much of a long reply a report keeps of its start, and
+// of its end: the start says what was done, the end asks what the child
+// waits for.
+const clipHalf = 1000
+
+// clipReply is a reply as a report carries it: whole, else its start and
+// its end, with what was cut between, and where the whole of it is.
+func clipReply(text, id string) string {
+	rs := []rune(text)
+	if len(rs) <= clipHalf*2+clipHalf/2 {
+		return text
+	}
+	head, tail := string(rs[:clipHalf]), string(rs[len(rs)-clipHalf:])
+	// At a line's end, when one is near.
+	if i := strings.LastIndexByte(head, '\n'); i >= len(head)*3/4 {
+		head = head[:i]
+	}
+	if i := strings.IndexByte(tail, '\n'); i >= 0 && i < len(tail)/4 {
+		tail = tail[i+1:]
+	}
+	cut := len(rs) - utf8.RuneCountInString(head) - utf8.RuneCountInString(tail)
+	return fmt.Sprintf("%s\n[… %d characters cut: kero read %s --reply prints the whole reply …]\n%s",
+		strings.TrimRight(head, " \n"), cut, id, strings.TrimLeft(tail, " \n"))
+}
+
+// backgroundRe finds what an agent's screen says still runs after its
+// turn, as Claude Code's "1 shell, 1 monitor still running" or "2 MCP
+// tasks still running".
+var backgroundRe = regexp.MustCompile(`(\d+ [A-Za-z]+(?: [A-Za-z]+)?(?:(?:,| and) \d+ [A-Za-z]+(?: [A-Za-z]+)?)*) still running`)
+
+// backgroundWork is what screen, a pane's, says still runs, from its
+// last lines, where an agent tells it under its prompt; "" for nothing.
+func backgroundWork(screen string) string {
+	lines := strings.Split(strings.TrimRight(screen, "\n"), "\n")
+	lines = lines[max(0, len(lines)-12):]
+	for i := len(lines) - 1; i >= 0; i-- {
+		if m := backgroundRe.FindStringSubmatch(lines[i]); m != nil {
+			return m[1]
+		}
+	}
+	return ""
+}
+
 // reportFooter ends a report: what the orchestrator may do of it.
-const reportFooter = "kero read <id> shows a session's screen, kero prompt <id> \"<text>\" answers it, kero status shows them all. " +
+const reportFooter = "kero read <id> shows a session's screen (with --reply, its whole last reply), kero prompt <id> \"<text>\" answers it, kero status shows them all. " +
 	"If nothing here needs you, reply just OK: no summary."
 
 // reportReady tells whether orchestrator id's agent is at its prompt,

@@ -92,6 +92,8 @@ Usage:
                                 stops working, then print its screen
   kero read [target] [-a] [-n lines]
                                 print the screen (-a with the scrollback)
+      --reply                     print instead the last reply of the
+                                  pane's agent, whole, from its transcript
   kero wait [target] [--for idle,waiting,error,exited] [--timeout 10m]
                                 wait until the pane stops working (or
                                 reaches one of the statuses), print it
@@ -870,17 +872,44 @@ func run(args []string, host string) error {
 		if f.set["escapes"] {
 			text = unescape(text)
 		}
-		if text != "" {
-			if err := c.Call("send", proto.SendParams{ID: t.ref(), Data: text}, nil); err != nil {
+		enter := f.set["enter"] || cmd == "prompt"
+		switch {
+		case text != "" && enter && (cmd == "prompt" || pasteable(text)):
+			// Pasted, so that its newlines do not run an agent's prompt
+			// line by line, and kerod presses Enter once the program drew
+			// the paste, then answers.
+			var res any
+			if err := c.Call("send", proto.SendParams{ID: t.ref(), Data: text, Paste: true, Submit: true, Sync: true}, &res); err != nil {
 				return err
 			}
-		}
-		if f.set["enter"] || cmd == "prompt" {
-			// Apart from the text, which a program could take for a paste
-			// of a newline.
-			time.Sleep(120 * time.Millisecond)
-			if err := c.Call("send", proto.SendParams{ID: t.ref(), Data: "\r"}, nil); err != nil {
-				return err
+			switch res {
+			case proto.SubmittedSync:
+			case proto.Submitted:
+				// A kerod that knows no Sync presses Enter after it
+				// answered: the wait starts once it likely did.
+				time.Sleep(3 * time.Second)
+			default:
+				// An older kerod pastes alone.
+				time.Sleep(500 * time.Millisecond)
+				if err := c.Call("send", proto.SendParams{ID: t.ref(), Data: "\r"}, nil); err != nil {
+					return err
+				}
+			}
+		default:
+			if text != "" {
+				if err := c.Call("send", proto.SendParams{ID: t.ref(), Data: text}, nil); err != nil {
+					return err
+				}
+			}
+			if enter {
+				// Apart from the text, which a program could take for a
+				// paste of a newline.
+				if text != "" {
+					time.Sleep(120 * time.Millisecond)
+				}
+				if err := c.Call("send", proto.SendParams{ID: t.ref(), Data: "\r"}, nil); err != nil {
+					return err
+				}
 			}
 		}
 		if cmd == "send" {
@@ -892,6 +921,9 @@ func run(args []string, host string) error {
 		}
 		var info proto.Pane
 		if err := c.Call("wait", proto.WaitParams{ID: t.ref(), Timeout: timeout}, &info); err != nil {
+			if err.Error() == "timed out" {
+				return fmt.Errorf("timed out: the prompt went to %s, which is still working; kero wait %s waits on", f.pos[0], f.pos[0])
+			}
 			return err
 		}
 		var res proto.ReadResult
@@ -920,7 +952,7 @@ func run(args []string, host string) error {
 		return c.Call("send", proto.SendParams{ID: t.ref(), Data: string(data)}, nil)
 
 	case "read", "capture":
-		f, err := parse(args, map[string]string{"n": "lines", "lines": "lines"}, map[string]string{"a": "all", "all": "all"})
+		f, err := parse(args, map[string]string{"n": "lines", "lines": "lines"}, map[string]string{"a": "all", "all": "all", "reply": "reply"})
 		if err != nil {
 			return err
 		}
@@ -930,7 +962,7 @@ func run(args []string, host string) error {
 		}
 		lines, _ := strconv.Atoi(f.vals["lines"])
 		var res proto.ReadResult
-		if err := c.Call("read", proto.ReadParams{ID: t.ref(), Scrollback: f.set["all"], Lines: lines}, &res); err != nil {
+		if err := c.Call("read", proto.ReadParams{ID: t.ref(), Scrollback: f.set["all"], Lines: lines, Reply: f.set["reply"]}, &res); err != nil {
 			return err
 		}
 		fmt.Print(res.Text)
@@ -1976,6 +2008,21 @@ func report(args []string) error {
 	}
 	_, err = os.Stdout.WriteString(seq)
 	return err
+}
+
+// pasteable tells text kero send --enter pastes: lines of text, which
+// typed would run line by line, and no keys, as an escape sequence or a
+// control character, which a paste would hand the program as text.
+func pasteable(text string) bool {
+	if !strings.Contains(text, "\n") {
+		return false
+	}
+	for _, r := range text {
+		if r < 0x20 && r != '\n' && r != '\t' || r == 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 // unescape interprets the escapes of echo -e: \n \r \t \e \a \b \\ \xHH.

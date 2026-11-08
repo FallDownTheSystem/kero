@@ -428,6 +428,34 @@ func (cs *convStore) claudeTitle(id string) string {
 	return title
 }
 
+// lastReply is the last reply of pn's agent, else of the agent of pn's
+// session, as a session's id names its focused pane, which may be
+// another than its agent's.
+func (d *Daemon) lastReply(pn *pane) (convsearch.Reply, error) {
+	pn.mu.Lock()
+	as, sid := pn.info.AgentSession, pn.sid
+	pn.mu.Unlock()
+	if as == nil {
+		d.mu.Lock()
+		if s := d.sessionByIDLocked(sid); s != nil {
+			if a := prSessionLocked(s).agent; a != nil {
+				a.mu.Lock()
+				as = a.info.AgentSession
+				a.mu.Unlock()
+			}
+		}
+		d.mu.Unlock()
+	}
+	if as == nil {
+		return convsearch.Reply{}, errors.New("no coding agent whose conversation Kero knows runs there")
+	}
+	r, err := convsearch.LastReply(proto.Home(), as.Agent, as.ID)
+	if errors.Is(err, convsearch.ErrNoTranscript) {
+		return r, fmt.Errorf("no transcript of %s conversation %s: Kero reads Claude Code's, Codex's and Pi's", as.Agent, as.ID)
+	}
+	return r, err
+}
+
 // claudeTranscript finds the transcript of a Claude Code conversation, in
 // the folder of the project it ran in, and when it last changed.
 func claudeTranscript(id string) (string, time.Time, error) {

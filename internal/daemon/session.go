@@ -494,6 +494,13 @@ func (s *pane) submit(from time.Time) {
 		}
 	}
 	s.input([]byte("\r"))
+	// A program that is no agent takes its Enter at once: none to retry.
+	s.mu.Lock()
+	agent := s.info.Agent
+	s.mu.Unlock()
+	if agent == "" {
+		return
+	}
 	for range enterTries {
 		time.Sleep(enterWait)
 		s.mu.Lock()
