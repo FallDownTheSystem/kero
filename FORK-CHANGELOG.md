@@ -5,6 +5,26 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.5
+
+- **Ama's role prompt** is a setting: Settings › Agents › Ama › Role
+  prompt (`ama-prompt`) shows Kero's, which you can change, and Reset to
+  Default brings back. Kero writes it into the CLAUDE.md and AGENTS.md of
+  Ama's folder, which its agent reads from its next chat
+- **Arguments for Ama and orchestrators**, whichever agent they run:
+  Settings › Agents › Ama › Arguments (`ama-agent-args`) and Orchestrators
+  › Arguments (`orchestrator-agent-args`), as `--model opus`, go after the
+  agent's command as it starts and as it resumes, so that one agent serves
+  all three
+- The picker's screenshots box an element at the page's top or side, as
+  example.com's `<body>` at 0, with every line: a side at the picture's
+  edge has its line inside the element, and its number, in the page's
+  screenshot, inside too
+- Importing sign-ins says that the browser may ask in any of its windows,
+  an installed app's (PWA) too, often the one used last. Kero connects to
+  the browser, whose installed apps share its profile, and imports the
+  same cookies whichever window asks
+
 ## 2.1.35-fork.4
 
 - **Ama's window**: Ama opens in a window of its own, above Kero's, which
