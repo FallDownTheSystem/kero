@@ -125,12 +125,23 @@ type cdpCookie struct {
 	PartitionKey json.RawMessage `json:"partitionKey"`
 }
 
-// Cookies connects to the browser of the user data directory dir, which
-// asks the user to allow it, and returns its cookies: those of its profile
-// the browser deems the default. name is the browser's, for the error that
-// tells how to turn remote debugging on. A cookie of a partition (CHIPS),
-// which a pane would send to every site, is left out.
-func Cookies(ctx context.Context, name, dir string) ([]proto.Cookie, error) {
+// Import is what Read took of the user's browser.
+type Import struct {
+	Cookies []proto.Cookie
+	// Sites are the storage of the sites of the browser's open tabs.
+	Sites []proto.SiteStorage
+	// Notes tell what was left out, and why.
+	Notes []string
+}
+
+// Read connects to the browser of the user data directory dir, which asks
+// the user to allow it, and returns its cookies, those of the profile the
+// browser deems the default, and the storage of the sites of its open tabs
+// (readSites): of domain and its subdomains alone, unless domain is "".
+// name is the browser's, for the error that tells how to turn remote
+// debugging on. A cookie of a partition (CHIPS), which a pane would send
+// to every site, is left out.
+func Read(ctx context.Context, name, dir, domain string) (*Import, error) {
 	off := func(err error) error {
 		return fmt.Errorf("%s doesn't let Kero connect (%v): open %s as it runs, turn on remote debugging there, and try again", Title(name), err, inspectPage(name))
 	}
@@ -143,46 +154,30 @@ func Cookies(ctx context.Context, name, dir string) ([]proto.Cookie, error) {
 	}
 	// The browser holds the connection until the user allows it: ctx is
 	// how long they may take.
-	conn, _, err := websocket.Dial(ctx, url, nil)
+	ws, _, err := websocket.Dial(ctx, url, nil)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("%s did not let Kero connect in time: allow it in the browser's dialog", Title(name))
 		}
 		return nil, off(err)
 	}
-	defer conn.CloseNow()
-	conn.SetReadLimit(256 << 20) // every site's cookies come in one message
-	req, _ := json.Marshal(map[string]any{"id": 1, "method": "Storage.getCookies"})
-	if err := conn.Write(ctx, websocket.MessageText, req); err != nil {
-		return nil, browserGone(name, ctx, err)
+	defer ws.CloseNow()
+	ws.SetReadLimit(256 << 20) // every site's cookies come in one message
+	c := &cdp{ws: ws}
+	var res struct {
+		Cookies []cdpCookie `json:"cookies"`
 	}
-	for {
-		_, b, err := conn.Read(ctx)
-		if err != nil {
-			return nil, browserGone(name, ctx, err)
-		}
-		var res struct {
-			ID     int `json:"id"`
-			Result struct {
-				Cookies []cdpCookie `json:"cookies"`
-			} `json:"result"`
-			Error *struct {
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if err := json.Unmarshal(b, &res); err != nil {
+	if err := c.call(ctx, "", "Storage.getCookies", nil, &res); err != nil {
+		var ce *cdpError
+		if errors.As(err, &ce) {
 			return nil, fmt.Errorf("%s: %w", Title(name), err)
 		}
-		// Events of the browser come between.
-		if res.ID != 1 {
-			continue
-		}
-		if res.Error != nil {
-			return nil, fmt.Errorf("%s: %s", Title(name), res.Error.Message)
-		}
-		conn.Close(websocket.StatusNormalClosure, "")
-		return convert(res.Result.Cookies), nil
+		return nil, browserGone(name, ctx, err)
 	}
+	imp := &Import{Cookies: convert(res.Cookies)}
+	imp.Sites, imp.Notes = readSites(ctx, c, domain)
+	ws.Close(websocket.StatusNormalClosure, "")
+	return imp, nil
 }
 
 // browserGone tells why the connection ended: the user denied it, which

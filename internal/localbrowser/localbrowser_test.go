@@ -37,22 +37,29 @@ func fakeBrowser(t *testing.T, cookies string) string {
 			return
 		}
 		defer c.CloseNow()
-		_, b, err := c.Read(r.Context())
-		if err != nil {
-			return
+		for {
+			_, b, err := c.Read(r.Context())
+			if err != nil {
+				return
+			}
+			var req struct {
+				ID     int    `json:"id"`
+				Method string `json:"method"`
+			}
+			json.Unmarshal(b, &req)
+			c.Write(r.Context(), websocket.MessageText, []byte(`{"method":"Target.targetCreated","params":{}}`))
+			var res string
+			switch req.Method {
+			case "Storage.getCookies":
+				res = `"result":{"cookies":` + cookies + `}`
+			case "Target.getTargets":
+				// A tab of no site of the web: nothing to read.
+				res = `"result":{"targetInfos":[{"targetId":"t1","type":"page","url":"chrome://newtab/"}]}`
+			default:
+				res = `"error":{"message":"no method"}`
+			}
+			c.Write(r.Context(), websocket.MessageText, []byte(`{"id":`+itoa(req.ID)+`,`+res+`}`))
 		}
-		var req struct {
-			ID     int    `json:"id"`
-			Method string `json:"method"`
-		}
-		json.Unmarshal(b, &req)
-		c.Write(r.Context(), websocket.MessageText, []byte(`{"method":"Target.targetCreated","params":{}}`))
-		if req.Method != "Storage.getCookies" {
-			c.Write(r.Context(), websocket.MessageText, []byte(`{"id":`+itoa(req.ID)+`,"error":{"message":"no method"}}`))
-			return
-		}
-		c.Write(r.Context(), websocket.MessageText, []byte(`{"id":`+itoa(req.ID)+`,"result":{"cookies":`+cookies+`}}`))
-		c.Read(r.Context())
 	}))
 	t.Cleanup(srv.Close)
 	dir := t.TempDir()
@@ -77,9 +84,13 @@ func TestCookies(t *testing.T) {
 	]`)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	got, err := Cookies(ctx, "chrome", dir)
+	imp, err := Read(ctx, "chrome", dir, "")
 	if err != nil {
 		t.Fatal(err)
+	}
+	got := imp.Cookies
+	if len(imp.Sites) != 0 {
+		t.Errorf("sites of no open tab of the web: %+v", imp.Sites)
 	}
 	want := []proto.Cookie{
 		{Name: "sid", Value: "a=b", Domain: ".github.com", Path: "/", Expires: 1893456000.5, HTTPOnly: true, Secure: true, SameSite: "None"},
@@ -102,7 +113,7 @@ func TestCookies(t *testing.T) {
 func TestCookiesOff(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := Cookies(ctx, "edge", t.TempDir())
+	_, err := Read(ctx, "edge", t.TempDir(), "")
 	if err == nil || !strings.Contains(err.Error(), "edge://inspect/#remote-debugging") {
 		t.Errorf("no file: %v", err)
 	}
@@ -111,7 +122,7 @@ func TestCookiesOff(t *testing.T) {
 	port := l.URL[strings.LastIndex(l.URL, ":")+1:]
 	l.Close()
 	os.WriteFile(filepath.Join(stale, "DevToolsActivePort"), []byte(port+"\n/devtools/browser/x\n"), 0o644)
-	_, err = Cookies(ctx, "chrome", stale)
+	_, err = Read(ctx, "chrome", stale, "")
 	if err == nil || !strings.Contains(err.Error(), "chrome://inspect/#remote-debugging") {
 		t.Errorf("stale file: %v", err)
 	}

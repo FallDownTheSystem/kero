@@ -5040,21 +5040,21 @@ func (msgs Messages) SetSignIns() string {
 	return Catalog.Format(msgs.locale, "setSignIns", nil)
 }
 
-// SetSignInsNote says "Browser panes keep cookies of their own. Import gives them your browser's, so you're signed in where you are there. F…"
+// SetSignInsNote says "Browser panes keep cookies and site storage of their own. Import gives them your browser's cookies, and the storage o…"
 // in the language the app shows.
 func SetSignInsNote() string { return In(i18n.Locale()).SetSignInsNote() }
 
-// SetSignInsNote says "Browser panes keep cookies of their own. Import gives them your browser's, so you're signed in where you are there. F…"
+// SetSignInsNote says "Browser panes keep cookies and site storage of their own. Import gives them your browser's cookies, and the storage o…"
 // in the language of msgs.
 func (msgs Messages) SetSignInsNote() string {
 	return Catalog.Format(msgs.locale, "setSignInsNote", nil)
 }
 
-// SetSignInsFrom says "Import the cookies of {browser} as it runs."
+// SetSignInsFrom says "Import the cookies of {browser}, and the storage of its open tabs, as it runs."
 // in the language the app shows.
 func SetSignInsFrom(browser string) string { return In(i18n.Locale()).SetSignInsFrom(browser) }
 
-// SetSignInsFrom says "Import the cookies of {browser} as it runs."
+// SetSignInsFrom says "Import the cookies of {browser}, and the storage of its open tabs, as it runs."
 // in the language of msgs.
 func (msgs Messages) SetSignInsFrom(browser string) string {
 	return Catalog.Format(msgs.locale, "setSignInsFrom", map[string]any{"browser": browser})
@@ -5070,16 +5070,28 @@ func (msgs Messages) SetSignInsAllow(browser string) string {
 	return Catalog.Format(msgs.locale, "setSignInsAllow", map[string]any{"browser": browser})
 }
 
-// SetSignInsDone says "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}."
+// SetSignInsDone says "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}, and {sites, plural, =0 {no site s…"
 // in the language the app shows.
-func SetSignInsDone(count int, browser string) string {
-	return In(i18n.Locale()).SetSignInsDone(count, browser)
+func SetSignInsDone(count int, sites int, browser string) string {
+	return In(i18n.Locale()).SetSignInsDone(count, sites, browser)
 }
 
-// SetSignInsDone says "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}."
+// SetSignInsDone says "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}, and {sites, plural, =0 {no site s…"
 // in the language of msgs.
-func (msgs Messages) SetSignInsDone(count int, browser string) string {
-	return Catalog.Format(msgs.locale, "setSignInsDone", map[string]any{"count": count, "browser": browser})
+func (msgs Messages) SetSignInsDone(count int, sites int, browser string) string {
+	return Catalog.Format(msgs.locale, "setSignInsDone", map[string]any{"count": count, "sites": sites, "browser": browser})
+}
+
+// SetSignInsLeftOut says "{count, plural, one {Left out # item} other {Left out # items}}: kero browser cookies import {name} lists them."
+// in the language the app shows.
+func SetSignInsLeftOut(count int, name string) string {
+	return In(i18n.Locale()).SetSignInsLeftOut(count, name)
+}
+
+// SetSignInsLeftOut says "{count, plural, one {Left out # item} other {Left out # items}}: kero browser cookies import {name} lists them."
+// in the language of msgs.
+func (msgs Messages) SetSignInsLeftOut(count int, name string) string {
+	return Catalog.Format(msgs.locale, "setSignInsLeftOut", map[string]any{"count": count, "name": name})
 }
 
 // SetSignInsImport says "Import"

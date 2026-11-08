@@ -164,7 +164,7 @@ kero browser eval 'document.title'
 | `screenshot [-o file.png]`      | Save a picture of the page, and print where; `-o -` writes it to stdout |
 | `cookies save [file]`           | Save the browser's cookies to a file, or print them; `--domain` keeps a site's |
 | `cookies load <file>`           | Load cookies from a file; `--domain` loads a site's |
-| `cookies import <chrome\|edge>`  | Copy your own browser's cookies as it runs, which signs the panes in where you are there; `--domain` copies a site's ([how](./panes.md#signing-in-with-your-browsers-cookies)) |
+| `cookies import <chrome\|edge>`  | Copy your own browser's cookies as it runs, and the localStorage and IndexedDB of the sites of its open tabs, which signs the panes in where you are there; `--domain` copies a site's ([how](./panes.md#signing-in-with-your-browsers-cookies)) |
 | `wait-message [--json]`         | Wait for the next message the page sends with [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page), and print it, labelled with the page; `--json` prints its `id`, `from`, `label`, `url`, `title`, `text` and `at` |
 | `pick`                          | Turn on Pick mode, for the user to pick elements and write a note on each; the picks come to the page's agent as a message ([more](./panes.md#picking-elements-for-an-agent)) |
 
@@ -174,7 +174,7 @@ Selectors are CSS selectors; quote them in the shell. Anywhere a command takes a
 
 Clicking and typing send the events a real mouse and keyboard would, so pages built with React and other frameworks see them. Every command works on any browser pane, shown or not: a screenshot of a pane not on screen takes no focus from what you are doing.
 
-Browser panes share their cookies, and keep them when Kero restarts. `cookies` saves them in Playwright's storage state, as JSON, or for a file named `.txt`, as a Netscape `cookies.txt`, which curl and browser extensions write; `load` reads either. Cookies sign you in to sites: share their file only with what you'd trust with your logins. They stay on this Mac, so programs on a host can't save or load them. `import` needs remote debugging on in Chrome (144 or later) or Edge, at `chrome://inspect/#remote-debugging`, and waits up to two minutes, or `--timeout`, for you to allow it in the browser's dialog; it also takes the user data directory of a browser started with `--user-data-dir`.
+Browser panes share their cookies, and keep them when Kero restarts. `cookies` saves them in Playwright's storage state, as JSON, or for a file named `.txt`, as a Netscape `cookies.txt`, which curl and browser extensions write; `load` reads either. Cookies sign you in to sites: share their file only with what you'd trust with your logins. They stay on this Mac, so programs on a host can't save or load them. `import` prints what it left out to stderr. It needs remote debugging on in Chrome (144 or later) or Edge, at `chrome://inspect/#remote-debugging`, and waits up to two minutes, or `--timeout`, for you to allow it in the browser's dialog; it also takes the user data directory of a browser started with `--user-data-dir`.
 
 Like `kero do`, `kero browser` needs Remote Control, in **Settings › Agents**, and the app to be open.
 

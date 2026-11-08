@@ -829,6 +829,9 @@ func (a *App) browserPage(c *ui.Context, pal *palette) {
 				detail = res.err
 			case res.done != "":
 				detail = res.done
+				if res.notes > 0 {
+					detail += " " + locales.SetSignInsLeftOut(res.notes, name)
+				}
 			}
 			settingRow(c, pal, title, detail, func() {
 				if button(c, "import-"+name, locales.SetSignInsImport(), "", false, pal) && a.ss.importing == "" {
@@ -841,7 +844,12 @@ func (a *App) browserPage(c *ui.Context, pal *palette) {
 
 // signInImport is how importing a browser's cookies ended: what it
 // loaded, or why it failed.
-type signInImport struct{ done, err string }
+type signInImport struct {
+	done, err string
+	// notes counts what it left out, which kero browser cookies import
+	// tells of one by one.
+	notes int
+}
 
 // importSignIns gives the browser panes the cookies of the user's own
 // browser, as it runs, which asks them to allow Kero first: off the main
@@ -851,17 +859,22 @@ func (a *App) importSignIns(name string) {
 	go func() {
 		var res signInImport
 		dir, err := localbrowser.Dir(name)
-		var all []proto.Cookie
+		var imp *localbrowser.Import
 		if err == nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			all, err = localbrowser.Cookies(ctx, name, dir)
+			imp, err = localbrowser.Read(ctx, name, dir, "")
 			cancel()
 		}
 		if err != nil {
 			res.err = err.Error()
 		} else {
-			skipped := loadCookies(all)
-			res.done = locales.SetSignInsDone(len(all)-len(skipped), localbrowser.Title(name))
+			skipped := loadCookies(imp.Cookies)
+			notes := a.loadStorage(imp.Sites)
+			if len(notes) > 0 {
+				notes = notes[1:] // the count, which done tells
+			}
+			res.done = locales.SetSignInsDone(len(imp.Cookies)-len(skipped), len(imp.Sites), localbrowser.Title(name))
+			res.notes = len(skipped) + len(imp.Notes) + len(notes)
 		}
 		a.update(func() {
 			a.ss.importing = ""

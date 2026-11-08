@@ -863,7 +863,7 @@ func TestImportSignInsOff(t *testing.T) {
 	a.ss.page = "browser"
 	tt := ui.NewTester(a.settingsView, 820, 1200)
 	tt.Frame()
-	if !tt.HasText("Import the cookies of Edge as it runs.") {
+	if !tt.HasText("Import the cookies of Edge, and the storage of its open tabs, as it runs.") {
 		t.Fatalf("no Edge row; texts %q", tt.Texts())
 	}
 	a.importSignIns("edge")
@@ -875,7 +875,7 @@ func TestImportSignInsOff(t *testing.T) {
 	if !slices.ContainsFunc(tt.Texts(), func(s string) bool { return strings.Contains(s, "edge://inspect/#remote-debugging") }) {
 		t.Errorf("no way to turn it on; texts %q", tt.Texts())
 	}
-	if !tt.HasText("Import the cookies of Chrome as it runs.") {
+	if !tt.HasText("Import the cookies of Chrome, and the storage of its open tabs, as it runs.") {
 		t.Errorf("Chrome's row changed too; texts %q", tt.Texts())
 	}
 }
