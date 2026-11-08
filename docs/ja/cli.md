@@ -161,7 +161,7 @@ kero browser eval 'document.title'
 | `wait [selector] [--text text]` | 要素かテキストが表示されるまで待つ。どちらもなければページの読み込みまで |
 | `eval <js…>`                    | ページで JavaScript を実行し、その値を出力: 文字列はそのまま、それ以外は JSON |
 | `screenshot [-o file.png]`      | ページの画像を保存し、その場所を出力。`-o -` で標準出力に書き出す |
-| `cookies import <chrome\|edge>`  | 実行中の自分のブラウザの Cookie をコピーし、ペインをブラウザと同じサイトにサインインさせる。`--domain` でサイトの分だけ（[手順](./panes.md#signing-in-with-your-browsers-cookies)） |
+| `cookies import <chrome\|edge>`  | 実行中の自分のブラウザの Cookie と、開いているタブのサイトの localStorage と IndexedDB をコピーし、ペインをブラウザと同じサイトにサインインさせる。`--domain` でサイトの分だけ（[手順](./panes.md#signing-in-with-your-browsers-cookies)） |
 | `wait-message [--json]`         | ページが [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) で送る次のメッセージを待ち、ページの情報を付けて表示します。`--json` は `id`、`from`、`label`、`url`、`title`、`text`、`at` を表示します |
 | `pick`                          | 要素を選ぶモードをオンにし、ユーザーが要素を選んでメモを書けるようにする。選んだ要素はページのエージェントへのメッセージとして届く（[詳しく](./panes.md#エージェントのために要素を選ぶ)） |
 

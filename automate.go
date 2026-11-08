@@ -53,7 +53,13 @@ func (a *App) browse(h *host, r *proto.BrowserRequest, answer func(*proto.Browse
 			fail("cookies stay on this machine: kero browser cookies works in its own sessions, not %s's", h.name)
 			return
 		}
-		go func() { answer(cookies(r.Text, r.Domain, r.Cookies)) }()
+		go func() {
+			res, err := cookies(r.Text, r.Domain, r.Cookies)
+			if err == nil && r.Text == "load" && len(r.Storage) > 0 {
+				res.Text = strings.Join(append([]string{res.Text}, a.loadStorage(r.Storage)...), "\n")
+			}
+			answer(res, err)
+		}()
 		return
 	}
 	// A pane never shown has no page yet: it gets one now, on the page

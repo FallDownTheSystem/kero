@@ -190,6 +190,8 @@ Browser panes keep cookies of their own, so a site you're signed in to in Chrome
 2. In **Settings › Browser**, under **Sign-ins**, click **Import** beside the browser, or run `kero browser cookies import chrome` (or `edge`).
 3. The browser asks whether to allow the connection: allow it.
 
-Kero copies the cookies of the browser's profile it deems the default, which signs the panes in where you are there, and leaves the browser as it was: it reads the cookies and disconnects. Import again when a sign-in expires. Panes keep the cookies when Kero restarts, and every `kero browser` command works on the pages as before.
+Kero copies the cookies of the browser's profile it deems the default, which signs the panes in where you are there, and leaves the browser as it was: it reads the cookies and disconnects.
+
+Many web apps keep their sign-in in the site's localStorage or IndexedDB rather than in cookies. Kero copies those too, of the sites of the browser's open tabs, as the browser tells a site's storage only to a page of it: open such an app in the browser before you import, then reload its pane. `kero browser cookies import chrome --domain app.example.com` copies one site's, and opens a tab of it, unseen, for as long as it reads when none is open. A site's databases replace the pane's of the same name; Kero leaves out a site's databases past 8 MB, and values the browser keeps for itself, such as a site's encryption keys, which no page can copy, and tells you what it left out. Import again when a sign-in expires. Panes keep the cookies when Kero restarts, and every `kero browser` command works on the pages as before.
 
 Chrome and Edge don't let other programs open your profile or read its cookie files, and ignore `--remote-debugging-port` on it: the switch in `chrome://inspect` is the one way in, and asks you each time. Cookies sign you in: agents in your sessions can use the pages, and `kero browser cookies save`, as you can.

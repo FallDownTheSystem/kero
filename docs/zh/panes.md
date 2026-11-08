@@ -193,6 +193,8 @@ Kero 能拦截的，就是 WebKit 内容拦截器所能拦截的：发往广告�
 2. 在**设置 › 浏览器**的**登录状态**下，点击浏览器旁的**导入**，或运行 `kero browser cookies import chrome`（或 `edge`）。
 3. 浏览器会询问是否允许连接：允许即可。
 
-Kero 会复制浏览器视为默认的配置文件中的 Cookie，让面板在你于浏览器中登录过的网站上也处于登录状态。它不会改动浏览器：读取 Cookie 后即断开连接。登录过期后再导入一次即可。Kero 重启后面板仍保留这些 Cookie，所有 `kero browser` 命令照常作用于页面。
+Kero 会复制浏览器视为默认的配置文件中的 Cookie，让面板在你于浏览器中登录过的网站上也处于登录状态。它不会改动浏览器：读取 Cookie 后即断开连接。
+
+许多网页应用把登录状态保存在网站的 localStorage 或 IndexedDB 中，而不是 Cookie 里。浏览器只把网站的存储交给该网站的页面，所以 Kero 会复制浏览器中打开的标签页所属网站的存储：导入前先在浏览器中打开该应用，导入后重新加载它的面板。`kero browser cookies import chrome --domain app.example.com` 只复制一个网站的存储；若没有打开该网站的标签页，会在读取期间打开一个不可见的标签页。网站的数据库会替换面板中同名的数据库；超过 8 MB 的数据库，以及浏览器自己保管、页面无法复制的值（例如网站的加密密钥）不会导入，Kero 会告诉你哪些被略过。登录过期后再导入一次即可。Kero 重启后面板仍保留这些 Cookie，所有 `kero browser` 命令照常作用于页面。
 
 Chrome 和 Edge 不允许其他程序打开你的配置文件或读取其 Cookie 文件，并会忽略针对它的 `--remote-debugging-port`：`chrome://inspect` 中的开关是唯一的途径，而且每次都会征求你的同意。Cookie 就是登录凭据：会话中的智能体和你一样，可以使用这些页面和 `kero browser cookies save`。

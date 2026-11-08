@@ -85,16 +85,21 @@ func cookiesCmd(c *client.Client, p proto.BrowserParams, pos []string, f *flags)
 		}
 		fmt.Fprintf(os.Stderr, "connecting to %s: allow Kero in its dialog\n", localbrowser.Title(file))
 		ctx, cancel := context.WithTimeout(context.Background(), wait)
-		all, err := localbrowser.Cookies(ctx, file, dir)
+		imp, err := localbrowser.Read(ctx, file, dir, domain)
 		cancel()
 		if err != nil {
 			return err
 		}
 		p.Text, p.Timeout = "load", 0
-		p.Cookies = ofDomain(all, domain)
-		if len(p.Cookies) == 0 {
-			return fmt.Errorf("%s has no cookies to import", localbrowser.Title(file))
+		p.Cookies, p.Storage = ofDomain(imp.Cookies, domain), imp.Sites
+		for _, n := range imp.Notes {
+			fmt.Fprintln(os.Stderr, n)
 		}
+		if len(p.Cookies) == 0 && len(p.Storage) == 0 {
+			return fmt.Errorf("%s has no cookies or site storage to import", localbrowser.Title(file))
+		}
+		// The app writes each site's storage in a page of the site.
+		p.Timeout = int64(len(p.Storage)) * siteWrite.Milliseconds()
 		var res proto.BrowserResult
 		if err := c.Call("browser", p, &res); err != nil {
 			return err
@@ -133,6 +138,10 @@ func cookiesCmd(c *client.Client, p proto.BrowserParams, pos []string, f *flags)
 	return usageErr("%s", use)
 }
 
+// siteWrite is how long kerod gives the app to write a site's storage,
+// past its own grace.
+const siteWrite = 10 * time.Second
+
 // importWait is how long cookies import waits for the user to allow it
 // in their browser, unless --timeout says.
 const importWait = 2 * time.Minute
@@ -141,7 +150,7 @@ const importWait = 2 * time.Minute
 func ofDomain(all []proto.Cookie, domain string) []proto.Cookie {
 	var out []proto.Cookie
 	for _, ck := range all {
-		if host := strings.TrimPrefix(strings.ToLower(ck.Domain), "."); domain == "" || host == domain || strings.HasSuffix(host, "."+domain) {
+		if localbrowser.OfDomain(ck.Domain, domain) {
 			out = append(out, ck)
 		}
 	}

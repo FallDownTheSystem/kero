@@ -895,6 +895,9 @@ type (
 		Domain string `json:"domain,omitempty"`
 		// Cookies are the cookies to load.
 		Cookies []Cookie `json:"cookies,omitempty"`
+		// Storage is the sites' storage to load with them, which cookies
+		// import took of the user's browser.
+		Storage []SiteStorage `json:"storage,omitempty"`
 		// Timeout is how long to wait for the element, or the page to
 		// load, in ms: 0 for the app's default.
 		Timeout int64 `json:"timeout,omitempty"`
