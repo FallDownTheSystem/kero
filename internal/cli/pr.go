@@ -16,9 +16,15 @@ import (
 // user posts from Kero; nothing here posts.
 func prCommand(c *client.Client, args []string) error {
 	if len(args) == 0 {
-		return usageErr("kero pr link|unlink|status|state|merge|ready|draft|close|reopen|update-branch|delete-branch|checkout|guide|comment|edit|delete|summary|show (see kero help)")
+		return usageErr("kero pr list|review|link|unlink|status|state|merge|ready|draft|close|reopen|update-branch|delete-branch|checkout|guide|comment|edit|delete|summary|show (see kero help)")
 	}
 	sub := args[0]
+	switch sub {
+	case "list", "ls":
+		return prList(c, args[1:])
+	case "review":
+		return prReview(c, args[1:])
+	}
 	if sub == "guide" {
 		return guideCommand(c, args[1:])
 	}

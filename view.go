@@ -1003,6 +1003,11 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 // none.
 func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 	ui.Row(c).Height(36).Shrink(0).Padding(0, 12, 4, 12).Gap(2).AlignItems(ui.Center).DragWindow().Children(func() {
+		// Ama's frog, in the sidebar's outer corner: its bottom left, or
+		// its bottom right with the sidebar at the window's right.
+		if !a.sideLeft() {
+			a.amaButton(c, pal)
+		}
 		iconButton(c, "open-project", folderIcon, a.tip(locales.ActionOpenProject(), "project.open"), pal, a.openProject)
 		iconButton(c, "palette", searchIcon, a.tip(locales.ActionGoToSession(), "palette.open"), pal, a.openPalette)
 		iconButton(c, "settings", gearIcon, a.tip(locales.SettingsTitle(), "settings.open"), pal, func() { a.openSettings("") })
@@ -1023,6 +1028,9 @@ func (a *App) sidebarFooter(c *ui.Context, pal *palette) {
 			a.footerNote(c, pal, pal.textFaint, locales.StatusConnecting())
 		default:
 			a.footerNote(c, pal, pal.danger, locales.StatusDisconnected())
+		}
+		if a.sideLeft() {
+			a.amaButton(c, pal)
 		}
 	})
 }
@@ -1049,7 +1057,7 @@ func (a *App) footerChip(c *ui.Context, pal *palette, st proto.Status, unread bo
 	n := 0
 	for i := range a.st.Sessions {
 		// A host the app lost says nothing new, as for the Dock's badge.
-		if h := a.hostOf(a.st.Sessions[i].ID); h.remote() && h.conn != connReady {
+		if h := a.hostOf(a.st.Sessions[i].ID); h.remote() && h.conn != connReady || a.st.Sessions[i].Ama {
 			continue
 		}
 		if is(&a.st.Sessions[i]) {

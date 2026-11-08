@@ -312,6 +312,31 @@ kero -H devbox daemon update     # そこの Kero をこちらのバージョン
 
 `kero ls --all` はすべてのホストに同時に問い合わせ、それぞれのセッションを `-H` に渡す名前（このマシンは `local`）の下に一覧表示します。届かないホストは、セッションの代わりにその理由を表示します。`--json` を付けると `{host, addr, error, sessions}` のリストを出力します。
 
+<a id="managing-kero"></a>
+## Kero を管理する
+
+サイドバーとそのメニュー、設定でできることを、シェルから次のコマンドで行えます。[Ama](./agents.md#ヘルパーエージェント-ama) もこれらを使います:
+
+```sh
+kero ls -p api --status waiting                # プロジェクトのセッションを状態で絞り込む
+kero projects add ~/code/api -n api            # id を表示
+kero projects rename api backend
+kero projects remove backend --force           # セッションも閉じる
+kero move <session> <project>
+kero close --all -p api --status idle,exited --dry-run   # 閉じる対象を確認
+kero close --all -p api --status idle,exited
+kero worktree create fix-login -p api -- claude "fix the login"
+kero worktree remove fix-login -p api --branch # ブランチも削除
+kero worktree cleanup --dry-run                # 自動クリーンアップで消えるもの
+kero worktree prune -p api
+kero pr list -p api
+kero pr review 123 -p api                      # レビュータブと同じように開始
+kero config get default-agent
+kero config set notify-on-done false           # 設定と同じように書き込む
+```
+
+`--all`、`-p`、`--status` を付けた `kero close` は、Ama のセッションと、コマンドを実行しているセッションは閉じません。`kero worktree remove` は履歴タブと同じようにワークツリーを削除します。Kero がセッション用に作ったワークツリーはそのセッションを閉じ、他のセッションが使っているものは残ります。`kero pr review` はアプリが開いている必要があり、Ama 以外からはリモート操作も必要です。値なしの `kero config set` はデフォルトに戻します。リスト設定は値ごとに引数を渡し、何も渡さなければ空になります。
+
 ## アプリのアクションを実行する
 
 `kero do` は、メニューと同じアプリのアクションをどれでも実行します。**設定 › エージェント** のリモート操作（デフォルトでオン）が必要です。

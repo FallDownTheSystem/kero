@@ -212,6 +212,7 @@ type App struct {
 	picker folderPicker // the folders of a host, to open a project in
 	side   sideState    // the side panel, beside a session's panes
 	quick  quickTerm    // the terminal the global shortcut drops down
+	ama    amaState     // Ama's popover (ama_view.go)
 }
 
 // confirmation is a question the app asks before something it cannot undo.
@@ -315,7 +316,7 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 		}
 	case "select":
 		// A host shows its own sessions, none of another machine.
-		if !a.remoteControl(h) || a.hostOf(m.Select) != h {
+		if !a.drives(h, m.Ama) || a.hostOf(m.Select) != h {
 			return
 		}
 		// In the pane kerod has it focus, as kero focus <pane> asks: the
@@ -328,7 +329,12 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 			a.showWindow()
 		}
 	case "action":
-		if !a.remoteControl(h) {
+		if !a.drives(h, m.Ama) {
+			return
+		}
+		// kero pr review's, which no menu has.
+		if m.Action == actions.PRReview {
+			a.reviewFromAgent(h, m.Args)
 			return
 		}
 		if act, ok := actions.Find(m.Action); ok && act.Remote {
@@ -471,6 +477,10 @@ func (a *App) notify(first bool) {
 		if h := a.hostOf(s.ID); h.remote() && h.conn != connReady {
 			continue
 		}
+		// Ama's frog tells of it, not a notification or the badge.
+		if s.Ama {
+			continue
+		}
 		prev, seen := a.statuses[s.ID]
 		a.statuses[s.ID] = s.Status
 		if s.Status == proto.Waiting {
@@ -595,7 +605,7 @@ func (a *App) hostGroups(h *host) []group {
 	}
 	other := group{host: h, project: proto.Project{ID: "", Name: locales.SidebarOtherProject()}}
 	for i := range a.st.Sessions {
-		if s := &a.st.Sessions[i]; !known[s.Project] && a.hostOf(s.ID) == h {
+		if s := &a.st.Sessions[i]; !known[s.Project] && a.hostOf(s.ID) == h && !s.Ama {
 			other.sessions = append(other.sessions, s)
 		}
 	}
@@ -624,6 +634,11 @@ func (a *App) visibleOrder() []string {
 
 func (a *App) selectSession(id string) {
 	if a.session(id) == nil {
+		return
+	}
+	// Ama shows in its popover, never in the window's panes.
+	if isAma(a.session(id)) {
+		a.openAma()
 		return
 	}
 	changed := a.selected != id
@@ -661,6 +676,8 @@ func (a *App) reportView() {
 		}
 		id := ""
 		switch {
+		case a.ama.open && h == a.local() && a.amaSession() != nil:
+			id = a.amaSession().ID
 		case a.quick.shown && h == a.local():
 			id = a.prefs.QuickSession
 		case a.watching(a.selected) && h == shown:
@@ -1418,7 +1435,7 @@ func (a *App) addPending(h *host, s proto.Session) {
 	}
 	a.own(h, s)
 	a.st.Sessions = append(a.st.Sessions, s)
-	if a.project(s.Project) == nil {
+	if !s.Ama && a.project(s.Project) == nil {
 		a.st.Projects = append(a.st.Projects, proto.Project{ID: s.Project, Name: proto.DirName(s.Dir), Dir: s.Dir})
 	}
 }

@@ -24,6 +24,7 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/adblock"
+	"kero/internal/ama"
 	"kero/internal/cli"
 	"kero/internal/client"
 	"kero/internal/commitmsg"
@@ -1607,6 +1608,33 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, locales.SetDefaultAgent(), locales.SetDefaultAgentDetail(), func() {
 			popup(c, "default-agent", &s.DefaultAgent, s.AgentCommands(), func(cmd string) string { return cmd }, 220, pal)
+		})
+	})
+	// Ama's agent, and the instructions of the user's own that Kero
+	// never changes, beside Kero's (internal/ama).
+	settingsGroup(c, pal, locales.SetAma(), locales.SetAmaDetail(), func() {
+		settingRow(c, pal, locales.SetAmaAgent(), locales.SetAmaAgentDetail(), func() {
+			popup(c, "ama-agent", &s.AmaAgent, append([]string{""}, s.AgentCommands()...), func(cmd string) string {
+				if cmd == "" {
+					return locales.SetAmaDefaultAgent(s.DefaultAgent)
+				}
+				return cmd
+			}, 220, pal)
+		})
+		settingRow(c, pal, locales.SetAmaInstructions(), locales.SetAmaInstructionsDetail(proto.ShortDir(ama.UserFile())), func() {
+			if button(c, "ama-user", locales.CommonOpen(), "", true, pal) {
+				if err := ama.Prepare(); err != nil {
+					a.toastIn(c, err.Error())
+				} else {
+					openTextFile(ama.UserFile())
+				}
+			}
+		})
+		settingRow(c, pal, locales.SetAmaFolder(), proto.ShortDir(ama.Dir()), func() {
+			if button(c, "ama-folder", locales.CommonShowIn(fileManager()), "", false, pal) {
+				ama.Prepare()
+				revealPath(ama.Dir())
+			}
 		})
 	})
 	settingsGroup(c, pal, locales.SetResumeCommands(), locales.SetResumeCommandsDetail(), func() {

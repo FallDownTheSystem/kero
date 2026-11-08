@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"kero/internal/ama"
 	"kero/internal/convsearch"
 	"kero/internal/proto"
 )
@@ -373,6 +374,8 @@ func (d *Daemon) resumeConversation(p proto.ConversationParams) (proto.Session, 
 	}
 	info, err := d.create(proto.CreateParams{
 		Project: project, Name: c.Name, Dir: c.Dir, Command: resumeCommand(&as), After: p.After, Cols: p.Cols, Rows: p.Rows,
+		// A conversation of Ama's folder goes on as Ama's, in its place.
+		Ama: p.Ama || ama.Within(c.Dir),
 	})
 	if err != nil {
 		return info, err

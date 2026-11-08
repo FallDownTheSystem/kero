@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.3
+
+- Ama, Kero's helper agent, named after *amagaeru*, the Japanese tree frog. Open it from the frog at the bottom of the sessions sidebar, with Ctrl+Shift+A (⇧⌘A), or from View › Ama, and ask it to start, find, review or close sessions, worktrees and projects for you. It runs your default agent, or the one in Settings › Agents › Ama, in a real terminal, in a folder of its own beside Kero's configuration. It keeps running when you close it. New Chat starts a fresh conversation, History goes back to an earlier one, and Clear clears the screen. The sidebar doesn't list it, Needs You doesn't count it, and the frog shows a dot while it waits for you.
+- Kero writes Ama's instructions as CLAUDE.md and AGENTS.md in its folder and keeps its skill installed for Ama's agent. Your own instructions go in USER.md, which Kero never changes. Settings › Agents › Ama opens it.
+- Ama drives the app (kero do, kero focus, kero browser, kero pr review) without Remote Control, which still decides for every other agent.
+- New commands: kero projects add, rename and remove; kero move; kero ls and kero close with -p and --status, kero close --all and --dry-run, and closing several sessions at once; kero worktree create, remove, cleanup and prune; kero pr list and kero pr review; kero config get and set.
+
 ## 2.1.35-fork.2
 
 MyGo's fork adds `Page.CallDevTools` and `OnDevToolsEvent` (for `kero

@@ -2594,5 +2594,43 @@
   "setPRWatchWakeDetail": "When the pull request of a session's branch, or one you linked, fails its checks or can't merge for conflicts; with All, also when its checks pass and when comments come. Uses the GitHub CLI.",
   "setPRWatchWakeAll": "All",
   "setPRWatchWakeFailures": "Failures",
-  "setPRWatchWakeOff": "Off"
+  "setPRWatchWakeOff": "Off",
+  "amaTitle": "Ama",
+  "amaAbout": "Kero's helper agent, after amagaeru, the Japanese tree frog: it starts and manages your sessions for you",
+  "amaWaiting": "Ama needs you",
+  "amaNewChat": "New Chat",
+  "amaHistory": "History",
+  "amaNoHistory": "No past conversations yet",
+  "amaClear": "Clear",
+  "amaCantStart": "Ama didn't start",
+  "amaNoPR": "no open pull request #{number}",
+  "@amaNoPR": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "setAma": "Ama",
+  "setAmaDetail": "Ama, after amagaeru, the Japanese tree frog, is Kero's helper agent: open it from the frog at the bottom of the sidebar, and ask it to start, find or close sessions, worktrees and projects. It runs kero do, kero focus and kero browser without Remote Control.",
+  "setAmaAgent": "Agent",
+  "setAmaAgentDetail": "The agent command Ama runs, from its next chat on",
+  "setAmaDefaultAgent": "Default agent ({agent})",
+  "@setAmaDefaultAgent": {
+    "placeholders": {
+      "agent": {
+        "type": "String"
+      }
+    }
+  },
+  "setAmaInstructions": "Your instructions",
+  "setAmaInstructionsDetail": "{file}: Ama reads it before Kero's own instructions, which Kero rewrites as it updates; Kero never changes this file",
+  "@setAmaInstructionsDetail": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "setAmaFolder": "Ama's folder"
 }

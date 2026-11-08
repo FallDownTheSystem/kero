@@ -31,6 +31,7 @@ type session struct {
 	// tree (orchestrator.go): parent is the orchestrator's id.
 	orchestrator bool
 	goal, parent string
+	ama          bool // Ama's (proto.Session.Ama, ama.go)
 }
 
 // state returns what the subscribers see.
@@ -62,7 +63,7 @@ func (d *Daemon) sessionInfo(s *session) proto.Session {
 	info := proto.Session{
 		ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed,
 		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree, Review: s.review, PR: s.pr.link(),
-		Orchestrator: s.orchestrator, Goal: s.goal, Parent: d.parentLocked(s),
+		Orchestrator: s.orchestrator, Goal: s.goal, Parent: d.parentLocked(s), Ama: s.ama,
 		Panes: make([]proto.Pane, 0, len(s.panes)),
 	}
 	// Panes in the layout's order: left to right, top to bottom.
@@ -312,6 +313,9 @@ func editorFile(path string) (string, error) {
 func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 	if p.Split != "" {
 		return d.split(p)
+	}
+	if p.Ama {
+		return d.createAma(p)
 	}
 	dir, err := d.cleanDir(p.Dir)
 	if err != nil {
@@ -596,6 +600,7 @@ func (d *Daemon) closePanes(ref string) ([]*pane, error) {
 	}
 	d.sessions = slices.DeleteFunc(d.sessions, func(o *session) bool { return o == s })
 	d.unlinkLocked(s)
+	d.amaSIDs.Delete(s.id)
 	panes := s.panes
 	for _, p := range panes {
 		delete(d.panes, p.info.ID)
@@ -621,6 +626,9 @@ func (d *Daemon) move(p proto.MoveParams) error {
 		return fmt.Errorf("no session %s", p.ID)
 	}
 	if p.Project != "" {
+		if s.ama {
+			return errors.New("Ama's session is of no project")
+		}
 		s.project = d.projectFor(p.Project, "")
 	}
 	// An orchestrator takes its children along; a child taken to another

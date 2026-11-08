@@ -91,6 +91,7 @@ var (
 	warningIcon      = glyph("f7-exclamationmark-triangle")
 	clockIcon        = glyph("f7-clock")
 	sparklesIcon     = glyph("f7-sparkles")
+	eraserIcon       = icon(`<path d="M9.3 2.7l4 4a1 1 0 0 1 0 1.4L8.4 13H5.6L2.7 10.1a1 1 0 0 1 0-1.4l5.2-6a1 1 0 0 1 1.4 0z"/><path d="M5.5 6.5l4 4M8.4 13h5.1"/>`)
 	// pickIcon is Pick Elements': a pointer on a dashed box, as browsers'
 	// inspectors draw it.
 	pickIcon  = icon(`<path d="M6 13.5H3.5a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1V6"/><path d="M8 8l6 2.2-2.6 1.1L10.2 14z"/>`)

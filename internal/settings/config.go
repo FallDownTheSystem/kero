@@ -401,6 +401,7 @@ var keys = []key{
 	stringKey("default-agent", "the agent command the New Session dialog has chosen as it opens", func(s *Settings) *string { return &s.DefaultAgent }),
 	textKey("orchestrator-prompt", "an orchestrator's role prompt, the first message its agent gets, with \\n between lines; {goal} in it is the orchestrator's goal and {agent} default-agent; empty for Kero's", func(s *Settings) *string { return &s.OrchestratorPrompt }),
 	numberKey("orchestrator-max-children", "how many child sessions an orchestrator may have running at once: kero new refuses another; 0 for any number", func(s *Settings) float64 { return float64(s.OrchestratorMaxChildren) }, func(s *Settings, n float64) { s.OrchestratorMaxChildren = max(0, int(n)) }),
+	stringKey("ama-agent", "the agent command Ama, the helper agent, runs; empty for default-agent's", func(s *Settings) *string { return &s.AmaAgent }),
 	stringKey("resume-command-claude", "the command that resumes a Claude Code conversation, run in your shell, as cc --yolo --resume {session}; {session} in it is the conversation's id: empty for claude --resume {session}", func(s *Settings) *string { return &s.ResumeClaude }),
 	stringKey("resume-command-codex", "the command that resumes a Codex conversation, as resume-command-claude: empty for codex resume {session}", func(s *Settings) *string { return &s.ResumeCodex }),
 	stringKey("resume-command-pi", "the command that resumes a Pi conversation, as resume-command-claude: empty for pi --session {session}", func(s *Settings) *string { return &s.ResumePi }),
@@ -852,4 +853,49 @@ func Reference(s Settings) string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// Get returns a setting's values, as the configuration file writes them,
+// by its key: one, or a list's, as kero config get prints them.
+func Get(name string) ([]string, error) {
+	k := findKey(name)
+	if k == nil {
+		return nil, fmt.Errorf("no setting %q (kero config show lists them)", name)
+	}
+	s := Load()
+	return k.get(&s), nil
+}
+
+// Set sets a setting by its key, as a line of the file sets it, and saves
+// the file, keeping the rest of it as it is: a list takes a value each,
+// none to empty it; another key takes the values as one, joined by
+// spaces, none for its default. The app reads it at once, as it reads
+// what the user saves.
+func Set(name string, values []string) error {
+	k := findKey(name)
+	if k == nil {
+		return fmt.Errorf("no setting %q (kero config show lists them)", name)
+	}
+	s := Load()
+	switch {
+	case k.list:
+	case len(values) == 0:
+		def := Default()
+		values = k.get(&def)
+	default:
+		values = []string{strings.Join(values, " ")}
+	}
+	if !k.list && len(values) == 0 {
+		values = []string{""}
+	}
+	if err := k.set(&s, values); err != nil {
+		return fmt.Errorf("%s: %w", name, err)
+	}
+	return Save(s)
+}
+
+// IsList reports whether a key repeats, a value a line.
+func IsList(name string) bool {
+	k := findKey(name)
+	return k != nil && k.list
 }

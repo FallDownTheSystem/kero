@@ -36,6 +36,9 @@ Usage:
   kero ls [--json]              list sessions and their panes
       -a, --all                   on this machine and every host of kero
                                   hosts, each under the name -H takes
+      -p, --project <name|id>     only the project's
+      -s, --status <statuses>     only those in these: idle, working,
+                                  waiting, error, exited (comma-separated)
   kero new [options] [-- cmd…]  start a session, printing its id
       -p, --project <name|id>     project to put it in (default: by directory)
       -n, --name <name>           name it
@@ -190,8 +193,14 @@ Usage:
       --force                     even if that loses changes or commits
       --children                  an orchestrator's children too, which
                                   otherwise become top-level sessions
+  kero close <target…> | --all [-p project] [--status statuses]
+                                end several sessions: those named, or all
+                                those of a project, in these statuses
+                                (never Ama's, nor the one it runs in)
+      -n, --dry-run               list them instead
+  kero move <session> <project> move a session to another project
   kero restart <target>         start an exited pane's shell again
-  kero worktree list [-d <dir>] [--json]
+  kero worktree list [-d <dir>|-p <project>] [--json]
                                 the repository's worktrees: the sessions in
                                 each, whether Kero made it, what removing
                                 it would lose, what the cleanup makes of it
@@ -200,6 +209,22 @@ Usage:
                                 the worktree Kero made for it and its
                                 setup, its pull request, the settings new
                                 worktrees take, whether handoff would go
+  kero worktree create <branch> [-d <dir>|-p <project>] [--base <ref>] [-- cmd…]
+                                a session in a new worktree of its own, on
+                                a new branch, of the repository of -d (or
+                                the project's folder, or here), printing
+                                its id; as kero new --worktree
+  kero worktree remove <branch|path> [-d <dir>|-p <project>] [--branch] [--force]
+                                remove a worktree, as the History tab
+                                does: one Kero made for a session closes
+                                the session; --branch deletes its branch
+                                too; --force even with changes
+  kero worktree cleanup [--dry-run] [--json]
+                                run the automatic worktree cleanup now, of
+                                every project's repository (--dry-run: say
+                                what it would remove)
+  kero worktree prune [-d <dir>|-p <project>]
+                                forget worktrees whose folders are gone
   kero worktree handoff <branch> [--base <ref>] [--prompt <text|->]
                                 move this session into a git worktree of
                                 its own, on a new branch from the default
@@ -236,6 +261,14 @@ Usage:
   kero pr guide clear           remove its summary and stops, to rewrite it
   kero pr guide show [--json]   the guide: summary and stops, with ids;
                                 --pr and --remote as for kero pr
+  kero pr list [-d <dir>|-p <project>] [--mine] [--json]
+                                the repository's open pull requests
+  kero pr review <number> [-d <dir>|-p <project>] [--guide]
+                                have an agent review it in a new session,
+                                in a worktree of its branch, as the Review
+                                tab does (--guide: write its review guide);
+                                needs the app open, and Remote Control
+                                but for Ama
   kero pr link [<number>|<url>] [--session s] [--remote r] [--json]
                                 link the session to a pull request, which
                                 Kero watches for its agent; with neither,
@@ -275,7 +308,8 @@ Usage:
                                 summary of its result, with its next
                                 report of its children
   kero do <action> [key=value…]  run an action of the app, as its menus do
-                                (needs Remote Control, in Settings › Agents),
+                                (needs Remote Control, in Settings › Agents,
+                                but for Ama, whose $KERO_AMA kerod knows),
                                 as kero do files.show path=src/main.go
       pane.preview [on|off] [pane=<target>]
                                   show an editor pane's Markdown as it
@@ -286,7 +320,20 @@ Usage:
                                 the configuration file: where it is, every
                                 key with its value (--defaults: as kero
                                 comes), open it in $EDITOR, check it
+  kero config get <key>         a setting's value (a list's, a line each)
+  kero config set <key> [value…]
+                                set a setting, as Settings does, keeping
+                                the file's comments; no value for its
+                                default (a list: each value a line, none
+                                to empty it)
   kero projects [--json]        list projects, in the sidebar's order
+  kero projects add <dir> [-n <name>] [--json]
+                                add a project of a folder, printing its id
+                                (the one there is, if any)
+  kero projects rename <project> <name>
+  kero projects remove <project> [--force]
+                                remove a project from the sidebar; --force
+                                when it has sessions, which close
   kero projects move <project> <position|top|bottom|up|down>
                                 move a project in that order (1 is the
                                 top)
@@ -323,7 +370,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "projects", "skill", "hook", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -595,7 +642,7 @@ func run(args []string, host string) error {
 		return configCmd(args)
 	}
 	if cmd == "ls" || cmd == "list" {
-		f, err := parse(args, nil, map[string]string{"json": "json", "j": "json", "all": "all", "a": "all"})
+		f, err := parse(args, filterFlags, map[string]string{"json": "json", "j": "json", "all": "all", "a": "all"})
 		if err != nil {
 			return err
 		}
@@ -624,9 +671,16 @@ func run(args []string, host string) error {
 
 	switch cmd {
 	case "ls", "list":
-		f, err := parse(args, nil, map[string]string{"json": "json", "j": "json", "all": "all", "a": "all"})
+		f, err := parse(args, filterFlags, map[string]string{"json": "json", "j": "json", "all": "all", "a": "all"})
 		if err != nil {
 			return err
+		}
+		sf, err := newFilter(st, f)
+		if err != nil {
+			return err
+		}
+		if sf.any() {
+			st.Sessions = sf.pick(st)
 		}
 		if f.set["json"] {
 			return printJSON(st.Sessions)
@@ -634,7 +688,13 @@ func run(args []string, host string) error {
 		listSessions(st)
 		return nil
 
+	case "move":
+		return moveSession(c, st, args)
+
 	case "projects":
+		if len(args) > 0 && slices.Contains([]string{"add", "rename", "remove", "rm", "close"}, args[0]) {
+			return projectsCmd(c, st, args[0], args[1:])
+		}
 		f, err := parse(args, nil, map[string]string{"json": "json"})
 		if err != nil {
 			return err
@@ -643,7 +703,7 @@ func run(args []string, host string) error {
 		case len(f.pos) > 0 && f.pos[0] == "move":
 			return moveProject(c, st, f.pos[1:])
 		case len(f.pos) > 0 && f.pos[0] != "ls" && f.pos[0] != "list":
-			return usageErr("kero projects [ls] [--json] | %s", moveUsage)
+			return projectsCmd(c, st, f.pos[0], nil)
 		}
 		if f.set["json"] {
 			return printJSON(st.Projects)
@@ -703,6 +763,11 @@ func run(args []string, host string) error {
 			parent = pt.s.ID
 		}
 		dir := f.vals["dir"]
+		// Ama's folder is no project's: the sessions it starts go where
+		// it says.
+		if dir == "" && f.vals["project"] == "" && host == "" && amaToken() != "" {
+			return usageErr("kero new from Ama: name the project (-p) or the folder (-d) the session is for")
+		}
 		// Here, unless the session is of another machine, whose kerod
 		// then starts it in the project's directory, or the home.
 		if dir == "" && f.vals["project"] == "" && host == "" {
@@ -717,7 +782,7 @@ func run(args []string, host string) error {
 			return err
 		}
 		if f.set["focus"] {
-			c.Call("select", proto.FocusParams{Session: s.ID}, nil)
+			c.Call("select", proto.FocusParams{Session: s.ID, Token: amaToken()}, nil)
 		}
 		if f.set["json"] {
 			if err := printJSON(s); err != nil {
@@ -767,7 +832,7 @@ func run(args []string, host string) error {
 			fmt.Fprintf(os.Stderr, "pane %s shows it already: focused it, rather than split\n", s.Focus)
 		}
 		if f.set["focus"] {
-			c.Call("select", proto.FocusParams{Session: s.ID, Pane: s.Focus}, nil)
+			c.Call("select", proto.FocusParams{Session: s.ID, Pane: s.Focus, Token: amaToken()}, nil)
 		}
 		if f.set["json"] {
 			if err := printJSON(s); err != nil {
@@ -1038,7 +1103,7 @@ func run(args []string, host string) error {
 			return err
 		}
 		if f.set["focus"] {
-			c.Call("select", proto.FocusParams{Session: s.ID}, nil)
+			c.Call("select", proto.FocusParams{Session: s.ID, Token: amaToken()}, nil)
 		}
 		if f.set["json"] {
 			return printJSON(s)
@@ -1065,7 +1130,7 @@ func run(args []string, host string) error {
 			return err
 		}
 		var shown bool
-		if err := c.Call("select", proto.FocusParams{Session: t.s.ID, Pane: t.pane}, &shown); err != nil {
+		if err := c.Call("select", proto.FocusParams{Session: t.s.ID, Pane: t.pane, Token: amaToken()}, &shown); err != nil {
 			return err
 		}
 		if !shown {
@@ -1074,9 +1139,19 @@ func run(args []string, host string) error {
 		return nil
 
 	case "close", "kill", "restart":
-		f, err := parse(args, nil, map[string]string{"remove-worktree": "remove", "force": "force", "children": "children"})
+		f, err := parse(args, filterFlags, map[string]string{"remove-worktree": "remove", "force": "force", "children": "children", "all": "all", "dry-run": "dry", "n": "dry"})
 		if err != nil {
 			return err
+		}
+		sf, err := newFilter(st, f)
+		if err != nil {
+			return err
+		}
+		if cmd != "restart" && (sf.any() || f.set["all"] || f.set["dry"] || len(f.pos) > 1) {
+			if (sf.any() || f.set["all"]) && len(f.pos) > 0 {
+				return usageErr("kero %s: targets, or --all, -p and --status, not both", cmd)
+			}
+			return closeMany(c, st, f, sf)
 		}
 		if len(f.pos) < 1 {
 			return usageErr("kero %s <target>", cmd)
@@ -1171,7 +1246,7 @@ func run(args []string, host string) error {
 			kv[k] = v
 		}
 		var delivered bool
-		if err := c.Call("do", proto.DoParams{Action: a.ID, Args: kv}, &delivered); err != nil {
+		if err := c.Call("do", proto.DoParams{Action: a.ID, Args: kv, Token: amaToken()}, &delivered); err != nil {
 			return err
 		}
 		if !delivered {
@@ -1311,6 +1386,17 @@ func repoPath(root, p string, remote bool) (string, error) {
 		return "", nil
 	}
 	return filepath.ToSlash(rel), nil
+}
+
+// amaToken is the secret kerod gives Ama's panes ($KERO_AMA), which kero
+// do, kero focus and kero browser pass on to this machine's kerod: the app
+// takes them from Ama without Remote Control. Another host's kerod knows
+// nothing of it, and gets none.
+func amaToken() string {
+	if onHost != "" {
+		return ""
+	}
+	return os.Getenv("KERO_AMA")
 }
 
 // current is the pane a command runs in, inside kero.
@@ -1668,7 +1754,11 @@ func listSessions(st proto.State) {
 		case s.Parent != "":
 			name = "↳ " + name
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, names[s.Project], name, status(s.Pane),
+		project := names[s.Project]
+		if s.Ama {
+			project = "(Ama)" // of no project: the helper agent's
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, project, name, status(s.Pane),
 			program(s.Pane), proto.Ago(s.Since, now), where(s.Pane))
 		if len(s.Panes) > 1 {
 			for _, p := range s.Panes {

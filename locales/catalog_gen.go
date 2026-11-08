@@ -14941,3 +14941,175 @@ func SetPRWatchWakeOff() string { return In(i18n.Locale()).SetPRWatchWakeOff() }
 func (msgs Messages) SetPRWatchWakeOff() string {
 	return Catalog.Format(msgs.locale, "setPRWatchWakeOff", nil)
 }
+
+// AmaTitle says "Ama"
+// in the language the app shows.
+func AmaTitle() string { return In(i18n.Locale()).AmaTitle() }
+
+// AmaTitle says "Ama"
+// in the language of msgs.
+func (msgs Messages) AmaTitle() string {
+	return Catalog.Format(msgs.locale, "amaTitle", nil)
+}
+
+// AmaAbout says "Kero's helper agent, after amagaeru, the Japanese tree frog: it starts and manages your sessions for you"
+// in the language the app shows.
+func AmaAbout() string { return In(i18n.Locale()).AmaAbout() }
+
+// AmaAbout says "Kero's helper agent, after amagaeru, the Japanese tree frog: it starts and manages your sessions for you"
+// in the language of msgs.
+func (msgs Messages) AmaAbout() string {
+	return Catalog.Format(msgs.locale, "amaAbout", nil)
+}
+
+// AmaWaiting says "Ama needs you"
+// in the language the app shows.
+func AmaWaiting() string { return In(i18n.Locale()).AmaWaiting() }
+
+// AmaWaiting says "Ama needs you"
+// in the language of msgs.
+func (msgs Messages) AmaWaiting() string {
+	return Catalog.Format(msgs.locale, "amaWaiting", nil)
+}
+
+// AmaNewChat says "New Chat"
+// in the language the app shows.
+func AmaNewChat() string { return In(i18n.Locale()).AmaNewChat() }
+
+// AmaNewChat says "New Chat"
+// in the language of msgs.
+func (msgs Messages) AmaNewChat() string {
+	return Catalog.Format(msgs.locale, "amaNewChat", nil)
+}
+
+// AmaHistory says "History"
+// in the language the app shows.
+func AmaHistory() string { return In(i18n.Locale()).AmaHistory() }
+
+// AmaHistory says "History"
+// in the language of msgs.
+func (msgs Messages) AmaHistory() string {
+	return Catalog.Format(msgs.locale, "amaHistory", nil)
+}
+
+// AmaNoHistory says "No past conversations yet"
+// in the language the app shows.
+func AmaNoHistory() string { return In(i18n.Locale()).AmaNoHistory() }
+
+// AmaNoHistory says "No past conversations yet"
+// in the language of msgs.
+func (msgs Messages) AmaNoHistory() string {
+	return Catalog.Format(msgs.locale, "amaNoHistory", nil)
+}
+
+// AmaClear says "Clear"
+// in the language the app shows.
+func AmaClear() string { return In(i18n.Locale()).AmaClear() }
+
+// AmaClear says "Clear"
+// in the language of msgs.
+func (msgs Messages) AmaClear() string {
+	return Catalog.Format(msgs.locale, "amaClear", nil)
+}
+
+// AmaCantStart says "Ama didn't start"
+// in the language the app shows.
+func AmaCantStart() string { return In(i18n.Locale()).AmaCantStart() }
+
+// AmaCantStart says "Ama didn't start"
+// in the language of msgs.
+func (msgs Messages) AmaCantStart() string {
+	return Catalog.Format(msgs.locale, "amaCantStart", nil)
+}
+
+// AmaNoPR says "no open pull request #{number}"
+// in the language the app shows.
+func AmaNoPR(number int) string { return In(i18n.Locale()).AmaNoPR(number) }
+
+// AmaNoPR says "no open pull request #{number}"
+// in the language of msgs.
+func (msgs Messages) AmaNoPR(number int) string {
+	return Catalog.Format(msgs.locale, "amaNoPR", map[string]any{"number": number})
+}
+
+// SetAma says "Ama"
+// in the language the app shows.
+func SetAma() string { return In(i18n.Locale()).SetAma() }
+
+// SetAma says "Ama"
+// in the language of msgs.
+func (msgs Messages) SetAma() string {
+	return Catalog.Format(msgs.locale, "setAma", nil)
+}
+
+// SetAmaDetail says "Ama, after amagaeru, the Japanese tree frog, is Kero's helper agent: open it from the frog at the bottom of the sideb…"
+// in the language the app shows.
+func SetAmaDetail() string { return In(i18n.Locale()).SetAmaDetail() }
+
+// SetAmaDetail says "Ama, after amagaeru, the Japanese tree frog, is Kero's helper agent: open it from the frog at the bottom of the sideb…"
+// in the language of msgs.
+func (msgs Messages) SetAmaDetail() string {
+	return Catalog.Format(msgs.locale, "setAmaDetail", nil)
+}
+
+// SetAmaAgent says "Agent"
+// in the language the app shows.
+func SetAmaAgent() string { return In(i18n.Locale()).SetAmaAgent() }
+
+// SetAmaAgent says "Agent"
+// in the language of msgs.
+func (msgs Messages) SetAmaAgent() string {
+	return Catalog.Format(msgs.locale, "setAmaAgent", nil)
+}
+
+// SetAmaAgentDetail says "The agent command Ama runs, from its next chat on"
+// in the language the app shows.
+func SetAmaAgentDetail() string { return In(i18n.Locale()).SetAmaAgentDetail() }
+
+// SetAmaAgentDetail says "The agent command Ama runs, from its next chat on"
+// in the language of msgs.
+func (msgs Messages) SetAmaAgentDetail() string {
+	return Catalog.Format(msgs.locale, "setAmaAgentDetail", nil)
+}
+
+// SetAmaDefaultAgent says "Default agent ({agent})"
+// in the language the app shows.
+func SetAmaDefaultAgent(agent string) string { return In(i18n.Locale()).SetAmaDefaultAgent(agent) }
+
+// SetAmaDefaultAgent says "Default agent ({agent})"
+// in the language of msgs.
+func (msgs Messages) SetAmaDefaultAgent(agent string) string {
+	return Catalog.Format(msgs.locale, "setAmaDefaultAgent", map[string]any{"agent": agent})
+}
+
+// SetAmaInstructions says "Your instructions"
+// in the language the app shows.
+func SetAmaInstructions() string { return In(i18n.Locale()).SetAmaInstructions() }
+
+// SetAmaInstructions says "Your instructions"
+// in the language of msgs.
+func (msgs Messages) SetAmaInstructions() string {
+	return Catalog.Format(msgs.locale, "setAmaInstructions", nil)
+}
+
+// SetAmaInstructionsDetail says "{file}: Ama reads it before Kero's own instructions, which Kero rewrites as it updates; Kero never changes this file"
+// in the language the app shows.
+func SetAmaInstructionsDetail(file string) string {
+	return In(i18n.Locale()).SetAmaInstructionsDetail(file)
+}
+
+// SetAmaInstructionsDetail says "{file}: Ama reads it before Kero's own instructions, which Kero rewrites as it updates; Kero never changes this file"
+// in the language of msgs.
+func (msgs Messages) SetAmaInstructionsDetail(file string) string {
+	return Catalog.Format(msgs.locale, "setAmaInstructionsDetail", map[string]any{"file": file})
+}
+
+// SetAmaFolder says "Ama's folder"
+// in the language the app shows.
+func SetAmaFolder() string { return In(i18n.Locale()).SetAmaFolder() }
+
+// SetAmaFolder says "Ama's folder"
+// in the language of msgs.
+func (msgs Messages) SetAmaFolder() string {
+	return Catalog.Format(msgs.locale, "setAmaFolder", nil)
+}

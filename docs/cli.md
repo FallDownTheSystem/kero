@@ -317,6 +317,30 @@ Inside a pane, `kero` talks to the kerod of the machine the pane runs on, wherev
 
 `kero ls --all` asks every host at once and lists each one's sessions under the name `-H` takes, `local` for this machine. A host out of reach says why in place of its sessions. With `--json`, it prints a list of `{host, addr, error, sessions}`.
 
+## Managing Kero
+
+What the sidebar, its menus and Settings do, these commands do from a shell. [Ama](./agents.md#ama-the-helper-agent) works with them:
+
+```sh
+kero ls -p api --status waiting                # a project's sessions, in these statuses
+kero projects add ~/code/api -n api            # prints its id
+kero projects rename api backend
+kero projects remove backend --force           # its sessions close too
+kero move <session> <project>
+kero close --all -p api --status idle,exited --dry-run   # which would close
+kero close --all -p api --status idle,exited
+kero worktree create fix-login -p api -- claude "fix the login"
+kero worktree remove fix-login -p api --branch # its branch too
+kero worktree cleanup --dry-run                # what the automatic cleanup would remove
+kero worktree prune -p api
+kero pr list -p api
+kero pr review 123 -p api                      # as the Review tab starts one
+kero config get default-agent
+kero config set notify-on-done false           # as Settings writes it
+```
+
+`kero close` with `--all`, `-p` or `--status` never closes Ama's session, nor the one it runs in. `kero worktree remove` removes a worktree as the History tab does: a worktree Kero made for a session closes that session, and one that other sessions work in stays. `kero pr review` needs the app open, and Remote Control unless Ama runs it. `kero config set` with no value restores the default. For a list setting, give each value as a separate argument, or none to empty it.
+
 ## Running app actions
 
 `kero do` runs any of the app's actions, the same ones as its menus. It needs Remote Control, which is on by default in **Settings › Agents**.

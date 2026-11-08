@@ -112,7 +112,9 @@ type (
 	// repository when CrossRepo), from Remote, for a session to check out
 	// in a worktree of its own.
 	PRFetchParams struct {
-		Pane      string `json:"pane"`
+		Pane string `json:"pane"`
+		// Dir names the repository in Pane's place, as PRListParams' does.
+		Dir       string `json:"dir,omitempty"`
 		Remote    string `json:"remote"`
 		Number    int    `json:"number"`
 		Head      string `json:"head"`

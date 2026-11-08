@@ -486,3 +486,54 @@ func TestWorktreeCleanupRoundTrip(t *testing.T) {
 		t.Errorf("an unknown rule: problems %q", probs)
 	}
 }
+
+// kero config set writes a setting into the file as Settings does, keeping
+// the user's lines; no value puts its default back; a list takes a value
+// a line, and none empties it; a value it can't take is refused, and the
+// file stays.
+func TestGetSet(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config")
+	t.Setenv("KERO_CONFIG", path)
+	os.WriteFile(path, []byte("# mine\nfont-size = 15\n"), 0o644)
+	// Load's cache goes by the file's time, which another test's file,
+	// written in the same tick, may share.
+	mu.Lock()
+	cache = nil
+	mu.Unlock()
+	if err := Set("notify-on-done", []string{"false"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Set("ama-agent", []string{"codex", "--full-auto"}); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := Get("ama-agent"); !reflect.DeepEqual(v, []string{"codex --full-auto"}) {
+		t.Errorf("ama-agent %q", v)
+	}
+	if err := Set("env", []string{"A=1", "B=2"}); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := Get("env"); !reflect.DeepEqual(v, []string{"A=1", "B=2"}) {
+		t.Errorf("env %q", v)
+	}
+	b, _ := os.ReadFile(path)
+	for _, line := range []string{"# mine", "font-size = 15", "notify-on-done = false", "env = A=1", "env = B=2"} {
+		if !strings.Contains(string(b), line+"\n") {
+			t.Errorf("the file lacks %q:\n%s", line, b)
+		}
+	}
+	if err := Set("notify-on-done", nil); err != nil {
+		t.Fatal(err)
+	}
+	if Load().NotifyDone != Default().NotifyDone {
+		t.Error("no value kept the setting")
+	}
+	if err := Set("env", nil); err != nil || len(Load().Env) != 0 {
+		t.Errorf("emptying a list: %v, %q", err, Load().Env)
+	}
+	if Set("font-size", []string{"big"}) == nil || Load().FontSize != 15 {
+		t.Error("took a bad value")
+	}
+	if _, err := Get("no-such-key"); err == nil {
+		t.Error("got a key that isn't")
+	}
+}
