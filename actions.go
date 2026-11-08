@@ -382,6 +382,15 @@ func (a *App) tip(title, id string) string {
 
 // menuShortcut shows an action's shortcut by a context menu's item.
 func (a *App) menuShortcut(it *ui.MenuItem, id string) *ui.MenuItem {
+	if mods, key, ok := a.actionKeys(id); ok {
+		return it.Shortcut(mods, key)
+	}
+	return it
+}
+
+// actionKeys are an action's keys, as a view takes a shortcut: ok is
+// false while it has none.
+func (a *App) actionKeys(id string) (ui.Modifiers, ui.Key, bool) {
 	act, _ := actions.Find(id)
 	parts := strings.Split(actions.Keys(act, a.set.Shortcuts), "+")
 	var mods ui.Modifiers
@@ -401,10 +410,10 @@ func (a *App) menuShortcut(it *ui.MenuItem, id string) *ui.MenuItem {
 	}
 	for k, name := range keyNames {
 		if strings.EqualFold(name, parts[len(parts)-1]) {
-			return it.Shortcut(mods, k)
+			return mods, k, true
 		}
 	}
-	return it
+	return 0, 0, false
 }
 
 // quitKeys quits the app: Control+Q is the terminal's on Windows and Linux.

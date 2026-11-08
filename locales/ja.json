@@ -1510,5 +1510,13 @@
   "setAmaDefaultAgent": "デフォルトのエージェント（{agent}）",
   "setAmaInstructions": "あなたの指示",
   "setAmaInstructionsDetail": "{file}：Ama は Kero 自身の指示（更新時に書き換えられます）より先にこれを読みます。Kero はこのファイルを変更しません",
-  "setAmaFolder": "Ama のフォルダ"
+  "setAmaFolder": "Ama のフォルダ",
+  "setAmaFontSize": "文字サイズ",
+  "setAmaFontSizeDetail": "Ama のウインドウの文字サイズ。自動はターミナルのサイズより 1 ポイント小さく、ズームにも従います。",
+  "setAmaFontAuto": "自動（{size} pt）",
+  "setAmaStatusLine": "Claude Code のステータスラインを隠す",
+  "setAmaStatusLineDetail": "Ama だけ：Kero が {file} に空のステータスラインを設定します（その場所には空行が 1 行残ります）。あなた自身の Claude Code の設定は変わりません。",
+  "setAmaWindow": "ウインドウ",
+  "setAmaWindowDetail": "Ama のウインドウは、Kero のウインドウに対するサイズと位置を覚えています。リセットするとカエルの上に戻ります。",
+  "amaResetWindow": "ウインドウの位置をリセット"
 }

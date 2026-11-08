@@ -15359,3 +15359,85 @@ func SetAmaFolder() string { return In(i18n.Locale()).SetAmaFolder() }
 func (msgs Messages) SetAmaFolder() string {
 	return Catalog.Format(msgs.locale, "setAmaFolder", nil)
 }
+
+// SetAmaFontSize says "Text size"
+// in the language the app shows.
+func SetAmaFontSize() string { return In(i18n.Locale()).SetAmaFontSize() }
+
+// SetAmaFontSize says "Text size"
+// in the language of msgs.
+func (msgs Messages) SetAmaFontSize() string {
+	return Catalog.Format(msgs.locale, "setAmaFontSize", nil)
+}
+
+// SetAmaFontSizeDetail says "The size of the text in Ama's window. Automatic is a point under the terminals' Size, and zooms with it."
+// in the language the app shows.
+func SetAmaFontSizeDetail() string { return In(i18n.Locale()).SetAmaFontSizeDetail() }
+
+// SetAmaFontSizeDetail says "The size of the text in Ama's window. Automatic is a point under the terminals' Size, and zooms with it."
+// in the language of msgs.
+func (msgs Messages) SetAmaFontSizeDetail() string {
+	return Catalog.Format(msgs.locale, "setAmaFontSizeDetail", nil)
+}
+
+// SetAmaFontAuto says "Automatic ({size} pt)"
+// in the language the app shows.
+func SetAmaFontAuto(size string) string { return In(i18n.Locale()).SetAmaFontAuto(size) }
+
+// SetAmaFontAuto says "Automatic ({size} pt)"
+// in the language of msgs.
+func (msgs Messages) SetAmaFontAuto(size string) string {
+	return Catalog.Format(msgs.locale, "setAmaFontAuto", map[string]any{"size": size})
+}
+
+// SetAmaStatusLine says "Hide Claude Code's status line"
+// in the language the app shows.
+func SetAmaStatusLine() string { return In(i18n.Locale()).SetAmaStatusLine() }
+
+// SetAmaStatusLine says "Hide Claude Code's status line"
+// in the language of msgs.
+func (msgs Messages) SetAmaStatusLine() string {
+	return Catalog.Format(msgs.locale, "setAmaStatusLine", nil)
+}
+
+// SetAmaStatusLineDetail says "For Ama alone: Kero puts an empty status line in {file}, which leaves a blank row in its place. Your own Claude Code …"
+// in the language the app shows.
+func SetAmaStatusLineDetail(file string) string {
+	return In(i18n.Locale()).SetAmaStatusLineDetail(file)
+}
+
+// SetAmaStatusLineDetail says "For Ama alone: Kero puts an empty status line in {file}, which leaves a blank row in its place. Your own Claude Code …"
+// in the language of msgs.
+func (msgs Messages) SetAmaStatusLineDetail(file string) string {
+	return Catalog.Format(msgs.locale, "setAmaStatusLineDetail", map[string]any{"file": file})
+}
+
+// SetAmaWindow says "Window"
+// in the language the app shows.
+func SetAmaWindow() string { return In(i18n.Locale()).SetAmaWindow() }
+
+// SetAmaWindow says "Window"
+// in the language of msgs.
+func (msgs Messages) SetAmaWindow() string {
+	return Catalog.Format(msgs.locale, "setAmaWindow", nil)
+}
+
+// SetAmaWindowDetail says "Ama's window keeps the size and place you give it, relative to Kero's window. Reset puts it back above the frog."
+// in the language the app shows.
+func SetAmaWindowDetail() string { return In(i18n.Locale()).SetAmaWindowDetail() }
+
+// SetAmaWindowDetail says "Ama's window keeps the size and place you give it, relative to Kero's window. Reset puts it back above the frog."
+// in the language of msgs.
+func (msgs Messages) SetAmaWindowDetail() string {
+	return Catalog.Format(msgs.locale, "setAmaWindowDetail", nil)
+}
+
+// AmaResetWindow says "Reset Window Position"
+// in the language the app shows.
+func AmaResetWindow() string { return In(i18n.Locale()).AmaResetWindow() }
+
+// AmaResetWindow says "Reset Window Position"
+// in the language of msgs.
+func (msgs Messages) AmaResetWindow() string {
+	return Catalog.Format(msgs.locale, "amaResetWindow", nil)
+}

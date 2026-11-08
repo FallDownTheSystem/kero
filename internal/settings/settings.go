@@ -127,8 +127,13 @@ type Settings struct {
 	OrchestratorPrompt      string `json:"orchestratorPrompt"`
 	OrchestratorMaxChildren int    `json:"orchestratorMaxChildren"`
 	// AmaAgent is the agent command Ama, the helper agent, runs: "" for
-	// DefaultAgent's.
-	AmaAgent string `json:"amaAgent"`
+	// DefaultAgent's. AmaFontSize is its terminal's text, in points: 0 for
+	// a point under FontSize, its window being smaller than the panes.
+	// AmaHideStatusLine turns Claude Code's status line off in Ama's
+	// folder, whose window has no room for it (internal/ama).
+	AmaAgent          string  `json:"amaAgent"`
+	AmaFontSize       float32 `json:"amaFontSize"`
+	AmaHideStatusLine bool    `json:"amaHideStatusLine"`
 
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
@@ -347,6 +352,9 @@ func Default() Settings {
 		// A new worktree's branch named from its task.
 		WorktreeBranchPrefix: "semantic",
 		WorktreeBranchStatic: "kero/",
+
+		// Ama's window is small for Claude Code's status line.
+		AmaHideStatusLine: true,
 	}
 }
 
@@ -768,6 +776,9 @@ func (s *Settings) normalize() {
 	oneOf(&s.PaneFolder, d.PaneFolder, "hidden", "folder", "full", "fit")
 	if s.FontSize < 8 || s.FontSize > 36 {
 		s.FontSize = d.FontSize
+	}
+	if s.AmaFontSize != 0 && (s.AmaFontSize < 8 || s.AmaFontSize > 36) {
+		s.AmaFontSize = d.AmaFontSize
 	}
 	if s.LineHeight < 0.8 || s.LineHeight > 2.5 {
 		s.LineHeight = d.LineHeight

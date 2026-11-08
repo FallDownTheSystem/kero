@@ -132,11 +132,15 @@ Ama is an agent that runs Kero for you. Its name comes from *amagaeru*, the Japa
 
 Ama is an ordinary agent session in a real terminal. It runs your default agent, or the one you pick in **Settings › Agents › Ama** (`ama-agent`). It doesn't do project work itself: for real work it starts a session, or an orchestrator, in the right project. It belongs to no project and runs in a folder of its own, `ama` beside Kero's configuration file (`~/.config/kero/ama`). The sidebar doesn't list it, Needs You doesn't count it, and it sends no notifications. The frog shows a dot while Ama waits for you.
 
-Ama keeps running when you close its popover, and the next time you open it you're back in the same conversation. In the popover:
+Ama opens in a window of its own, above Kero's. Drag its header to move it, even to another display, and drag its edges to resize it. Kero remembers its size and its place relative to Kero's window: the window follows Kero's as you move or resize it, and stays on a display when Kero's window nears a screen edge or a display goes away. Kero stores the size and place in DIPs, so the window keeps its size across displays with different scaling. Ama keeps running when you close its window, and the next time you open it you're back in the same conversation. In its header:
 
 - **New Chat** starts a fresh conversation.
 - **History** goes back to one of Ama's earlier conversations.
 - **Clear** clears the screen.
+
+To put the window back above the frog, at its first size, right-click the frog and choose **Reset Window Position**, or click **Reset** in **Settings › Agents › Ama**.
+
+Ama's text is a point smaller than the terminals' (**Text size** in **Settings › Agents › Ama**, `ama-font-size`; `0` is automatic). Claude Code's status line is hidden in Ama's window (`ama-hide-status-line`, on by default). Kero puts an empty status line in `.claude/settings.json` in Ama's folder and leaves your own Claude Code settings alone. Claude Code has no setting that removes the status line entirely without also turning off hooks, so one blank row stays where it was. If that file already has a status line of your own, Kero leaves it, and `.claude/settings.local.json` beside it overrides both.
 
 Kero writes Ama's instructions into its folder as `CLAUDE.md` and `AGENTS.md`, and rewrites them as Kero updates. Your own instructions go in `USER.md` beside them. Kero creates that file once and never changes it, and Ama reads it first. **Settings › Agents › Ama** opens it. Kero also installs its skill for Ama's agent before Ama starts, as `kero skill setup` does.
 

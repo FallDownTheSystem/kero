@@ -133,6 +133,8 @@ func runApp() {
 		followWindowButtons()
 		a.keepAwake()
 		a.openWindow()
+		// Ama's window keeps to a display that's there, at its scale.
+		mygo.Screen.OnDisplaysChanged(func() { a.update(a.placeAma) })
 		a.applyTray()
 		a.applyGlobalShortcuts()
 		a.idleTime = mygo.Power.IdleTime
@@ -168,6 +170,9 @@ func (a *App) openWindow() {
 	a.win.OnFocus(func() { a.update(func() { a.focused = true; a.claimShown(); a.reportView() }) })
 	a.win.OnBlur(func() { a.update(func() { a.focused = false; a.reportView() }) })
 	a.win.OnClosed(a.windowClosed)
+	// Ama's window goes with it.
+	a.win.OnMove(func() { a.update(a.placeAma) })
+	a.win.OnResize(func() { a.update(a.placeAma) })
 }
 
 // newSessionIn starts a session in a directory of a host, in its project.

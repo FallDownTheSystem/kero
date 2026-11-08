@@ -24,6 +24,7 @@ import (
 	"github.com/egoist/mygo/ui/editor"
 
 	"kero/internal/actions"
+	"kero/internal/ama"
 	"kero/internal/client"
 	"kero/internal/proto"
 	"kero/internal/settings"
@@ -76,6 +77,9 @@ type prefs struct {
 	// PRSeen are the open pull requests seen last, by host and repository,
 	// of which those not there before notify (prpoll.go).
 	PRSeen map[string][]int `json:"prSeen,omitempty"`
+	// AmaWindow is where the user put Ama's window, of the main window
+	// (amaPlace); nil above the frog.
+	AmaWindow *amaPlace `json:"amaWindow,omitempty"`
 }
 
 const (
@@ -289,7 +293,13 @@ func (a *App) savePrefs() {
 // dropped.
 func (a *App) update(fn func()) {
 	if a.win != nil {
-		a.win.Update(fn)
+		a.win.Update(func() {
+			fn()
+			// Ama's window shows the app's state too.
+			if a.ama.open && a.ama.win != nil {
+				a.ama.win.Invalidate()
+			}
+		})
 		return
 	}
 	a.earlyMu.Lock()
@@ -759,6 +769,7 @@ func (a *App) ensureTerm(id string) {
 	e := &termEntry{started: time.Now()}
 	a.terms[id] = e
 	dialer := h.dialer()
+	font := a.paneFont(id)
 	go func() {
 		stream, err := client.AttachVia(dialer, id)
 		if err != nil {
@@ -771,6 +782,7 @@ func (a *App) ensureTerm(id string) {
 		}
 		g := &gated{Stream: stream, ready: make(chan struct{})}
 		o := a.termOptions(id, g)
+		o.Font = font
 		// The terminal shows kerod's frames: kerod's terminal is the
 		// session's, ours shows what it shows, cell for cell, and lays out
 		// nothing of the program's own. It takes the sizes kerod's does,
@@ -864,6 +876,25 @@ func (a *App) termFont() terminal.Font {
 		CellWidth: a.set.CellWidth, LineHeight: a.set.LineHeight, Thicken: a.set.Thicken}
 	f.Features = a.fontFeatures()
 	return f
+}
+
+// paneFont is the font of a pane's terminal: Ama's text is a size of its
+// own (amaFontSize).
+func (a *App) paneFont(id string) terminal.Font {
+	f := a.termFont()
+	if s := a.amaSession(); s != nil && s.PaneByID(id) != nil {
+		f.Size = a.amaFontSize()
+	}
+	return f
+}
+
+// amaFontSize is the size of Ama's text: ama-font-size, or a point under
+// the terminals', which zooms with them.
+func (a *App) amaFontSize() float32 {
+	if a.set.AmaFontSize > 0 {
+		return a.set.AmaFontSize
+	}
+	return max(a.set.FontSize-1, 8)
 }
 
 // fontFeatures are the terminals' OpenType features, as terminal.Font
@@ -1088,14 +1119,14 @@ func (a *App) apply(s settings.Settings, save bool) {
 	}
 	font := old.FontFamily != s.FontFamily || old.FontSize != s.FontSize || old.FontWeight != s.FontWeight ||
 		old.CellWidth != s.CellWidth || old.LineHeight != s.LineHeight || old.Ligatures != s.Ligatures || old.Thicken != s.Thicken ||
-		!slices.Equal(old.FontFeatures, s.FontFeatures)
+		!slices.Equal(old.FontFeatures, s.FontFeatures) || old.AmaFontSize != s.AmaFontSize
 	themes := old.LightTheme != s.LightTheme || old.DarkTheme != s.DarkTheme
 	anew := old.Cursor != s.Cursor || old.CursorBlink != s.CursorBlink || old.OptionAsAlt != s.OptionAsAlt ||
 		old.Clipboard != s.Clipboard || old.RightClick != s.RightClick || old.PaddingColor != s.PaddingColor
 	light, dark := a.termThemes()
-	retune := func(t *terminal.Terminal) {
+	retune := func(id string, t *terminal.Terminal) {
 		if font {
-			t.SetFont(a.termFont())
+			t.SetFont(a.paneFont(id))
 		}
 		if themes {
 			t.SetTheme(light, dark)
@@ -1122,7 +1153,7 @@ func (a *App) apply(s settings.Settings, save bool) {
 			a.dropTerm(id) // attached again as it shows
 			continue
 		}
-		retune(e.term)
+		retune(id, e.term)
 	}
 	if t := a.quickTermFor(a.quick.pane); t != nil {
 		if anew {
@@ -1131,7 +1162,7 @@ func (a *App) apply(s settings.Settings, save bool) {
 				a.attachQuick()
 			}
 		} else {
-			retune(t)
+			retune(a.quick.pane, t)
 		}
 	}
 	if old.Appearance != s.Appearance && a.win != nil {
@@ -1143,6 +1174,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 	}
 	if old.Vibrancy != s.Vibrancy && a.win != nil {
 		a.win.SetVibrancy(vibrancyFor(s))
+		if a.ama.win != nil {
+			a.ama.win.SetVibrancy(vibrancyFor(s))
+		}
 	}
 	if !maps.Equal(old.Shortcuts, s.Shortcuts) && a.win != nil {
 		mygo.App.SetMenu(a.menu())
@@ -1168,6 +1202,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 	if !slices.Equal(old.Hosts, s.Hosts) && a.win != nil {
 		a.syncHosts()
 	}
+	if old.AmaHideStatusLine != s.AmaHideStatusLine {
+		go ama.StatusLine(s.AmaHideStatusLine)
+	}
 	if a.win != nil {
 		a.win.Invalidate()
 	}
@@ -1176,6 +1213,9 @@ func (a *App) apply(s settings.Settings, save bool) {
 	}
 	if a.quick.win != nil {
 		a.quick.win.Invalidate()
+	}
+	if a.ama.win != nil {
+		a.ama.win.Invalidate()
 	}
 }
 
