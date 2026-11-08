@@ -1518,5 +1518,10 @@
   "setAmaStatusLineDetail": "Ama だけ：Kero が {file} に空のステータスラインを設定します（その場所には空行が 1 行残ります）。あなた自身の Claude Code の設定は変わりません。",
   "setAmaWindow": "ウインドウ",
   "setAmaWindowDetail": "Ama のウインドウは、Kero のウインドウに対するサイズと位置を覚えています。リセットするとカエルの上に戻ります。",
-  "amaResetWindow": "ウインドウの位置をリセット"
+  "amaResetWindow": "ウインドウの位置をリセット",
+  "setAgentArgs": "引数",
+  "setAmaArgsDetail": "Ama のエージェントのコマンドの後ろに付けます（どのエージェントでも）。シェルが読むとおりに渡し、再開するときにも付けます。次のチャットから有効です。",
+  "setOrchestratorArgsDetail": "オーケストレーターのエージェントのコマンドの後ろに付けます（どのエージェントでも）。シェルが読むとおりに渡し、再開するときにも付けます。",
+  "setAmaPrompt": "役割プロンプト",
+  "setAmaPromptDetail": "Ama への指示です。Kero がそのフォルダの CLAUDE.md と AGENTS.md に書きます。エージェントは次のチャットから読み、USER.md がその上に加わります。"
 }

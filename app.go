@@ -1202,8 +1202,10 @@ func (a *App) apply(s settings.Settings, save bool) {
 	if !slices.Equal(old.Hosts, s.Hosts) && a.win != nil {
 		a.syncHosts()
 	}
-	if old.AmaHideStatusLine != s.AmaHideStatusLine {
-		go ama.StatusLine(s.AmaHideStatusLine)
+	// Ama's folder as the settings now have it: its status line, and its
+	// role prompt, which its agent reads from its next chat.
+	if old.AmaHideStatusLine != s.AmaHideStatusLine || old.AmaPrompt != s.AmaPrompt {
+		go ama.PrepareWith(s)
 	}
 	if a.win != nil {
 		a.win.Invalidate()

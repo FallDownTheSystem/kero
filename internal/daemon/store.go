@@ -168,7 +168,7 @@ func (d *Daemon) restore() {
 			ama.Prepare()
 		}
 		for _, sp := range ss.Panes {
-			if p := d.restorePane(s.id, sp, when, set.ResumeAgents); p != nil {
+			if p := d.restorePane(s.id, sp, when, set.ResumeAgents, roleArgs(set, s.ama, s.orchestrator)); p != nil {
 				s.panes = append(s.panes, p)
 				d.panes[p.info.ID] = p
 			}
@@ -199,7 +199,8 @@ func (d *Daemon) restore() {
 // scrollback, in its directory, with the agent it ran resumed; a browser
 // pane comes back on its page, which the app loads, and an editor pane on
 // its file, which the app reads: one gone since says so.
-func (d *Daemon) restorePane(sid string, sp savedPane, when string, resumeAgents bool) *pane {
+// args are the settings' arguments for its agent's role (roleArgs).
+func (d *Daemon) restorePane(sid string, sp savedPane, when string, resumeAgents bool, args string) *pane {
 	now := time.Now().UnixMilli()
 	if sp.URL != "" || sp.File != "" {
 		p, _ := newPane(d, sid, proto.Pane{
@@ -212,6 +213,7 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string, resumeAgents
 	var reason string
 	if resumeAgents || sp.Agent == nil {
 		command, reason = resumeCommandWithReason(sp.Agent)
+		command = withArgs(command, args)
 	} else {
 		sp.Agent = nil
 		reason = "agent resumption disabled"

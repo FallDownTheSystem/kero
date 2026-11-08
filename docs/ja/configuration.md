@@ -136,7 +136,10 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `default-agent`  | `claude`   | 新規セッションのダイアログを開いたときに選ばれているエージェント |
 | `orchestrator-prompt` |  | オーケストレーターの役割プロンプト（エージェントへの最初のメッセージ）。行の区切りは `\n`。`{goal}` は目標、`{agent}` は `default-agent`。空なら Kero のもの |
 | `orchestrator-max-children` | `0` | 1 つのオーケストレーターの子が同時にいくつ動けるか。超えると `kero new` は拒否する。`0` で無制限 |
+| `orchestrator-agent-args` |  | どのエージェントでも、オーケストレーターのエージェントのコマンドの後ろに付ける引数（`--model opus` など）。シェルが読むとおりに渡し、再開時にも付ける |
 | `ama-agent` |  | [Ama](./agents.md#ヘルパーエージェント-ama) が次のチャットから実行するエージェントのコマンド。空なら `default-agent` のもの |
+| `ama-agent-args` |  | どのエージェントでも、Ama のエージェントのコマンドの後ろに付ける引数（`--model sonnet` など）。再開時にも付ける |
+| `ama-prompt` |  | Ama の役割プロンプト。Kero がそのフォルダの `CLAUDE.md` と `AGENTS.md` に書く。行の区切りは `\n`。空なら Kero のもの |
 | `ama-font-size` | `0` | Ama のウインドウの文字サイズ（ポイント）。`0` で `font-size` より 1 ポイント小さく |
 | `ama-hide-status-line` | `true` | Ama だけ Claude Code のステータスラインを隠す（Ama のフォルダの `.claude/settings.json` に空のものを書く）。あなた自身の Claude Code の設定は変わらない |
 | `resume-command-claude` |  | Claude Code の会話を再開するコマンド。再開、[検索](./sessions.md#検索)、セッションの復元で使われ、自分のコマンドや関数と同じようにシェルで実行されます（`cc --yolo --resume {session}` など）。中の `{session}` は会話の ID になり、なければ ID は末尾に付きます。空なら `claude --resume {session}` |

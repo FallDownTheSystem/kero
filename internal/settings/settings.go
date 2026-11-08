@@ -126,6 +126,13 @@ type Settings struct {
 	// any number.
 	OrchestratorPrompt      string `json:"orchestratorPrompt"`
 	OrchestratorMaxChildren int    `json:"orchestratorMaxChildren"`
+	// OrchestratorAgentArgs are arguments an orchestrator's agent gets
+	// after its command, whichever agent it runs, as "--model opus";
+	// AmaAgentArgs, Ama's. AmaPrompt is Ama's role prompt, which its
+	// CLAUDE.md and AGENTS.md hold: "" for Kero's (ama.Instructions).
+	OrchestratorAgentArgs string `json:"orchestratorAgentArgs"`
+	AmaAgentArgs          string `json:"amaAgentArgs"`
+	AmaPrompt             string `json:"amaPrompt"`
 	// AmaAgent is the agent command Ama, the helper agent, runs: "" for
 	// DefaultAgent's. AmaFontSize is its terminal's text, in points: 0 for
 	// a point under FontSize, its window being smaller than the panes.

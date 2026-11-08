@@ -136,7 +136,10 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `default-agent`  | `claude` | 新建会话对话框打开时选中的智能体 |
 | `orchestrator-prompt` |  | 编排器的角色提示词，即其智能体收到的第一条消息，行间用 `\n`；其中 `{goal}` 是目标，`{agent}` 是 `default-agent`；为空则使用 Kero 的 |
 | `orchestrator-max-children` | `0` | 一个编排器同时可运行的子会话数：超过时 `kero new` 会拒绝；`0` 表示不限 |
+| `orchestrator-agent-args` |  | 无论用哪个智能体，加在编排器的智能体命令之后的参数，例如 `--model opus`，按 shell 的读法传入；恢复时也会加上 |
 | `ama-agent` |  | [Ama](./agents.md#助手代理-ama) 从下一次对话起运行的智能体命令；为空时用 `default-agent` 的 |
+| `ama-agent-args` |  | 无论用哪个智能体，加在 Ama 的智能体命令之后的参数，例如 `--model sonnet`；恢复时也会加上 |
+| `ama-prompt` |  | Ama 的角色提示词，Kero 会写入其文件夹中的 `CLAUDE.md` 和 `AGENTS.md`，行间用 `\n`；为空时用 Kero 的 |
 | `ama-font-size` | `0` | Ama 窗口中文字的大小（磅）；`0` 表示比 `font-size` 小 1 磅 |
 | `ama-hide-status-line` | `true` | 仅对 Ama 隐藏 Claude Code 的状态栏（在 Ama 文件夹的 `.claude/settings.json` 中写一个空的）；你自己的 Claude Code 设置保持不变 |
 | `resume-command-claude` |  | 恢复 Claude Code 对话的命令，用于恢复、[搜索](./sessions.md#搜索)和恢复会话，像你自己的命令和函数一样在你的 shell 中运行，如 `cc --yolo --resume {session}`；其中的 `{session}` 会换成对话的 ID，没有时 ID 加在末尾；留空则为 `claude --resume {session}` |

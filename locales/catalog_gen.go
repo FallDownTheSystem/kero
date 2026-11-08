@@ -15441,3 +15441,53 @@ func AmaResetWindow() string { return In(i18n.Locale()).AmaResetWindow() }
 func (msgs Messages) AmaResetWindow() string {
 	return Catalog.Format(msgs.locale, "amaResetWindow", nil)
 }
+
+// SetAgentArgs says "Arguments"
+// in the language the app shows.
+func SetAgentArgs() string { return In(i18n.Locale()).SetAgentArgs() }
+
+// SetAgentArgs says "Arguments"
+// in the language of msgs.
+func (msgs Messages) SetAgentArgs() string {
+	return Catalog.Format(msgs.locale, "setAgentArgs", nil)
+}
+
+// SetAmaArgsDetail says "Added after Ama's agent command, whichever agent it runs, as the shell reads them: also when it resumes. From its nex…"
+// in the language the app shows.
+func SetAmaArgsDetail() string { return In(i18n.Locale()).SetAmaArgsDetail() }
+
+// SetAmaArgsDetail says "Added after Ama's agent command, whichever agent it runs, as the shell reads them: also when it resumes. From its nex…"
+// in the language of msgs.
+func (msgs Messages) SetAmaArgsDetail() string {
+	return Catalog.Format(msgs.locale, "setAmaArgsDetail", nil)
+}
+
+// SetOrchestratorArgsDetail says "Added after an orchestrator's agent command, whichever agent it runs, as the shell reads them: also when it resumes."
+// in the language the app shows.
+func SetOrchestratorArgsDetail() string { return In(i18n.Locale()).SetOrchestratorArgsDetail() }
+
+// SetOrchestratorArgsDetail says "Added after an orchestrator's agent command, whichever agent it runs, as the shell reads them: also when it resumes."
+// in the language of msgs.
+func (msgs Messages) SetOrchestratorArgsDetail() string {
+	return Catalog.Format(msgs.locale, "setOrchestratorArgsDetail", nil)
+}
+
+// SetAmaPrompt says "Role prompt"
+// in the language the app shows.
+func SetAmaPrompt() string { return In(i18n.Locale()).SetAmaPrompt() }
+
+// SetAmaPrompt says "Role prompt"
+// in the language of msgs.
+func (msgs Messages) SetAmaPrompt() string {
+	return Catalog.Format(msgs.locale, "setAmaPrompt", nil)
+}
+
+// SetAmaPromptDetail says "Ama's instructions, which Kero writes into CLAUDE.md and AGENTS.md in its folder. Its agent reads them from its next …"
+// in the language the app shows.
+func SetAmaPromptDetail() string { return In(i18n.Locale()).SetAmaPromptDetail() }
+
+// SetAmaPromptDetail says "Ama's instructions, which Kero writes into CLAUDE.md and AGENTS.md in its folder. Its agent reads them from its next …"
+// in the language of msgs.
+func (msgs Messages) SetAmaPromptDetail() string {
+	return Catalog.Format(msgs.locale, "setAmaPromptDetail", nil)
+}

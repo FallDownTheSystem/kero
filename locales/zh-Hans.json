@@ -1518,5 +1518,10 @@
   "setAmaStatusLineDetail": "仅对 Ama：Kero 在 {file} 中设置一个空的状态栏，原处会留下一行空行。你自己的 Claude Code 设置保持不变。",
   "setAmaWindow": "窗口",
   "setAmaWindowDetail": "Ama 的窗口会记住你设定的大小和位置（相对于 Kero 的窗口）。“重置”会让它回到青蛙上方。",
-  "amaResetWindow": "重置窗口位置"
+  "amaResetWindow": "重置窗口位置",
+  "setAgentArgs": "参数",
+  "setAmaArgsDetail": "加在 Ama 的智能体命令之后（无论哪个智能体），按 shell 的读法传入；恢复时也会加上。从下一次对话起生效。",
+  "setOrchestratorArgsDetail": "加在编排器的智能体命令之后（无论哪个智能体），按 shell 的读法传入；恢复时也会加上。",
+  "setAmaPrompt": "角色提示词",
+  "setAmaPromptDetail": "给 Ama 的指示，Kero 会把它写入其文件夹中的 CLAUDE.md 和 AGENTS.md。智能体从下一次对话起读取它；USER.md 叠加在其上。"
 }

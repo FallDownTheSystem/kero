@@ -136,7 +136,10 @@ The file theme colors the editor panes and the viewer, whose code takes its 16 c
 | `default-agent`  | `claude` | The agent the New Session dialog has chosen as it opens |
 | `orchestrator-prompt` |  | An orchestrator's role prompt, its agent's first message, with `\n` between lines; `{goal}` in it is its goal, `{agent}` `default-agent`; empty for Kero's |
 | `orchestrator-max-children` | `0` | How many of an orchestrator's child sessions may run at once: `kero new` refuses another; `0` for any number |
+| `orchestrator-agent-args` |  | Arguments an orchestrator's agent gets after its command, whichever agent it runs, as `--model opus`, read as the shell reads them; when it resumes too |
 | `ama-agent` |  | The agent command [Ama](./agents.md#ama-the-helper-agent) runs, from its next chat on; empty for `default-agent`'s |
+| `ama-agent-args` |  | Arguments Ama's agent gets after its command, whichever agent it runs, as `--model sonnet`; when it resumes too |
+| `ama-prompt` |  | Ama's role prompt, which Kero writes into `CLAUDE.md` and `AGENTS.md` in its folder, with `\n` between lines; empty for Kero's |
 | `ama-font-size` | `0` | The size of the text in Ama's window, in points; `0` for a point under `font-size` |
 | `ama-hide-status-line` | `true` | Hide Claude Code's status line for Ama alone, with an empty one in `.claude/settings.json` in Ama's folder; your own Claude Code settings stay as they are |
 | `resume-command-claude` |  | The command that resumes a Claude Code conversation, as Resume, the [search](./sessions.md#search) and restoring sessions start it, run in your shell as your own commands and functions are, as `cc --yolo --resume {session}`; `{session}` in it is the conversation's ID, else the ID goes at its end; empty for `claude --resume {session}` |

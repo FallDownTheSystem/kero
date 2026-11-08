@@ -117,6 +117,8 @@ func settingsIndex() []searchEntry {
 		{"agents", locales.SetAgentCommands(), "agent commands new session claude cc codex launcher flags alias"},
 		{"agents", locales.SetDefaultAgent(), "default-agent agent new session claude codex"},
 		{"agents", locales.SetAmaAgent(), "ama-agent ama frog amagaeru helper agent"},
+		{"agents", locales.SetAgentArgs(), "ama-agent-args orchestrator-agent-args arguments flags model ama orchestrator"},
+		{"agents", locales.SetAmaPrompt(), "ama-prompt ama role prompt instructions claude.md agents.md orchestrator-prompt"},
 		{"agents", locales.SetAmaFontSize(), "ama-font-size ama text font size smaller"},
 		{"agents", locales.SetAmaStatusLine(), "ama-hide-status-line ama claude statusline status line powerline"},
 		{"agents", locales.SetAmaWindow(), "ama window position size reset move resize"},

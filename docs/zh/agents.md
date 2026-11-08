@@ -112,7 +112,7 @@ kero new --orchestrator --goal "上线新的登录页"
 kero orchestrator <session>       # 把会话设为编排器；加 off 则撤销
 ```
 
-所选的智能体（否则为 `default-agent`）以角色提示词开始：规划并委派，用 `kero new` 启动子会话，能答的自己答，只在必要时问你，对无需处理的报告只回一句“OK”而不写总结，始终记住目标。可在 **设置 › 智能体 › 编排器**（`orchestrator-prompt`）中替换提示词，其中 `{goal}` 是目标，`{agent}` 是默认智能体。
+所选的智能体（否则为 `default-agent`）以角色提示词开始：规划并委派，用 `kero new` 启动子会话，能答的自己答，只在必要时问你，对无需处理的报告只回一句“OK”而不写总结，始终记住目标。可在 **设置 › 智能体 › 编排器**（`orchestrator-prompt`）中替换提示词，其中 `{goal}` 是目标，`{agent}` 是默认智能体。要只给编排器的智能体传入 `--model opus` 这样的参数（无论用哪个智能体），在同一处设置**参数**（`orchestrator-agent-args`）：编排器启动和恢复时，Kero 会把它们加在智能体命令之后。
 
 - **子会话。** 编排器用 `kero new` 启动的会话就是它的子会话，位于同一项目。只有一层：子会话自己的 `kero new` 会为同一编排器再启动一个子会话，而不是孙会话。`kero new --parent <session>` 指定编排器，`--parent none` 启动不属于任何编排器的会话。`orchestrator-max-children` 限制同时运行的子会话数量。
 - **报告。** 当子会话开始等待输入、工作后转为空闲、失败、退出或被关闭时，Kero 会在编排器回到提示符时把这些输入给它：接近的变化合并为一条消息，持续不到两秒的状态不报告。子会话可用 `kero report --to-parent "<总结>"` 发送自己的结果，随下一次报告一起送达。编排器自己关闭的子会话不会被报告。报告会等到编排器回到提示符时才送出；在此期间被关闭的子会话，其状态行会被移除，只留下“已关闭”和它发送的总结。
@@ -145,7 +145,7 @@ Ama 在 Kero 窗口之上的独立窗口中打开。拖动它的标题栏可以�
 
 Ama 的文字比终端小 1 磅（**设置 › 智能体 › Ama** 中的**文字大小**，`ama-font-size`；`0` 为自动）。Ama 的窗口中隐藏 Claude Code 的状态栏（`ama-hide-status-line`，默认开启）：Kero 在 Ama 文件夹的 `.claude/settings.json` 中写入一个空的状态栏，不改动你自己的 Claude Code 设置。Claude Code 没有能在不关闭钩子的情况下彻底去掉状态栏的设置，所以原处会留下一行空行。如果该文件中已有你自己的状态栏，Kero 不会改动它；旁边的 `.claude/settings.local.json` 优先于二者。
 
-Kero 把 Ama 的指示写入它的文件夹，作为 `CLAUDE.md` 和 `AGENTS.md`，并在 Kero 更新时重写。你自己的指示写在旁边的 `USER.md` 中：Kero 只创建一次该文件，之后从不修改，Ama 会先读它。可从**设置 › 智能体 › Ama** 打开。Ama 启动前，Kero 还会像 `kero skill setup` 那样为 Ama 的智能体安装技能。
+Kero 把 Ama 的指示写入它的文件夹，作为 `CLAUDE.md` 和 `AGENTS.md`，并在 Kero 更新时重写。内容是 Kero 给 Ama 的角色提示词，可在**设置 › 智能体 › Ama › 角色提示词**（`ama-prompt`）中替换；**恢复默认**会还原 Kero 的版本。Ama 的智能体从下一次对话起读取它。**参数**（`ama-agent-args`）加在 Ama 的智能体命令之后，例如 `--model sonnet`，因此不必为 Ama 另加一个智能体：Ama 启动和恢复时，Kero 都会加上它们。你自己的指示写在旁边的 `USER.md` 中：Kero 只创建一次该文件，之后从不修改，Ama 会先读它。可从**设置 › 智能体 › Ama** 打开。Ama 启动前，Kero 还会像 `kero skill setup` 那样为 Ama 的智能体安装技能。
 
 Ama 用[管理 Kero](./cli.md#managing-kero) 中的命令管理 Kero。
 

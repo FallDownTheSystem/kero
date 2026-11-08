@@ -2685,5 +2685,10 @@
   },
   "setAmaWindow": "Window",
   "setAmaWindowDetail": "Ama's window keeps the size and place you give it, relative to Kero's window. Reset puts it back above the frog.",
-  "amaResetWindow": "Reset Window Position"
+  "amaResetWindow": "Reset Window Position",
+  "setAgentArgs": "Arguments",
+  "setAmaArgsDetail": "Added after Ama's agent command, whichever agent it runs, as the shell reads them: also when it resumes. From its next chat.",
+  "setOrchestratorArgsDetail": "Added after an orchestrator's agent command, whichever agent it runs, as the shell reads them: also when it resumes.",
+  "setAmaPrompt": "Role prompt",
+  "setAmaPromptDetail": "Ama's instructions, which Kero writes into CLAUDE.md and AGENTS.md in its folder. Its agent reads them from its next chat; USER.md comes on top."
 }

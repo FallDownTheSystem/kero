@@ -4,7 +4,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
+
+	"kero/internal/settings"
 )
 
 // The status line turns off in Ama's folder alone, as Kero's statusLine
@@ -92,5 +96,49 @@ func TestStatusLine(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(file); string(b) != `{"model": ` {
 		t.Errorf("a broken file was rewritten: %s", b)
+	}
+}
+
+// Ama's command is its agent's with ama-agent-args after it, and its
+// folder's instructions are the ama-prompt setting's, else Kero's, with
+// USER.md on top for Claude Code; back to Kero's as the setting empties.
+func TestPromptAndArgs(t *testing.T) {
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
+	set := settings.Default()
+	set.AmaAgent, set.AmaAgentArgs = "cc --yolo", `--model sonnet --append-system-prompt "be brief"`
+	if got, want := Command(set), []string{"cc", "--yolo", "--model", "sonnet", "--append-system-prompt", "be brief"}; !slices.Equal(got, want) {
+		t.Errorf("command %q, want %q", got, want)
+	}
+	set.AmaAgent, set.AmaAgentArgs = "", ""
+	if got := Command(set); !slices.Equal(got, []string{"claude"}) {
+		t.Errorf("default agent: %q", got)
+	}
+
+	read := func(name string) string {
+		b, err := os.ReadFile(filepath.Join(Dir(), name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	set.AmaPrompt = "You are Ama. Only list sessions."
+	if err := PrepareWith(set); err != nil {
+		t.Fatal(err)
+	}
+	claude, agents := read("CLAUDE.md"), read("AGENTS.md")
+	for name, text := range map[string]string{"CLAUDE.md": claude, "AGENTS.md": agents} {
+		if !strings.Contains(text, "You are Ama. Only list sessions.") || strings.Contains(text, "## How you drive Kero") {
+			t.Errorf("%s with ama-prompt:\n%s", name, text)
+		}
+	}
+	if !strings.HasSuffix(claude, "\n@USER.md\n") {
+		t.Errorf("CLAUDE.md lost USER.md: %q", claude[max(0, len(claude)-40):])
+	}
+	set.AmaPrompt = ""
+	if err := PrepareWith(set); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(read("CLAUDE.md"), "## How you drive Kero") || strings.Contains(read("AGENTS.md"), "Only list sessions") {
+		t.Error("an empty ama-prompt didn't bring Kero's back")
 	}
 }

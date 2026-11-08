@@ -376,3 +376,46 @@ func TestSubmit(t *testing.T) {
 		t.Errorf("a working agent got %d Enters", n)
 	}
 }
+
+// Ama's and an orchestrator's arguments go after their agent's command,
+// as it starts and as it resumes: as words after a command of words, as
+// written after a line of the shell's; before the role prompt.
+func TestRoleArgs(t *testing.T) {
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
+	set := settings.Load()
+	set.DefaultAgent = "cc --yolo"
+	set.OrchestratorAgentArgs = `--model opus --append-system-prompt "be brief"`
+	set.AmaAgentArgs = "--model sonnet"
+	set.ResumeCodex = "cx resume {session} --full-auto"
+	if err := settings.Save(set); err != nil {
+		t.Fatal(err)
+	}
+	got := orchestratorCommand(nil, "Ship it")
+	if want := []string{"cc", "--yolo", "--model", "opus", "--append-system-prompt", "be brief"}; len(got) != len(want)+1 || !slices.Equal(got[:len(want)], want) {
+		t.Errorf("orchestrator: %q", got)
+	} else if !strings.Contains(got[len(want)], "Ship it") {
+		t.Errorf("orchestrator: no role prompt last: %q", got)
+	}
+	if got := orchestratorCommand([]string{"codex"}, ""); got[1] != "--model" || got[2] != "opus" {
+		t.Errorf("orchestrator of the dialog's agent: %q", got)
+	}
+	for _, c := range []struct {
+		name      string
+		ama, orch bool
+		agent, id string
+		want      []string
+	}{
+		{"Ama, Claude", true, false, "claude", "13b997c3", []string{"claude", "--resume", "13b997c3", "--model", "sonnet"}},
+		{"Ama, the user's line", true, false, "codex", "019a", []string{"cx resume 019a --full-auto --model sonnet"}},
+		{"an orchestrator", false, true, "claude", "13b997c3", []string{"claude", "--resume", "13b997c3", "--model", "opus", "--append-system-prompt", "be brief"}},
+		{"another session", false, false, "claude", "13b997c3", []string{"claude", "--resume", "13b997c3"}},
+	} {
+		cmd := withArgs(resumeCommand(&proto.AgentSession{Agent: c.agent, ID: c.id}), roleArgs(settings.Load(), c.ama, c.orch))
+		if !slices.Equal(cmd, c.want) {
+			t.Errorf("%s resumes with %q, want %q", c.name, cmd, c.want)
+		}
+	}
+	if withArgs(nil, "--model x") != nil {
+		t.Error("no command took arguments")
+	}
+}

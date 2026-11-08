@@ -83,7 +83,7 @@ type settingsState struct {
 	messageEdit     bool
 	// prompts are the commit message's and the pull request's prompts as
 	// typed, kept while their fields have the focus.
-	prompts [5]promptDraft
+	prompts [6]promptDraft
 	// branchStatic and branchPrompt are the worktree branch name's prefix
 	// and prompt as typed (settings_branch.go).
 	branchStatic     string
@@ -1627,6 +1627,10 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 				return cmd
 			}, 220, pal)
 		})
+		settingRow(c, pal, locales.SetAgentArgs(), locales.SetAmaArgsDetail(), func() {
+			textField(c, "ama-args", &s.AmaAgentArgs, "--model sonnet", 220, pal).Font("monospace")
+		})
+		promptSetting(c, pal, "ama-prompt", locales.SetAmaPrompt(), locales.SetAmaPromptDetail(), &s.AmaPrompt, ama.Instructions, &a.ss.prompts[5])
 		settingRow(c, pal, locales.SetAmaFontSize(), locales.SetAmaFontSizeDetail(), func() {
 			sizes := []float32{0, 10, 11, 12, 13, 14, 15, 16, 18, 20}
 			if !slices.Contains(sizes, s.AmaFontSize) {
