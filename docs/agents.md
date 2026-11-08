@@ -120,9 +120,33 @@ Its agent, the one chosen (else `default-agent`), starts on a role prompt: plan 
 
 `kero ls` marks orchestrators and children; `kero status <orchestrator>` shows its goal and children, and `kero status <child>` its orchestrator.
 
+## Ama, the helper agent
+
+Ama is an agent that runs Kero for you. Its name comes from *amagaeru*, the Japanese tree frog. Click the frog at the bottom of the sessions sidebar, or press **Ctrl+Shift+A** (**⇧⌘A** on macOS), or choose **View › Ama**, and ask it things such as:
+
+- "Start a code review for every open PR in project X."
+- "Clean up all old worktrees."
+- "Add a new project for this folder and start an orchestrator there with this goal."
+- "Which sessions need me?"
+- "Close every finished session in project Y."
+
+Ama is an ordinary agent session in a real terminal. It runs your default agent, or the one you pick in **Settings › Agents › Ama** (`ama-agent`). It doesn't do project work itself: for real work it starts a session, or an orchestrator, in the right project. It belongs to no project and runs in a folder of its own, `ama` beside Kero's configuration file (`~/.config/kero/ama`). The sidebar doesn't list it, Needs You doesn't count it, and it sends no notifications. The frog shows a dot while Ama waits for you.
+
+Ama keeps running when you close its popover, and the next time you open it you're back in the same conversation. In the popover:
+
+- **New Chat** starts a fresh conversation.
+- **History** goes back to one of Ama's earlier conversations.
+- **Clear** clears the screen.
+
+Kero writes Ama's instructions into its folder as `CLAUDE.md` and `AGENTS.md`, and rewrites them as Kero updates. Your own instructions go in `USER.md` beside them. Kero creates that file once and never changes it, and Ama reads it first. **Settings › Agents › Ama** opens it. Kero also installs its skill for Ama's agent before Ama starts, as `kero skill setup` does.
+
+Ama manages Kero with the commands in [Managing Kero](./cli.md#managing-kero).
+
 ## Remote Control
 
 With **Remote Control** on (the default, in **Settings › Agents**), agents can also drive the app itself: show a session with `kero focus`, or run menu actions with `kero do`. Turn it off with `remote-control = false` to keep agents to their own sessions.
+
+Ama doesn't need Remote Control: kerod gives Ama's panes a secret, `$KERO_AMA`, which is a hash of Ama's session with a key that kerod makes anew each time it starts. `kero do`, `kero focus` and `kero browser` pass it on, and the app takes the action without Remote Control only when kerod confirms the secret is Ama's. No file holds it, other panes never get it, and it means nothing to another machine's kerod, so Remote Control still decides for every other agent.
 
 ## Environment
 

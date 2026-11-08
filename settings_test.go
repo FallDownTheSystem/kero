@@ -121,7 +121,8 @@ func TestResumeCommandSetting(t *testing.T) {
 	}
 	a := testApp(t)
 	a.ss.page = "agents"
-	tt := ui.NewTester(a.settingsView, 820, 1400)
+	// Tall enough for the Orchestrators and Ama groups above it.
+	tt := ui.NewTester(a.settingsView, 820, 2000)
 	tt.Frame()
 	if err := tt.Click("claude --resume {session}"); err != nil {
 		t.Fatal(err)

@@ -1493,5 +1493,22 @@
   "setOrchestratorPrompt": "役割プロンプト",
   "setOrchestratorPromptDetail": "オーケストレーターのエージェントが最初に受け取るメッセージ。{goal} は目標、{agent} は既定のエージェントです。",
   "setNotifyChildren": "オーケストレーターのセッション",
-  "setNotifyChildrenDetail": "オーケストレーターが開始したセッションも通知します。オフなら、サイドバーに表示されるだけで、通知はオーケストレーター自身のものだけです。"
+  "setNotifyChildrenDetail": "オーケストレーターが開始したセッションも通知します。オフなら、サイドバーに表示されるだけで、通知はオーケストレーター自身のものだけです。",
+  "amaTitle": "Ama",
+  "amaAbout": "Kero のヘルパーエージェント。名前はニホンアマガエル（雨蛙）から。セッションの開始と管理を代わりに行います",
+  "amaWaiting": "Ama が応答を待っています",
+  "amaNewChat": "新しいチャット",
+  "amaHistory": "履歴",
+  "amaNoHistory": "過去の会話はまだありません",
+  "amaClear": "クリア",
+  "amaCantStart": "Ama を起動できませんでした",
+  "amaNoPR": "オープンなプルリクエスト #{number} はありません",
+  "setAma": "Ama",
+  "setAmaDetail": "Ama（ニホンアマガエルから）は Kero のヘルパーエージェントです。サイドバー下部のカエルから開き、セッション・ワークツリー・プロジェクトの開始、検索、終了を頼めます。Remote Control なしで kero do、kero focus、kero browser を実行できます。",
+  "setAmaAgent": "エージェント",
+  "setAmaAgentDetail": "Ama が実行するエージェントのコマンド。次のチャットから適用されます",
+  "setAmaDefaultAgent": "デフォルトのエージェント（{agent}）",
+  "setAmaInstructions": "あなたの指示",
+  "setAmaInstructionsDetail": "{file}：Ama は Kero 自身の指示（更新時に書き換えられます）より先にこれを読みます。Kero はこのファイルを変更しません",
+  "setAmaFolder": "Ama のフォルダ"
 }

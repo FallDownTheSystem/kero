@@ -1493,5 +1493,22 @@
   "setOrchestratorPrompt": "角色提示词",
   "setOrchestratorPromptDetail": "编排器的智能体收到的第一条消息。其中 {goal} 是目标，{agent} 是默认智能体。",
   "setNotifyChildren": "编排器的会话",
-  "setNotifyChildrenDetail": "也通知编排器启动的会话。关闭时，它们只显示在侧边栏，只有编排器本身会通知：它自己会了解这些会话。"
+  "setNotifyChildrenDetail": "也通知编排器启动的会话。关闭时，它们只显示在侧边栏，只有编排器本身会通知：它自己会了解这些会话。",
+  "amaTitle": "Ama",
+  "amaAbout": "Kero 的助手代理，名字取自日本树蛙（雨蛙，amagaeru）：替你启动和管理会话",
+  "amaWaiting": "Ama 需要你",
+  "amaNewChat": "新对话",
+  "amaHistory": "历史",
+  "amaNoHistory": "还没有过去的对话",
+  "amaClear": "清屏",
+  "amaCantStart": "Ama 未能启动",
+  "amaNoPR": "没有打开的拉取请求 #{number}",
+  "setAma": "Ama",
+  "setAmaDetail": "Ama（名字取自日本树蛙）是 Kero 的助手代理：从侧栏底部的青蛙打开它，让它启动、查找或关闭会话、工作树和项目。它无需远程控制即可运行 kero do、kero focus 和 kero browser。",
+  "setAmaAgent": "代理",
+  "setAmaAgentDetail": "Ama 运行的代理命令，从下一次对话起生效",
+  "setAmaDefaultAgent": "默认代理（{agent}）",
+  "setAmaInstructions": "你的指示",
+  "setAmaInstructionsDetail": "{file}：Ama 会先读它，再读 Kero 自己的指示（Kero 更新时会重写）；Kero 从不修改此文件",
+  "setAmaFolder": "Ama 的文件夹"
 }

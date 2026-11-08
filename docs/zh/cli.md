@@ -318,6 +318,31 @@ kero -H devbox daemon update     # 将那里的 Kero 更新到本机的版本
 
 `kero ls --all` 同时询问每台主机，把各自的会话列在 `-H` 所用的名称下（本机为 `local`）。连不上的主机会在会话的位置说明原因。加上 `--json` 时，输出 `{host, addr, error, sessions}` 的列表。
 
+<a id="managing-kero"></a>
+## 管理 Kero
+
+边栏、其菜单和设置能做的事，用下面的命令也能在 shell 中做到。[Ama](./agents.md#助手代理-ama) 也使用它们：
+
+```sh
+kero ls -p api --status waiting                # 按状态列出项目的会话
+kero projects add ~/code/api -n api            # 打印其 id
+kero projects rename api backend
+kero projects remove backend --force           # 其会话也会关闭
+kero move <session> <project>
+kero close --all -p api --status idle,exited --dry-run   # 查看将关闭哪些
+kero close --all -p api --status idle,exited
+kero worktree create fix-login -p api -- claude "fix the login"
+kero worktree remove fix-login -p api --branch # 也删除分支
+kero worktree cleanup --dry-run                # 自动清理会删除什么
+kero worktree prune -p api
+kero pr list -p api
+kero pr review 123 -p api                      # 与评审标签页的启动方式相同
+kero config get default-agent
+kero config set notify-on-done false           # 与设置的写法相同
+```
+
+带 `--all`、`-p` 或 `--status` 的 `kero close` 从不关闭 Ama 的会话，也不关闭运行它的会话。`kero worktree remove` 像历史标签页那样删除工作树：Kero 为某个会话创建的工作树会连同该会话一起关闭，其他会话正在使用的则保留。`kero pr review` 需要应用已打开，且 Ama 以外需要远程控制。不带值的 `kero config set` 恢复默认值；列表设置每个值一个参数，不给值则清空。
+
 ## 执行 app 操作
 
 `kero do` 可以执行 app 的任意操作，与菜单中的操作相同。它需要 **远程控制**，该选项在 **设置 › 智能体** 中默认开启。

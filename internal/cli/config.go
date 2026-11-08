@@ -14,6 +14,11 @@ import (
 
 // configCmd shows, opens and checks the configuration file.
 func configCmd(args []string) error {
+	// A value is the setting's, flags and all: kero config set agent
+	// codex --full-auto.
+	if len(args) > 0 && (args[0] == "get" || args[0] == "set") {
+		return configValue(args[0], args[1:])
+	}
 	f, err := parse(args, nil, map[string]string{"defaults": "defaults", "d": "defaults"})
 	if err != nil {
 		return err

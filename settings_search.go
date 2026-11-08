@@ -116,6 +116,8 @@ func settingsIndex() []searchEntry {
 		{"agents", locales.SetProgramStatus(), "osc 7501 report progress"},
 		{"agents", locales.SetAgentCommands(), "agent commands new session claude cc codex launcher flags alias"},
 		{"agents", locales.SetDefaultAgent(), "default-agent agent new session claude codex"},
+		{"agents", locales.SetAmaAgent(), "ama-agent ama frog amagaeru helper agent"},
+		{"agents", locales.SetAmaInstructions(), "ama user instructions prompt USER.md frog helper"},
 		{"agents", locales.SetResumeCommands(), "resume-command claude codex pi opencode launcher cc yolo flags conversation restore"},
 
 		{"hosts", locales.SetHosts(), "host hosts remote server ssh tailscale tailnet wsl machine linux devbox -H kero hosts"},
@@ -187,6 +189,7 @@ var actionWords = map[string]string{
 	"pane.up":             "focus move navigate above",
 	"pane.down":           "focus move navigate below",
 	quickAction:           "quake doom drop down dropdown hotkey global visor guake iterm console",
+	amaAction:             "ama frog amagaeru helper assistant agent manage sessions projects worktrees",
 	"sidebar.toggle":      "show hide sidebar sessions list",
 	"changes.toggle":      "git diff branch panel changes review stage commit",
 	"files.toggle":        "explorer tree folder browse project files",

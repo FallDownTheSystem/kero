@@ -14,14 +14,19 @@ import (
 // repository of the pane it runs in, else of the current folder, with
 // what git worktree list doesn't know.
 func worktreeListCommand(c *client.Client, args []string) error {
-	f, err := parse(args, map[string]string{"d": "dir", "dir": "dir"}, map[string]string{"json": "json"})
+	f, err := parse(args, map[string]string{"d": "dir", "dir": "dir", "p": "project", "project": "project"}, map[string]string{"json": "json"})
 	if err != nil {
 		return err
 	}
 	if len(f.pos) > 0 {
-		return usageErr("kero worktree list [-d <dir>] [--json]")
+		return usageErr("kero worktree list [-d <dir>|-p <project>] [--json]")
 	}
 	p := proto.WorktreeListParams{Dir: f.vals["dir"]}
+	if f.vals["project"] != "" {
+		if p.Dir, err = worktreeDir(c, f); err != nil {
+			return err
+		}
+	}
 	if p.Dir == "" {
 		if p.Pane = current(); p.Pane == "" {
 			p.Dir, _ = os.Getwd()

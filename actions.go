@@ -158,6 +158,8 @@ func (a *App) run(id string, args map[string]string) {
 		a.toggleDark()
 	case quickAction:
 		a.toggleQuick()
+	case amaAction:
+		a.toggleAma()
 	}
 	if a.win != nil {
 		a.win.Invalidate()
@@ -245,6 +247,7 @@ var actionTitles = map[string]func() string{
 	"text.reset":          locales.ActionActualSize,
 	"theme.toggle":        locales.ActionToggleDarkMode,
 	quickAction:           locales.ActionQuickTerminal,
+	amaAction:             locales.AmaTitle,
 }
 
 // actionTitle is an action's title as the menus, the palette and
@@ -304,7 +307,7 @@ func (a *App) menuBar() []*mygo.MenuItem {
 			{Label: locales.MenuQuit(), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 			a.item("app.quitAll")}}
 	}
-	view := append(a.items("View", []string{"sidebar.toggle", "rightSidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle", "review.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{"theme.toggle"}, []string{quickAction}),
+	view := append(a.items("View", []string{"sidebar.toggle", "rightSidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle", "review.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{"theme.toggle"}, []string{quickAction, amaAction}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})
 	return []*mygo.MenuItem{
 		kero,

@@ -97,6 +97,11 @@ type Daemon struct {
 	// removing are the worktrees a session's close removes, from before
 	// its panes close, which the cleanup leaves to it; d.mu.
 	removing map[string]int
+	// amaKey makes the secrets of Ama's panes, and amaSIDs are Ama's
+	// sessions, whose panes get one (ama.go).
+	amaKey  []byte
+	amaOnce sync.Once
+	amaSIDs sync.Map
 }
 
 // Options are how kerod runs.
@@ -586,6 +591,10 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	for _, kv := range extra {
 		set(kv)
 	}
+	// Ama's secret, which neither kerod's environment nor a setting
+	// gives another pane.
+	env = slices.DeleteFunc(env, func(kv string) bool { return strings.HasPrefix(kv, amaEnv+"=") })
+	env = append(env, d.amaEnvOf(sid)...)
 	return env
 }
 

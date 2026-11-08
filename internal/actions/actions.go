@@ -85,7 +85,15 @@ var All = []Action{
 	// No shortcut until the user gives it one: a global shortcut takes its
 	// keys from every other app, as Control+` from VS Code's terminal.
 	{ID: "quickTerminal.toggle", Title: "Quick Terminal", Menu: "View", Remote: true, Global: true},
+	// Ama, the helper agent's popover, at the sessions sidebar's bottom.
+	{ID: "ama.toggle", Title: "Ama", Menu: "View", Keys: "CmdOrCtrl+Shift+A"},
 }
+
+// PRReview is the action kero pr review asks the app for: an agent's
+// review of a pull request, in a session of its own, as the Review tab's
+// Review starts one (args number, dir, remote, guide). No menu has it, and
+// kero do doesn't run it: kero pr review does.
+const PRReview = "pr.review"
 
 // pcKeys are the defaults on Windows and Linux, where Control is the
 // terminal's: Control+T, D, W or R belong to the shell, so the shortcuts add
@@ -134,6 +142,7 @@ var pcKeys = map[string]string{
 	"text.smaller":        "Ctrl+-",
 	"text.reset":          "Ctrl+0",
 	"theme.toggle":        "Ctrl+Shift+L",
+	"ama.toggle":          "Ctrl+Shift+A",
 }
 
 func init() {

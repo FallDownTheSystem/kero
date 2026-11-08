@@ -72,6 +72,7 @@ description: Kero 的默认键盘快捷键，以及用于重新绑定的操作 i
 | 实际大小       | <kbd>⌘</kbd> <kbd>0</kbd> | <kbd>Ctrl</kbd> <kbd>0</kbd>                  | `text.reset`     |
 | 切换深色模式 | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>L</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>L</kbd> | `theme.toggle` |
 | 快速终端       | –                         | –                                             | `quickTerminal.toggle` |
+| Ama            | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>A</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd> | `ama.toggle` |
 
 ## 快速终端
 

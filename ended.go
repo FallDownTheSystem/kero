@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"kero/internal/ama"
 	"kero/internal/cli"
 	"kero/internal/proto"
 	"kero/locales"
@@ -64,7 +65,8 @@ func (a *App) endedSections(c *ui.Context, pal *palette) {
 	var ended, archived []hostEnded
 	for _, h := range a.hosts {
 		for _, cv := range h.convs {
-			if running[proto.AgentSession{Agent: cv.Agent, ID: cv.ID}] {
+			// Ama's are in its popover's History.
+			if running[proto.AgentSession{Agent: cv.Agent, ID: cv.ID}] || !h.remote() && ama.Within(cv.Dir) {
 				continue
 			}
 			if cv.Archived {

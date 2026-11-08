@@ -126,6 +126,9 @@ type Settings struct {
 	// any number.
 	OrchestratorPrompt      string `json:"orchestratorPrompt"`
 	OrchestratorMaxChildren int    `json:"orchestratorMaxChildren"`
+	// AmaAgent is the agent command Ama, the helper agent, runs: "" for
+	// DefaultAgent's.
+	AmaAgent string `json:"amaAgent"`
 
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
