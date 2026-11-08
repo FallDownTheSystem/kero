@@ -65,7 +65,7 @@ func (a *App) endedSections(c *ui.Context, pal *palette) {
 	var ended, archived []hostEnded
 	for _, h := range a.hosts {
 		for _, cv := range h.convs {
-			// Ama's are in its popover's History.
+			// Ama's are in its window's History.
 			if running[proto.AgentSession{Agent: cv.Agent, ID: cv.ID}] || !h.remote() && ama.Within(cv.Dir) {
 				continue
 			}

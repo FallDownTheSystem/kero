@@ -4,10 +4,14 @@
 // own, beside Kero's configuration, which holds its instructions: Kero's,
 // as CLAUDE.md and AGENTS.md, which Kero writes anew as it updates, and
 // the user's, USER.md, which Kero makes once and never touches again.
+// Its .claude/settings.json turns Claude Code's status line off for Ama
+// alone, as the ama-hide-status-line setting asks.
 package ama
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,12 +68,16 @@ func SkillAgent(command []string) string {
 }
 
 // Prepare makes Ama's folder, with Kero's instructions as they are in
-// this Kero, and the user's file, empty, once.
+// this Kero, and the user's file, empty, once; and Claude Code's status
+// line off or on, as the settings ask.
 func Prepare() error {
 	dir := Dir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
+	// A settings file the user broke stays as they left it, and Ama starts
+	// all the same.
+	StatusLine(settings.Load().AmaHideStatusLine)
 	for name, text := range map[string]string{"CLAUDE.md": claudeFile(), "AGENTS.md": agentsFile()} {
 		if err := writeIfChanged(filepath.Join(dir, name), text); err != nil {
 			return err
@@ -92,6 +100,69 @@ func writeIfChanged(path, text string) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+// SettingsFile is Claude Code's settings of Ama's folder, its project's,
+// which win over the user's own, ~/.claude/settings.json, and lose to
+// .claude/settings.local.json beside it, which Kero leaves to the user.
+func SettingsFile() string { return filepath.Join(Dir(), ".claude", "settings.json") }
+
+// noStatusLine is the status line Kero gives Claude Code in Ama's folder
+// to turn the user's off: a command of nothing. Claude Code has no value
+// that turns a status line off: null fails its settings' check, which
+// then skips the whole file, and disableAllHooks, which does, turns off
+// every hook too, Kero's SessionStart hook among them. It keeps an empty
+// row where the status line was.
+var noStatusLine = json.RawMessage(`{"type":"command","command":""}`)
+
+// StatusLine turns Claude Code's status line off in Ama's folder, as hide
+// asks, or back on: it puts Kero's statusLine in the folder's settings,
+// or takes it out, and leaves the file's other keys, and a status line of
+// the user's own there, as they are.
+func StatusLine(hide bool) error {
+	path := SettingsFile()
+	b, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	keys := map[string]json.RawMessage{}
+	if len(bytes.TrimSpace(b)) > 0 {
+		if err := json.Unmarshal(b, &keys); err != nil {
+			return err
+		}
+	}
+	cur, ok := keys["statusLine"]
+	ours := ok && sameJSON(cur, noStatusLine)
+	switch {
+	case hide && !ok:
+		keys["statusLine"] = noStatusLine
+	case !hide && ours:
+		delete(keys, "statusLine")
+		if len(keys) == 0 {
+			return os.Remove(path)
+		}
+	default:
+		return nil
+	}
+	out, err := json.MarshalIndent(keys, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return writeIfChanged(path, string(out)+"\n")
+}
+
+// sameJSON reports whether two JSON values are the same, however spaced.
+func sameJSON(x, y json.RawMessage) bool {
+	var a, b any
+	if json.Unmarshal(x, &a) != nil || json.Unmarshal(y, &b) != nil {
+		return false
+	}
+	ja, _ := json.Marshal(a)
+	jb, _ := json.Marshal(b)
+	return bytes.Equal(ja, jb)
 }
 
 // keroHeader opens the files Kero writes.
