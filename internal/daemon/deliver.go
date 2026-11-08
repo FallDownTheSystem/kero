@@ -80,7 +80,7 @@ func (p *pane) agentReady() bool {
 // and URL, and the pane.
 func pageLabel(id, url, title string) string {
 	if title != "" && title != url {
-		return fmt.Sprintf("the page %q (%s) in browser pane %s", title, url, id)
+		return fmt.Sprintf("the page %s (%s) in browser pane %s", proto.Quoted(title), url, id)
 	}
 	return fmt.Sprintf("the page %s in browser pane %s", url, id)
 }

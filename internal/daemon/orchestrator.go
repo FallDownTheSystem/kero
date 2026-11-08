@@ -341,7 +341,7 @@ func (d *Daemon) reportToParent(p proto.AgentSendParams) (proto.AgentSendResult,
 	r := &d.reports
 	r.mu.Lock()
 	r.initLocked()
-	r.addLocked(parent, "", fmt.Sprintf("- session %s %q reports:\n%s", id, name, indent(strings.TrimSpace(p.Text))), time.Now())
+	r.addLocked(parent, "", fmt.Sprintf("- session %s %s reports:\n%s", id, proto.Quoted(name), indent(strings.TrimSpace(p.Text))), time.Now())
 	r.mu.Unlock()
 	return proto.AgentSendResult{State: "queued"}, nil
 }
@@ -419,7 +419,7 @@ func (d *Daemon) followChildren(now time.Time) {
 			continue
 		}
 		if orchestrators[k.parent] && !open[id] {
-			r.addLocked(k.parent, "", fmt.Sprintf("- session %s %q closed.", id, k.name), now)
+			r.addLocked(k.parent, "", fmt.Sprintf("- session %s %s closed.", id, proto.Quoted(k.name)), now)
 		}
 	}
 	// A child closed before the reports first saw it leaves its mark.
@@ -457,15 +457,15 @@ func (d *Daemon) followChildren(now time.Time) {
 			if c.kind != "" {
 				what += " (" + c.kind + ")"
 			}
-			line = fmt.Sprintf("- session %s %q %s", id, c.name, what)
+			line = fmt.Sprintf("- session %s %s %s", id, proto.Quoted(c.name), what)
 		case proto.Idle:
 			if k.worked {
-				line = fmt.Sprintf("- session %s %q finished its turn: it is idle", id, c.name)
+				line = fmt.Sprintf("- session %s %s finished its turn: it is idle", id, proto.Quoted(c.name))
 			}
 		case proto.Failed:
-			line = fmt.Sprintf("- session %s %q failed", id, c.name)
+			line = fmt.Sprintf("- session %s %s failed", id, proto.Quoted(c.name))
 		case proto.Exited:
-			line = fmt.Sprintf("- session %s %q exited: its program ended", id, c.name)
+			line = fmt.Sprintf("- session %s %s exited: its program ended", id, proto.Quoted(c.name))
 		}
 		if c.status != proto.Working {
 			k.worked = false
