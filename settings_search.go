@@ -129,6 +129,9 @@ func settingsIndex() []searchEntry {
 		{"advanced", locales.SetFolder(), "data directory finder"},
 		{"advanced", locales.SetReset(), "defaults reset"},
 	}
+	if devToolsPlatform {
+		entries = append(entries, searchEntry{"browser", locales.SetDevTools(), "browser-devtools browser-devtools-port devtools cdp remote debugging port playwright puppeteer chrome-devtools-mcp lighthouse automation"})
+	}
 	if runtime.GOOS == "darwin" {
 		entries = append(entries, searchEntry{"general", locales.SetAppIcon(), "macos-show-app-icon dock menu bar menubar tray status item hide"})
 	}

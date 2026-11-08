@@ -196,3 +196,44 @@ Kero 能拦截的，就是 WebKit 内容拦截器所能拦截的：发往广告�
 Kero 会复制浏览器视为默认的配置文件中的 Cookie，让面板在你于浏览器中登录过的网站上也处于登录状态。它不会改动浏览器：读取 Cookie 后即断开连接。登录过期后再导入一次即可。Kero 重启后面板仍保留这些 Cookie，所有 `kero browser` 命令照常作用于页面。
 
 Chrome 和 Edge 不允许其他程序打开你的配置文件或读取其 Cookie 文件，并会忽略针对它的 `--remote-debugging-port`：`chrome://inspect` 中的开关是唯一的途径，而且每次都会征求你的同意。Cookie 就是登录凭据：会话中的智能体和你一样，可以使用这些页面和 `kero browser cookies save`。
+
+<a id="driving-panes-with-devtools-tools"></a>
+### 用 DevTools 工具操作窗格
+
+在 Windows 上，浏览器窗格可以打开一个 DevTools 端口（即 Chrome 用 `--remote-debugging-port` 打开的那种），供基于 DevTools 协议的工具使用：[Playwright](https://playwright.dev) 的 `connectOverCDP`、[chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp)、Puppeteer 和 Lighthouse。在**设置 › 浏览器**中打开 **DevTools 端口**，或在[配置](./configuration.md#browser)中设置 `browser-devtools = true`，然后退出 Kero 并重新启动：窗格的浏览器在启动时打开端口。
+
+每个窗格都是同一个浏览器的一个页面，所以所有窗格共用一个端口，除非用 `browser-devtools-port` 另行指定，否则为 `http://127.0.0.1:9222`。工具按 URL 或标题选择窗格。`kero browser devtools` 打印端口以及每个窗格在其中的页面：
+
+```sh
+$ kero browser devtools
+http://127.0.0.1:9222
+3f2a	8C1D…	http://localhost:5173/	Vite App
+9b41	E07A…	https://github.com/egoist/kero	GitHub - egoist/kero
+```
+
+`--json` 打印 `endpoint`、`port`、`browser`（浏览器的 WebSocket URL），以及每个窗格的 `pane`、`session`、`url`、`title`、`target` 和 `webSocketDebuggerUrl`。还没显示过页面的窗格没有目标：先显示一次。
+
+用 Playwright 时，连接端口，按 URL 取得窗格的页面：
+
+```js
+import { chromium } from "playwright";
+
+const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
+const page = browser.contexts()[0].pages().find((p) => p.url().startsWith("http://localhost:5173"));
+await page.getByRole("button", { name: "Add" }).click();
+await browser.close(); // 只断开连接，窗格保持打开
+```
+
+对于 chrome-devtools-mcp，把端口作为 `--browser-url` 交给智能体（用 Claude Code，或在其他智能体的 MCP 设置中）：
+
+```sh
+claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+```
+
+```json
+{ "mcpServers": { "chrome-devtools": { "command": "npx", "args": ["chrome-devtools-mcp@latest", "--browser-url=http://127.0.0.1:9222"] } } }
+```
+
+智能体随后列出窗格的页面，并按 URL 或标题选择一个。请在 Kero 中打开窗格，例如用 `kero split --url`：工具自己打开的新标签页或窗口不是窗格，WebView2 也可能拒绝它们。
+
+端口只监听 `127.0.0.1`，但打开后，这台电脑上的任何程序都能不经询问地使用窗格的页面及其登录状态：只在需要时打开。端口仅限 Windows：macOS 和 Linux 上系统的 Web 视图不会打开端口，在那里请用 `kero browser` 操作窗格。

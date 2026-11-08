@@ -14,7 +14,7 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
 ---
 
 # Kero
@@ -184,6 +184,25 @@ to Source first, then grep the hints.
 With no target, kero browser drives your session's browser pane; name
 one (kero browser <target> text) when there are several. It needs the app
 open and Remote Control on, in Settings › Agents.
+
+On Windows, the user can open a DevTools port for the panes (Settings ›
+Browser › DevTools port, or browser-devtools = true, then start Kero
+again), which tools of the DevTools protocol drive: Playwright's
+connectOverCDP, chrome-devtools-mcp (--browser-url), Puppeteer,
+Lighthouse. Every pane is a page of one browser on one port; pick yours
+by its URL or title:
+
+    kero browser devtools          # the endpoint, then pane, target, URL, title
+    kero browser devtools --json   # {endpoint, port, browser, panes: [{pane, target, url, title, webSocketDebuggerUrl}]}
+
+    const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
+    const page = browser.contexts()[0].pages().find((p) => p.url().startsWith("http://localhost:3000"));
+
+Use kero browser for what it does; the port is for what it doesn't, such
+as tracing, network and a Playwright script. Don't turn the port on
+yourself: any program on the computer can then use the panes' sign-ins,
+so ask the user. Open pages in panes (kero split --url), not with the
+tool's own new tabs.
 
 ## Get the user's answers from a page
 

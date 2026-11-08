@@ -240,6 +240,7 @@ func newApp() *App {
 	a.set = settings.Load()
 	a.ss.problems = settings.Problems()
 	a.applied = a.set.Clone()
+	a.ss.devToolsAtStart = a.set.DevTools
 	a.selected = a.prefs.Selected
 	a.hosts = []*host{{conn: connConnecting}}
 	return a

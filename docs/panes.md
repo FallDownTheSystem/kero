@@ -193,3 +193,43 @@ Browser panes keep cookies of their own, so a site you're signed in to in Chrome
 Kero copies the cookies of the browser's profile it deems the default, which signs the panes in where you are there, and leaves the browser as it was: it reads the cookies and disconnects. Import again when a sign-in expires. Panes keep the cookies when Kero restarts, and every `kero browser` command works on the pages as before.
 
 Chrome and Edge don't let other programs open your profile or read its cookie files, and ignore `--remote-debugging-port` on it: the switch in `chrome://inspect` is the one way in, and asks you each time. Cookies sign you in: agents in your sessions can use the pages, and `kero browser cookies save`, as you can.
+
+### Driving panes with DevTools tools
+
+On Windows, browser panes can open a DevTools port, the one Chrome opens with `--remote-debugging-port`, for tools built on the DevTools protocol: [Playwright](https://playwright.dev) with `connectOverCDP`, [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp), Puppeteer and Lighthouse. Turn on **DevTools port** in **Settings › Browser**, or set `browser-devtools = true` in the [configuration](./configuration.md#browser), then quit Kero and start it again: the panes' browser opens the port as it starts.
+
+Every pane is a page of the one browser, so the panes share one port, `http://127.0.0.1:9222` unless `browser-devtools-port` says another. A tool picks a pane by its URL or title. `kero browser devtools` prints the port and each pane's page there:
+
+```sh
+$ kero browser devtools
+http://127.0.0.1:9222
+3f2a	8C1D…	http://localhost:5173/	Vite App
+9b41	E07A…	https://github.com/egoist/kero	GitHub - egoist/kero
+```
+
+`--json` prints `endpoint`, `port`, `browser` (the browser's WebSocket URL), and for each pane its `pane`, `session`, `url`, `title`, `target` and `webSocketDebuggerUrl`. A pane that hasn't shown its page yet has no target: show it once.
+
+With Playwright, connect to the port and take the pane's page by its URL:
+
+```js
+import { chromium } from "playwright";
+
+const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
+const page = browser.contexts()[0].pages().find((p) => p.url().startsWith("http://localhost:5173"));
+await page.getByRole("button", { name: "Add" }).click();
+await browser.close(); // disconnects; the panes stay open
+```
+
+For chrome-devtools-mcp, give the agent the port as `--browser-url`, with Claude Code or in another agent's MCP settings:
+
+```sh
+claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+```
+
+```json
+{ "mcpServers": { "chrome-devtools": { "command": "npx", "args": ["chrome-devtools-mcp@latest", "--browser-url=http://127.0.0.1:9222"] } } }
+```
+
+The agent then lists the panes' pages and selects one by its URL or title. Open panes in Kero, as with `kero split --url`: a tool's own new tabs or windows aren't panes, and WebView2 may refuse them.
+
+The port listens on `127.0.0.1` alone, but any program on this computer can then use the panes' pages, signed in as they are, without asking: turn it on while you use it. The port is Windows only: the system's web view on macOS and Linux opens none, and there `kero browser` drives the panes.

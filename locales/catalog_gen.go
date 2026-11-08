@@ -5092,6 +5092,66 @@ func (msgs Messages) SetSignInsImport() string {
 	return Catalog.Format(msgs.locale, "setSignInsImport", nil)
 }
 
+// SetDevToolsGroup says "Automation"
+// in the language the app shows.
+func SetDevToolsGroup() string { return In(i18n.Locale()).SetDevToolsGroup() }
+
+// SetDevToolsGroup says "Automation"
+// in the language of msgs.
+func (msgs Messages) SetDevToolsGroup() string {
+	return Catalog.Format(msgs.locale, "setDevToolsGroup", nil)
+}
+
+// SetDevToolsNote says "With the port open, any program on this computer can drive the browser panes' pages, signed in as they are. Run kero …"
+// in the language the app shows.
+func SetDevToolsNote() string { return In(i18n.Locale()).SetDevToolsNote() }
+
+// SetDevToolsNote says "With the port open, any program on this computer can drive the browser panes' pages, signed in as they are. Run kero …"
+// in the language of msgs.
+func (msgs Messages) SetDevToolsNote() string {
+	return Catalog.Format(msgs.locale, "setDevToolsNote", nil)
+}
+
+// SetDevTools says "DevTools port"
+// in the language the app shows.
+func SetDevTools() string { return In(i18n.Locale()).SetDevTools() }
+
+// SetDevTools says "DevTools port"
+// in the language of msgs.
+func (msgs Messages) SetDevTools() string {
+	return Catalog.Format(msgs.locale, "setDevTools", nil)
+}
+
+// SetDevToolsDetail says "Opens port {port} on 127.0.0.1 for Playwright, chrome-devtools-mcp and Lighthouse, which see every pane as a page of …"
+// in the language the app shows.
+func SetDevToolsDetail(port string) string { return In(i18n.Locale()).SetDevToolsDetail(port) }
+
+// SetDevToolsDetail says "Opens port {port} on 127.0.0.1 for Playwright, chrome-devtools-mcp and Lighthouse, which see every pane as a page of …"
+// in the language of msgs.
+func (msgs Messages) SetDevToolsDetail(port string) string {
+	return Catalog.Format(msgs.locale, "setDevToolsDetail", map[string]any{"port": port})
+}
+
+// SetDevToolsDetailPicked says "Opens a port the browser picks on 127.0.0.1, for Playwright, chrome-devtools-mcp and Lighthouse, which see every pane…"
+// in the language the app shows.
+func SetDevToolsDetailPicked() string { return In(i18n.Locale()).SetDevToolsDetailPicked() }
+
+// SetDevToolsDetailPicked says "Opens a port the browser picks on 127.0.0.1, for Playwright, chrome-devtools-mcp and Lighthouse, which see every pane…"
+// in the language of msgs.
+func (msgs Messages) SetDevToolsDetailPicked() string {
+	return Catalog.Format(msgs.locale, "setDevToolsDetailPicked", nil)
+}
+
+// SetDevToolsRestart says "Quit Kero and start it again for this to take effect."
+// in the language the app shows.
+func SetDevToolsRestart() string { return In(i18n.Locale()).SetDevToolsRestart() }
+
+// SetDevToolsRestart says "Quit Kero and start it again for this to take effect."
+// in the language of msgs.
+func (msgs Messages) SetDevToolsRestart() string {
+	return Catalog.Format(msgs.locale, "setDevToolsRestart", nil)
+}
+
 // ChangesUnmodified says "{count, plural, one {# unmodified line} other {# unmodified lines}}"
 // in the language the app shows.
 func ChangesUnmodified(count int) string { return In(i18n.Locale()).ChangesUnmodified(count) }

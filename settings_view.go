@@ -88,6 +88,9 @@ type settingsState struct {
 	branchStatic     string
 	branchStaticEdit bool
 	branchPrompt     promptDraft
+	// devToolsAtStart is browser-devtools as Kero started, which the
+	// browser panes' browser opened its port by.
+	devToolsAtStart bool
 	// resumeDraft is each agent's resume command as typed, and
 	// resumeEdit the agent whose field has the focus.
 	resumeDraft map[string]*string
@@ -817,6 +820,21 @@ func (a *App) browserPage(c *ui.Context, pal *palette) {
 			adListRows(c, pal, s)
 		}
 	})
+	if devToolsPlatform {
+		settingsGroup(c, pal, locales.SetDevToolsGroup(), locales.SetDevToolsNote(), func() {
+			detail := locales.SetDevToolsDetail(strconv.Itoa(s.DevToolsPort))
+			if s.DevToolsPort == 0 {
+				detail = locales.SetDevToolsDetailPicked()
+			}
+			// The browser opens the port as it starts.
+			if s.DevTools != a.ss.devToolsAtStart {
+				detail += " " + locales.SetDevToolsRestart()
+			}
+			settingRow(c, pal, locales.SetDevTools(), detail, func() {
+				toggle(c.Key("browser-devtools"), &s.DevTools, pal)
+			})
+		})
+	}
 	settingsGroup(c, pal, locales.SetSignIns(), locales.SetSignInsNote(), func() {
 		for _, name := range localbrowser.Names {
 			title := localbrowser.Title(name)
