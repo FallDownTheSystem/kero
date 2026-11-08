@@ -14,7 +14,7 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), read a browser pane's console errors and network requests and show its page as a phone or on a slow network (kero browser console, network, emulate), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), read a browser pane's console errors and network requests and show its page as a phone or on a slow network (kero browser console, network, emulate), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), orchestrate: start child sessions and follow them from Kero's reports, or report your result to your orchestrator (kero new --orchestrator, kero report --to-parent), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
 ---
 
 # Kero
@@ -109,6 +109,32 @@ this checkout: to take your work along, commit it first and hand off with
 --base HEAD, which starts the branch from this checkout's. A session that
 has a worktree of its own already, or works in a linked worktree, can't
 move again: kero worktree status says so.
+
+## Orchestrate, or work for an orchestrator
+
+An orchestrator is a session whose agent plans the work and delegates it
+to sessions it starts, its children, which kero status <orchestrator>
+lists. Kero's hook tells you when you are one, or a child of one.
+
+    kero new --orchestrator --goal "Ship the login page"   # start one
+    kero orchestrator [session] [on|off] [--goal <text>]  # make one, or undo it
+    kero new -n login-form --worktree login-form -- claude "<task>"  # as an orchestrator: a child
+    kero new --parent none -- npm run dev     # a session that is no child
+    kero report --to-parent "Done: the form posts; tests pass"   # as a child: your result
+    kero close <child>                        # a child that is done
+    kero close <orchestrator> --children      # it and its children
+
+As an orchestrator, don't do the detailed work yourself: start a child for
+each piece, with a task it can finish alone. Kero types its reports into
+your prompt ("Kero: message from your child sessions:"): a child waiting
+for input, idle after its turn, failed, exited or closed, and the
+summaries children send. Read one with kero read <id>, answer it with
+kero prompt <id> "<answer>", and ask the user only what you can't answer.
+There is one level: a child's kero new starts another child of the same
+orchestrator, and orchestrator-max-children may refuse more running at
+once. As a child, finish your task, then send your orchestrator a short
+summary with kero report --to-parent; it already hears when you wait or
+fail.
 
 ## Hand work to another machine
 

@@ -82,7 +82,7 @@ type settingsState struct {
 	messageEdit     bool
 	// prompts are the commit message's and the pull request's prompts as
 	// typed, kept while their fields have the focus.
-	prompts [4]promptDraft
+	prompts [5]promptDraft
 	// branchStatic and branchPrompt are the worktree branch name's prefix
 	// and prompt as typed (settings_branch.go).
 	branchStatic     string
@@ -1513,6 +1513,11 @@ func (a *App) notificationsPage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetDockBadge(), locales.SetDockBadgeDetail(), func() { toggle(c.Key("nb"), &s.DockBadge, pal) })
 		settingRow(c, pal, locales.SetDockBounce(), locales.SetDockBounceDetail(), func() { toggle(c.Key("nbo"), &s.BounceDock, pal) })
 	})
+	settingsGroup(c, pal, locales.SetOrchestrators(), "", func() {
+		settingRow(c, pal, locales.SetNotifyChildren(), locales.SetNotifyChildrenDetail(), func() {
+			toggle(c.Key("nch"), &s.NotifyChildren, pal)
+		})
+	})
 	if button(c, "test-notif", locales.SetTestNotification(), "", false, pal) {
 		n := mygo.NewNotification(mygo.NotificationOptions{Title: "Kero", Body: locales.SetTestNotificationBody(), Silent: !s.NotifySound})
 		go func() {
@@ -1536,6 +1541,7 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 		})
 	})
 	codeBlock(c, pal, "kero do pane.split.down\nkero do session.attention\nkero actions        # what kero do runs")
+	a.orchestratorSettings(c, pal)
 	settingsGroup(c, pal, locales.SetCli(), locales.SetCliDetail(), func() {
 		detail := locales.SetCliNotInstalled()
 		if a.ss.cliPath != "" {

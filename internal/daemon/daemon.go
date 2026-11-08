@@ -91,6 +91,9 @@ type Daemon struct {
 	setups map[string]*worktreeSetup
 	prw    *prWatcher // the sessions' pull requests' watch (prwatch.go)
 	mail   mailbox    // the messages on their way to agents (deliver.go)
+	// reports are what orchestrators hear of their children
+	// (orchestrator.go).
+	reports reports
 	// removing are the worktrees a session's close removes, from before
 	// its panes close, which the cleanup leaves to it; d.mu.
 	removing map[string]int
@@ -227,6 +230,7 @@ func Run(opts Options) error {
 	go d.worktreeCleanupLoop()
 	go d.prw.loop()
 	go d.deliverLoop()
+	go d.reportLoop()
 	uid := os.Getuid()
 	go func() {
 		for {

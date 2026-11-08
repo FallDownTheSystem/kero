@@ -224,6 +224,19 @@ func (d *Daemon) worktreeSharedLocked(s *session, path string) bool {
 // unless another session works in it. Without p.Force it refuses, keeping
 // the session, when removing it would lose changes or commits.
 func (d *Daemon) closeSession(p proto.CloseParams) error {
+	undo := d.quietClose(p)
+	err := d.closeSessionAs(p)
+	d.mu.Lock()
+	open := d.findSessionLocked(p.ID) != nil
+	d.mu.Unlock()
+	if err != nil && open {
+		undo()
+	}
+	return err
+}
+
+// closeSessionAs is closeSession, but for its orchestrator's report.
+func (d *Daemon) closeSessionAs(p proto.CloseParams) error {
 	if !p.RemoveWorktree {
 		return d.removeSession(p.ID)
 	}

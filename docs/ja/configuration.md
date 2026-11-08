@@ -125,6 +125,7 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `notify-sound`      | `false`    | 通知とともにサウンドを再生する                 |
 | `dock-badge`        | `true`     | 対応が必要なセッションの数を Dock アイコンに表示する |
 | `dock-bounce`       | `false`    | セッションが対応を求めたときに Dock アイコンを 1 回弾ませる |
+| `notify-children`   | `false`    | [オーケストレーター](./agents.md#orchestrator-sessions)の子セッションも通知する。オフでは、オーケストレーター自身の入力待ちとエラーだけが通知される |
 
 ## エージェント
 
@@ -133,6 +134,8 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `remote-control` | `true`     | `kero do` と `kero focus` によるアプリの操作を許可する |
 | `agent`          | `claude`   | [新規セッションのダイアログ](./sessions.md#new-session-dialog)のエージェントセッションで起動できるコマンド。自分のコマンドや関数と同じようにシェルで実行されます（`cc` や `codex --full-auto` など）。エージェントごとに繰り返して指定する |
 | `default-agent`  | `claude`   | 新規セッションのダイアログを開いたときに選ばれているエージェント |
+| `orchestrator-prompt` |  | オーケストレーターの役割プロンプト（エージェントへの最初のメッセージ）。行の区切りは `\n`。`{goal}` は目標、`{agent}` は `default-agent`。空なら Kero のもの |
+| `orchestrator-max-children` | `0` | 1 つのオーケストレーターの子が同時にいくつ動けるか。超えると `kero new` は拒否する。`0` で無制限 |
 | `resume-command-claude` |  | Claude Code の会話を再開するコマンド。再開、[検索](./sessions.md#検索)、セッションの復元で使われ、自分のコマンドや関数と同じようにシェルで実行されます（`cc --yolo --resume {session}` など）。中の `{session}` は会話の ID になり、なければ ID は末尾に付きます。空なら `claude --resume {session}` |
 | `resume-command-codex` |  | Codex について同じ。空なら `codex resume {session}` |
 | `resume-command-pi` |  | Pi について同じ。空なら `pi --session {session}` |

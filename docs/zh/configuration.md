@@ -125,6 +125,7 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `notify-sound`      | `false` | 通知时播放提示音                               |
 | `dock-badge`        | `true`  | 在 Dock 图标上显示有多少会话需要你             |
 | `dock-bounce`       | `false` | 有会话开始需要你时，Dock 图标跳动一次          |
+| `notify-children`   | `false` | 也通知[编排器](./agents.md#orchestrator-sessions)的子会话；关闭时只有编排器自己的等待和错误会通知 |
 
 ## 智能体
 
@@ -133,6 +134,8 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `remote-control` | `true`  | 允许 `kero do` 和 `kero focus` 操控应用             |
 | `agent`          | `claude` | [新建会话对话框](./sessions.md#new-session-dialog)的智能体会话可启动的命令，像你自己的命令和函数一样在你的 shell 中运行，如 `cc` 或 `codex --full-auto`。每个智能体写一行 |
 | `default-agent`  | `claude` | 新建会话对话框打开时选中的智能体 |
+| `orchestrator-prompt` |  | 编排器的角色提示词，即其智能体收到的第一条消息，行间用 `\n`；其中 `{goal}` 是目标，`{agent}` 是 `default-agent`；为空则使用 Kero 的 |
+| `orchestrator-max-children` | `0` | 一个编排器同时可运行的子会话数：超过时 `kero new` 会拒绝；`0` 表示不限 |
 | `resume-command-claude` |  | 恢复 Claude Code 对话的命令，用于恢复、[搜索](./sessions.md#搜索)和恢复会话，像你自己的命令和函数一样在你的 shell 中运行，如 `cc --yolo --resume {session}`；其中的 `{session}` 会换成对话的 ID，没有时 ID 加在末尾；留空则为 `claude --resume {session}` |
 | `resume-command-codex` |  | Codex 的同类命令；留空则为 `codex resume {session}` |
 | `resume-command-pi` |  | Pi 的同类命令；留空则为 `pi --session {session}` |

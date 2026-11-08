@@ -657,7 +657,9 @@ func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving boo
 		return
 	}
 	for _, s := range g.sessions {
-		a.sessionRow(c, pal, s, n)
+		if !a.folded(s) {
+			a.sessionRow(c, pal, s, n)
+		}
 	}
 }
 
@@ -711,6 +713,10 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 	if t := prLinkTip(s); t != "" {
 		tip += "\n" + t
 	}
+	if t := a.treeTip(s); t != "" {
+		tip += "\n" + t
+	}
+	child := s.Parent != "" && a.session(s.Parent) != nil
 	pointerTooltip(c, row, "tip-"+s.ID, tip)
 	row.ContextMenu(func(m *ui.Menu) { a.sessionMenu(m, s) })
 	row.Children(func() {
@@ -733,6 +739,9 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 		if detailed {
 			size = 16
 		}
+		if child {
+			childMark(c, pal)
+		}
 		ui.Icon(c, programIcon(&s.Pane)).Size(size, size).TextColor(programColor(pal, &s.Pane)).Shrink(0)
 		name := func() {
 			name := ui.Text(c, s.DisplayName(a.set.SessionName)).FontSize(13.5).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0).TextColor(pal.text)
@@ -741,6 +750,9 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 			}
 			if s.Status == proto.Exited && !s.Unread {
 				name.TextColor(pal.textMuted)
+			}
+			if s.Orchestrator {
+				a.orchestratorMark(c, pal, s)
 			}
 			if len(s.Panes) > 1 {
 				a.panesToggle(c, pal, s, expanded)
@@ -990,6 +1002,7 @@ func (a *App) sessionMenu(m *ui.Menu, s *proto.Session) {
 		a.openLink(id, s.WorkDir())
 	}
 	a.prLinkMenu(m, s)
+	a.orchestratorMenu(m, s)
 	m.Separator()
 	if a.menuShortcut(m.Item(locales.ActionCloseSession()), "session.close").Chosen() {
 		a.defer_(func() { a.closeSession(id, true) })

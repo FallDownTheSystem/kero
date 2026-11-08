@@ -14941,3 +14941,249 @@ func SetPRWatchWakeOff() string { return In(i18n.Locale()).SetPRWatchWakeOff() }
 func (msgs Messages) SetPRWatchWakeOff() string {
 	return Catalog.Format(msgs.locale, "setPRWatchWakeOff", nil)
 }
+
+// SidebarOrchestratorTip says "Orchestrator: it plans the work and follows the sessions under it"
+// in the language the app shows.
+func SidebarOrchestratorTip() string { return In(i18n.Locale()).SidebarOrchestratorTip() }
+
+// SidebarOrchestratorTip says "Orchestrator: it plans the work and follows the sessions under it"
+// in the language of msgs.
+func (msgs Messages) SidebarOrchestratorTip() string {
+	return Catalog.Format(msgs.locale, "sidebarOrchestratorTip", nil)
+}
+
+// SidebarGoal says "Goal: {goal}"
+// in the language the app shows.
+func SidebarGoal(goal string) string { return In(i18n.Locale()).SidebarGoal(goal) }
+
+// SidebarGoal says "Goal: {goal}"
+// in the language of msgs.
+func (msgs Messages) SidebarGoal(goal string) string {
+	return Catalog.Format(msgs.locale, "sidebarGoal", map[string]any{"goal": goal})
+}
+
+// SidebarChildOf says "Started by the orchestrator “{name}”"
+// in the language the app shows.
+func SidebarChildOf(name string) string { return In(i18n.Locale()).SidebarChildOf(name) }
+
+// SidebarChildOf says "Started by the orchestrator “{name}”"
+// in the language of msgs.
+func (msgs Messages) SidebarChildOf(name string) string {
+	return Catalog.Format(msgs.locale, "sidebarChildOf", map[string]any{"name": name})
+}
+
+// SidebarShowChildren says "Show its sessions"
+// in the language the app shows.
+func SidebarShowChildren() string { return In(i18n.Locale()).SidebarShowChildren() }
+
+// SidebarShowChildren says "Show its sessions"
+// in the language of msgs.
+func (msgs Messages) SidebarShowChildren() string {
+	return Catalog.Format(msgs.locale, "sidebarShowChildren", nil)
+}
+
+// SidebarHideChildren says "Hide its sessions"
+// in the language the app shows.
+func SidebarHideChildren() string { return In(i18n.Locale()).SidebarHideChildren() }
+
+// SidebarHideChildren says "Hide its sessions"
+// in the language of msgs.
+func (msgs Messages) SidebarHideChildren() string {
+	return Catalog.Format(msgs.locale, "sidebarHideChildren", nil)
+}
+
+// NewSessionOrchestrator says "Orchestrator"
+// in the language the app shows.
+func NewSessionOrchestrator() string { return In(i18n.Locale()).NewSessionOrchestrator() }
+
+// NewSessionOrchestrator says "Orchestrator"
+// in the language of msgs.
+func (msgs Messages) NewSessionOrchestrator() string {
+	return Catalog.Format(msgs.locale, "newSessionOrchestrator", nil)
+}
+
+// NewSessionOrchestratorDetail says "An agent that plans the work, starts sessions for it and follows them, and tells you how it goes. Kero reports to it …"
+// in the language the app shows.
+func NewSessionOrchestratorDetail() string { return In(i18n.Locale()).NewSessionOrchestratorDetail() }
+
+// NewSessionOrchestratorDetail says "An agent that plans the work, starts sessions for it and follows them, and tells you how it goes. Kero reports to it …"
+// in the language of msgs.
+func (msgs Messages) NewSessionOrchestratorDetail() string {
+	return Catalog.Format(msgs.locale, "newSessionOrchestratorDetail", nil)
+}
+
+// NewSessionGoal says "Goal"
+// in the language the app shows.
+func NewSessionGoal() string { return In(i18n.Locale()).NewSessionGoal() }
+
+// NewSessionGoal says "Goal"
+// in the language of msgs.
+func (msgs Messages) NewSessionGoal() string {
+	return Catalog.Format(msgs.locale, "newSessionGoal", nil)
+}
+
+// NewSessionGoalPlaceholder says "What should it get done? Optional: it asks you otherwise."
+// in the language the app shows.
+func NewSessionGoalPlaceholder() string { return In(i18n.Locale()).NewSessionGoalPlaceholder() }
+
+// NewSessionGoalPlaceholder says "What should it get done? Optional: it asks you otherwise."
+// in the language of msgs.
+func (msgs Messages) NewSessionGoalPlaceholder() string {
+	return Catalog.Format(msgs.locale, "newSessionGoalPlaceholder", nil)
+}
+
+// SessionMakeOrchestrator says "Make Orchestrator"
+// in the language the app shows.
+func SessionMakeOrchestrator() string { return In(i18n.Locale()).SessionMakeOrchestrator() }
+
+// SessionMakeOrchestrator says "Make Orchestrator"
+// in the language of msgs.
+func (msgs Messages) SessionMakeOrchestrator() string {
+	return Catalog.Format(msgs.locale, "sessionMakeOrchestrator", nil)
+}
+
+// SessionMakeOrdinary says "Make Ordinary Session"
+// in the language the app shows.
+func SessionMakeOrdinary() string { return In(i18n.Locale()).SessionMakeOrdinary() }
+
+// SessionMakeOrdinary says "Make Ordinary Session"
+// in the language of msgs.
+func (msgs Messages) SessionMakeOrdinary() string {
+	return Catalog.Format(msgs.locale, "sessionMakeOrdinary", nil)
+}
+
+// ConfirmCloseOrchestratorTitle says "Close the orchestrator “{name}”?"
+// in the language the app shows.
+func ConfirmCloseOrchestratorTitle(name string) string {
+	return In(i18n.Locale()).ConfirmCloseOrchestratorTitle(name)
+}
+
+// ConfirmCloseOrchestratorTitle says "Close the orchestrator “{name}”?"
+// in the language of msgs.
+func (msgs Messages) ConfirmCloseOrchestratorTitle(name string) string {
+	return Catalog.Format(msgs.locale, "confirmCloseOrchestratorTitle", map[string]any{"name": name})
+}
+
+// ConfirmCloseOrchestratorDetail says "It started {count} sessions. Close them too, or keep them as sessions of their own. A session in a worktree of its ow…"
+// in the language the app shows.
+func ConfirmCloseOrchestratorDetail(count int) string {
+	return In(i18n.Locale()).ConfirmCloseOrchestratorDetail(count)
+}
+
+// ConfirmCloseOrchestratorDetail says "It started {count} sessions. Close them too, or keep them as sessions of their own. A session in a worktree of its ow…"
+// in the language of msgs.
+func (msgs Messages) ConfirmCloseOrchestratorDetail(count int) string {
+	return Catalog.Format(msgs.locale, "confirmCloseOrchestratorDetail", map[string]any{"count": count})
+}
+
+// ConfirmCloseChildren says "Close All"
+// in the language the app shows.
+func ConfirmCloseChildren() string { return In(i18n.Locale()).ConfirmCloseChildren() }
+
+// ConfirmCloseChildren says "Close All"
+// in the language of msgs.
+func (msgs Messages) ConfirmCloseChildren() string {
+	return Catalog.Format(msgs.locale, "confirmCloseChildren", nil)
+}
+
+// ConfirmKeepChildren says "Keep Sessions"
+// in the language the app shows.
+func ConfirmKeepChildren() string { return In(i18n.Locale()).ConfirmKeepChildren() }
+
+// ConfirmKeepChildren says "Keep Sessions"
+// in the language of msgs.
+func (msgs Messages) ConfirmKeepChildren() string {
+	return Catalog.Format(msgs.locale, "confirmKeepChildren", nil)
+}
+
+// SetOrchestrators says "Orchestrators"
+// in the language the app shows.
+func SetOrchestrators() string { return In(i18n.Locale()).SetOrchestrators() }
+
+// SetOrchestrators says "Orchestrators"
+// in the language of msgs.
+func (msgs Messages) SetOrchestrators() string {
+	return Catalog.Format(msgs.locale, "setOrchestrators", nil)
+}
+
+// SetOrchestratorsDetail says "An orchestrator plans the work and starts sessions for it, with kero new; Kero reports to it what they do."
+// in the language the app shows.
+func SetOrchestratorsDetail() string { return In(i18n.Locale()).SetOrchestratorsDetail() }
+
+// SetOrchestratorsDetail says "An orchestrator plans the work and starts sessions for it, with kero new; Kero reports to it what they do."
+// in the language of msgs.
+func (msgs Messages) SetOrchestratorsDetail() string {
+	return Catalog.Format(msgs.locale, "setOrchestratorsDetail", nil)
+}
+
+// SetOrchestratorMax says "Sessions at once"
+// in the language the app shows.
+func SetOrchestratorMax() string { return In(i18n.Locale()).SetOrchestratorMax() }
+
+// SetOrchestratorMax says "Sessions at once"
+// in the language of msgs.
+func (msgs Messages) SetOrchestratorMax() string {
+	return Catalog.Format(msgs.locale, "setOrchestratorMax", nil)
+}
+
+// SetOrchestratorMaxDetail says "How many of an orchestrator's sessions may run at the same time: past it, kero new refuses another."
+// in the language the app shows.
+func SetOrchestratorMaxDetail() string { return In(i18n.Locale()).SetOrchestratorMaxDetail() }
+
+// SetOrchestratorMaxDetail says "How many of an orchestrator's sessions may run at the same time: past it, kero new refuses another."
+// in the language of msgs.
+func (msgs Messages) SetOrchestratorMaxDetail() string {
+	return Catalog.Format(msgs.locale, "setOrchestratorMaxDetail", nil)
+}
+
+// SetOrchestratorMaxAny says "Any number"
+// in the language the app shows.
+func SetOrchestratorMaxAny() string { return In(i18n.Locale()).SetOrchestratorMaxAny() }
+
+// SetOrchestratorMaxAny says "Any number"
+// in the language of msgs.
+func (msgs Messages) SetOrchestratorMaxAny() string {
+	return Catalog.Format(msgs.locale, "setOrchestratorMaxAny", nil)
+}
+
+// SetOrchestratorPrompt says "Role prompt"
+// in the language the app shows.
+func SetOrchestratorPrompt() string { return In(i18n.Locale()).SetOrchestratorPrompt() }
+
+// SetOrchestratorPrompt says "Role prompt"
+// in the language of msgs.
+func (msgs Messages) SetOrchestratorPrompt() string {
+	return Catalog.Format(msgs.locale, "setOrchestratorPrompt", nil)
+}
+
+// SetOrchestratorPromptDetail says "The first message an orchestrator's agent gets. {goal} in it is the orchestrator's goal, {agent} the default agent."
+// in the language the app shows.
+func SetOrchestratorPromptDetail(goal string, agent string) string {
+	return In(i18n.Locale()).SetOrchestratorPromptDetail(goal, agent)
+}
+
+// SetOrchestratorPromptDetail says "The first message an orchestrator's agent gets. {goal} in it is the orchestrator's goal, {agent} the default agent."
+// in the language of msgs.
+func (msgs Messages) SetOrchestratorPromptDetail(goal string, agent string) string {
+	return Catalog.Format(msgs.locale, "setOrchestratorPromptDetail", map[string]any{"goal": goal, "agent": agent})
+}
+
+// SetNotifyChildren says "An orchestrator's sessions"
+// in the language the app shows.
+func SetNotifyChildren() string { return In(i18n.Locale()).SetNotifyChildren() }
+
+// SetNotifyChildren says "An orchestrator's sessions"
+// in the language of msgs.
+func (msgs Messages) SetNotifyChildren() string {
+	return Catalog.Format(msgs.locale, "setNotifyChildren", nil)
+}
+
+// SetNotifyChildrenDetail says "Notify of the sessions an orchestrator started, too. Off, they show in the sidebar alone, and only the orchestrator n…"
+// in the language the app shows.
+func SetNotifyChildrenDetail() string { return In(i18n.Locale()).SetNotifyChildrenDetail() }
+
+// SetNotifyChildrenDetail says "Notify of the sessions an orchestrator started, too. Off, they show in the sidebar alone, and only the orchestrator n…"
+// in the language of msgs.
+func (msgs Messages) SetNotifyChildrenDetail() string {
+	return Catalog.Format(msgs.locale, "setNotifyChildrenDetail", nil)
+}

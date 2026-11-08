@@ -384,6 +384,7 @@ var keys = []key{
 	boolKey("notify-sound", "", func(s *Settings) *bool { return &s.NotifySound }),
 	boolKey("dock-badge", "the number of sessions that need you", func(s *Settings) *bool { return &s.DockBadge }),
 	boolKey("dock-bounce", "once, when a session comes to need you", func(s *Settings) *bool { return &s.BounceDock }),
+	boolKey("notify-children", "notify of an orchestrator's child sessions too, as of any other session: off, only the orchestrator's own waiting and errors notify, and its children's show in the sidebar", func(s *Settings) *bool { return &s.NotifyChildren }),
 
 	boolKey("remote-control", "kero do, kero focus and kero browser drive the app", func(s *Settings) *bool { return &s.RemoteControl }),
 	{name: "agent", doc: "a command a new agent session may start, run in your shell, as claude, cc or codex --full-auto; repeat it", list: true,
@@ -398,6 +399,8 @@ var keys = []key{
 			return nil
 		}},
 	stringKey("default-agent", "the agent command the New Session dialog has chosen as it opens", func(s *Settings) *string { return &s.DefaultAgent }),
+	textKey("orchestrator-prompt", "an orchestrator's role prompt, the first message its agent gets, with \\n between lines; {goal} in it is the orchestrator's goal and {agent} default-agent; empty for Kero's", func(s *Settings) *string { return &s.OrchestratorPrompt }),
+	numberKey("orchestrator-max-children", "how many child sessions an orchestrator may have running at once: kero new refuses another; 0 for any number", func(s *Settings) float64 { return float64(s.OrchestratorMaxChildren) }, func(s *Settings, n float64) { s.OrchestratorMaxChildren = max(0, int(n)) }),
 	stringKey("resume-command-claude", "the command that resumes a Claude Code conversation, run in your shell, as cc --yolo --resume {session}; {session} in it is the conversation's id: empty for claude --resume {session}", func(s *Settings) *string { return &s.ResumeClaude }),
 	stringKey("resume-command-codex", "the command that resumes a Codex conversation, as resume-command-claude: empty for codex resume {session}", func(s *Settings) *string { return &s.ResumeCodex }),
 	stringKey("resume-command-pi", "the command that resumes a Pi conversation, as resume-command-claude: empty for pi --session {session}", func(s *Settings) *string { return &s.ResumePi }),

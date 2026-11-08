@@ -2594,5 +2594,36 @@
   "setPRWatchWakeDetail": "When the pull request of a session's branch, or one you linked, fails its checks or can't merge for conflicts; with All, also when its checks pass and when comments come. Uses the GitHub CLI.",
   "setPRWatchWakeAll": "All",
   "setPRWatchWakeFailures": "Failures",
-  "setPRWatchWakeOff": "Off"
+  "setPRWatchWakeOff": "Off",
+  "sidebarOrchestratorTip": "Orchestrator: it plans the work and follows the sessions under it",
+  "sidebarGoal": "Goal: {goal}",
+  "sidebarChildOf": "Started by the orchestrator “{name}”",
+  "sidebarShowChildren": "Show its sessions",
+  "sidebarHideChildren": "Hide its sessions",
+  "newSessionOrchestrator": "Orchestrator",
+  "newSessionOrchestratorDetail": "An agent that plans the work, starts sessions for it and follows them, and tells you how it goes. Kero reports to it what its sessions do.",
+  "newSessionGoal": "Goal",
+  "newSessionGoalPlaceholder": "What should it get done? Optional: it asks you otherwise.",
+  "sessionMakeOrchestrator": "Make Orchestrator",
+  "sessionMakeOrdinary": "Make Ordinary Session",
+  "confirmCloseOrchestratorTitle": "Close the orchestrator “{name}”?",
+  "confirmCloseOrchestratorDetail": "It started {count} sessions. Close them too, or keep them as sessions of their own. A session in a worktree of its own keeps it.",
+  "@confirmCloseOrchestratorDetail": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmCloseChildren": "Close All",
+  "confirmKeepChildren": "Keep Sessions",
+  "setOrchestrators": "Orchestrators",
+  "setOrchestratorsDetail": "An orchestrator plans the work and starts sessions for it, with kero new; Kero reports to it what they do.",
+  "setOrchestratorMax": "Sessions at once",
+  "setOrchestratorMaxDetail": "How many of an orchestrator's sessions may run at the same time: past it, kero new refuses another.",
+  "setOrchestratorMaxAny": "Any number",
+  "setOrchestratorPrompt": "Role prompt",
+  "setOrchestratorPromptDetail": "The first message an orchestrator's agent gets. {goal} in it is the orchestrator's goal, {agent} the default agent.",
+  "setNotifyChildren": "An orchestrator's sessions",
+  "setNotifyChildrenDetail": "Notify of the sessions an orchestrator started, too. Off, they show in the sidebar alone, and only the orchestrator notifies: it hears of them itself."
 }

@@ -51,6 +51,9 @@ type prefs struct {
 	// Expanded are the split sessions whose panes the sidebar lists under
 	// their rows, by id.
 	Expanded map[string]bool `json:"expanded,omitempty"`
+	// Folded are the orchestrators whose children the sidebar hides, by
+	// id.
+	Folded   map[string]bool `json:"folded,omitempty"`
 	FontSize float32         `json:"fontSize,omitempty"`
 	// Side is the tab the right sidebar shows, "" while it is hidden, and
 	// SideTab the one it shows again; RightWidth is its width, and
@@ -463,6 +466,17 @@ var showNote = func(o mygo.NotificationOptions, click func()) {
 // notify tells about sessions that came to need the user, or finished,
 // while the user was elsewhere: a notification, and the Dock's badge.
 func (a *App) notify(first bool) {
+	waiting := a.notifySessions(first)
+	if !a.set.DockBadge {
+		waiting = 0
+	}
+	mygo.App.SetBadgeCount(waiting)
+	a.keepAwake()
+}
+
+// notifySessions shows notify's notifications, and counts the sessions
+// that need the user, for the badge.
+func (a *App) notifySessions(first bool) int {
 	waiting := 0
 	for i := range a.st.Sessions {
 		s := &a.st.Sessions[i]
@@ -473,10 +487,13 @@ func (a *App) notify(first bool) {
 		}
 		prev, seen := a.statuses[s.ID]
 		a.statuses[s.ID] = s.Status
-		if s.Status == proto.Waiting {
+		// An orchestrator's children show in the sidebar alone: it hears
+		// of them itself, and many would make too many alerts.
+		muted := a.mutedChild(s)
+		if s.Status == proto.Waiting && !muted {
 			waiting++
 		}
-		if first || !seen || prev == s.Status || a.watching(s.ID) {
+		if first || !seen || prev == s.Status || a.watching(s.ID) || muted {
 			continue
 		}
 		var title, body string
@@ -509,11 +526,7 @@ func (a *App) notify(first bool) {
 			delete(a.statuses, id)
 		}
 	}
-	if !a.set.DockBadge {
-		waiting = 0
-	}
-	mygo.App.SetBadgeCount(waiting)
-	a.keepAwake()
+	return waiting
 }
 
 func (a *App) updateTitle() {
@@ -591,6 +604,7 @@ func (a *App) hostGroups(h *host) []group {
 				g.sessions = append(g.sessions, &a.st.Sessions[i])
 			}
 		}
+		g.sessions = inTree(g.sessions)
 		gs = append(gs, g)
 	}
 	other := group{host: h, project: proto.Project{ID: "", Name: locales.SidebarOtherProject()}}
@@ -600,9 +614,16 @@ func (a *App) hostGroups(h *host) []group {
 		}
 	}
 	if len(other.sessions) > 0 {
+		other.sessions = inTree(other.sessions)
 		gs = append(gs, other)
 	}
 	return gs
+}
+
+// inTree has each orchestrator's children right after it, whatever order
+// kerod keeps them in.
+func inTree(ss []*proto.Session) []*proto.Session {
+	return proto.InTree(ss, func(s *proto.Session) (string, string) { return s.ID, s.Parent })
 }
 
 // collapsed reports whether a group's sessions are hidden in the sidebar.
@@ -614,7 +635,7 @@ func (a *App) visibleOrder() []string {
 	var ids []string
 	for _, g := range a.groups() {
 		for _, s := range g.sessions {
-			if !a.collapsed(g) || s.ID == a.selected {
+			if (!a.collapsed(g) || s.ID == a.selected) && !a.folded(s) {
 				ids = append(ids, s.ID)
 			}
 		}
@@ -1511,6 +1532,20 @@ func busy(s *proto.Session) bool {
 }
 
 func (a *App) closeSession(id string, ask bool) {
+	s := a.session(id)
+	if s == nil {
+		return
+	}
+	// An orchestrator's children are closed with it, or kept, as the
+	// user says.
+	if ask && s.Orchestrator && a.askCloseOrchestrator(s) {
+		return
+	}
+	a.closeOne(id, ask)
+}
+
+// closeOne closes a session, as closeSession does, but for its children.
+func (a *App) closeOne(id string, ask bool) {
 	s := a.session(id)
 	if s == nil {
 		return
