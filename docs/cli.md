@@ -148,6 +148,9 @@ kero browser text h1                       # an element's
 kero browser click 'button[type=submit]'
 kero browser screenshot -o page.png
 kero browser eval 'document.title'
+kero browser console --errors              # what the page threw and logged, with file and line
+kero browser network --failed              # requests that failed or answered 4xx/5xx
+kero browser emulate device iphone-15      # show the page as a phone does
 ```
 
 | Command                         | What it does |
@@ -167,6 +170,14 @@ kero browser eval 'document.title'
 | `cookies import <chrome\|edge>`  | Copy your own browser's cookies as it runs, and the localStorage and IndexedDB of the sites of its open tabs, which signs the panes in where you are there; `--domain` copies a site's ([how](./panes.md#signing-in-with-your-browsers-cookies)) |
 | `wait-message [--json]`         | Wait for the next message the page sends with [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page), and print it, labelled with the page; `--json` prints its `id`, `from`, `label`, `url`, `title`, `text` and `at` |
 | `pick`                          | Turn on Pick mode, for the user to pick elements and write a note on each; the picks come to the page's agent as a message ([more](./panes.md#picking-elements-for-an-agent)) |
+| `console [--errors] [--clear]`  | Print what the page logged with `console.*`, the errors it threw and the promises none caught, and what the browser told of, such as CORS errors and failed loads, each with its file and line; `--errors` prints only errors, `--clear` empties the log after |
+| `network [--failed] [--url text] [--clear]` | Print the page's requests, a line each: its `#id`, method, status, type, size, time and URL, and why one failed (`net::ERR_…`, `CORS …`, `blocked: …`); `--failed` prints only those that failed or answered 4xx or 5xx, `--url` those whose URL has the text |
+| `network body <id> [-o file]`   | Print the body of a response of the list, or save it to a file |
+| `emulate device <name>`         | Show the page as a phone or a tablet does: its viewport, scale, touch and user agent; `emulate device` lists them (`iphone-se`, `iphone-15`, `iphone-15-pro-max`, `pixel-8`, `galaxy-s24`, `ipad`, `ipad-pro`) |
+| `emulate viewport <w>x<h>`      | Lay the page out at a size; `--scale` sets the device's pixels to a CSS pixel, `--mobile` lays it out as a phone does, `--touch` has it take touches; `none` undoes it |
+| `emulate user-agent <ua…>`      | Send another user agent; `none` undoes it |
+| `emulate network <preset>`      | Slow the network (`slow-3g`, `3g`, `4g`), take it `offline`, or not (`none`) |
+| `emulate [reset]`               | Print what the page is shown as, or with `reset`, show it as it is again |
 
 `wait-message` waits as long as it takes, unless `--timeout` says otherwise, and fails with `timed out` when nothing came: an agent waits again, with a timeout under its shell tool's own. It needs no Remote Control.
 
@@ -175,6 +186,8 @@ Selectors are CSS selectors; quote them in the shell. Anywhere a command takes a
 Clicking and typing send the events a real mouse and keyboard would, so pages built with React and other frameworks see them. Every command works on any browser pane, shown or not: a screenshot of a pane not on screen takes no focus from what you are doing.
 
 Browser panes share their cookies, and keep them when Kero restarts. `cookies` saves them in Playwright's storage state, as JSON, or for a file named `.txt`, as a Netscape `cookies.txt`, which curl and browser extensions write; `load` reads either. Cookies sign you in to sites: share their file only with what you'd trust with your logins. They stay on this Mac, so programs on a host can't save or load them. `import` prints what it left out to stderr. It needs remote debugging on in Chrome (144 or later) or Edge, at `chrome://inspect/#remote-debugging`, and waits up to two minutes, or `--timeout`, for you to allow it in the browser's dialog; it also takes the user data directory of a browser started with `--user-data-dir`.
+
+`console` and `network` keep what came since the pane's page was made, its first load too, up to the last 1,000 of each; `--clear` empties them, so that the next read shows only what a reload or a click caused. `--json` prints their fields, and `emulate`'s. What `emulate` sets lasts while the pane is open, through reloads and other pages. `network` and `emulate` use the DevTools Protocol, which browser panes have on Windows only; on macOS and Linux, `console` has what the page's current document logged.
 
 Like `kero do`, `kero browser` needs Remote Control, in **Settings › Agents**, and the app to be open.
 

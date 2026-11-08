@@ -61,6 +61,8 @@ type webEntry struct {
 	// that pickSeq started; a navigation ends it.
 	picking bool
 	pickSeq int
+	// dev is the page's console, network and emulation (devlog.go).
+	dev *devLog
 }
 
 // diskMark is what tells a file changed: its path, when it was written,
@@ -95,7 +97,7 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 	}
 	v, err := a.win.NewWebView(mygo.WebViewOptions{
 		// window.kero, in local pages (bridge.go).
-		Page: mygo.PageOptions{DevTools: mygo.DevToolsEnabled, UserAgentSuffix: browserUA(), ContentRules: a.adRules(), PreloadScript: bridgeScript},
+		Page: mygo.PageOptions{DevTools: mygo.DevToolsEnabled, UserAgentSuffix: browserUA(), ContentRules: a.adRules(), PreloadScript: bridgeScript + preloadConsole()},
 	})
 	if err != nil {
 		e.err = err.Error()
@@ -163,9 +165,14 @@ func (a *App) ensureWeb(p *proto.Pane) *webEntry {
 		})
 	})
 	page.OnRenderProcessGone(func(string) { page.Reload() })
-	if p.URL != proto.BlankURL {
-		e.load(p.URL)
-	}
+	// Its console and network are logged from its first load on, unless
+	// it went to another page first (devlog.go).
+	url := p.URL
+	a.watchDevTools(id, e, func() {
+		if url != proto.BlankURL && !e.loading && e.url == url {
+			e.load(url)
+		}
+	})
 	return e
 }
 
