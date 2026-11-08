@@ -60,11 +60,29 @@ type kid struct {
 }
 
 // report is what waits to go to an orchestrator: lines, the first come at
-// first, the last at last.
+// first, the last at last. It waits in kerod, not in the mailbox, until
+// the orchestrator's agent is at its prompt, so that a child closed
+// meanwhile can take its stale state with it (dropLocked).
 type report struct {
-	lines       []string
+	lines       []reportLine
 	first, last time.Time
 	failed      bool // it could not go, and waits for its agent
+}
+
+// reportLine is a line of a report; kid is the child whose state it
+// tells, "" for what stays true once the child is closed: a summary it
+// wrote, or that it closed.
+type reportLine struct {
+	kid, text string
+}
+
+// text is the report's lines, as its agent reads them.
+func (rp *report) text() string {
+	lines := make([]string, len(rp.lines))
+	for i, l := range rp.lines {
+		lines[i] = l.text
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (r *reports) initLocked() {
@@ -73,16 +91,31 @@ func (r *reports) initLocked() {
 	}
 }
 
-// addLocked puts a line in the report to orchestrator parent; r.mu is
-// held.
-func (r *reports) addLocked(parent, line string, now time.Time) {
+// addLocked puts a line in the report to orchestrator parent, of child
+// kid's state, or kid ""; r.mu is held.
+func (r *reports) addLocked(parent, kid, line string, now time.Time) {
 	rp := r.out[parent]
 	if rp == nil {
 		rp = &report{first: now}
 		r.out[parent] = rp
 	}
-	rp.lines = append(rp.lines, line)
+	rp.lines = append(rp.lines, reportLine{kid: kid, text: line})
 	rp.last = now
+}
+
+// dropLocked takes out of the report to orchestrator parent the state
+// lines of child kid, which closed: its last state, idle or waiting,
+// would have the orchestrator act on a session that is no more. Its
+// summaries stay. r.mu is held.
+func (r *reports) dropLocked(parent, kid string) {
+	rp := r.out[parent]
+	if rp == nil {
+		return
+	}
+	rp.lines = slices.DeleteFunc(rp.lines, func(l reportLine) bool { return l.kid == kid })
+	if len(rp.lines) == 0 {
+		delete(r.out, parent)
+	}
 }
 
 // sessionByIDLocked is the session of id, nil for none; d.mu is held.
@@ -308,7 +341,7 @@ func (d *Daemon) reportToParent(p proto.AgentSendParams) (proto.AgentSendResult,
 	r := &d.reports
 	r.mu.Lock()
 	r.initLocked()
-	r.addLocked(parent, fmt.Sprintf("- session %s %q reports:\n%s", id, name, indent(strings.TrimSpace(p.Text))), time.Now())
+	r.addLocked(parent, "", fmt.Sprintf("- session %s %q reports:\n%s", id, name, indent(strings.TrimSpace(p.Text))), time.Now())
 	r.mu.Unlock()
 	return proto.AgentSendResult{State: "queued"}, nil
 }
@@ -377,13 +410,16 @@ func (d *Daemon) followChildren(now time.Time) {
 		// Closed, or no child any more: an orchestrator that closed it, or
 		// that is gone, needs no word of it.
 		delete(r.kids, id)
+		if !open[id] {
+			r.dropLocked(k.parent, id)
+		}
 		quiet := r.quiet[id]
 		delete(r.quiet, id)
 		if quiet {
 			continue
 		}
 		if orchestrators[k.parent] && !open[id] {
-			r.addLocked(k.parent, fmt.Sprintf("- session %s %q closed.", id, k.name), now)
+			r.addLocked(k.parent, "", fmt.Sprintf("- session %s %q closed.", id, k.name), now)
 		}
 	}
 	// A child closed before the reports first saw it leaves its mark.
@@ -442,12 +478,32 @@ func (d *Daemon) followChildren(now time.Time) {
 		} else {
 			line += "."
 		}
-		r.addLocked(c.parent, line, now)
+		r.addLocked(c.parent, id, line, now)
 	}
 }
 
 // reportFooter ends a report: what the orchestrator may do of it.
-const reportFooter = "kero read <id> shows a session's screen, kero prompt <id> \"<text>\" answers it, kero status shows them all."
+const reportFooter = "kero read <id> shows a session's screen, kero prompt <id> \"<text>\" answers it, kero status shows them all. " +
+	"If nothing here needs you, reply just OK: no summary."
+
+// reportReady tells whether orchestrator id's agent is at its prompt,
+// where a report is typed at once; true too for one with no agent Kero
+// knows, which agent.send tells of.
+func (d *Daemon) reportReady(id string) bool {
+	to, err := d.agentTarget(id, "")
+	if err != nil || to == "" {
+		return true
+	}
+	d.mu.Lock()
+	pn := d.findPaneLocked(to)
+	d.mu.Unlock()
+	if pn == nil {
+		return true
+	}
+	pn.mu.Lock()
+	defer pn.mu.Unlock()
+	return pn.agentReady()
+}
 
 // sendReports sends each orchestrator the report due to it, as one
 // message.
@@ -455,22 +511,28 @@ func (d *Daemon) sendReports(now time.Time) {
 	r := &d.reports
 	r.mu.Lock()
 	r.initLocked()
-	due := map[string]*report{}
+	var ids []string
 	for id, rp := range r.out {
 		if now.Sub(rp.last) >= reportQuiet || now.Sub(rp.first) >= reportMax {
-			due[id] = rp
-			delete(r.out, id)
+			ids = append(ids, id)
 		}
 	}
 	r.mu.Unlock()
-	ids := make([]string, 0, len(due))
-	for id := range due {
-		ids = append(ids, id)
-	}
 	slices.Sort(ids)
 	for _, id := range ids {
-		rp := due[id]
-		text := strings.Join(rp.lines, "\n") + "\n\n" + reportFooter
+		// A busy orchestrator's report stays here till its agent is at
+		// its prompt, where what closes meanwhile still changes it.
+		if !d.reportReady(id) {
+			continue
+		}
+		r.mu.Lock()
+		rp := r.out[id]
+		delete(r.out, id)
+		r.mu.Unlock()
+		if rp == nil {
+			continue
+		}
+		text := rp.text() + "\n\n" + reportFooter
 		_, err := d.agentSend(proto.AgentSendParams{To: id, Label: reportLabel, Text: text, Mode: "push"})
 		if err == nil {
 			continue

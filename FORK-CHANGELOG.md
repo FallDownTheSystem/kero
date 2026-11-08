@@ -11,6 +11,17 @@ top of it.
   folds its children sit at the right end of its second line, under the
   time and status, so its name keeps the first line; compact rows keep
   them by the name
+- An orchestrator's role prompt, and every report Kero sends it, tell it
+  to answer a report that needs nothing with a plain OK, not a summary
+- A child closed while its orchestrator was busy no longer reaches it as
+  "finished its turn: it is idle" afterwards. Kero handed a report to the
+  agent's mailbox as soon as it was due, where it waited, already
+  written, for the orchestrator's turn to end, and a close never reached
+  it. Reports now wait in Kero until the orchestrator is at its prompt,
+  and a child that closes meanwhile takes its state lines (idle, waiting,
+  failed, exited) out of them: they would have the orchestrator act on a
+  session that is gone, and "closed" says all that is left. What it
+  wrote with kero report --to-parent still goes, as that is its result
 
 ## 2.1.35-fork.3
 
