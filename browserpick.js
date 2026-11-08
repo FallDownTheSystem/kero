@@ -14,6 +14,7 @@ async (o) => {
   font: 12.5px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; color: #1d1d1f; }
 .box { position: fixed; box-sizing: border-box; border: 2px solid ${accent}; background: ${accent}1a; border-radius: 3px; pointer-events: none; }
 .box.picked { background: ${accent}0d; border-style: solid; }
+.box.preview { border-style: dashed; background: ${accent}12; }
 .tag { position: absolute; left: -2px; bottom: 100%; margin-bottom: 3px; padding: 1px 6px; border-radius: 4px; background: ${accent};
   color: #fff; font-size: 11px; white-space: nowrap; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
 .tag.below { bottom: auto; top: 100%; margin: 3px 0 0; }
@@ -54,7 +55,7 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
     st.textContent = css;
     root.append(st);
   }
-  root.innerHTML += `<div class="layer"></div>
+  root.innerHTML += `<div class="layer"><div class="boxes"></div></div>
 <div class="tray">
   <span class="hint"></span>
   <span class="hint">Screenshots:</span>
@@ -64,7 +65,7 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
   <button class="primary send">Send</button>
 </div>`;
   const $ = (s) => root.querySelector(s);
-  const layer = $(".layer"), hint = $(".hint"), send = $(".send");
+  const layer = $(".layer"), boxes = $(".boxes"), hint = $(".hint"), send = $(".send");
   $(".shots").checked = shots;
   $(".shots").onchange = (e) => (shots = e.target.checked);
   $(".whole").checked = whole;
@@ -93,19 +94,38 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
   const hoverBox = document.createElement("div");
   hoverBox.className = "box";
   hoverBox.innerHTML = `<div class="tag"></div>`;
+  layer.append(hoverBox);
+  // preview is what the open note's Parent button would pick, shown in
+  // place of what the pointer is on while the pointer is on the button.
+  let preview = null, shown = null;
+  const target = () => preview || hover;
+  const showHover = () => {
+    const el = target();
+    hoverBox.classList.toggle("preview", !!preview);
+    hoverBox.style.display = el && (preview || !picks.some((p) => p.el === el)) ? "" : "none";
+    if (el) {
+      hoverBox.firstChild.textContent = (preview ? "Parent: " : "") + describe(el);
+      place(hoverBox, el);
+    }
+  };
+  // The note's card stays in the page while it is open: taken out and put
+  // back, its field would lose the keyboard.
   const render = () => {
-    layer.textContent = "";
+    boxes.textContent = "";
     picks.forEach((p, i) => {
       const b = document.createElement("div");
       b.className = "box picked";
       b.innerHTML = `<div class="num">${i + 1}</div>`;
       p.box = b;
-      layer.append(b);
+      boxes.append(b);
     });
-    hoverBox.style.display = hover && !picks.some((p) => p.el === hover) ? "" : "none";
-    if (hover) hoverBox.firstChild.textContent = describe(hover);
-    layer.append(hoverBox);
-    if (open) layer.append(open.card);
+    const card = open && open.card;
+    if (shown !== card) {
+      if (shown) shown.remove();
+      if (card) layer.append(card);
+      shown = card;
+    }
+    showHover();
     const n = picks.length;
     hint.textContent = n ? n + (n === 1 ? " element picked" : " elements picked") + " · Ctrl+Enter sends"
       : "Click an element to pick it · Esc stops";
@@ -116,12 +136,15 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
   let frame = 0;
   const follow = () => {
     for (const p of picks) if (p.box) place(p.box, p.el);
-    if (hover) place(hoverBox, hover);
+    if (target()) place(hoverBox, target());
     if (open) placeCard(open);
   };
   const tick = () => { follow(); frame = requestAnimationFrame(tick); };
+  // A note stays by the element first clicked, as Parent widens the pick:
+  // its button stays under the pointer, to click again.
   const placeCard = (p) => {
-    const r = p.el.getBoundingClientRect(), c = p.card, w = 300, h = c.offsetHeight || 140;
+    const at = p.at && p.at.isConnected ? p.at : p.el;
+    const r = at.getBoundingClientRect(), c = p.card, w = 300, h = c.offsetHeight || 140;
     let top = r.bottom + 8;
     if (top + h > innerHeight - 60) top = r.top - h - 8;
     top = Math.max(8, Math.min(top, innerHeight - h - 60));
@@ -140,11 +163,24 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
       const ta = c.querySelector("textarea");
       ta.value = p.note;
       ta.oninput = () => (p.note = ta.value);
-      c.querySelector(".ok").onclick = () => { edit(null); };
-      c.querySelector(".remove").onclick = () => { picks.splice(picks.indexOf(p), 1); edit(null); };
-      c.querySelector(".up").onclick = () => {
-        const up = p.el.parentElement;
-        if (up && up !== document.documentElement) { p.el = up; c.querySelector(".what").textContent = describe(up); render(); }
+      c.querySelector(".ok").onclick = () => { preview = null; edit(null); };
+      c.querySelector(".remove").onclick = () => { picks.splice(picks.indexOf(p), 1); preview = null; edit(null); };
+      const parentOf = (el) => {
+        const up = el.parentElement;
+        return up && up !== document.documentElement ? up : null;
+      };
+      const upButton = c.querySelector(".up");
+      upButton.onmouseenter = () => { preview = parentOf(p.el); showHover(); };
+      upButton.onmouseleave = () => { preview = null; showHover(); };
+      upButton.onclick = () => {
+        const up = parentOf(p.el);
+        if (!up) return;
+        p.el = up;
+        c.querySelector(".what").textContent = (picks.indexOf(p) + 1) + ". " + describe(up);
+        // The pointer stays on the button: it now shows the next parent.
+        preview = parentOf(up);
+        render();
+        c.querySelector("textarea").focus({ preventScroll: true });
       };
       p.card = c;
     }
@@ -166,20 +202,22 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
     const el = under(e);
     if (!el) return;
     let p = picks.find((p) => p.el === el);
-    if (!p) picks.push((p = { el, note: "" }));
+    if (!p) picks.push((p = { el, at: el, note: "" }));
     edit(p);
   };
+  // Moving the pointer only shows what a click would pick: the note being
+  // written keeps the keyboard. On the picker's own controls, it shows
+  // nothing of the page, but what the Parent button would pick.
   const onMove = (e) => {
-    if (mine(e)) return;
-    const el = under(e);
-    if (el !== hover) { hover = el; render(); }
+    const el = mine(e) ? null : under(e);
+    if (el !== hover) { hover = el; showHover(); }
   };
   const onKey = (e) => {
     const enter = e.key === "Enter" && (e.ctrlKey || e.metaKey);
     if (enter && picks.length) { block(e); finish(true); return; }
     if (e.key === "Escape") {
       block(e);
-      if (open) edit(null); else finish(false);
+      if (open) { preview = null; edit(null); } else finish(false);
       return;
     }
     // What the user types in a note is the note's, not the page's.
@@ -371,7 +409,32 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
   function ownText(el) {
     let t = norm([...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.data).join(" "));
     if (!t && el.children.length <= 3) t = norm(el.innerText);
-    return cut(t, 120);
+    return t.slice(0, 2000);
+  }
+  // What of a text an agent can grep for: the source wraps long text over
+  // lines, and may write some characters as entities (&rsquo;, &mdash;),
+  // so a phrase is a run of 4 to 8 words without them, ending at a word;
+  // a short text is itself. One phrase, and a second of a longer text.
+  const plainWord = /^[^\u2018\u2019\u201c\u201d\u2014\u2013\u2026&<>\u00a9\u00ae\u2122\u00a0]+$/;
+  function phrases(t) {
+    const words = t.split(" ").filter(Boolean);
+    if (words.length <= 8 && words.every((w) => plainWord.test(w))) return t ? [t] : [];
+    const runs = [];
+    let run = [];
+    const end = () => { if (run.length) runs.push(run); run = []; };
+    for (const w of words) {
+      if (!plainWord.test(w)) { end(); continue; }
+      run.push(w);
+      if (/[.!?;:]$/.test(w)) end(); // a sentence's end
+    }
+    end();
+    const chunks = runs.map((r) => (r.length <= 8 ? r : r.slice(0, 6)).join(" "));
+    const long = chunks.filter((c) => c.split(" ").length >= 4);
+    if (!long.length) {
+      const best = chunks.sort((a, b) => b.split(" ").length - a.split(" ").length)[0];
+      return best ? [best] : [];
+    }
+    return words.length > 12 && long.length > 1 ? [long[0], long[long.length - 1]] : [long[0]];
   }
   function hints(el) {
     const out = [];
@@ -380,11 +443,11 @@ label { display: flex; gap: 4px; align-items: center; color: #6e6e73; cursor: po
     for (const name of ["id", "data-testid", "data-test", "data-cy", "aria-label", "name", "alt", "title", "href", "src", "placeholder", "for", "role", "type"]) {
       const v = el.getAttribute(name);
       if (v == null || v === "" || (name === "type" && el.localName !== "input") || (name === "role" && !v)) continue;
-      out.push({ kind: name, value: cut(v, 200), count: count((e) => e.getAttribute(name) === v) });
+      // A long value's start, which greps as the whole does: no "…".
+      out.push({ kind: name, value: v.slice(0, 200), count: count((e) => e.getAttribute(name) === v) });
     }
-    const t = ownText(el);
-    if (t) {
-      const body = norm(document.body ? document.body.innerText : "");
+    const body = norm(document.body ? document.body.innerText : "");
+    for (const t of phrases(ownText(el))) {
       let n = 0;
       for (let i = body.indexOf(t); i >= 0 && n < 99; i = body.indexOf(t, i + t.length)) n++;
       out.push({ kind: "text", value: t, count: n || 1 });
