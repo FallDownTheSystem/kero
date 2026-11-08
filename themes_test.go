@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image/color"
 	"os"
 	"path/filepath"
 	"strings"
@@ -100,6 +101,32 @@ func TestOnColor(t *testing.T) {
 		if got := onColor(ui.Hex(tc.bg)) == ui.Hex("#ffffff"); got != tc.white {
 			t.Errorf("on %s white %v, want %v", tc.bg, got, tc.white)
 		}
+	}
+}
+
+// A text input's caret is the highlight, not its background, which fills
+// highlighted rows and primary buttons, when the two differ.
+func TestCaretTakesHighlight(t *testing.T) {
+	pal := lightPalette
+	pal.accent, pal.accentBg = ui.Hex("#00ffff"), ui.Hex("#ff00ff")
+	var s string
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(borderless(c, &pal))
+		ui.TextInputBase(c, &s).Width(100).Height(24).AutoFocus()
+	}, 200, 60)
+	count := func(want color.RGBA) (n int) {
+		img := tt.Image()
+		for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+			for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+				if img.RGBAAt(x, y) == want {
+					n++
+				}
+			}
+		}
+		return n
+	}
+	if hl, bg := count(color.RGBA{0, 255, 255, 255}), count(color.RGBA{255, 0, 255, 255}); hl == 0 || bg != 0 {
+		t.Errorf("caret: %d pixels of the highlight, %d of its background; want some, none", hl, bg)
 	}
 }
 

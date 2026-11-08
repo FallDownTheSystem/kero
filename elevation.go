@@ -187,9 +187,11 @@ func highlightRow(row ui.Element, pal *palette) (fg, faint ui.Color) {
 func borderless(c *ui.Context, pal *palette) *ui.Theme {
 	t := *c.Theme()
 	// MyGo draws its highlighted menu rows and checked boxes in Accent,
-	// with AccentText on them: kero's faces of the highlight. It has no
-	// accent of lines apart, so its carets and links take the face's too.
+	// with AccentText on them: kero's faces of the highlight. Its carets,
+	// links and focused inputs' borders are lines, in LineAccent: the
+	// highlight itself, which a light background of it would wash out.
 	t.Accent, t.AccentText = pal.accentBg, pal.onAccent
+	t.LineAccent = pal.accent
 	t.AccentHover, t.AccentPressed = accentFace(pal, true, false), accentFace(pal, false, true)
 	t.Selection = pal.accent.Alpha(0.25)
 	t.Border = ui.Transparent
