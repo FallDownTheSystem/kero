@@ -205,8 +205,8 @@ func TestOrchestratorReports(t *testing.T) {
 	if queued != 0 {
 		t.Fatal("reported before it went quiet")
 	}
-	d.sendReports(now.Add(reportQuiet))
 	setAgent(agent, proto.Idle)
+	d.sendReports(now.Add(reportQuiet))
 	d.flushOutbox(time.Now())
 	got := typedIn(t, out, "kero read")
 	for _, want := range []string{
@@ -237,8 +237,64 @@ func TestOrchestratorReports(t *testing.T) {
 	d.reports.mu.Lock()
 	rp := d.reports.out[o]
 	d.reports.mu.Unlock()
-	if rp == nil || !strings.Contains(strings.Join(rp.lines, "\n"), a.ID+` "alpha" closed`) {
+	if rp == nil || !strings.Contains(rp.text(), a.ID+` "alpha" closed`) {
 		t.Errorf("closing a child: %+v", rp)
+	}
+}
+
+// A child closed while news of it waits for its busy orchestrator takes
+// that news with it: its state, as idle, is stale once it's closed, and
+// the orchestrator hears only that it closed, or nothing when it closed
+// it itself; what the child wrote with kero report --to-parent still goes.
+func TestOrchestratorReportsClosedChild(t *testing.T) {
+	enterWait = 50 * time.Millisecond
+	t.Cleanup(func() { enterWait = 2 * time.Second })
+	d := testDaemon(t)
+	agent, out := agentSession(t, d) // working: not at its prompt
+	o := agent.sid
+	makeOrchestrator(d, o, "")
+	a := quietSession(t, d, proto.CreateParams{By: o, Name: "alpha"})
+	b := quietSession(t, d, proto.CreateParams{By: o, Name: "beta"})
+	pa, pb := d.findPane(a.Panes[0].ID), d.findPane(b.Panes[0].ID)
+	setAgent(pa, proto.Working)
+	setAgent(pb, proto.Working)
+	now := time.Now()
+	step := func(dt time.Duration) {
+		now = now.Add(dt)
+		d.followChildren(now)
+	}
+	step(0)
+	if _, err := d.agentSend(proto.AgentSendParams{From: a.Panes[0].ID, Text: "Done: tests pass.", ToParent: true}); err != nil {
+		t.Fatal(err)
+	}
+	// Both finish their turns, and the report falls due while the
+	// orchestrator still works.
+	setAgent(pa, proto.Idle)
+	setAgent(pb, proto.Idle)
+	step(0)
+	step(3 * time.Second)
+	step(reportQuiet)
+	d.sendReports(now)
+	// The orchestrator closes alpha itself; the user closes beta.
+	if err := d.closeSession(proto.CloseParams{ID: a.ID, By: agent.info.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.removeSession(b.ID); err != nil {
+		t.Fatal(err)
+	}
+	step(time.Second)
+	// Its turn over, the orchestrator hears what is left.
+	setAgent(agent, proto.Idle)
+	d.sendReports(now.Add(reportQuiet))
+	d.flushOutbox(time.Now())
+	got := typedIn(t, out, "kero read")
+	for _, want := range []string{"Done: tests pass.", b.ID + ` "beta" closed`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the report lacks %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "finished its turn") {
+		t.Errorf("told of a closed child's idle:\n%s", got)
 	}
 }
 
@@ -273,7 +329,7 @@ func TestOrchestratorReportsAgain(t *testing.T) {
 		d.reports.mu.Lock()
 		defer d.reports.mu.Unlock()
 		if rp := d.reports.out[o.ID]; rp != nil {
-			return strings.Count(strings.Join(rp.lines, "\n"), "waits for input")
+			return strings.Count(rp.text(), "waits for input")
 		}
 		return 0
 	}
@@ -347,7 +403,7 @@ func TestOrchestratorReportKept(t *testing.T) {
 	now := time.Now()
 	d.reports.mu.Lock()
 	d.reports.initLocked()
-	d.reports.addLocked(o.ID, "- first", now)
+	d.reports.addLocked(o.ID, "", "- first", now)
 	d.reports.mu.Unlock()
 	d.sendReports(now.Add(reportQuiet))
 	d.reports.mu.Lock()

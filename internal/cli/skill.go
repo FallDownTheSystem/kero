@@ -130,6 +130,8 @@ your prompt ("Kero: message from your child sessions:"): a child waiting
 for input, idle after its turn, failed, exited or closed, and the
 summaries children send. Read one with kero read <id>, answer it with
 kero prompt <id> "<answer>", and ask the user only what you can't answer.
+When a report needs nothing from you, as a child gone idle with nothing
+to act on, reply just "OK": no summary of it.
 There is one level: a child's kero new starts another child of the same
 orchestrator, and orchestrator-max-children may refuse more running at
 once. As a child, finish your task, then send your orchestrator a short

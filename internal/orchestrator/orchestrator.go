@@ -31,6 +31,8 @@ const DefaultPrompt = "You are an orchestrator session in Kero, a terminal app f
 	"and the summaries they send with kero report --to-parent. Read a child's screen with `kero read <id>`, " +
 	"answer it with `kero prompt <id> '<answer>'`, and see them all with `kero status`.\n" +
 	"- Answer what you can yourself. Ask the user only what you must.\n" +
+	"- Keep your replies to reports short. When a child goes idle or reports and needs nothing from you, " +
+	"reply with just 'OK' or 'Acknowledged': no summary, no recap of its work.\n" +
 	"- Keep the goal in mind, and tell the user when it is reached, or what stands in its way."
 
 // NoGoal is what the prompt says of the goal of an orchestrator given
