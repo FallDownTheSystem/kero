@@ -496,6 +496,33 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		d.noteConversations()
 		return proto.AgentSessionResult{Pane: id, Session: sid, Away: away}, nil
 
+	case "pane.turn":
+		var p proto.TurnParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		var pn *pane
+		if ids, ok := d.runningConversations()[proto.AgentSession{Agent: p.Agent, ID: p.Session}]; ok {
+			pn = d.findPane(ids[1])
+		}
+		if pn == nil && !p.BySession {
+			// A pane that runs another session of the agent's is not
+			// this one's: that session may be a subagent's.
+			if found, _ := d.agentPane(p.PID, p.Agent, p.Dir); found != nil {
+				found.mu.Lock()
+				as := found.info.AgentSession
+				found.mu.Unlock()
+				if as == nil || as.ID == p.Session {
+					pn = found
+				}
+			}
+		}
+		if pn == nil {
+			return nil, fmt.Errorf("no pane runs %s session %q", p.Agent, p.Session)
+		}
+		d.turnEnded(pn, p, time.Now())
+		return true, nil
+
 	case "conversations":
 		return d.conversations(), nil
 

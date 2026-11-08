@@ -57,7 +57,10 @@ type reports struct {
 // be, which a report may have told; worked, that it worked since;
 // reported, that it sent its orchestrator a report while it worked, and
 // reportAt, how long its transcript was then, -1 for none; replyAt,
-// where its last reply a report told of ends in its transcript.
+// where its last reply a report told of ends in its transcript, and
+// replyText, that reply. turn is the end of a turn its agent told of
+// (pane.turn), yet to be told, and hooked that its agent tells them;
+// ended is when the last turn told of ended, whose work is no news.
 type kid struct {
 	parent, name string
 	status, told proto.Status
@@ -66,6 +69,16 @@ type kid struct {
 	reported     bool
 	reportAt     int64
 	replyAt      int64
+	replyText    string
+	turn         *turnEnd
+	hooked       bool
+	ended        time.Time
+}
+
+// turnEnd is the end of a turn as a child's agent told it, at at.
+type turnEnd struct {
+	proto.TurnParams
+	at time.Time
 }
 
 // replyWait is how long after a child went idle its idle line waits for
@@ -403,6 +416,34 @@ func (d *Daemon) reportToParent(p proto.AgentSendParams) (proto.AgentSendResult,
 	return proto.AgentSendResult{State: "queued"}, nil
 }
 
+// turnEnded notes that pane pn's agent ended its turn, as its hook tells
+// at its end, so that a child's report tells the turn's end when it came
+// and with the reply it came with, not as its screen and transcript let
+// it be guessed. A turn end just told from the screen is that turn's.
+func (d *Daemon) turnEnded(pn *pane, p proto.TurnParams, now time.Time) {
+	d.mu.Lock()
+	sid := pn.sid
+	d.mu.Unlock()
+	r := &d.reports
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.initLocked()
+	r.endTurnLocked(sid, p, now)
+}
+
+// endTurnLocked notes that child id's agent ended its turn; r.mu is held.
+func (r *reports) endTurnLocked(id string, p proto.TurnParams, now time.Time) {
+	k := r.kids[id]
+	if k == nil {
+		return
+	}
+	k.hooked = true
+	if !k.worked && now.Before(k.ended.Add(replyWait)) {
+		return
+	}
+	k.turn = &turnEnd{TurnParams: p, at: now}
+}
+
 // indent puts a message's lines under its report's line.
 func indent(text string) string {
 	return "  " + strings.ReplaceAll(text, "\n", "\n  ")
@@ -490,63 +531,105 @@ func (d *Daemon) followChildren(now time.Time) {
 		}
 	}
 	for id, c := range seen {
-		k := r.kids[id]
-		if k == nil || k.parent != c.parent {
-			// New to its orchestrator: what it is in now is where it
-			// starts, no news.
-			r.kids[id] = &kid{parent: c.parent, name: c.name, status: c.status, told: c.status, since: now, worked: c.status == proto.Working}
-			continue
+		r.followLocked(id, c, now)
+	}
+}
+
+// followLocked notes what child id did since the last look, as it is now,
+// c; r.mu is held.
+func (r *reports) followLocked(id string, c childNow, now time.Time) {
+	k := r.kids[id]
+	if k == nil || k.parent != c.parent {
+		// New to its orchestrator: what it is in now is where it starts,
+		// no news.
+		r.kids[id] = &kid{parent: c.parent, name: c.name, status: c.status, told: c.status, since: now, worked: c.status == proto.Working}
+		return
+	}
+	k.name = c.name
+	changed := c.status != k.status
+	if changed {
+		k.status, k.since = c.status, now
+	}
+	// What it comes to after working is news, as a second question after
+	// the first was answered; but not the work of a turn whose end its
+	// agent told, which a screen behind it may still show.
+	if c.status == proto.Working && k.since.After(k.ended) {
+		k.worked, k.told = true, proto.Working
+	}
+	r.turnLocked(id, c, k, now)
+	if changed || c.status == k.told || now.Sub(k.since) < reportSettle {
+		return
+	}
+	k.told = c.status
+	line := ""
+	switch c.status {
+	case proto.Waiting:
+		what := "waits for input"
+		if c.kind != "" {
+			what += " (" + c.kind + ")"
 		}
-		k.name = c.name
-		if c.status == proto.Working {
-			// What it comes to after working is news, as a second
-			// question after the first was answered.
-			k.worked, k.told = true, proto.Working
+		line = fmt.Sprintf("- session %s %s %s", id, proto.Quoted(c.name), what)
+	case proto.Idle:
+		if !k.worked {
+			break
 		}
-		if c.status != k.status {
-			k.status, k.since = c.status, now
-			continue
+		// Of an agent that tells its turns' ends the end comes from it;
+		// the screen tells only one it did not, as a turn interrupted.
+		if k.turn != nil || k.hooked && now.Sub(k.since) < replyWait {
+			k.told = proto.Working
+			return
 		}
-		if c.status == k.told || now.Sub(k.since) < reportSettle {
-			continue
+		retry := false
+		line, retry = idleLine(id, c, k, nil)
+		if retry && now.Sub(k.since) < replyWait {
+			// Look again next time, as it worked still.
+			k.told = proto.Working
+			return
 		}
-		k.told = c.status
-		line := ""
-		switch c.status {
-		case proto.Waiting:
-			what := "waits for input"
-			if c.kind != "" {
-				what += " (" + c.kind + ")"
-			}
-			line = fmt.Sprintf("- session %s %s %s", id, proto.Quoted(c.name), what)
-		case proto.Idle:
-			if k.worked {
-				retry := false
-				line, retry = idleLine(id, c, k)
-				if retry && now.Sub(k.since) < replyWait {
-					// Look again next time, as it worked still.
-					k.told = proto.Working
-					continue
-				}
-			}
-		case proto.Failed:
-			line = fmt.Sprintf("- session %s %s failed", id, proto.Quoted(c.name))
-		case proto.Exited:
-			line = fmt.Sprintf("- session %s %s exited: its program ended", id, proto.Quoted(c.name))
+		k.ended = now
+	case proto.Failed:
+		line = fmt.Sprintf("- session %s %s failed", id, proto.Quoted(c.name))
+	case proto.Exited:
+		line = fmt.Sprintf("- session %s %s exited: its program ended", id, proto.Quoted(c.name))
+	}
+	if c.status != proto.Working {
+		k.worked, k.reported = false, false
+	}
+	if line == "" {
+		return
+	}
+	if c.status != proto.Idle {
+		if msg := strings.Join(strings.Fields(c.msg), " "); msg != "" {
+			line += ": " + msg
+		} else {
+			line += "."
 		}
-		if c.status != proto.Working {
-			k.worked, k.reported = false, false
-		}
-		if line == "" {
-			continue
-		}
-		if c.status != proto.Idle {
-			if msg := strings.Join(strings.Fields(c.msg), " "); msg != "" {
-				line += ": " + msg
-			} else {
-				line += "."
-			}
-		}
+	}
+	r.addLocked(c.parent, id, line, now)
+}
+
+// turnLocked tells the end of child id's turn its agent told of, once it
+// held reportSettle; r.mu is held.
+func (r *reports) turnLocked(id string, c childNow, k *kid, now time.Time) {
+	t := k.turn
+	switch {
+	case t == nil:
+		return
+	case c.status == proto.Working && k.since.After(t.at):
+		// It works again: a stop hook of its agent's went on with the
+		// turn, whose end is yet to come.
+		k.turn = nil
+		return
+	case now.Sub(t.at) < reportSettle:
+		return
+	}
+	k.turn = nil
+	line, _ := idleLine(id, c, k, t)
+	k.ended, k.worked, k.reported = t.at, false, false
+	if t.End == proto.TurnFailed {
+		k.told = proto.Failed
+	}
+	if line != "" {
 		r.addLocked(c.parent, id, line, now)
 	}
 }
@@ -558,11 +641,27 @@ func (d *Daemon) followChildren(now time.Time) {
 // conversation or ran a command, is no news, nor is one whose report
 // told its end, unless work still runs; retry tells that the reply may
 // not be in the transcript yet. Of an agent whose transcript Kero cannot
-// read, the line tells the turn's end alone. r.mu is held.
-func idleLine(id string, c childNow, k *kid) (line string, retry bool) {
-	head := fmt.Sprintf("- session %s %s finished its turn: it is idle", id, proto.Quoted(c.name))
+// read, the line tells the turn's end alone. t is the turn's end as the
+// agent told it, with its reply and background work, which the
+// transcript and screen may lag; nil for one the screen tells. r.mu is
+// held.
+func idleLine(id string, c childNow, k *kid, t *turnEnd) (line string, retry bool) {
+	name := proto.Quoted(c.name)
+	switch {
+	case t != nil && t.End == proto.TurnFailed:
+		if e := proto.OneLine(t.Error); e != "" {
+			return fmt.Sprintf("- session %s %s failed: %s", id, name, e), false
+		}
+		return fmt.Sprintf("- session %s %s failed.", id, name), false
+	case t != nil && t.End == proto.TurnInterrupted:
+		return fmt.Sprintf("- session %s %s stopped: its turn was interrupted, and it is idle.", id, name), false
+	}
+	head := fmt.Sprintf("- session %s %s finished its turn: it is idle", id, name)
 	bg := ""
-	if c.pane != nil {
+	switch {
+	case t != nil && t.HasBackground:
+		bg = t.Background
+	case c.pane != nil:
 		bg = backgroundWork(c.pane.readText(false, 0))
 	}
 	if bg != "" {
@@ -576,7 +675,10 @@ func idleLine(id string, c childNow, k *kid) (line string, retry bool) {
 	}
 	var reply convsearch.Reply
 	err := convsearch.ErrNoTranscript
-	if as != nil {
+	switch {
+	case t != nil && t.HasReply:
+		reply, err = convsearch.Reply{Text: t.Reply, At: k.replyAt}, nil
+	case as != nil:
 		reply, err = convsearch.LastReply(proto.Home(), as.Agent, as.ID)
 	}
 	switch {
@@ -585,13 +687,21 @@ func idleLine(id string, c childNow, k *kid) (line string, retry bool) {
 			return "", false
 		}
 		return head + ".", false
-	case reply.Text == "" || reply.At == k.replyAt:
+	case t != nil && strings.TrimSpace(reply.Text) == "":
+		// Its turn ended with no words, as a compaction's.
+		if bg != "" && !k.reported {
+			return head + ".", false
+		}
+		return "", false
+	// The transcript's last reply, after a turn that ended unlike its
+	// agent tells (interrupted), may be the one its hook told.
+	case t == nil && (reply.Text == "" || reply.At == k.replyAt || k.hooked && reply.Text == k.replyText):
 		return "", true
 	}
-	k.replyAt = reply.At
+	k.replyAt, k.replyText = reply.At, reply.Text
 	// The report told the turn's end when nothing but its own tool call's
 	// result came after it.
-	if k.reported && k.reportAt >= 0 {
+	if k.reported && k.reportAt >= 0 && as != nil {
 		if n, err := convsearch.TurnsAfter(proto.Home(), as.Agent, as.ID, k.reportAt); err != nil || n > 1 {
 			k.reported = false
 		}

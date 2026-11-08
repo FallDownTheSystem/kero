@@ -1,8 +1,9 @@
 // Installed by Kero (`kero skill setup`), which replaces it as Kero
 // updates; `kero skill remove` removes it. Inside Kero, it tells Pi or
 // OMP which session and pane it runs in, and tells Kero their session,
-// to resume it after Kero's background service restarts. Outside Kero it
-// does nothing.
+// to resume it after Kero's background service restarts, and each end of
+// their turns, with the reply, for an orchestrator's reports. Outside
+// Kero it does nothing.
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 
@@ -23,6 +24,38 @@ function hook(sessionID: string | undefined): Promise<string> {
     child.on("error", () => resolve(""));
     child.stdin?.end(JSON.stringify({ hook_event_name: "SessionStart", session_id: sessionID ?? "" }));
   });
+}
+
+// tell runs `kero hook <agent>` with an event Kero only takes note of.
+function tell(event: object) {
+  const child = execFile(KERO, ["hook", AGENT], { timeout: 5000 }, () => {});
+  child.on("error", () => {});
+  child.stdin?.end(JSON.stringify(event));
+}
+
+// replyOf is the text of the last assistant message of a run's messages,
+// null when it has none.
+function replyOf(messages: any): string | null {
+  if (!Array.isArray(messages)) return null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m?.role !== "assistant") continue;
+    if (typeof m.content === "string") return m.content;
+    if (!Array.isArray(m.content)) return null;
+    return m.content
+      .filter((part: any) => part?.type === "text" && typeof part.text === "string")
+      .map((part: any) => part.text)
+      .join("\n");
+  }
+  return null;
+}
+
+function sessionOf(ctx: any): string {
+  try {
+    return ctx.sessionManager.getSessionId() ?? "";
+  } catch {
+    return "";
+  }
 }
 
 export default function (pi: any) {
@@ -55,7 +88,30 @@ export default function (pi: any) {
   };
   pi.on("session_start", (_event: any, ctx: any) => sync(ctx));
   pi.on("session_switch", (_event: any, ctx: any) => sync(ctx));
-  pi.on("agent_end", (_event: any, ctx: any) => sync(ctx));
+  // The turn's end: Pi's agent_settled, once no retry or follow-up is
+  // left, with the reply of the run before it; OMP's last agent_end, which
+  // no continuation follows.
+  let reply: string | null = null;
+  pi.on("agent_end", (event: any, ctx: any) => {
+    sync(ctx);
+    reply = replyOf(event?.messages);
+    if (AGENT !== "omp" || event?.willContinue) return;
+    tell({
+      hook_event_name: "Stop",
+      session_id: sessionOf(ctx),
+      cwd: process.cwd(),
+      last_assistant_message: reply,
+      ...(event?.awaitingAsyncWork ? { background_tasks: [{ type: "background task" }] } : {}),
+    });
+  });
+  pi.on("agent_settled", (event: any, ctx: any) => {
+    if (event?.aborted) {
+      tell({ hook_event_name: "Interrupt", session_id: sessionOf(ctx), cwd: process.cwd() });
+    } else {
+      tell({ hook_event_name: "Stop", session_id: sessionOf(ctx), cwd: process.cwd(), last_assistant_message: reply });
+    }
+    reply = null;
+  });
   pi.on("turn_end", (_event: any, ctx: any) => sync(ctx));
   pi.on("before_agent_start", (event: any) => {
     if (!context) return;

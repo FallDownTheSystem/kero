@@ -36,14 +36,14 @@ func TestIdleLineReply(t *testing.T) {
 
 	write(`{"type":"user","message":{"content":"go"}}`,
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"Done. Push the branch?"}]}}`)
-	got, _ := idleLine("s1", c, k)
+	got, _ := idleLine("s1", c, k, nil)
 	if !strings.Contains(got, `s1 "alpha" finished its turn: it is idle. Its reply:`) || !strings.Contains(got, "\n  Done. Push the branch?") {
 		t.Fatalf("idle line:\n%s", got)
 	}
 	// Compacted: the same reply, which may yet come: look again.
 	write(`{"type":"system","subtype":"compact_boundary"}`,
 		`{"type":"user","isCompactSummary":true,"message":{"content":"summary"}}`)
-	if got, retry := idleLine("s1", c, k); got != "" || !retry {
+	if got, retry := idleLine("s1", c, k, nil); got != "" || !retry {
 		t.Fatalf("a compaction was news, or final: %q %v", got, retry)
 	}
 	// A turn its report told the end of: the report's tool call, its
@@ -53,12 +53,12 @@ func TestIdleLineReply(t *testing.T) {
 	k.reported, k.reportAt = true, size()
 	write(`{"type":"user","message":{"content":[{"type":"tool_result","content":""}]}}`,
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"Pushed."}]}}`)
-	if got, _ := idleLine("s1", c, k); got != "" {
+	if got, _ := idleLine("s1", c, k, nil); got != "" {
 		t.Fatalf("a reported turn was news:\n%s", got)
 	}
 	// Its reply was taken note of: the next idle with it is none either.
 	k.reported = false
-	if got, _ := idleLine("s1", c, k); got != "" {
+	if got, _ := idleLine("s1", c, k, nil); got != "" {
 		t.Fatalf("the reported reply came again:\n%s", got)
 	}
 	// A report mid-turn, and work after it: the turn's reply goes.
@@ -69,12 +69,12 @@ func TestIdleLineReply(t *testing.T) {
 		`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit"}]}}`,
 		`{"type":"user","message":{"content":[{"type":"tool_result","content":""}]}}`,
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"Which database?"}]}}`)
-	if got, _ := idleLine("s1", c, k); !strings.Contains(got, "Which database?") {
+	if got, _ := idleLine("s1", c, k, nil); !strings.Contains(got, "Which database?") {
 		t.Fatalf("a mid-turn report hid the turn's question:\n%s", got)
 	}
 	// An agent whose transcript Kero cannot read: the turn's end alone.
 	other := childNow{name: "beta", pane: &pane{}}
-	if got, _ := idleLine("s2", other, &kid{}); got != `- session s2 "beta" finished its turn: it is idle.` {
+	if got, _ := idleLine("s2", other, &kid{}, nil); got != `- session s2 "beta" finished its turn: it is idle.` {
 		t.Fatalf("no transcript: %q", got)
 	}
 }

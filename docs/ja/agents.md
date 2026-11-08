@@ -18,21 +18,21 @@ kero skill setup
 これで 2 つのものがインストールされます:
 
 - エージェントに CLI を教える **スキル**。Claude Code は `~/.claude/skills/kero` から、Codex、OpenCode などのエージェントは `~/.agents/skills/kero` から読み込みます。
-- エージェントがセッションを始めるときに実行される **フック**。エージェントに、どの Kero セッションとペインにいるかを伝えるので、それを調べる手間が省けます。また、名前のないセッションに `fix-login-redirect` のようなタスクにちなんだ名前を付けさせるので、あなたが付ける必要はありません。さらに、エージェント自身のセッションを Kero に伝えるので、再起動のあとなど kerod が再起動したとき、エージェントは[会話を再開](./sessions.md#kerod)します。
+- エージェントがセッションを始めるときに実行される **フック**。エージェントに、どの Kero セッションとペインにいるかを伝えるので、それを調べる手間が省けます。また、名前のないセッションに `fix-login-redirect` のようなタスクにちなんだ名前を付けさせるので、あなたが付ける必要はありません。さらに、エージェント自身のセッションを Kero に伝えるので、再起動のあとなど kerod が再起動したとき、エージェントは[会話を再開](./sessions.md#kerod)します。同じフックはエージェントが各ターンを終えるときにも実行され、ターンの終わりとその返答を Kero に伝えます。そのため[オーケストレーター](./orchestrators.md)は、子の画面がアイドルに見えたときではなく、ターンが終わったときにそれを知ります。このときフックは何も出力せず、バックグラウンドで実行されるので、エージェントを待たせません。
 
 フックは、インストールされているエージェントごとに、それぞれが探す場所に置かれます:
 
 | エージェント | フックの場所                                          |
 | ------------ | ----------------------------------------------------- |
-| Claude Code  | `~/.claude/settings.json` の `SessionStart` フック     |
-| Codex        | `~/.codex/hooks.json` の `SessionStart` フック         |
+| Claude Code  | `~/.claude/settings.json` の `SessionStart`、`Stop`、`StopFailure` フック |
+| Codex        | `~/.codex/hooks.json` の `SessionStart`、`Stop`、`Interrupt` フック       |
 | Pi           | 拡張機能 `~/.pi/agent/extensions/kero.ts`              |
 | OMP          | 拡張機能 `~/.omp/agent/extensions/kero.ts`             |
 | OpenCode     | プラグイン `~/.config/opencode/plugins/kero`           |
 
 `CLAUDE_CONFIG_DIR`、`CODEX_HOME`、`PI_CODING_AGENT_DIR`、`PI_CONFIG_DIR`、`XDG_CONFIG_HOME` でエージェントのファイルの場所が変わっている場合、Kero はそれに従い、各設定ファイルのほかの部分はそのままにします。
 
-1 つのエージェントだけをセットアップするには、`--agent` に `claude`、`codex`、`pi`、`omp`、`opencode` のいずれかを渡します。セットアップは一度だけです: スキルは Kero 自身のコピーへのリンクで、Kero のアップデートに合わせて更新されます。Pi、OMP、OpenCode のプラグインも Kero が最新に保ちます。`kero skill status` で、各部分が最新かどうかがわかります。
+1 つのエージェントだけをセットアップするには、`--agent` に `claude`、`codex`、`pi`、`omp`、`opencode` のいずれかを渡します。セットアップは一度だけです: スキルは Kero 自身のコピーへのリンクで、Kero のアップデートに合わせて更新されます。Pi、OMP、OpenCode のプラグインも Kero が最新に保ちます。`kero skill status` で、各部分が最新かどうかがわかります。古い Kero が入れた Claude Code や Codex のフックは、ターン終了のフックがまだないため「outdated」と表示されます。`kero skill setup` をもう一度実行すると追加されます。
 
 ```sh
 kero skill status    # インストール済みのものと、それが最新かどうか
