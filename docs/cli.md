@@ -37,6 +37,10 @@ kero restart <pane>              # start an exited pane's shell again
 kero worktree list               # the worktrees: sessions, Kero's, what removing loses, cleanup
 kero worktree status             # this session's worktree, setup, pull request, and handoff
 kero worktree handoff fix-login  # move this agent's session into a worktree of its own
+kero new --orchestrator --goal "Ship the login page"   # an orchestrator, which starts child sessions
+kero orchestrator backend [on|off]  # make a session an orchestrator, or an ordinary one again
+kero close boss --children       # an orchestrator and its children
+kero report --to-parent "Done: tests pass"   # a child's summary, to its orchestrator
 ```
 
 `kero worktree handoff <branch>` takes `--base <ref>`, the branch to start from, and `--prompt <text|->`, what the agent goes on with once it starts again in the worktree ([more](./changes.md#moving-a-session-into-a-worktree)).
@@ -55,6 +59,9 @@ kero worktree handoff fix-login  # move this agent's session into a worktree of 
 | `--preview`                 | With `--file` of a Markdown file, show it as it reads rather than its text |
 | `--worktree <branch>`       | Start it in a git worktree of its own, on a new branch ([more](./changes.md#sessions-in-their-own-worktree)) |
 | `--base <ref>`              | The branch the worktree's starts from (default: the default branch) |
+| `--orchestrator`            | Start an [orchestrator](./agents.md#orchestrator-sessions): its agent, the command given or `default-agent`, starts on the role prompt |
+| `--goal <text>`             | The orchestrator's goal                         |
+| `--parent <session\|none>`  | The orchestrator the session is a child of (default: the one of the session it's run in, if any); `none` for none |
 
 ## Typing and reading
 

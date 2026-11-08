@@ -51,6 +51,19 @@ Usage:
       --worktree <branch>         in a git worktree of its own, on a new
                                   branch from the default branch
       --base <ref>                the branch to start it from instead
+      --orchestrator              an orchestrator: its agent (cmd, else the
+                                  default-agent setting's) starts on the
+                                  role prompt, to plan the work and start
+                                  sessions for it, its children
+      --goal <text>               the orchestrator's goal
+      --parent <session|none>     the orchestrator it is a child of (default:
+                                  this session's, run in an orchestrator or
+                                  in a child of one; none for no parent)
+  kero orchestrator [session] [on|off] [--goal <text>]
+                                make a session an orchestrator, its agent
+                                given the role prompt, or with off an
+                                ordinary session again, whose children
+                                become top-level sessions
   kero split [target] [options] [-- cmd…]
                                 start a pane beside a pane, printing its id
       --right (default), --down, --left, --up
@@ -175,6 +188,8 @@ Usage:
       --remove-worktree           remove the session's own worktree too,
                                   and its branch once merged
       --force                     even if that loses changes or commits
+      --children                  an orchestrator's children too, which
+                                  otherwise become top-level sessions
   kero restart <target>         start an exited pane's shell again
   kero worktree list [-d <dir>] [--json]
                                 the repository's worktrees: the sessions in
@@ -255,6 +270,10 @@ Usage:
   kero report <state> [message] [--kind k] [--progress n] [--app a] [--id i]
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear
+  kero report --to-parent <summary…|->
+                                send this child session's orchestrator a
+                                summary of its result, with its next
+                                report of its children
   kero do <action> [key=value…]  run an action of the app, as its menus do
                                 (needs Remote Control, in Settings › Agents),
                                 as kero do files.show path=src/main.go
@@ -304,7 +323,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "projects", "skill", "hook", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -555,6 +574,9 @@ func run(args []string, host string) error {
 	case "daemon":
 		return daemonCmd(args, host)
 	case "report":
+		if slices.Contains(args, "--to-parent") {
+			return reportToParent(args)
+		}
 		return report(args)
 	case "actions":
 		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
@@ -642,8 +664,8 @@ func run(args []string, host string) error {
 	case "new":
 		f, err := parse(args,
 			map[string]string{"p": "project", "project": "project", "n": "name", "name": "name", "d": "dir", "dir": "dir", "timeout": "timeout", "t": "timeout",
-				"u": "url", "url": "url", "file": "file", "worktree": "worktree", "base": "base"},
-			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait", "preview": "preview"})
+				"u": "url", "url": "url", "file": "file", "worktree": "worktree", "base": "base", "goal": "goal", "parent": "parent"},
+			map[string]string{"f": "focus", "focus": "focus", "json": "json", "wait": "wait", "w": "wait", "preview": "preview", "orchestrator": "orchestrator"})
 		if err != nil {
 			return err
 		}
@@ -663,6 +685,23 @@ func run(args []string, host string) error {
 		if f.vals["base"] != "" && f.vals["worktree"] == "" {
 			return usageErr("kero new --base starts a --worktree's branch")
 		}
+		orch := f.set["orchestrator"]
+		switch {
+		case f.vals["goal"] != "" && !orch:
+			return usageErr("kero new --goal is an --orchestrator's")
+		case orch && (page != "" || file != ""):
+			return usageErr("kero new --orchestrator starts an agent, not a browser or an editor")
+		case orch && f.vals["parent"] != "" && f.vals["parent"] != proto.NoParent:
+			return usageErr("an orchestrator has no --parent: there is one level of them")
+		}
+		parent := f.vals["parent"]
+		if parent != "" && parent != proto.NoParent {
+			pt, err := find(st, parent)
+			if err != nil {
+				return err
+			}
+			parent = pt.s.ID
+		}
 		dir := f.vals["dir"]
 		// Here, unless the session is of another machine, whose kerod
 		// then starts it in the project's directory, or the home.
@@ -673,6 +712,7 @@ func run(args []string, host string) error {
 		if err := c.Call("create", proto.CreateParams{
 			Project: f.vals["project"], Name: f.vals["name"], Dir: dir, Command: command, URL: page, File: file, Preview: f.set["preview"],
 			After: os.Getenv("KERO_SESSION"), Worktree: f.vals["worktree"], Base: f.vals["base"],
+			Orchestrator: orch, Goal: f.vals["goal"], Parent: parent, By: current(),
 		}, &s); err != nil {
 			return err
 		}
@@ -897,6 +937,9 @@ func run(args []string, host string) error {
 			line += "\t" + p.Message
 		}
 		fmt.Println(line)
+		if t.pane == "" {
+			printTree(st, t.s)
+		}
 		return nil
 
 	case "diff":
@@ -1031,7 +1074,7 @@ func run(args []string, host string) error {
 		return nil
 
 	case "close", "kill", "restart":
-		f, err := parse(args, nil, map[string]string{"remove-worktree": "remove", "force": "force"})
+		f, err := parse(args, nil, map[string]string{"remove-worktree": "remove", "force": "force", "children": "children"})
 		if err != nil {
 			return err
 		}
@@ -1052,7 +1095,62 @@ func run(args []string, host string) error {
 		case t.pane != "" && len(t.s.Panes) > 1 && !remove:
 			return c.Call("pane.close", proto.IDParams{ID: t.pane}, nil)
 		}
-		return c.Call("close", proto.CloseParams{ID: t.s.ID, RemoveWorktree: remove, Force: f.set["force"]}, nil)
+		if err := c.Call("close", proto.CloseParams{ID: t.s.ID, RemoveWorktree: remove, Force: f.set["force"], By: current()}, nil); err != nil {
+			return err
+		}
+		// Then its children, which tell the orchestrator, gone, nothing;
+		// each as kero close closes it alone: its worktree stays, for the
+		// cleanup.
+		if f.set["children"] {
+			for _, k := range children(st, t.s.ID) {
+				if err := c.Call("close", proto.CloseParams{ID: k.ID, By: current()}, nil); err != nil {
+					return fmt.Errorf("closing child %s: %w", k.ID, err)
+				}
+			}
+		}
+		return nil
+
+	case "orchestrator":
+		f, err := parse(args, map[string]string{"goal": "goal"}, map[string]string{"json": "json"})
+		if err != nil {
+			return err
+		}
+		pos, off := f.pos, false
+		if n := len(pos); n > 0 && (pos[n-1] == "on" || pos[n-1] == "off") {
+			off, pos = pos[n-1] == "off", pos[:n-1]
+		}
+		if len(pos) > 1 {
+			return usageErr("kero orchestrator [session] [on|off] [--goal <text>]")
+		}
+		t, err := findOrCurrent(st, pos)
+		if err != nil {
+			return err
+		}
+		p := proto.OrchestratorParams{ID: t.s.ID, Off: off}
+		if g, ok := f.vals["goal"]; ok {
+			if off {
+				return usageErr("kero orchestrator off takes no --goal")
+			}
+			p.Goal = &g
+		}
+		var s proto.Session
+		if err := c.Call("orchestrator", p, &s); err != nil {
+			return err
+		}
+		if f.set["json"] {
+			return printJSON(s)
+		}
+		switch {
+		case off:
+			fmt.Printf("session %s is an ordinary session again\n", s.ID)
+		case t.s.Orchestrator:
+			fmt.Printf("session %s is an orchestrator; goal: %s\n", s.ID, orDash(s.Goal))
+		case s.Agent == "":
+			fmt.Printf("session %s is an orchestrator, but runs no agent Kero knows to give the role prompt to\n", s.ID)
+		default:
+			fmt.Printf("session %s is an orchestrator: its agent gets the role prompt\n", s.ID)
+		}
+		return nil
 
 	case "do":
 		if len(args) < 1 {
@@ -1566,8 +1664,15 @@ func listSessions(st proto.State) {
 		}
 		return proto.ShortDir(p.WorkDir())
 	}
-	for _, s := range st.Sessions {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, names[s.Project], s.DisplayName(settings.Load().SessionName), status(s.Pane),
+	for _, s := range proto.InTree(st.Sessions, func(s proto.Session) (string, string) { return s.ID, s.Parent }) {
+		name := s.DisplayName(settings.Load().SessionName)
+		switch {
+		case s.Orchestrator:
+			name += " (orchestrator)"
+		case s.Parent != "":
+			name = "↳ " + name
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, names[s.Project], name, status(s.Pane),
 			program(s.Pane), proto.Ago(s.Since, now), where(s.Pane))
 		if len(s.Panes) > 1 {
 			for _, p := range s.Panes {
@@ -1581,6 +1686,73 @@ func listSessions(st proto.State) {
 		}
 	}
 	w.Flush()
+}
+
+// children are an orchestrator's child sessions, in the sidebar's order.
+func children(st proto.State, id string) []proto.Session {
+	var kids []proto.Session
+	for _, s := range st.Sessions {
+		if s.Parent == id {
+			kids = append(kids, s)
+		}
+	}
+	return kids
+}
+
+// printTree prints, after kero status's line, a session's part in an
+// orchestrator's tree: its goal and children, or its orchestrator.
+func printTree(st proto.State, s proto.Session) {
+	name := settings.Load().SessionName
+	if s.Orchestrator {
+		fmt.Printf("orchestrator\tgoal: %s\n", orDash(s.Goal))
+		for _, k := range children(st, s.ID) {
+			line := fmt.Sprintf("  ↳ %s\t%s\t%s", k.ID, k.Status, k.DisplayName(name))
+			if k.Message != "" {
+				line += "\t" + strings.Join(strings.Fields(k.Message), " ")
+			}
+			fmt.Println(line)
+		}
+		return
+	}
+	for _, o := range st.Sessions {
+		if o.ID == s.Parent {
+			fmt.Printf("child of\t%s\t%s\n", o.ID, o.DisplayName(name))
+		}
+	}
+}
+
+// reportToParent sends this child session's orchestrator a summary of its
+// result (kero report --to-parent), which kerod puts in the orchestrator's
+// next report of its children.
+func reportToParent(args []string) error {
+	f, err := parse(args, map[string]string{"s": "session", "session": "session"}, map[string]string{"to-parent": "to-parent"})
+	if err != nil {
+		return err
+	}
+	text := strings.Join(append(f.pos, f.rest...), " ")
+	if text == "-" {
+		b, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		text = string(b)
+	}
+	if strings.TrimSpace(text) == "" {
+		return usageErr("kero report --to-parent <summary…|->")
+	}
+	from := f.vals["session"]
+	if from == "" {
+		from = current()
+	}
+	if from == "" {
+		return usageErr("kero report --to-parent: which session? Run it in a child session's pane, or give --session")
+	}
+	c, done, err := connect("")
+	if err != nil {
+		return fmt.Errorf("%w: %v", errUnreachable, err)
+	}
+	defer done()
+	return c.Call("agent.send", proto.AgentSendParams{From: from, Text: text, ToParent: true}, nil)
 }
 
 func orDash(s string) string {

@@ -37,6 +37,10 @@ kero restart <pane>              # 終了したペインのシェルを再び開
 kero worktree list               # ワークツリー: セッション、Kero が作ったか、削除で失うもの、クリーンアップ
 kero worktree status             # このセッションのワークツリー、セットアップ、プルリクエスト、ハンドオフ
 kero worktree handoff fix-login  # このエージェントのセッションを専用のワークツリーに移す
+kero new --orchestrator --goal "ログインページを出す"   # 子セッションを開始するオーケストレーター
+kero orchestrator backend [on|off]  # セッションをオーケストレーターにする、または戻す
+kero close boss --children       # オーケストレーターとその子を閉じる
+kero report --to-parent "完了: テスト成功"   # 子の要約をオーケストレーターへ
 ```
 
 `kero worktree handoff <branch>` は、起点のブランチ `--base <ref>` と、ワークツリーで再び起動したエージェントが続ける内容 `--prompt <text|->` を取ります（[詳しく](./changes.md#moving-a-session-into-a-worktree)）。
@@ -55,6 +59,9 @@ kero worktree handoff fix-login  # このエージェントのセッションを
 | `--preview`                 | `--file` の Markdown ファイルを、テキストではなく表示どおりに見せる |
 | `--worktree <branch>`       | 専用の git ワークツリーで、新しいブランチで開始する（[詳しく](./changes.md#sessions-in-their-own-worktree)） |
 | `--base <ref>`              | ワークツリーのブランチの起点（既定: デフォルトブランチ） |
+| `--orchestrator`            | [オーケストレーター](./agents.md#orchestrator-sessions)を開始する。エージェント（指定したコマンドか `default-agent`）は役割プロンプトから始める |
+| `--goal <text>`             | オーケストレーターの目標                        |
+| `--parent <session\|none>`  | 子として属するオーケストレーター（既定: 実行したセッションのもの）。`none` でどれにも属さない |
 
 ## 入力と読み取り
 

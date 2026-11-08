@@ -346,6 +346,14 @@ type Session struct {
 	// PR is the pull request the session works on, found by its branch or
 	// linked by hand, and how it stands (SessionPR); nil for none.
 	PR *SessionPR `json:"pr,omitempty"`
+	// Orchestrator: the session's agent plans the work and starts other
+	// sessions for it, its children, which Kero reports on to it; Goal is
+	// what the user gave it to reach. Parent is the orchestrator a child
+	// belongs to, "" for a session of none: one level alone, so an
+	// orchestrator has none.
+	Orchestrator bool   `json:"orchestrator,omitempty"`
+	Goal         string `json:"goal,omitempty"`
+	Parent       string `json:"parent,omitempty"`
 }
 
 // Worktree is a linked git worktree kero made for a session: Path checks
@@ -420,6 +428,34 @@ func Lead(panes []Pane, focus string) int {
 		}
 	}
 	return best
+}
+
+// InTree orders sessions as the sidebar shows them: each orchestrator's
+// children right after it, in their order, whatever order they come in;
+// a child whose orchestrator isn't among them stays where it is. ids
+// tells a session's id and its Parent.
+func InTree[S any](ss []S, ids func(S) (id, parent string)) []S {
+	present := make(map[string]bool, len(ss))
+	for _, s := range ss {
+		id, _ := ids(s)
+		present[id] = true
+	}
+	kids := map[string][]S{}
+	for _, s := range ss {
+		if _, p := ids(s); p != "" && present[p] {
+			kids[p] = append(kids[p], s)
+		}
+	}
+	out := make([]S, 0, len(ss))
+	for _, s := range ss {
+		id, p := ids(s)
+		if p != "" && present[p] {
+			continue
+		}
+		out = append(out, s)
+		out = append(out, kids[id]...)
+	}
+	return out
 }
 
 // PaneName is the name to show for a pane: the title a program in the
@@ -789,6 +825,26 @@ type (
 		// Review marks the session as the review of a pull request
 		// (Session.Review).
 		Review *PRReviewRef `json:"review,omitempty"`
+		// Orchestrator starts an orchestrator (Session.Orchestrator),
+		// working towards Goal: its agent, Command or else the
+		// default-agent setting's, starts on the role prompt (the
+		// orchestrator-prompt setting). It has no parent.
+		Orchestrator bool   `json:"orchestrator,omitempty"`
+		Goal         string `json:"goal,omitempty"`
+		// Parent is the orchestrator the session is a child of; NoParent
+		// for none. By is the session that asks for it, as an agent's kero
+		// new runs in: one an orchestrator, or a child of one, starts a
+		// child of that orchestrator, unless Parent says otherwise.
+		Parent string `json:"parent,omitempty"`
+		By     string `json:"by,omitempty"`
+	}
+	// OrchestratorParams make session ID an orchestrator, or with Off an
+	// ordinary session again, whose children become top-level sessions;
+	// Goal, when set, is its new goal.
+	OrchestratorParams struct {
+		ID   string  `json:"id"`
+		Off  bool    `json:"off,omitempty"`
+		Goal *string `json:"goal,omitempty"`
 	}
 	IDParams struct {
 		ID string `json:"id"`
@@ -796,10 +852,13 @@ type (
 	// CloseParams closes a session; RemoveWorktree removes the worktree
 	// kero made for it too, unless another session works in it, and
 	// unless changes it would lose (WorktreeCheck.Files) need Force.
+	// By is the pane that asks, as an agent's kero close: a child its
+	// own orchestrator closes isn't reported to it as closed.
 	CloseParams struct {
 		ID             string `json:"id"`
 		RemoveWorktree bool   `json:"removeWorktree,omitempty"`
 		Force          bool   `json:"force,omitempty"`
+		By             string `json:"by,omitempty"`
 	}
 	// WorktreeCheck is what removing a session's worktree would lose:
 	// Files changed, untracked ones too, and Unpushed commits on neither
@@ -1214,7 +1273,15 @@ type AgentSendParams struct {
 	// label tells too: wait-message's JSON has them apart.
 	URL   string `json:"url,omitempty"`
 	Title string `json:"title,omitempty"`
+	// ToParent sends it to the orchestrator of From's session, as kero
+	// report --to-parent does, with the next report of its children's
+	// states (Session.Parent), in place of To.
+	ToParent bool `json:"toParent,omitempty"`
 }
+
+// NoParent is CreateParams' Parent of a session that is to be no child,
+// though it is started from one.
+const NoParent = "none"
 
 // AgentSendResult tells how a message went: State is "delivered", typed
 // in already, or taken by an agent waiting; "queued", to be typed in once

@@ -37,6 +37,10 @@ kero restart <pane>              # 重新启动已退出窗格的 shell
 kero worktree list               # 工作树：其中的会话、是否由 Kero 创建、删除会丢失什么、清理
 kero worktree status             # 本会话的工作树、设置、拉取请求，以及能否移交
 kero worktree handoff fix-login  # 把这个代理的会话移入专属工作树
+kero new --orchestrator --goal "上线登录页"   # 启动编排器，由它启动子会话
+kero orchestrator backend [on|off]  # 把会话设为编排器，或改回普通会话
+kero close boss --children       # 关闭编排器及其子会话
+kero report --to-parent "完成：测试通过"   # 子会话把总结发给编排器
 ```
 
 `kero worktree handoff <branch>` 接受 `--base <ref>`（新分支的起点）和 `--prompt <text|->`（代理在工作树中重新启动后接着做的事）（[详情](./changes.md#moving-a-session-into-a-worktree)）。
@@ -55,6 +59,9 @@ kero worktree handoff fix-login  # 把这个代理的会话移入专属工作树
 | `--preview`                 | 对 `--file` 的 Markdown 文件，按渲染后的样子显示，而不是文本 |
 | `--worktree <branch>`       | 在专属的 git 工作树中、以新分支启动（[详情](./changes.md#sessions-in-their-own-worktree)） |
 | `--base <ref>`              | 工作树分支的起点（默认：默认分支）              |
+| `--orchestrator`            | 启动[编排器](./agents.md#orchestrator-sessions)：其智能体（给定的命令或 `default-agent`）以角色提示词开始 |
+| `--goal <text>`             | 编排器的目标                                    |
+| `--parent <session\|none>`  | 会话所属的编排器（默认：运行命令的会话所属的编排器）；`none` 表示不属于任何编排器 |
 
 ## 输入与读取
 

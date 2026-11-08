@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/commitmsg"
+	"kero/internal/orchestrator"
 	"kero/internal/proto"
 
 	"kero/locales"
@@ -26,9 +27,12 @@ const (
 	kindTerminal = "terminal"
 	kindFile     = "file"
 	kindBrowser  = "browser"
+	// kindOrchestrator: an agent that plans the work and starts sessions
+	// for it, its children, towards the goal the user gives it.
+	kindOrchestrator = "orchestrator"
 )
 
-var sessionKinds = []string{kindAgent, kindTerminal, kindFile, kindBrowser}
+var sessionKinds = []string{kindAgent, kindOrchestrator, kindTerminal, kindFile, kindBrowser}
 
 // newSessionAsk is the New Session dialog: the host, and the session as
 // newSessionOn would start it, which the dialog changes; dir, the
@@ -56,6 +60,8 @@ type newSessionAsk struct {
 	// names the branch while newBranch is "" (newsession_branch.go);
 	// naming, the id of the naming under way, and nameErr why it failed.
 	task, naming, nameErr string
+	// goal is an orchestrator's.
+	goal string
 	// loads counts the loads of the branches and worktrees, of which the
 	// last alone fills them in, as a removal loads them anew.
 	loads int
@@ -270,8 +276,14 @@ func (w *newSessionAsk) params(there string) (p proto.CreateParams, ok bool) {
 			return p, false
 		}
 		if w.taskShown() && there == "" {
-			p.Command = agentArgs(p.Command, w.task)
+			p.Command = orchestrator.AgentArgs(p.Command, w.task)
 		}
+	case kindOrchestrator:
+		// kerod gives it the role prompt, of its goal.
+		if p.Command = commitmsg.Words(w.agent); len(p.Command) == 0 {
+			return p, false
+		}
+		p.Orchestrator, p.Goal = true, strings.TrimSpace(w.goal)
 	case kindBrowser:
 		p.URL = proto.BlankURL
 	}
@@ -348,7 +360,7 @@ func (a *App) newSessionView(c *ui.Context, pal *palette) {
 		}
 		// No taller than the window, which the fields scroll in.
 		_, winH := c.Size()
-		floating(panel.Width(480).MaxHeight(winH-40).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(title)
+		floating(panel.Width(540).MaxHeight(winH-40).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(title)
 		// Return starts the session from wherever the focus is in the
 		// dialog, but in a field, which takes it itself.
 		if panel.Shortcut(0, ui.KeyEnter) {
@@ -359,10 +371,13 @@ func (a *App) newSessionView(c *ui.Context, pal *palette) {
 			ui.Column(c).Shrink(0).Gap(10).AlignItems(ui.Stretch).Children(func() {
 				a.kindPicker(c, pal, w)
 				ui.Text(c, a.kindDetail(w)).FontSize(12.5).TextColor(pal.textMuted).LineHeight(1.4)
-				if w.kind == kindAgent {
+				if w.kind == kindAgent || w.kind == kindOrchestrator {
 					formRow(c, pal, "agent", locales.NewSessionAgentCommand(), func() {
 						popup(c, "agent", &w.agent, a.set.AgentCommands(), func(cmd string) string { return cmd }, 260, pal)
 					})
+				}
+				if w.kind == kindOrchestrator {
+					a.goalField(c, pal, w, &start)
 				}
 				if w.worktreeKind() {
 					a.worktreeFields(c, pal, w, &start, &there)
@@ -401,7 +416,7 @@ func formRow(c *ui.Context, pal *palette, key, label string, control func()) {
 	})
 }
 
-var kindIcons = map[string]*ui.SVG{kindAgent: sparklesIcon, kindTerminal: terminalIcon, kindFile: newFileIcon, kindBrowser: globeIcon}
+var kindIcons = map[string]*ui.SVG{kindAgent: sparklesIcon, kindOrchestrator: orchestratorIcon, kindTerminal: terminalIcon, kindFile: newFileIcon, kindBrowser: globeIcon}
 
 func kindLabel(kind string) string {
 	switch kind {
@@ -411,6 +426,8 @@ func kindLabel(kind string) string {
 		return locales.NewSessionTerminal()
 	case kindFile:
 		return locales.NewSessionFile()
+	case kindOrchestrator:
+		return locales.NewSessionOrchestrator()
 	}
 	return locales.NewSessionBrowser()
 }
@@ -449,6 +466,8 @@ func (a *App) kindDetail(w *newSessionAsk) string {
 		return locales.NewSessionAgentDetail()
 	case kindTerminal:
 		return locales.NewSessionTerminalDetail()
+	case kindOrchestrator:
+		return locales.NewSessionOrchestratorDetail()
 	case kindFile:
 		dir := w.p.Dir
 		if dir == "" {

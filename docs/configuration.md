@@ -132,6 +132,7 @@ terminal, such as Powerlevel10k's, would leave a copy behind at each width.
 | `notify-sound`      | `false` | Play a sound with notifications                |
 | `dock-badge`        | `waiting` | What the Dock icon's badge counts: `waiting`, `waiting-and-unread` or `off` |
 | `dock-bounce`       | `false` | Bounce the Dock icon once when a session comes to need you |
+| `notify-children`   | `false` | Notify of an [orchestrator's](./agents.md#orchestrator-sessions) child sessions too; off, only the orchestrator's own waiting and errors notify |
 
 ## Agents
 
@@ -140,6 +141,8 @@ terminal, such as Powerlevel10k's, would leave a copy behind at each width.
 | `remote-control` | `true`  | Let `kero do` and `kero focus` drive the app        |
 | `agent`          | `claude` | A command an agent session of the [New Session dialog](./sessions.md#new-session-dialog) may start, run in your shell as your own commands and functions are, as `cc` or `codex --full-auto`. Repeat it for each agent |
 | `default-agent`  | `claude` | The agent the New Session dialog has chosen as it opens |
+| `orchestrator-prompt` |  | An orchestrator's role prompt, its agent's first message, with `\n` between lines; `{goal}` in it is its goal, `{agent}` `default-agent`; empty for Kero's |
+| `orchestrator-max-children` | `0` | How many of an orchestrator's child sessions may run at once: `kero new` refuses another; `0` for any number |
 | `resume-command-claude` |  | The command that resumes a Claude Code conversation, as Resume, the [search](./sessions.md#search) and restoring sessions start it, run in your shell as your own commands and functions are, as `cc --yolo --resume {session}`; `{session}` in it is the conversation's ID, else the ID goes at its end; empty for `claude --resume {session}` |
 | `resume-command-codex` |  | The same for Codex; empty for `codex resume {session}` |
 | `resume-command-pi` |  | The same for Pi; empty for `pi --session {session}` |
