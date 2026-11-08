@@ -5,6 +5,22 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.9
+
+- **An orchestrator hears of a child's turn when it ends**: Kero's hook
+  in Claude Code and Codex now runs at the end of each turn too, and
+  tells Kero the turn's end, its reply and what still runs in the
+  background, so that a report no longer waits on the child's screen and
+  transcript, nor reports a compaction as a turn. The Pi, OMP and OpenCode
+  plugins tell it as well
+- A turn that fails, as on an API error, is reported with its error, and
+  a Codex or Pi turn you interrupt as interrupted
+- An interrupted Claude Code turn, or an agent with no hook, is reported
+  from its screen, as before
+- **Run `kero skill setup` once** to add the new hooks: `kero skill status`
+  shows a Claude Code or Codex hook of an older Kero as outdated. The hooks
+  run in the background and print nothing, so they never hold an agent up
+
 ## 2.1.35-fork.8
 
 - **An orchestrator hears what its child said**: when a child of Claude
