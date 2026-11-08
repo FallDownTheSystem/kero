@@ -157,7 +157,7 @@ func Read(ctx context.Context, name, dir, domain string) (*Import, error) {
 	ws, _, err := websocket.Dial(ctx, url, nil)
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("%s did not let Kero connect in time: allow it in the browser's dialog", Title(name))
+			return nil, fmt.Errorf("%s did not let Kero connect in time: allow it in the browser's dialog, which may show in another of its windows, an installed app's (PWA) too", Title(name))
 		}
 		return nil, off(err)
 	}
@@ -184,7 +184,7 @@ func Read(ctx context.Context, name, dir, domain string) (*Import, error) {
 // closes it, or ctx ran out.
 func browserGone(name string, ctx context.Context, err error) error {
 	if ctx.Err() != nil {
-		return fmt.Errorf("%s did not answer in time: allow Kero in the browser's dialog", Title(name))
+		return fmt.Errorf("%s did not answer in time: allow Kero in the browser's dialog, which may show in another of its windows, an installed app's (PWA) too", Title(name))
 	}
 	return fmt.Errorf("%s closed the connection (%v): allow Kero in the browser's dialog", Title(name), err)
 }

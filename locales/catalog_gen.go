@@ -5060,11 +5060,11 @@ func (msgs Messages) SetSignInsFrom(browser string) string {
 	return Catalog.Format(msgs.locale, "setSignInsFrom", map[string]any{"browser": browser})
 }
 
-// SetSignInsAllow says "Connecting: allow Kero in the dialog {browser} shows."
+// SetSignInsAllow says "Connecting: allow Kero in the dialog {browser} shows. It can show in any of its windows, an installed app's (PWA) too…"
 // in the language the app shows.
 func SetSignInsAllow(browser string) string { return In(i18n.Locale()).SetSignInsAllow(browser) }
 
-// SetSignInsAllow says "Connecting: allow Kero in the dialog {browser} shows."
+// SetSignInsAllow says "Connecting: allow Kero in the dialog {browser} shows. It can show in any of its windows, an installed app's (PWA) too…"
 // in the language of msgs.
 func (msgs Messages) SetSignInsAllow(browser string) string {
 	return Catalog.Format(msgs.locale, "setSignInsAllow", map[string]any{"browser": browser})

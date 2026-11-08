@@ -681,7 +681,7 @@
       }
     }
   },
-  "setSignInsAllow": "Connecting: allow Kero in the dialog {browser} shows.",
+  "setSignInsAllow": "Connecting: allow Kero in the dialog {browser} shows. It can show in any of its windows, an installed app's (PWA) too, often the one used last.",
   "@setSignInsAllow": {
     "placeholders": {
       "browser": {

@@ -498,7 +498,7 @@
   "setSignIns": "登录状态",
   "setSignInsNote": "浏览器面板有自己的 Cookie 和网站存储。导入会取来你浏览器的 Cookie，以及其打开的标签页中网站的存储。许多网页应用把登录状态保存在存储中：请先在浏览器中打开该网站。在浏览器中打开 chrome://inspect/#remote-debugging 或 edge://inspect/#remote-debugging 并开启远程调试，再在它弹出的对话框中允许 Kero。这些就是登录凭据：会话中的智能体也能使用它们。",
   "setSignInsFrom": "从正在运行的 {browser} 导入 Cookie 及其打开的标签页的存储。",
-  "setSignInsAllow": "正在连接：请在 {browser} 弹出的对话框中允许 Kero。",
+  "setSignInsAllow": "正在连接：请在 {browser} 弹出的对话框中允许 Kero。对话框可能出现在浏览器的任一窗口中，包括已安装应用（PWA）的窗口，通常是最近使用的那个。",
   "setSignInsDone": "已从 {browser} 导入 {count, plural, other {# 个 Cookie}}。{sites, plural, =0 {打开的标签页中没有网站存储。} other {另导入了 # 个网站的存储。}}",
   "setSignInsLeftOut": "有 {count, plural, other {# 项}}未导入：kero browser cookies import {name} 会列出它们。",
   "setSignInsImport": "导入",

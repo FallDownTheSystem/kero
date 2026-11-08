@@ -498,7 +498,7 @@
   "setSignIns": "サインイン",
   "setSignInsNote": "ブラウザペインは独自の Cookie とサイトのストレージを持ちます。インポートすると、いつものブラウザの Cookie と、開いているタブのサイトのストレージを取り込みます。多くのウェブアプリはサインインをストレージに保存するので、先にそのサイトをブラウザで開いてください。ブラウザで chrome://inspect/#remote-debugging または edge://inspect/#remote-debugging を開いてリモートデバッグをオンにし、表示されるダイアログで Kero を許可してください。これらはサインインそのものなので、セッション内のエージェントも使えます。",
   "setSignInsFrom": "実行中の {browser} の Cookie と、開いているタブのストレージをインポートします。",
-  "setSignInsAllow": "接続中: {browser} のダイアログで Kero を許可してください。",
+  "setSignInsAllow": "接続中: {browser} のダイアログで Kero を許可してください。ダイアログはブラウザのどのウインドウにも出ることがあり、インストールしたアプリ（PWA）のウインドウにも出ます。多くは最後に使ったウインドウです。",
   "setSignInsDone": "{browser} から {count, plural, other {# 件の Cookie}}をインポートしました。{sites, plural, =0 {開いているタブにサイトのストレージはありませんでした。} other {# サイトのストレージもインポートしました。}}",
   "setSignInsLeftOut": "{count, plural, other {# 件}}を除外しました。一覧は kero browser cookies import {name} で表示されます。",
   "setSignInsImport": "インポート",
