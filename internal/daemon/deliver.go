@@ -95,6 +95,10 @@ func (d *Daemon) agentSend(p proto.AgentSendParams) (proto.AgentSendResult, erro
 	default:
 		return proto.AgentSendResult{}, fmt.Errorf("agent.send: no mode %q (push or wait)", p.Mode)
 	}
+	if p.ToParent {
+		// With its orchestrator's next report of its children.
+		return d.reportToParent(p)
+	}
 	d.mu.Lock()
 	var from *pane
 	var info proto.Pane

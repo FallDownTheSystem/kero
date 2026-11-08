@@ -1,8 +1,6 @@
 package main
 
 import (
-	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -139,28 +137,4 @@ func (a *App) nameButton(c *ui.Context, pal *palette, w *newSessionAsk) {
 		w.newBranch = ""
 		a.nameBranch(w, nil)
 	}
-}
-
-// agentArgs is an agent's command given the task as its first prompt: in
-// place of {prompt} in it, else after it, as OpenCode's --prompt.
-func agentArgs(command []string, task string) []string {
-	task = strings.TrimSpace(task)
-	if task == "" || len(command) == 0 {
-		return command
-	}
-	out := slices.Clone(command)
-	placed := false
-	for i, word := range out {
-		if strings.Contains(word, promptPlaceholder) {
-			out[i], placed = strings.ReplaceAll(word, promptPlaceholder, task), true
-		}
-	}
-	switch {
-	case placed:
-	case strings.TrimSuffix(filepath.Base(strings.ReplaceAll(out[0], `\`, "/")), ".exe") == "opencode":
-		out = append(out, "--prompt", task)
-	default:
-		out = append(out, task)
-	}
-	return out
 }

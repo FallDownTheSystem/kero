@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/commitmsg"
+	"kero/internal/orchestrator"
 	"kero/internal/proto"
 
 	"kero/locales"
@@ -270,7 +271,7 @@ func (w *newSessionAsk) params(there string) (p proto.CreateParams, ok bool) {
 			return p, false
 		}
 		if w.taskShown() && there == "" {
-			p.Command = agentArgs(p.Command, w.task)
+			p.Command = orchestrator.AgentArgs(p.Command, w.task)
 		}
 	case kindBrowser:
 		p.URL = proto.BlankURL

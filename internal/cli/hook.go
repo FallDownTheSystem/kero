@@ -153,6 +153,16 @@ func hookContext(c *client.Client, pane, sid string, away bool) string {
 		case s.Name != "":
 			fmt.Fprintf(&b, " The user knows this session as %q: leave its name alone.", s.Name)
 		}
+		// Its part in an orchestrator's tree, which a resumed conversation,
+		// or one started anew in the session, keeps to.
+		switch {
+		case s.Orchestrator:
+			fmt.Fprintf(&b, " This session is an orchestrator: plan and delegate, starting sessions for the work with kero new, "+
+				"which become your children; Kero types their reports into your conversation. Goal: %s", orDash(s.Goal))
+		case s.Parent != "":
+			fmt.Fprintf(&b, " This session is a child of orchestrator session %s, which Kero tells when you finish, wait for input or fail: "+
+				"once your task is done, send it a short summary of the result with `kero report --to-parent \"<summary>\"`.", s.Parent)
+		}
 	}
 	return b.String()
 }

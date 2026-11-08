@@ -2,6 +2,7 @@ package proto
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +54,19 @@ func TestDirName(t *testing.T) {
 	p := Pane{Dir: `C:\Users\egoist\dev\mygo`}
 	if got := p.PaneName(); got != "mygo" {
 		t.Errorf("pane named %q", got)
+	}
+}
+
+// The sidebar's order puts an orchestrator's children right after it,
+// wherever they were; a child of an orchestrator not listed stays put.
+func TestInTree(t *testing.T) {
+	type s struct{ id, parent string }
+	in := []s{{"c1", "o"}, {"x", ""}, {"o", ""}, {"y", ""}, {"c2", "o"}, {"lost", "gone"}}
+	var got []string
+	for _, v := range InTree(in, func(v s) (string, string) { return v.id, v.parent }) {
+		got = append(got, v.id)
+	}
+	if want := "x o c1 c2 y lost"; strings.Join(got, " ") != want {
+		t.Errorf("order %v, want %s", got, want)
 	}
 }

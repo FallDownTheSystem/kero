@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 // session is a row of the sidebar: a task's panes, in a layout. d.mu
@@ -26,6 +27,10 @@ type session struct {
 	worktree          *proto.Worktree // made for it (proto.Session.Worktree)
 	review            *proto.PRReviewRef
 	pr                *prState // its pull request and its watch (prwatch.go), nil for none
+	// orchestrator, goal and parent are its part in an orchestrator's
+	// tree (orchestrator.go): parent is the orchestrator's id.
+	orchestrator bool
+	goal, parent string
 }
 
 // state returns what the subscribers see.
@@ -57,6 +62,7 @@ func (d *Daemon) sessionInfo(s *session) proto.Session {
 	info := proto.Session{
 		ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed,
 		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree, Review: s.review, PR: s.pr.link(),
+		Orchestrator: s.orchestrator, Goal: s.goal, Parent: d.parentLocked(s),
 		Panes: make([]proto.Pane, 0, len(s.panes)),
 	}
 	// Panes in the layout's order: left to right, top to bottom.
@@ -312,7 +318,20 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 		return proto.Session{}, err
 	}
 	d.mu.Lock()
+	// A child goes in its orchestrator's project, under it in the
+	// sidebar, while the orchestrator has room for it.
+	parent, err := d.newParentLocked(p)
+	if err == nil && parent != nil {
+		err = d.childRoomLocked(parent, settings.Load().OrchestratorMaxChildren)
+	}
+	if err != nil {
+		d.mu.Unlock()
+		return proto.Session{}, err
+	}
 	project := d.projectFor(p.Project, dir)
+	if parent != nil {
+		project = parent.project
+	}
 	if dir == "" {
 		for _, pr := range d.projects {
 			if pr.ID == project {
@@ -321,6 +340,9 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 		}
 	}
 	d.mu.Unlock()
+	if p.Orchestrator {
+		p.Command = orchestratorCommand(p.Command, p.Goal)
+	}
 	var wt *proto.Worktree
 	if p.Worktree != "" {
 		// In the project of the repository, where the sidebar shows it
@@ -330,7 +352,11 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 		}
 		dir = wt.Path
 	}
-	s := &session{id: newID(), project: project, name: strings.TrimSpace(p.Name), created: time.Now().UnixMilli(), worktree: wt, review: p.Review}
+	s := &session{id: newID(), project: project, name: strings.TrimSpace(p.Name), created: time.Now().UnixMilli(), worktree: wt, review: p.Review,
+		orchestrator: p.Orchestrator, goal: strings.TrimSpace(p.Goal)}
+	if parent != nil {
+		s.parent = parent.id
+	}
 	first := p
 	if wt != nil {
 		// Or the setup script's terminal, which the agent waits for.
@@ -347,6 +373,14 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 		if after := d.findSessionLocked(p.After); after != nil {
 			i = slices.Index(d.sessions, after) + 1
 		}
+	}
+	// A child after its orchestrator's last, as the sidebar shows them.
+	if o := d.sessionByIDLocked(s.parent); o != nil {
+		last := o
+		if kids := d.childrenLocked(o); len(kids) > 0 {
+			last = kids[len(kids)-1]
+		}
+		i = slices.Index(d.sessions, last) + 1
 	}
 	d.sessions = slices.Insert(d.sessions, i, s)
 	d.panes[pn.info.ID] = pn
@@ -533,6 +567,7 @@ func (d *Daemon) removePane(id string) error {
 		}
 		if len(s.panes) == 0 {
 			d.sessions = slices.DeleteFunc(d.sessions, func(o *session) bool { return o == s })
+			d.unlinkLocked(s)
 		} else if s.focus == id {
 			s.focus = s.panes[0].info.ID
 		}
@@ -560,6 +595,7 @@ func (d *Daemon) closePanes(ref string) ([]*pane, error) {
 		return nil, fmt.Errorf("no session %s", ref)
 	}
 	d.sessions = slices.DeleteFunc(d.sessions, func(o *session) bool { return o == s })
+	d.unlinkLocked(s)
 	panes := s.panes
 	for _, p := range panes {
 		delete(d.panes, p.info.ID)
@@ -586,6 +622,15 @@ func (d *Daemon) move(p proto.MoveParams) error {
 	}
 	if p.Project != "" {
 		s.project = d.projectFor(p.Project, "")
+	}
+	// An orchestrator takes its children along; a child taken to another
+	// project leaves its orchestrator's tree, which stays in its own.
+	if s.orchestrator {
+		for _, k := range d.childrenLocked(s) {
+			k.project = s.project
+		}
+	} else if o := d.sessionByIDLocked(d.parentLocked(s)); o != nil && o.project != s.project {
+		s.parent = ""
 	}
 	i := slices.Index(d.sessions, s)
 	d.sessions = slices.Delete(d.sessions, i, i+1)

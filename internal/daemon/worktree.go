@@ -224,6 +224,7 @@ func (d *Daemon) worktreeSharedLocked(s *session, path string) bool {
 // unless another session works in it. Without p.Force it refuses, keeping
 // the session, when removing it would lose changes or commits.
 func (d *Daemon) closeSession(p proto.CloseParams) error {
+	d.quietClose(p)
 	if !p.RemoveWorktree {
 		return d.removeSession(p.ID)
 	}

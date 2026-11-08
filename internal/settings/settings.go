@@ -98,6 +98,10 @@ type Settings struct {
 	NotifySound   bool `json:"notifySound"`
 	DockBadge     bool `json:"dockBadge"`
 	BounceDock    bool `json:"bounceDock"`
+	// NotifyChildren notifies of orchestrators' children as of any other
+	// session; off, their changes show in the sidebar alone, and only the
+	// orchestrator's own notify, as it hears of its children itself.
+	NotifyChildren bool `json:"notifyChildren"`
 
 	// Agents
 	RemoteControl bool `json:"remoteControl"` // kero focus and kero do drive the app
@@ -115,6 +119,13 @@ type Settings struct {
 	// has chosen as it opens.
 	Agents       []string `json:"agents"`
 	DefaultAgent string   `json:"defaultAgent"`
+	// OrchestratorPrompt is an orchestrator's role prompt, its first
+	// message: {goal} in it is its goal, {agent} DefaultAgent; "" for
+	// Kero's own (orchestrator.DefaultPrompt). OrchestratorMaxChildren is
+	// how many children an orchestrator may have running at once, 0 for
+	// any number.
+	OrchestratorPrompt      string `json:"orchestratorPrompt"`
+	OrchestratorMaxChildren int    `json:"orchestratorMaxChildren"`
 
 	// Git
 	GitStatus  bool   `json:"gitStatus"`  // each pane's branch and changes, which kerod follows
