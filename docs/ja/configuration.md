@@ -197,6 +197,8 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | --------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
 | `browser-block-ads`   | `true`                     | ブラウザペインで[広告とトラッカーをブロック](./panes.md#blocking-ads)する           |
 | `browser-filter-list` | `easylist`、`easyprivacy`  | ブロックに使うフィルタリスト。リストごとに繰り返す。空欄ならなし                    |
+| `browser-devtools`    | `false`                    | Kero の起動時に、Playwright や chrome-devtools-mcp 向けの [DevTools ポート](./panes.md#driving-panes-with-devtools-tools)を `127.0.0.1` に開く。Windows のみ |
+| `browser-devtools-port` | `9222`                   | `browser-devtools` が開くポート。`0` ならブラウザが選び、`kero browser devtools` が表示する |
 
 `browser-filter-list` には、Kero が提供するリストの名前か、Adblock Plus 構文の任意のリストの `https://` URL を指定します:
 

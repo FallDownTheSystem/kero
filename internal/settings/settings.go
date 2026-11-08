@@ -196,6 +196,12 @@ type Settings struct {
 	// Browser
 	BlockAds bool     `json:"blockAds"` // in browser panes, with AdLists
 	AdLists  []string `json:"adLists"`  // the filter lists: adblock.Catalog's IDs, or URLs
+	// DevTools opens a DevTools port on 127.0.0.1 that Playwright,
+	// chrome-devtools-mcp and other tools drive the browser panes through,
+	// on Windows, as Kero starts: the port DevToolsPort, or for 0, one
+	// the browser picks.
+	DevTools     bool `json:"devTools"`
+	DevToolsPort int  `json:"devToolsPort"`
 
 	// Keyboard: accelerators by action, over the defaults; "" unbinds.
 	Shortcuts map[string]string `json:"shortcuts,omitempty"`
@@ -320,6 +326,7 @@ func Default() Settings {
 		FileDarkTheme:   "terminal",
 		BlockAds:        true,
 		AdLists:         slices.Clone(adblock.DefaultLists),
+		DevToolsPort:    9222,
 
 		WorktreeFromOrigin: true,
 
@@ -736,6 +743,9 @@ func (s *Settings) normalize() {
 	oneOf(&s.PRNotify, d.PRNotify, "review", "all", "off")
 	if s.PRPollMinutes < 1 || s.PRPollMinutes > 1440 {
 		s.PRPollMinutes = d.PRPollMinutes
+	}
+	if s.DevToolsPort < 0 || s.DevToolsPort > 65535 {
+		s.DevToolsPort = d.DevToolsPort
 	}
 	oneOf(&s.PRWatchWake, d.PRWatchWake, "all", "failures", "off")
 	oneOf(&s.AppIcon, d.AppIcon, AppIcons...)

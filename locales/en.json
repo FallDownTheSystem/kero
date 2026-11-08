@@ -715,6 +715,19 @@
   },
   "setSignInsLeftOut": "{count, plural, one {Left out # item} other {Left out # items}}: kero browser cookies import {name} lists them.",
   "setSignInsImport": "Import",
+  "setDevToolsGroup": "Automation",
+  "setDevToolsNote": "With the port open, any program on this computer can drive the browser panes' pages, signed in as they are. Run kero browser devtools to see the port and each pane's page there.",
+  "setDevTools": "DevTools port",
+  "setDevToolsDetail": "Opens port {port} on 127.0.0.1 for Playwright, chrome-devtools-mcp and Lighthouse, which see every pane as a page of one browser. Change the port with browser-devtools-port in the configuration.",
+  "@setDevToolsDetail": {
+    "placeholders": {
+      "port": {
+        "type": "String"
+      }
+    }
+  },
+  "setDevToolsDetailPicked": "Opens a port the browser picks on 127.0.0.1, for Playwright, chrome-devtools-mcp and Lighthouse, which see every pane as a page of one browser.",
+  "setDevToolsRestart": "Quit Kero and start it again for this to take effect.",
   "changesUnmodified": "{count, plural, one {# unmodified line} other {# unmodified lines}}",
   "@changesUnmodified": {
     "placeholders": {

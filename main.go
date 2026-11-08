@@ -81,6 +81,8 @@ func runApp() {
 	// Updates from Kero's GitHub releases, in a window of native UI.
 	mygo.Use(native.Plugin)
 	a := newApp()
+	// The DevTools port, as the browser panes' browser starts.
+	mygo.App.SetBrowserArguments(devToolsArguments(a.set))
 	loadFonts()
 	mygo.Theme.SetSource(mygo.ThemeSource(a.set.Appearance))
 	mygo.App.SetLocale(localeTag(a.set.Language))

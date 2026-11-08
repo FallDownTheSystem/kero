@@ -173,6 +173,8 @@ kero browser eval 'document.title'
 
 `kero do` と同じく、`kero browser` には **設定 › エージェント** のリモート操作と、アプリが開いていることが必要です。
 
+Windows では、Playwright や chrome-devtools-mcp など DevTools プロトコルを使うツールも、**DevTools ポート** が開くポートからペインを操作できます（[手順](./panes.md#driving-panes-with-devtools-tools)）。`kero browser devtools` はポートと、そこでの各ペインのページをターゲット ID、URL、タイトルで表示します。`--json` で JSON として表示します。リモート操作は不要です。
+
 ## 過去の会話
 
 ```sh

@@ -178,6 +178,8 @@ Browser panes share their cookies, and keep them when Kero restarts. `cookies` s
 
 Like `kero do`, `kero browser` needs Remote Control, in **Settings › Agents**, and the app to be open.
 
+On Windows, tools built on the DevTools protocol, such as Playwright and chrome-devtools-mcp, can drive the panes too, through the port **DevTools port** opens ([how](./panes.md#driving-panes-with-devtools-tools)). `kero browser devtools` prints the port, and each pane's page there, by its target id, URL and title; `--json` prints them as JSON. It needs no Remote Control.
+
 ## Past conversations
 
 ```sh

@@ -199,3 +199,44 @@ Kero はブラウザが既定とみなすプロファイルの Cookie をコピ�
 多くのウェブアプリは、サインインを Cookie ではなくサイトの localStorage や IndexedDB に保存します。ブラウザはサイトのストレージをそのサイトのページにしか渡さないため、Kero はブラウザで開いているタブのサイトのストレージもコピーします: インポートの前にそのアプリをブラウザで開き、インポート後にペインを再読み込みしてください。`kero browser cookies import chrome --domain app.example.com` は 1 つのサイトの分をコピーし、そのサイトのタブが開いていなければ、読み取るあいだだけ見えないタブを開きます。サイトのデータベースは、ペインにある同じ名前のものを置き換えます。8 MB を超えるデータベースや、サイトの暗号鍵のようにブラウザが自分で保持していてページからコピーできない値は除外し、何を除外したかを知らせます。サインインが切れたら、もう一度インポートしてください。ペインは Kero を再起動しても Cookie を保持し、`kero browser` のコマンドはこれまでどおりページで使えます。
 
 Chrome と Edge は、ほかのプログラムがプロファイルを開いたり Cookie のファイルを読んだりすることを許さず、そのプロファイルでは `--remote-debugging-port` も無視します。`chrome://inspect` のスイッチが唯一の方法で、接続のたびに確認されます。Cookie はサインインそのものです: セッション内のエージェントも、あなたと同じようにページや `kero browser cookies save` を使えます。
+
+<a id="driving-panes-with-devtools-tools"></a>
+### DevTools のツールでペインを操作する
+
+Windows では、ブラウザペインが DevTools ポート（Chrome が `--remote-debugging-port` で開くもの）を開けます。DevTools プロトコルを使うツール、[Playwright](https://playwright.dev) の `connectOverCDP`、[chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp)、Puppeteer、Lighthouse から使えます。**設定 › ブラウザ** で **DevTools ポート** をオンにするか、[構成](./configuration.md#browser)で `browser-devtools = true` を設定し、Kero を終了して起動し直してください: ペインのブラウザは起動時にポートを開きます。
+
+各ペインは 1 つのブラウザのページなので、すべてのペインが 1 つのポートを共有します。`browser-devtools-port` で変えない限り `http://127.0.0.1:9222` です。ツールはペインを URL かタイトルで選びます。`kero browser devtools` は、ポートとそこでの各ペインのページを表示します:
+
+```sh
+$ kero browser devtools
+http://127.0.0.1:9222
+3f2a	8C1D…	http://localhost:5173/	Vite App
+9b41	E07A…	https://github.com/egoist/kero	GitHub - egoist/kero
+```
+
+`--json` は `endpoint`、`port`、`browser`（ブラウザの WebSocket URL）と、ペインごとに `pane`、`session`、`url`、`title`、`target`、`webSocketDebuggerUrl` を表示します。まだページを表示していないペインにはターゲットがありません: 一度表示してください。
+
+Playwright では、ポートに接続し、ペインのページを URL で選びます:
+
+```js
+import { chromium } from "playwright";
+
+const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
+const page = browser.contexts()[0].pages().find((p) => p.url().startsWith("http://localhost:5173"));
+await page.getByRole("button", { name: "Add" }).click();
+await browser.close(); // 切断するだけで、ペインは開いたまま
+```
+
+chrome-devtools-mcp には、ポートを `--browser-url` として渡します（Claude Code、またはほかのエージェントの MCP 設定で）:
+
+```sh
+claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+```
+
+```json
+{ "mcpServers": { "chrome-devtools": { "command": "npx", "args": ["chrome-devtools-mcp@latest", "--browser-url=http://127.0.0.1:9222"] } } }
+```
+
+エージェントはペインのページを一覧し、URL かタイトルで 1 つを選びます。ペインは `kero split --url` などで Kero で開いてください: ツールが自分で開く新しいタブやウィンドウはペインではなく、WebView2 が拒むこともあります。
+
+ポートは `127.0.0.1` だけで待ち受けますが、このコンピュータ上のどのプログラムも、ペインのページをサインインした状態のまま確認なしに使えるようになります: 使うあいだだけオンにしてください。ポートは Windows だけです: macOS と Linux のシステムの Web ビューはポートを開かないので、そこでは `kero browser` でペインを操作します。

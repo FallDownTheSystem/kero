@@ -557,6 +557,8 @@ var keys = []key{
 			}
 			return nil
 		}},
+	boolKey("browser-devtools", "open a DevTools port on 127.0.0.1, which Playwright, chrome-devtools-mcp and Lighthouse drive the browser panes through, as Kero starts: Windows only; any program on this computer can then use the panes' pages and their sign-ins", func(s *Settings) *bool { return &s.DevTools }),
+	numberKey("browser-devtools-port", "the port browser-devtools opens: 0 for one the browser picks, which kero browser devtools tells", func(s *Settings) float64 { return float64(s.DevToolsPort) }, func(s *Settings, n float64) { s.DevToolsPort = int(n) }),
 	{name: "keybind", doc: "<keys>=<action>, over the defaults, as cmd+shift+d=pane.split.down; <keys>=unbind frees keys; see kero actions", list: true,
 		get: func(s *Settings) []string {
 			var out []string

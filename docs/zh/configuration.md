@@ -197,6 +197,8 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | --------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
 | `browser-block-ads`   | `true`                     | 在浏览器窗格中[拦截广告和跟踪器](./panes.md#blocking-ads)                            |
 | `browser-filter-list` | `easylist`、`easyprivacy`  | 用于拦截的过滤列表。每个列表写一行；留空则不使用任何列表                            |
+| `browser-devtools`    | `false`                    | Kero 启动时在 `127.0.0.1` 上为 Playwright 和 chrome-devtools-mcp 打开 [DevTools 端口](./panes.md#driving-panes-with-devtools-tools)。仅限 Windows |
+| `browser-devtools-port` | `9222`                   | `browser-devtools` 打开的端口；`0` 表示由浏览器选择，`kero browser devtools` 会打印它 |
 
 `browser-filter-list` 可以填 Kero 内置列表的名称，也可以填任意 Adblock Plus 语法列表的 `https://` URL：
 

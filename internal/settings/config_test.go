@@ -246,6 +246,31 @@ func TestRemoteUpdatesOptIn(t *testing.T) {
 	}
 }
 
+// The DevTools port is off until the user opens it, on 9222 unless told
+// another, or 0 for one the browser picks; a port that can't be keeps
+// the default.
+func TestDevToolsPort(t *testing.T) {
+	if d := Default(); d.DevTools || d.DevToolsPort != 9222 {
+		t.Errorf("default: devtools %v on %d, want off on 9222", d.DevTools, d.DevToolsPort)
+	}
+	for _, tt := range []struct {
+		file string
+		on   bool
+		port int
+	}{
+		{"browser-devtools = true\n", true, 9222},
+		{"browser-devtools = true\nbrowser-devtools-port = 9333\n", true, 9333},
+		{"browser-devtools-port = 0\n", false, 0},
+		{"browser-devtools-port = 65536\n", false, 9222},
+		{"browser-devtools-port = -1\n", false, 9222},
+	} {
+		s, probs := parse(tt.file)
+		if s.DevTools != tt.on || s.DevToolsPort != tt.port || len(probs) != 0 {
+			t.Errorf("%q: devtools %v on %d, problems %q; want %v on %d", tt.file, s.DevTools, s.DevToolsPort, probs, tt.on, tt.port)
+		}
+	}
+}
+
 func TestMigratesSettingsJSON(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("KERO_HOME", dir)

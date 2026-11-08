@@ -172,6 +172,8 @@ kero browser eval 'document.title'
 
 和 `kero do` 一样，`kero browser` 需要开启 **设置 › 智能体** 中的 **远程控制**，并且 app 处于打开状态。
 
+在 Windows 上，Playwright、chrome-devtools-mcp 等基于 DevTools 协议的工具也能通过 **DevTools 端口** 打开的端口操作窗格（[步骤](./panes.md#driving-panes-with-devtools-tools)）。`kero browser devtools` 打印端口，以及每个窗格在其中的页面（目标 id、URL 和标题）；`--json` 以 JSON 打印。它不需要远程控制。
+
 ## 过去的对话
 
 ```sh

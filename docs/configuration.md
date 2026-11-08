@@ -196,6 +196,8 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | --------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
 | `browser-block-ads`   | `true`                     | [Block ads and trackers](./panes.md#blocking-ads) in browser panes                  |
 | `browser-filter-list` | `easylist`, `easyprivacy`  | A filter list to block with. Repeat it for each list; leave it empty for none       |
+| `browser-devtools`    | `false`                    | Open a [DevTools port](./panes.md#driving-panes-with-devtools-tools) on `127.0.0.1` for Playwright and chrome-devtools-mcp, as Kero starts. Windows only |
+| `browser-devtools-port` | `9222`                   | The port `browser-devtools` opens; `0` for one the browser picks, which `kero browser devtools` prints |
 
 `browser-filter-list` takes the lists Kero offers by name, or the `https://` URL of any list in Adblock Plus syntax:
 
