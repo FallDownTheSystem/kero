@@ -36,16 +36,26 @@ func Within(dir string) bool {
 }
 
 // Command is the agent Ama runs: the ama-agent setting's, else the
-// default agent's, as words.
+// default agent's, as words, with ama-agent-args after it.
 func Command(s settings.Settings) []string {
 	agent := strings.TrimSpace(s.AmaAgent)
 	if agent == "" {
 		agent = s.DefaultAgent
 	}
-	if w := commitmsg.Words(agent); len(w) > 0 {
-		return w
+	w := commitmsg.Words(agent)
+	if len(w) == 0 {
+		w = []string{settings.DefaultAgentCommand}
 	}
-	return []string{settings.DefaultAgentCommand}
+	return append(w, commitmsg.Words(s.AmaAgentArgs)...)
+}
+
+// Prompt is Ama's role prompt: the ama-prompt setting's, else Kero's
+// (Instructions).
+func Prompt(s settings.Settings) string {
+	if p := strings.TrimSpace(s.AmaPrompt); p != "" {
+		return p + "\n"
+	}
+	return Instructions
 }
 
 // SkillAgent is the kind of agent kero skill setup installs for, of an
@@ -70,15 +80,19 @@ func SkillAgent(command []string) string {
 // Prepare makes Ama's folder, with Kero's instructions as they are in
 // this Kero, and the user's file, empty, once; and Claude Code's status
 // line off or on, as the settings ask.
-func Prepare() error {
+func Prepare() error { return PrepareWith(settings.Load()) }
+
+// PrepareWith is Prepare of the settings set, as they changed.
+func PrepareWith(set settings.Settings) error {
 	dir := Dir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	// A settings file the user broke stays as they left it, and Ama starts
 	// all the same.
-	StatusLine(settings.Load().AmaHideStatusLine)
-	for name, text := range map[string]string{"CLAUDE.md": claudeFile(), "AGENTS.md": agentsFile()} {
+	StatusLine(set.AmaHideStatusLine)
+	prompt := Prompt(set)
+	for name, text := range map[string]string{"CLAUDE.md": claudeFile(prompt), "AGENTS.md": agentsFile(prompt)} {
 		if err := writeIfChanged(filepath.Join(dir, name), text); err != nil {
 			return err
 		}
@@ -166,14 +180,14 @@ func sameJSON(x, y json.RawMessage) bool {
 }
 
 // keroHeader opens the files Kero writes.
-const keroHeader = "<!-- Written by Kero, which rewrites this file as it updates: put your own instructions in USER.md, beside it. -->\n\n"
+const keroHeader = "<!-- Written by Kero, which rewrites this file as it updates, from its role prompt for Ama or yours (Settings › Agents › Ama › Role prompt, ama-prompt): put your own instructions in USER.md, beside it. -->\n\n"
 
 // claudeFile is CLAUDE.md: Claude Code imports USER.md itself (@USER.md).
-func claudeFile() string { return keroHeader + Instructions + "\n@USER.md\n" }
+func claudeFile(prompt string) string { return keroHeader + prompt + "\n@USER.md\n" }
 
 // agentsFile is AGENTS.md, for Codex and the other agents, which import
 // nothing: the instructions tell them to read USER.md.
-func agentsFile() string { return keroHeader + Instructions }
+func agentsFile(prompt string) string { return keroHeader + prompt }
 
 const userTemplate = `# My instructions for Ama
 

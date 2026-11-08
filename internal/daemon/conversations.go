@@ -17,6 +17,7 @@ import (
 	"kero/internal/ama"
 	"kero/internal/convsearch"
 	"kero/internal/proto"
+	"kero/internal/settings"
 )
 
 // kerod remembers the coding agents' conversations that its panes ran, as
@@ -372,10 +373,12 @@ func (d *Daemon) resumeConversation(p proto.ConversationParams) (proto.Session, 
 			return proto.Session{}, fmt.Errorf("the conversation's directory %s is gone", proto.ShortDir(c.Dir))
 		}
 	}
+	// A conversation of Ama's folder goes on as Ama's, in its place, with
+	// the arguments Ama's agent gets.
+	isAma := p.Ama || ama.Within(c.Dir)
 	info, err := d.create(proto.CreateParams{
-		Project: project, Name: c.Name, Dir: c.Dir, Command: resumeCommand(&as), After: p.After, Cols: p.Cols, Rows: p.Rows,
-		// A conversation of Ama's folder goes on as Ama's, in its place.
-		Ama: p.Ama || ama.Within(c.Dir),
+		Project: project, Name: c.Name, Dir: c.Dir, Command: withArgs(resumeCommand(&as), roleArgs(settings.Load(), isAma, false)), After: p.After, Cols: p.Cols, Rows: p.Rows,
+		Ama: isAma,
 	})
 	if err != nil {
 		return info, err

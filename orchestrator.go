@@ -224,6 +224,9 @@ func (a *App) orchestratorSettings(c *ui.Context, pal *palette) {
 				s.OrchestratorMaxChildren = n
 			}
 		})
+		settingRow(c, pal, locales.SetAgentArgs(), locales.SetOrchestratorArgsDetail(), func() {
+			textField(c, "orch-args", &s.OrchestratorAgentArgs, "--model opus", 220, pal).Font("monospace")
+		})
 		promptSetting(c, pal, "orch-prompt", locales.SetOrchestratorPrompt(), locales.SetOrchestratorPromptDetail("{goal}", "{agent}"), &s.OrchestratorPrompt, orchestrator.DefaultPrompt, &a.ss.prompts[4])
 	})
 }

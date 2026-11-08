@@ -236,13 +236,41 @@ func (d *Daemon) childRoomLocked(o *session, most int) error {
 }
 
 // orchestratorCommand is the command an orchestrator starts: its agent,
-// command or the default-agent setting's, given the role prompt.
+// command or the default-agent setting's, with orchestrator-agent-args,
+// given the role prompt.
 func orchestratorCommand(command []string, goal string) []string {
 	set := settings.Load()
 	if len(command) == 0 {
 		command = commitmsg.Words(set.DefaultAgent)
 	}
+	command = withArgs(command, set.OrchestratorAgentArgs)
 	return orchestrator.AgentArgs(command, orchestrator.Prompt(set.OrchestratorPrompt, goal, set.DefaultAgent))
+}
+
+// roleArgs are the arguments the settings give the agent of Ama's session,
+// or of an orchestrator, after its command, as it starts or resumes.
+func roleArgs(set settings.Settings, ama, orchestrator bool) string {
+	switch {
+	case ama:
+		return set.AmaAgentArgs
+	case orchestrator:
+		return set.OrchestratorAgentArgs
+	}
+	return ""
+}
+
+// withArgs puts args after an agent's command: as words, or as written
+// after a line the shell runs (oneLine, as a resume command of the
+// user's), which takes them as the shell reads them.
+func withArgs(command []string, args string) []string {
+	args = strings.TrimSpace(args)
+	if args == "" || len(command) == 0 {
+		return command
+	}
+	if oneLine(command) {
+		return []string{command[0] + " " + args}
+	}
+	return append(slices.Clone(command), commitmsg.Words(args)...)
 }
 
 // setOrchestrator makes a session an orchestrator, or an ordinary session
