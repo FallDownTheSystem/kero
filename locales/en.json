@@ -2632,7 +2632,25 @@
   "amaNewChat": "New Chat",
   "amaHistory": "History",
   "amaNoHistory": "No past conversations yet",
-  "amaClear": "Clear",
+  "amaDeleteChat": "Delete Chat",
+  "amaDeleteChatTitle": "Delete “{name}”?",
+  "@amaDeleteChatTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "amaDeleteChatDetail": "It leaves Ama's History; its agent keeps its own record of the chat.",
+  "amaDeleteAll": "Delete All Chats…",
+  "amaDeleteAllTitle": "Delete {n} of Ama's chats?",
+  "@amaDeleteAllTitle": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "amaCantStart": "Ama didn't start",
   "amaNoPR": "no open pull request #{number}",
   "@amaNoPR": {

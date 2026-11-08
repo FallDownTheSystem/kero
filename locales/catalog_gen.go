@@ -15248,14 +15248,54 @@ func (msgs Messages) AmaNoHistory() string {
 	return Catalog.Format(msgs.locale, "amaNoHistory", nil)
 }
 
-// AmaClear says "Clear"
+// AmaDeleteChat says "Delete Chat"
 // in the language the app shows.
-func AmaClear() string { return In(i18n.Locale()).AmaClear() }
+func AmaDeleteChat() string { return In(i18n.Locale()).AmaDeleteChat() }
 
-// AmaClear says "Clear"
+// AmaDeleteChat says "Delete Chat"
 // in the language of msgs.
-func (msgs Messages) AmaClear() string {
-	return Catalog.Format(msgs.locale, "amaClear", nil)
+func (msgs Messages) AmaDeleteChat() string {
+	return Catalog.Format(msgs.locale, "amaDeleteChat", nil)
+}
+
+// AmaDeleteChatTitle says "Delete “{name}”?"
+// in the language the app shows.
+func AmaDeleteChatTitle(name string) string { return In(i18n.Locale()).AmaDeleteChatTitle(name) }
+
+// AmaDeleteChatTitle says "Delete “{name}”?"
+// in the language of msgs.
+func (msgs Messages) AmaDeleteChatTitle(name string) string {
+	return Catalog.Format(msgs.locale, "amaDeleteChatTitle", map[string]any{"name": name})
+}
+
+// AmaDeleteChatDetail says "It leaves Ama's History; its agent keeps its own record of the chat."
+// in the language the app shows.
+func AmaDeleteChatDetail() string { return In(i18n.Locale()).AmaDeleteChatDetail() }
+
+// AmaDeleteChatDetail says "It leaves Ama's History; its agent keeps its own record of the chat."
+// in the language of msgs.
+func (msgs Messages) AmaDeleteChatDetail() string {
+	return Catalog.Format(msgs.locale, "amaDeleteChatDetail", nil)
+}
+
+// AmaDeleteAll says "Delete All Chats…"
+// in the language the app shows.
+func AmaDeleteAll() string { return In(i18n.Locale()).AmaDeleteAll() }
+
+// AmaDeleteAll says "Delete All Chats…"
+// in the language of msgs.
+func (msgs Messages) AmaDeleteAll() string {
+	return Catalog.Format(msgs.locale, "amaDeleteAll", nil)
+}
+
+// AmaDeleteAllTitle says "Delete {n} of Ama's chats?"
+// in the language the app shows.
+func AmaDeleteAllTitle(n int) string { return In(i18n.Locale()).AmaDeleteAllTitle(n) }
+
+// AmaDeleteAllTitle says "Delete {n} of Ama's chats?"
+// in the language of msgs.
+func (msgs Messages) AmaDeleteAllTitle(n int) string {
+	return Catalog.Format(msgs.locale, "amaDeleteAllTitle", map[string]any{"n": n})
 }
 
 // AmaCantStart says "Ama didn't start"

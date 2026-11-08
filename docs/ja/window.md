@@ -51,7 +51,7 @@ Kero のウインドウは、左から右に 3 つの部分でできています
 
 ## Ama のウインドウ
 
-[Ama](./ama.md) は、カエルから、または <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd>（macOS では <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>A</kbd>）で、Kero のウインドウの上に専用のウインドウで開きます。ヘッダーには **新しいチャット**、**履歴**、**クリア** があります。
+[Ama](./ama.md) は、カエルから、または <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd>（macOS では <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>A</kbd>）で、Kero のウインドウの上に専用のウインドウで開きます。ヘッダーには **新しいチャット**、過去のチャットの削除もできる **履歴**、**閉じる** があります。
 
 ## Kero のアイコン
 

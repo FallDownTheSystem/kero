@@ -60,6 +60,8 @@ type amaState struct {
 	claimed string
 	// history are Ama's past conversations, as History lists them.
 	history []proto.Conversation
+	// confirm asks before History deletes chats, in Ama's window.
+	confirm *confirmation
 }
 
 // amaSession is Ama's session, of this machine's kerod; nil while it has
@@ -202,18 +204,6 @@ func (a *App) resumeAma(cv proto.Conversation) {
 	}()
 }
 
-// clearAma clears the screen of Ama's terminal, as ⌘K does a pane's.
-func (a *App) clearAma() {
-	if s := a.amaSession(); s != nil {
-		if p := s.FocusPane(); p != nil {
-			if e := a.terms[p.ID]; e != nil && e.stream != nil {
-				st := e.stream
-				go st.Clear(proto.ClearScreen)
-			}
-		}
-	}
-}
-
 // amaButton is the frog at the bottom of the sessions sidebar, which opens
 // and closes Ama's window, with a dot while Ama waits for the user or has
 // an answer the user hasn't read.
@@ -258,7 +248,7 @@ func (a *App) amaButton(c *ui.Context, pal *palette) {
 }
 
 // amaView is Ama's window: a header, which drags it, with New Chat,
-// History, Clear and Close, over Ama's terminal. It closes as its Close,
+// History and Close, over Ama's terminal. It closes as its Close,
 // the system's close or Ama's shortcut asks, not as the user presses
 // Escape, which is the agent's.
 func (a *App) amaView(c *ui.Context) {
@@ -286,12 +276,14 @@ func (a *App) amaView(c *ui.Context) {
 			ui.Spacer(c)
 			iconButton(c, "ama-new", plusIcon, locales.AmaNewChat(), pal, a.startAma)
 			a.amaHistoryButton(c, pal)
-			iconButton(c, "ama-clear", eraserIcon, locales.AmaClear(), pal, a.clearAma)
 			iconButton(c, "ama-close", closeIcon, a.tip(locales.CommonClose(), amaAction), pal, a.closeAma)
 		})
 		ui.Box(c).Height(1).Shrink(0).Background(pal.text.Alpha(0.07))
 		ui.Box(c.Key("ama-body")).Grow(1).MinHeight(0).Padding(6, 4, 6, 12).Background(lookFor(c).term.Background).Children(func() { a.amaBody(c, pal, s) })
 	})
+	if a.ama.confirm != nil {
+		confirmDialog(c, pal, &a.ama.confirm)
+	}
 }
 
 // amaBody is Ama's terminal, or what keeps it.
@@ -344,7 +336,8 @@ func (a *App) amaBody(c *ui.Context, pal *palette, s *proto.Session) {
 }
 
 // amaHistoryButton lists Ama's past conversations, the last first, to go
-// on with one: the one running is checked.
+// on with one: the one running is checked. Below them, Delete Chat and
+// Delete All Chats delete the others, once the user confirms.
 func (a *App) amaHistoryButton(c *ui.Context, pal *palette) {
 	b := ui.ButtonBase(c.Key("ama-history")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.AmaHistory()).Tooltip(locales.AmaHistory())
 	if b.Hovered() {
@@ -361,20 +354,66 @@ func (a *App) amaHistoryButton(c *ui.Context, pal *palette) {
 			if i >= 30 {
 				break
 			}
-			label := cv.Label()
-			if label == "" {
-				label = cv.ID
-			}
-			label = menuName(strings.TrimSpace(label)) + " · " + proto.Ago(cv.Updated, now)
+			label := menuName(amaChatLabel(cv)) + " · " + proto.Ago(cv.Updated, now)
 			running := cv.Session != ""
 			if m.Item(label).Checked(running).Disabled(running).Chosen() {
 				a.resumeAma(cv)
 			}
 		}
+		// The chat that runs can't be deleted: its agent still writes it.
+		past := slices.DeleteFunc(slices.Clone(a.ama.history), func(cv proto.Conversation) bool { return cv.Session != "" })
+		m.Separator()
+		m.Submenu(locales.AmaDeleteChat(), func(sm *ui.Menu) {
+			for i, cv := range past {
+				if i >= 30 {
+					break
+				}
+				if sm.Item(menuName(amaChatLabel(cv)) + " · " + proto.Ago(cv.Updated, now)).Chosen() {
+					a.askDeleteAmaChats([]proto.Conversation{cv})
+				}
+			}
+		}).Disabled(len(past) == 0)
+		if m.Item(locales.AmaDeleteAll()).Disabled(len(past) == 0).Chosen() {
+			a.askDeleteAmaChats(past)
+		}
 	})
 	if b.Clicked() {
 		a.loadAmaHistory()
 	}
+}
+
+// amaChatLabel names one of Ama's chats in History: its title, else its id.
+func amaChatLabel(cv proto.Conversation) string {
+	if label := strings.TrimSpace(cv.Label()); label != "" {
+		return label
+	}
+	return cv.ID
+}
+
+// askDeleteAmaChats asks, in Ama's window, before deleting Ama's chats in
+// list: one by its name, more by their count.
+func (a *App) askDeleteAmaChats(list []proto.Conversation) {
+	cf := &confirmation{open: true, action: locales.EndedDelete(), destroy: true, run: func() { a.deleteAmaChats(list) }}
+	if len(list) == 1 {
+		cf.title, cf.detail = locales.AmaDeleteChatTitle(amaChatLabel(list[0])), locales.AmaDeleteChatDetail()
+	} else {
+		cf.title, cf.detail = locales.AmaDeleteAllTitle(len(list)), locales.EndedDeleteAllDetail()
+	}
+	a.ama.confirm = cf
+}
+
+// deleteAmaChats has kerod forget Ama's chats, which leaves History, as
+// the sidebar's Delete does an ended conversation; the agent keeps its
+// own transcript of each.
+func (a *App) deleteAmaChats(list []proto.Conversation) {
+	h := a.local()
+	gone := map[[2]string]bool{}
+	for _, cv := range list {
+		a.forgetConversation(h, cv)
+		gone[[2]string{cv.Agent, cv.ID}] = true
+	}
+	// One pass after the calls: list may share history's array.
+	a.ama.history = slices.DeleteFunc(a.ama.history, func(o proto.Conversation) bool { return gone[[2]string{o.Agent, o.ID}] })
 }
 
 // reviewFromAgent starts an agent's review of a pull request, as kero pr

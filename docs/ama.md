@@ -24,7 +24,7 @@ Ama opens in a window of its own, above Kero's. Drag its header to move it, even
 
 - **New Chat** starts a fresh conversation.
 - **History** goes back to one of Ama's earlier conversations.
-- **Clear** clears the screen.
+- **History** also deletes chats: **Delete Chat** deletes one, and **Delete All Chats…** all but the one running, each after you confirm. A deleted chat leaves Ama's History; its agent keeps its own record of it.
 
 To put the window back above the frog, at its first size, right-click the frog and choose **Reset Window Position**, or click **Reset** in **Settings › Agents › Ama**.
 
