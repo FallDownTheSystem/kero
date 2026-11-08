@@ -85,7 +85,7 @@ var All = []Action{
 	// No shortcut until the user gives it one: a global shortcut takes its
 	// keys from every other app, as Control+` from VS Code's terminal.
 	{ID: "quickTerminal.toggle", Title: "Quick Terminal", Menu: "View", Remote: true, Global: true},
-	// Ama, the helper agent's popover, at the sessions sidebar's bottom.
+	// Ama, the helper agent's window, from the sessions sidebar's frog.
 	{ID: "ama.toggle", Title: "Ama", Menu: "View", Keys: "CmdOrCtrl+Shift+A"},
 }
 

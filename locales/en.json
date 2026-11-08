@@ -2663,5 +2663,27 @@
       }
     }
   },
-  "setAmaFolder": "Ama's folder"
+  "setAmaFolder": "Ama's folder",
+  "setAmaFontSize": "Text size",
+  "setAmaFontSizeDetail": "The size of the text in Ama's window. Automatic is a point under the terminals' Size, and zooms with it.",
+  "setAmaFontAuto": "Automatic ({size} pt)",
+  "@setAmaFontAuto": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "setAmaStatusLine": "Hide Claude Code's status line",
+  "setAmaStatusLineDetail": "For Ama alone: Kero puts an empty status line in {file}, which leaves a blank row in its place. Your own Claude Code settings stay as they are.",
+  "@setAmaStatusLineDetail": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "setAmaWindow": "Window",
+  "setAmaWindowDetail": "Ama's window keeps the size and place you give it, relative to Kero's window. Reset puts it back above the frog.",
+  "amaResetWindow": "Reset Window Position"
 }

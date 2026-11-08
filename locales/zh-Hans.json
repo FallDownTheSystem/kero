@@ -1510,5 +1510,13 @@
   "setAmaDefaultAgent": "默认代理（{agent}）",
   "setAmaInstructions": "你的指示",
   "setAmaInstructionsDetail": "{file}：Ama 会先读它，再读 Kero 自己的指示（Kero 更新时会重写）；Kero 从不修改此文件",
-  "setAmaFolder": "Ama 的文件夹"
+  "setAmaFolder": "Ama 的文件夹",
+  "setAmaFontSize": "文字大小",
+  "setAmaFontSizeDetail": "Ama 窗口中文字的大小。“自动”比终端的大小小 1 磅，并随其缩放。",
+  "setAmaFontAuto": "自动（{size} pt）",
+  "setAmaStatusLine": "隐藏 Claude Code 的状态栏",
+  "setAmaStatusLineDetail": "仅对 Ama：Kero 在 {file} 中设置一个空的状态栏，原处会留下一行空行。你自己的 Claude Code 设置保持不变。",
+  "setAmaWindow": "窗口",
+  "setAmaWindowDetail": "Ama 的窗口会记住你设定的大小和位置（相对于 Kero 的窗口）。“重置”会让它回到青蛙上方。",
+  "amaResetWindow": "重置窗口位置"
 }

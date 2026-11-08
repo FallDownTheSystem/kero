@@ -1627,6 +1627,27 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 				return cmd
 			}, 220, pal)
 		})
+		settingRow(c, pal, locales.SetAmaFontSize(), locales.SetAmaFontSizeDetail(), func() {
+			sizes := []float32{0, 10, 11, 12, 13, 14, 15, 16, 18, 20}
+			if !slices.Contains(sizes, s.AmaFontSize) {
+				sizes = append(sizes, s.AmaFontSize)
+				slices.Sort(sizes)
+			}
+			popup(c, "ama-size", &s.AmaFontSize, sizes, func(v float32) string {
+				if v == 0 {
+					return locales.SetAmaFontAuto(strconv.FormatFloat(float64(max(s.FontSize-1, 8)), 'f', -1, 32))
+				}
+				return strconv.FormatFloat(float64(v), 'f', -1, 32) + " pt"
+			}, 190, pal)
+		})
+		settingRow(c, pal, locales.SetAmaStatusLine(), locales.SetAmaStatusLineDetail(proto.ShortDir(ama.SettingsFile())), func() {
+			toggle(c.Key("ama-status"), &s.AmaHideStatusLine, pal)
+		})
+		settingRow(c, pal, locales.SetAmaWindow(), locales.SetAmaWindowDetail(), func() {
+			if button(c, "ama-window", locales.SetResetAction(), "", false, pal) {
+				a.resetAmaWindow()
+			}
+		})
 		settingRow(c, pal, locales.SetAmaInstructions(), locales.SetAmaInstructionsDetail(proto.ShortDir(ama.UserFile())), func() {
 			if button(c, "ama-user", locales.CommonOpen(), "", true, pal) {
 				if err := ama.Prepare(); err != nil {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
@@ -19,9 +20,9 @@ import (
 // Ama, after amagaeru, the Japanese tree frog, is the app's helper agent:
 // an agent session of this machine's kerod, of no project, in a folder of
 // its own (internal/ama), that starts and manages the user's sessions for
-// them. The sidebar lists it apart: the frog button at its bottom opens a
-// popover with its terminal, which it keeps running as it closes, as the
-// quick terminal keeps its session.
+// them. The sidebar lists it apart: the frog button at its bottom opens
+// its window (ama_window.go) with its terminal, which it keeps running as
+// the window closes, as the quick terminal keeps its session.
 
 const amaAction = "ama.toggle"
 
@@ -39,24 +40,21 @@ stroke-linecap="round" stroke-linejoin="round">
   </g>
 </svg>`))
 
-// amaState is Ama's popover's, on the main thread.
+// amaState is Ama's window's, on the main thread.
 type amaState struct {
 	open     bool
-	creating bool   // its session is being made
-	err      string // why it has none
+	win      *mygo.Window   // made as it first opens
+	placed   mygo.Rectangle // where the app put it last (amaMoved)
+	save     *time.Timer    // saves where the user moved it
+	creating bool           // its session is being made
+	err      string         // why it has none
 	// focus asks for the keyboard in its terminal once it shows; claimed
-	// is the pane whose size the popover took last.
+	// is the pane whose size the window took last.
 	focus   bool
 	claimed string
 	// history are Ama's past conversations, as History lists them.
 	history []proto.Conversation
 }
-
-// The popover's size, which its terminal takes.
-const (
-	amaW = 620
-	amaH = 460
-)
 
 // amaSession is Ama's session, of this machine's kerod; nil while it has
 // none.
@@ -81,14 +79,10 @@ func (a *App) toggleAma() {
 	}
 }
 
-// openAma opens Ama's popover, starting Ama first if it has no session.
+// openAma opens Ama's window, starting Ama first if it has no session.
 func (a *App) openAma() {
 	m := &a.ama
 	m.open, m.focus, m.err, m.claimed = true, true, "", ""
-	if a.prefs.SidebarHidden {
-		a.prefs.SidebarHidden = false
-		a.savePrefs()
-	}
 	if a.amaSession() == nil {
 		a.startAma()
 	}
@@ -96,12 +90,24 @@ func (a *App) openAma() {
 	a.reportView()
 	if a.win != nil {
 		a.showWindow()
+		a.showAmaWindow()
 	}
 }
 
-// closeAma closes the popover: Ama runs on, for the next time.
+// closeAma hides Ama's window: Ama runs on, for the next time, and the
+// main window takes the keyboard back.
 func (a *App) closeAma() {
-	a.ama.open = false
+	m := &a.ama
+	if !m.open {
+		return
+	}
+	m.open = false
+	if m.win != nil {
+		m.win.Hide()
+		if a.winOpen {
+			a.win.Focus()
+		}
+	}
 	a.focusTerminal()
 	a.reportView()
 }
@@ -203,8 +209,7 @@ func (a *App) clearAma() {
 }
 
 // amaButton is the frog at the bottom of the sessions sidebar, which opens
-// and closes Ama's popover, with a dot while Ama waits for the user; the
-// popover, while open, is above it.
+// and closes Ama's window, with a dot while Ama waits for the user.
 func (a *App) amaButton(c *ui.Context, pal *palette) {
 	s := a.amaSession()
 	tip := a.tip(locales.AmaTitle(), amaAction)
@@ -235,41 +240,43 @@ func (a *App) amaButton(c *ui.Context, pal *palette) {
 	if b.Clicked() {
 		a.toggleAma()
 	}
-	if a.ama.open {
-		a.amaPopover(c, pal, b)
-	}
+	b.ContextMenu(func(m *ui.Menu) {
+		if m.Item(locales.AmaResetWindow()).Disabled(a.prefs.AmaWindow == nil).Chosen() {
+			a.resetAmaWindow()
+		}
+	})
 }
 
-// amaPopover is Ama's popover, above the frog: a header with New Chat,
-// History, Clear and Close, and Ama's terminal. It closes as the frog, its
-// Close or the shortcut asks, not as the user presses Escape, which is the
-// agent's.
-func (a *App) amaPopover(c *ui.Context, pal *palette, anchor ui.Element) {
+// amaView is Ama's window: a header, which drags it, with New Chat,
+// History, Clear and Close, over Ama's terminal. It closes as its Close,
+// the system's close or Ama's shortcut asks, not as the user presses
+// Escape, which is the agent's.
+func (a *App) amaView(c *ui.Context) {
+	a.looks()
+	pal := paletteFor(c)
+	c.SetTheme(borderless(c, pal))
+	if mods, key, ok := a.actionKeys(amaAction); ok {
+		c.OnShortcut(mods, key, a.closeAma)
+	}
 	s := a.amaSession()
-	ui.Overlay(c, func() {
-		at, self := ui.AnchorTopLeft, ui.AnchorBottomLeft
-		if a.sideLeft() {
-			at, self = ui.AnchorTopRight, ui.AnchorBottomRight
-		}
-		panel := ui.Column(c.Key("ama-popover")).AttachTo(anchor, at, self).Margin(0, 0, 6, 0).Size(amaW, amaH).Radius(12).
-			Background(pal.popover).Clip().Label(locales.AmaTitle())
-		floating(panel, pal)
-		panel.Children(func() {
-			ui.Row(c.Key("ama-header")).Height(38).Shrink(0).Padding(0, 6, 0, 12).Gap(4).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, amaFrog).Size(16, 16).TextColor(pal.textMuted)
-				ui.Text(c, locales.AmaTitle()).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine()
-				if s != nil && s.Status != proto.Idle {
-					statusIcon(c, pal, s.Status, false, 12)
-				}
-				ui.Spacer(c)
-				iconButton(c, "ama-new", plusIcon, locales.AmaNewChat(), pal, a.startAma)
-				a.amaHistoryButton(c, pal)
-				iconButton(c, "ama-clear", eraserIcon, locales.AmaClear(), pal, a.clearAma)
-				iconButton(c, "ama-close", closeIcon, a.tip(locales.CommonClose(), amaAction), pal, a.closeAma)
-			})
-			ui.Box(c).Height(1).Shrink(0).Background(pal.text.Alpha(0.07))
-			ui.Box(c.Key("ama-body")).Grow(1).MinHeight(0).Padding(6, 4, 6, 12).Background(lookFor(c).term.Background).Children(func() { a.amaBody(c, pal, s) })
+	bar := c.TitleBar()
+	col := ui.Column(c).Fill()
+	backdrop(c, col)
+	col.Children(func() {
+		ui.Row(c.Key("ama-header")).Height(max(bar.Height, 38)).Shrink(0).Padding(0, 6+bar.Right, 0, 12+bar.Left).Gap(4).AlignItems(ui.Center).DragWindow().Children(func() {
+			ui.Icon(c, amaFrog).Size(16, 16).TextColor(pal.textMuted)
+			ui.Text(c, locales.AmaTitle()).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine()
+			if s != nil && s.Status != proto.Idle {
+				statusIcon(c, pal, s.Status, false, 12)
+			}
+			ui.Spacer(c)
+			iconButton(c, "ama-new", plusIcon, locales.AmaNewChat(), pal, a.startAma)
+			a.amaHistoryButton(c, pal)
+			iconButton(c, "ama-clear", eraserIcon, locales.AmaClear(), pal, a.clearAma)
+			iconButton(c, "ama-close", closeIcon, a.tip(locales.CommonClose(), amaAction), pal, a.closeAma)
 		})
+		ui.Box(c).Height(1).Shrink(0).Background(pal.text.Alpha(0.07))
+		ui.Box(c.Key("ama-body")).Grow(1).MinHeight(0).Padding(6, 4, 6, 12).Background(lookFor(c).term.Background).Children(func() { a.amaBody(c, pal, s) })
 	})
 }
 
@@ -292,8 +299,8 @@ func (a *App) amaBody(c *ui.Context, pal *palette, s *proto.Session) {
 		ref := a.paneRef(p.ID)
 		termAccess(terminal.View(c.Key("ama-term"), e.term).Fill().Bind(ref), e.term, ref.Focused(c))
 		a.touch(p.ID)
-		// It takes the popover's size, which the window's panes don't
-		// give it, once a pane of it shows.
+		// It takes the window's size, which the main window's panes
+		// don't give it, once a pane of it shows.
 		if m.claimed != p.ID && e.stream != nil {
 			m.claimed = p.ID
 			go e.stream.Claim()
