@@ -215,7 +215,8 @@ func (a *App) clearAma() {
 }
 
 // amaButton is the frog at the bottom of the sessions sidebar, which opens
-// and closes Ama's window, with a dot while Ama waits for the user.
+// and closes Ama's window, with a dot while Ama waits for the user or has
+// an answer the user hasn't read.
 func (a *App) amaButton(c *ui.Context, pal *palette) {
 	s := a.amaSession()
 	tip := a.tip(locales.AmaTitle(), amaAction)
@@ -233,9 +234,12 @@ func (a *App) amaButton(c *ui.Context, pal *palette) {
 	b.Children(func() {
 		ui.Icon(c, amaFrog).Size(16, 16)
 		if waiting || unread {
+			// An answer to read takes the theme's green, as the History
+			// graph's lanes take the terminal's colors: a grey dot on the
+			// grey frog was too easy to miss.
 			dot := pal.attention
 			if !waiting {
-				dot = pal.textMuted
+				dot = a.codeOf(c, pal).Palette[2]
 			}
 			ui.Box(c.Key("dot")).Absolute().Top(3).Right(3).Size(6, 6).Radius(3).Background(dot).PassThrough()
 		}
@@ -270,11 +274,15 @@ func (a *App) amaView(c *ui.Context) {
 	backdrop(c, col)
 	col.Children(func() {
 		ui.Row(c.Key("ama-header")).Height(max(bar.Height, 38)).Shrink(0).Padding(0, 6+bar.Right, 0, 12+bar.Left).Gap(4).AlignItems(ui.Center).DragWindow().Children(func() {
-			ui.Icon(c, amaFrog).Size(16, 16).TextColor(pal.textMuted)
-			ui.Text(c, locales.AmaTitle()).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine()
-			if s != nil && s.Status != proto.Idle {
-				statusIcon(c, pal, s.Status, false, 12)
-			}
+			// The title keeps the icon-to-label gap of Kero's other rows; the
+			// buttons after it sit closer, as a toolbar's do.
+			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+				ui.Icon(c, amaFrog).Size(16, 16).TextColor(pal.textMuted)
+				ui.Text(c, locales.AmaTitle()).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine()
+				if s != nil && s.Status != proto.Idle {
+					statusIcon(c, pal, s.Status, false, 12)
+				}
+			})
 			ui.Spacer(c)
 			iconButton(c, "ama-new", plusIcon, locales.AmaNewChat(), pal, a.startAma)
 			a.amaHistoryButton(c, pal)
