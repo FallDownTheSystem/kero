@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"html"
 	"image"
 	"image/color"
 	"image/draw"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -236,5 +240,81 @@ func TestPickHighlight(t *testing.T) {
 		if got := inSight(tc.r, 200, 300); got != tc.want {
 			t.Errorf("inSight(%v) = %v", tc.r, got)
 		}
+	}
+}
+
+// pickChrome is a Chrome or Chromium to run the picker's script in, for
+// the tests of what it collects: $KERO_TEST_CHROME, else one on the PATH.
+func pickChrome(t *testing.T) string {
+	if p := os.Getenv("KERO_TEST_CHROME"); p != "" {
+		return p
+	}
+	for _, name := range []string{"chromium", "chromium-browser", "google-chrome", "chrome"} {
+		if p, err := exec.LookPath(name); err == nil {
+			return p
+		}
+	}
+	t.Skip("no Chrome to run the picker in: set KERO_TEST_CHROME")
+	return ""
+}
+
+// The HTML the agent reads keeps a script's, a stylesheet's and an inline
+// picture's tag and attributes, and tells their contents' size alone:
+// beside the picked element, among its parent's, and in its own.
+func TestPickOmitsScriptAndStyle(t *testing.T) {
+	chrome := pickChrome(t)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "pick.js"), []byte("window.__pick = ("+pickScript+");"), 0o644)
+	page := `<!doctype html><html><head><meta charset="utf-8"><script src="pick.js"></script></head><body>
+<div id="box">
+<style data-vite-dev-id="/src/card.css">` + strings.Repeat(".a{color:red}", 150) + `</style>
+<p class="lede">Pick me</p>
+<script src="/src/main.js"></script>
+<script>window.n=1</script>
+<svg viewBox="0 0 10 10"><path d="M0 0L10 10"></path></svg>
+</div>
+<pre id="out"></pre>
+<script>
+__pick({ screenshots: false, page: false }).then((v) => { document.getElementById("out").textContent = "RESULT" + JSON.stringify(v) + "END"; });
+for (const sel of ["p.lede", "#box"]) document.querySelector(sel).dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
+document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true }));
+</script>
+</body></html>`
+	file := filepath.Join(dir, "page.html")
+	os.WriteFile(file, []byte(page), 0o644)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, chrome, "--headless", "--no-sandbox", "--disable-gpu", "--user-data-dir="+filepath.Join(dir, "profile"),
+		"--virtual-time-budget=5000", "--dump-dom", "file://"+filepath.ToSlash(file)).Output()
+	if err != nil {
+		t.Fatalf("chrome: %v", err)
+	}
+	dom := html.UnescapeString(string(out))
+	i, j := strings.Index(dom, "RESULT{"), strings.Index(dom, "}END</pre>")+1
+	if i < 0 || j <= i {
+		t.Fatalf("the picker gave nothing:\n%s", dom)
+	}
+	var res pickResult
+	if err := json.Unmarshal([]byte(dom[i+len("RESULT"):j]), &res); err != nil || len(res.Picks) != 2 {
+		t.Fatalf("%v: %s", err, dom[i:j])
+	}
+	sibs, inside := res.Picks[0].Skeleton, res.Picks[1].HTML
+	for _, s := range []string{sibs, inside} {
+		for _, want := range []string{
+			`<style data-vite-dev-id="/src/card.css">/* 1.9 KB omitted */</style>`,
+			`<script src="/src/main.js"></script>`,
+			`<script>/* 10 bytes omitted */</script>`,
+			`<svg viewBox="0 0 10 10"><!-- 28 bytes omitted --></svg>`,
+		} {
+			if !strings.Contains(s, want) {
+				t.Errorf("no %s in:\n%s", want, s)
+			}
+		}
+		if strings.Contains(s, "color:red") || strings.Contains(s, "window.n") || strings.Contains(s, "M0 0") {
+			t.Errorf("contents shown:\n%s", s)
+		}
+	}
+	if !strings.Contains(sibs, `<p class="lede">Pick me</p>   ← this one`) || !strings.Contains(inside, `<p class="lede">Pick me</p>`) {
+		t.Errorf("the picked element's own HTML is hidden:\n%s\n%s", sibs, inside)
 	}
 }
