@@ -1132,6 +1132,28 @@ type (
 		Session string `json:"session"`
 		Dir     string `json:"dir,omitempty"` // the agent's, to tell its pane by
 	}
+	// TurnParams tell that a pane's agent ended its turn (kero hook, of an
+	// agent's Stop hook or a plugin's event), the pane found as
+	// AgentSessionParams' is, else by the agent's session. End is how:
+	// TurnDone, TurnInterrupted or TurnFailed. Reply is the turn's last
+	// reply, its text, when HasReply; Background what still runs after
+	// the turn, as "1 shell, 1 monitor", when HasBackground; Error, a
+	// failed turn's error. BySession: only the pane that runs Session is
+	// the one, as for a hook run with no pane's environment, which may be
+	// of an agent outside Kero.
+	TurnParams struct {
+		PID           int    `json:"pid"`
+		BySession     bool   `json:"bySession,omitempty"`
+		Agent         string `json:"agent"`
+		Session       string `json:"session"`
+		Dir           string `json:"dir,omitempty"`
+		End           string `json:"end"`
+		Reply         string `json:"reply,omitempty"`
+		HasReply      bool   `json:"hasReply,omitempty"`
+		Background    string `json:"background,omitempty"`
+		HasBackground bool   `json:"hasBackground,omitempty"`
+		Error         string `json:"error,omitempty"`
+	}
 	// ConversationParams names a conversation (Conversation), to resume
 	// in a session after After, of Cols and Rows, to forget, or to
 	// archive or not, as Archived.
@@ -1285,6 +1307,13 @@ const (
 	SubmittedSync = "submitted-sync"
 )
 
+// How a turn ended, as TurnParams' End tells it.
+const (
+	TurnDone        = "done"
+	TurnInterrupted = "interrupted"
+	TurnFailed      = "failed"
+)
+
 // AgentSendParams send a message to a coding agent (agent.send), as the
 // fork's Send to Session…, review's Send to Agent and the page bridge
 // (window.kero.send) do, labelled with where it comes from.
@@ -1345,19 +1374,19 @@ func (m AgentMessage) Prompt() string {
 	if m.Label == "" {
 		return m.Text
 	}
-	return "Kero: message from " + oneLine(m.Label) + ":\n\n" + m.Text
+	return "Kero: message from " + OneLine(m.Label) + ":\n\n" + m.Text
 }
 
 // Quoted is s in double quotes as written, for a label to name a title or
 // a name with: unlike %q, it leaves a Windows path's backslashes alone. On
 // one line, with its own " made ', it cannot end the quote or the label.
 func Quoted(s string) string {
-	return `"` + strings.ReplaceAll(oneLine(s), `"`, "'") + `"`
+	return `"` + strings.ReplaceAll(OneLine(s), `"`, "'") + `"`
 }
 
-// oneLine is s with its runs of spaces, line breaks and other control
+// OneLine is s with its runs of spaces, line breaks and other control
 // characters made one space, trimmed.
-func oneLine(s string) string {
+func OneLine(s string) string {
 	return strings.Join(strings.FieldsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }), " ")
 }
 

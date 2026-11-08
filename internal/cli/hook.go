@@ -34,19 +34,25 @@ func hookCmd(args []string) error {
 		return contextCmd(args[1], args[2], len(args) > 3 && args[3] == "wait")
 	}
 	pane := os.Getenv("KERO_PANE")
-	var in struct {
-		Event   string `json:"hook_event_name"`
-		AgentID string `json:"agent_id"`   // set for Claude Code's subagents
-		Session string `json:"session_id"` // the agent's own
-		Cwd     string `json:"cwd"`
-		Source  string `json:"source"` // "startup", "resume", "clear", "compact"
-	}
-	json.NewDecoder(io.LimitReader(os.Stdin, 1<<20)).Decode(&in)
-	if pane == "" || in.Event != "SessionStart" || in.AgentID != "" {
+	var in hookInput
+	json.NewDecoder(io.LimitReader(os.Stdin, 16<<20)).Decode(&in)
+	if in.AgentID != "" {
 		return nil
 	}
 	if t := os.Getenv("CODEX_THREAD_ID"); t != "" && in.Session != "" && t != in.Session {
 		return nil // a Codex run by another agent in this pane, not the pane's
+	}
+	// A turn's end kerod finds the pane of by the agent's session: a hook
+	// with no pane's environment, as of OpenCode's service, which panes
+	// share, or of an agent outside Kero, by that alone.
+	if end := in.turnEnd(); end != "" {
+		if in.Session != "" || pane != "" {
+			turnEnded(agent, end, in, pane == "")
+		}
+		return nil
+	}
+	if pane == "" || in.Event != "SessionStart" {
+		return nil
 	}
 	sid, away := os.Getenv("KERO_SESSION"), false
 	c, err := client.Connect(true)
@@ -73,6 +79,94 @@ func hookCmd(args []string) error {
 		"additionalContext": hookContext(c, pane, sid, away),
 	}}
 	return json.NewEncoder(os.Stdout).Encode(out)
+}
+
+// hookInput is what an agent gives its hook, of the fields kero reads: as
+// Claude Code and Codex give it, which Kero's plugins for other agents
+// give too.
+type hookInput struct {
+	Event   string `json:"hook_event_name"`
+	AgentID string `json:"agent_id"`   // set for Claude Code's subagents
+	Session string `json:"session_id"` // the agent's own
+	Cwd     string `json:"cwd"`
+	Source  string `json:"source"` // "startup", "resume", "clear", "compact"
+	// Of a turn's end: its last reply, null or missing for none known;
+	// what still runs after it; a failed turn's error.
+	Reply      *string `json:"last_assistant_message"`
+	Background *[]struct {
+		Type string `json:"type"`
+	} `json:"background_tasks"`
+	Error string `json:"error"`
+}
+
+// turnEnd is how the event ends the agent's turn, proto.TurnDone,
+// TurnInterrupted or TurnFailed; "" for an event that ends none.
+func (in hookInput) turnEnd() string {
+	switch in.Event {
+	case "Stop":
+		return proto.TurnDone
+	case "Interrupt":
+		return proto.TurnInterrupted
+	case "StopFailure":
+		return proto.TurnFailed
+	}
+	return ""
+}
+
+// turnEnded tells kerod that the agent ended its turn, for its
+// orchestrator's report. It prints nothing, which the agent takes as
+// nothing to do.
+func turnEnded(agent, end string, in hookInput, bySession bool) {
+	c, err := client.Connect(true)
+	if err != nil {
+		return
+	}
+	defer c.Close()
+	p := proto.TurnParams{PID: os.Getpid(), BySession: bySession, Agent: agent, Session: in.Session, Dir: in.Cwd, End: end}
+	switch end {
+	case proto.TurnFailed:
+		p.Error = in.Error
+		if in.Reply != nil && *in.Reply != "" {
+			p.Error = *in.Reply // the error as the conversation shows it
+		}
+	default:
+		if in.Reply != nil {
+			p.Reply, p.HasReply = *in.Reply, true
+		}
+		if in.Background != nil {
+			p.HasBackground = true
+			var types []string
+			for _, t := range *in.Background {
+				types = append(types, t.Type)
+			}
+			p.Background = countOf(types)
+		}
+	}
+	c.Call("pane.turn", p, nil)
+}
+
+// countOf tells how many of each there are, in the order they first come:
+// "1 shell, 2 monitors".
+func countOf(kinds []string) string {
+	var order []string
+	n := map[string]int{}
+	for _, k := range kinds {
+		if k == "" {
+			k = "task"
+		}
+		if n[k] == 0 {
+			order = append(order, k)
+		}
+		n[k]++
+	}
+	parts := make([]string, len(order))
+	for i, k := range order {
+		if n[k] > 1 {
+			k += "s"
+		}
+		parts[i] = fmt.Sprintf("%d %s", n[order[i]], k)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // forgetAgentName drops the name an agent gave session sid, as a new
@@ -232,8 +326,39 @@ func (h agentHook) ours(command string) bool {
 	return strings.Contains(command, "kero") && strings.HasSuffix(command, " hook "+h.agent)
 }
 
-// state is "current", "outdated" (kero's hook, of another command line)
-// or "missing".
+// hookEvent is an agent's event kero hooks into: SessionStart, to tell the
+// agent of Kero and kerod of the agent's session, and the end of a turn,
+// for orchestrators' reports. Async ones never hold the agent up.
+type hookEvent struct {
+	name    string
+	async   bool
+	timeout int // seconds
+}
+
+// events are the agent's events kero hooks into.
+func (h agentHook) events() []hookEvent {
+	start := hookEvent{name: "SessionStart", timeout: 10}
+	switch h.agent {
+	case "claude":
+		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "StopFailure", async: true, timeout: 10}}
+	case "codex":
+		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "Interrupt", async: true, timeout: 3}}
+	}
+	return []hookEvent{start}
+}
+
+// event is the agent's event kero hooks into named name.
+func (h agentHook) event(name string) (hookEvent, bool) {
+	events := h.events()
+	i := slices.IndexFunc(events, func(e hookEvent) bool { return e.name == name })
+	if i < 0 {
+		return hookEvent{}, false
+	}
+	return events[i], true
+}
+
+// state is "current", "outdated" (kero's hooks, of another command line,
+// or not on each of its events) or "missing".
 func (h agentHook) state() string {
 	b, err := os.ReadFile(h.file)
 	if err != nil {
@@ -243,31 +368,36 @@ func (h agentHook) state() string {
 	if err != nil {
 		return "missing"
 	}
-	state := "missing"
-	h.each(settings, func(command string) {
-		if command == h.command() {
-			state = "current"
-		} else if state == "missing" {
-			state = "outdated"
+	ours := h.commands(settings)
+	if len(ours) == 0 {
+		return "missing"
+	}
+	for _, e := range h.events() {
+		if !slices.Contains(ours[e.name], h.command()) {
+			return "outdated"
 		}
-	})
-	return state
+	}
+	return "current"
 }
 
-// each calls fn with the command of each of kero's SessionStart hooks.
-func (h agentHook) each(settings object, fn func(command string)) {
+// commands are the commands of kero's hooks in settings, by event.
+func (h agentHook) commands(settings object) map[string][]string {
+	out := map[string][]string{}
 	hooks, _ := parseObject(settings.get("hooks"))
-	var groups []object
-	json.Unmarshal(hooks.get("SessionStart"), &groups)
-	for _, g := range groups {
-		var handlers []struct{ Type, Command string }
-		json.Unmarshal(g.get("hooks"), &handlers)
-		for _, hd := range handlers {
-			if hd.Type == "command" && h.ours(hd.Command) {
-				fn(hd.Command)
+	for _, e := range hooks {
+		var groups []object
+		json.Unmarshal(e.Val, &groups)
+		for _, g := range groups {
+			var handlers []struct{ Type, Command string }
+			json.Unmarshal(g.get("hooks"), &handlers)
+			for _, hd := range handlers {
+				if hd.Type == "command" && h.ours(hd.Command) {
+					out[e.Key] = append(out[e.Key], hd.Command)
+				}
 			}
 		}
 	}
+	return out
 }
 
 // install puts the hook in the agent's settings, in place of kero's
@@ -314,49 +444,69 @@ func (h agentHook) edit(add bool) error {
 	if err != nil {
 		return fmt.Errorf("%s: hooks: %w", proto.ShortDir(h.file), err)
 	}
-	var groups []object
-	if raw := hooks.get("SessionStart"); raw != nil {
-		if err := json.Unmarshal(raw, &groups); err != nil {
-			return fmt.Errorf("%s: hooks.SessionStart: %w", proto.ShortDir(h.file), err)
-		}
-	}
-	// Already there, alone: nothing to do. Else drop kero's handlers, and
-	// the groups they leave empty.
-	n, exact := 0, false
-	h.each(settings, func(command string) {
-		n++
-		exact = exact || command == h.command()
-	})
-	if add && n == 1 && exact || !add && n == 0 {
+	// Already there, once on each event: nothing to do. Else drop kero's
+	// handlers, and the groups they leave empty, and add them anew.
+	ours := h.commands(settings)
+	if !add && len(ours) == 0 {
 		return nil
 	}
-	kept := groups[:0]
-	for _, g := range groups {
-		var handlers []json.RawMessage
-		json.Unmarshal(g.get("hooks"), &handlers)
-		n := len(handlers)
-		handlers = slices.DeleteFunc(handlers, func(raw json.RawMessage) bool {
-			var hd struct{ Type, Command string }
-			json.Unmarshal(raw, &hd)
-			return hd.Type == "command" && h.ours(hd.Command)
-		})
-		if n > 0 && len(handlers) == 0 {
-			continue
-		}
-		if len(handlers) != n {
-			g = g.set("hooks", marshal(handlers))
-		}
-		kept = append(kept, g)
+	if add && len(ours) == len(h.events()) && !slices.ContainsFunc(h.events(), func(e hookEvent) bool {
+		return !slices.Equal(ours[e.name], []string{h.command()})
+	}) {
+		return nil
 	}
-	groups = kept
-	if add {
-		handler := object{{"type", marshal("command")}, {"command", marshal(h.command())}, {"timeout", marshal(10)}}
-		groups = append(groups, object{{"hooks", marshal([]object{handler})}})
+	// The events kero has hooks on, and those it hooks into.
+	var events []string
+	for _, m := range hooks {
+		if _, ok := h.event(m.Key); ok || len(ours[m.Key]) > 0 {
+			events = append(events, m.Key)
+		}
 	}
-	if len(groups) > 0 {
-		hooks = hooks.set("SessionStart", marshal(groups))
-	} else {
-		hooks = hooks.del("SessionStart")
+	for _, e := range h.events() {
+		if !slices.Contains(events, e.name) {
+			events = append(events, e.name)
+		}
+	}
+	for _, event := range events {
+		var groups []object
+		if raw := hooks.get(event); raw != nil {
+			if err := json.Unmarshal(raw, &groups); err != nil {
+				return fmt.Errorf("%s: hooks.%s: %w", proto.ShortDir(h.file), event, err)
+			}
+		}
+		kept := groups[:0]
+		for _, g := range groups {
+			var handlers []json.RawMessage
+			json.Unmarshal(g.get("hooks"), &handlers)
+			n := len(handlers)
+			handlers = slices.DeleteFunc(handlers, func(raw json.RawMessage) bool {
+				var hd struct{ Type, Command string }
+				json.Unmarshal(raw, &hd)
+				return hd.Type == "command" && h.ours(hd.Command)
+			})
+			if n > 0 && len(handlers) == 0 {
+				continue
+			}
+			if len(handlers) != n {
+				g = g.set("hooks", marshal(handlers))
+			}
+			kept = append(kept, g)
+		}
+		groups = kept
+		if e, ok := h.event(event); add && ok {
+			handler := object{{"type", marshal("command")}, {"command", marshal(h.command())}}
+			if e.async {
+				handler = append(handler, member{"async", marshal(true)})
+			}
+			handler = append(handler, member{"timeout", marshal(e.timeout)})
+			groups = append(groups, object{{"hooks", marshal([]object{handler})}})
+		}
+		switch {
+		case len(groups) > 0:
+			hooks = hooks.set(event, marshal(groups))
+		case hooks.get(event) != nil:
+			hooks = hooks.del(event)
+		}
 	}
 	if len(hooks) > 0 {
 		settings = settings.set("hooks", hooks.marshal())

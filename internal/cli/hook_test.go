@@ -93,8 +93,59 @@ func TestHookReplacesOutdated(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := read(t, h.file)
-	if strings.Contains(got, "/old/kero") || strings.Count(got, "hook claude") != 1 {
+	if strings.Contains(got, "/old/kero") || strings.Count(got, "hook claude") != len(h.events()) {
 		t.Fatalf("after install:\n%s", got)
+	}
+}
+
+// A hook of this kero's on SessionStart alone, as an older Kero put in,
+// is outdated: setup adds the turns' ends, and leaves the others' hooks.
+func TestHookAddsTurnEnds(t *testing.T) {
+	h := testHook(t, "")
+	command, _ := json.Marshal(h.command())
+	os.WriteFile(h.file, []byte(`{"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": `+string(command)+`, "timeout": 10}]}], "Stop": [{"hooks": [{"type": "command", "command": "say done"}]}]}}`), 0o644)
+	if st := h.state(); st != "outdated" {
+		t.Fatalf("state %s, want outdated", st)
+	}
+	if err := h.install(); err != nil {
+		t.Fatal(err)
+	}
+	got := read(t, h.file)
+	if h.state() != "current" {
+		t.Fatalf("state %s after install:\n%s", h.state(), got)
+	}
+	var v struct {
+		Hooks map[string][]struct {
+			Hooks []struct {
+				Command string
+				Async   bool
+			}
+		}
+	}
+	if err := json.Unmarshal([]byte(got), &v); err != nil {
+		t.Fatal(err)
+	}
+	stop := v.Hooks["Stop"]
+	if len(stop) != 2 || stop[0].Hooks[0].Command != "say done" || stop[1].Hooks[0].Command != h.command() || !stop[1].Hooks[0].Async {
+		t.Fatalf("Stop hooks:\n%s", got)
+	}
+	if len(v.Hooks["StopFailure"]) != 1 || len(v.Hooks["SessionStart"]) != 1 {
+		t.Fatalf("hooks:\n%s", got)
+	}
+	if err := h.remove(); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, h.file); strings.Contains(got, "hook claude") || !strings.Contains(got, "say done") {
+		t.Fatalf("after remove:\n%s", got)
+	}
+}
+
+func TestCountOf(t *testing.T) {
+	if got := countOf([]string{"shell", "monitor", "shell", ""}); got != "2 shells, 1 monitor, 1 task" {
+		t.Errorf("%q", got)
+	}
+	if got := countOf(nil); got != "" {
+		t.Errorf("%q", got)
 	}
 }
 
