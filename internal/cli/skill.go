@@ -14,7 +14,7 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), read a browser pane's console errors and network requests and show its page as a phone or on a slow network (kero browser console, network, emulate), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
 ---
 
 # Kero
@@ -153,9 +153,26 @@ you built: open it with kero split --url, then
     kero browser cookies save state.json       # or load: Playwright's, or cookies.txt
     kero browser cookies import chrome         # or edge: the user's sign-ins, cookies and site storage
     kero browser pick                          # the user picks elements, with notes, for you
+    kero browser console --errors              # what the page threw and logged, file:line
+    kero browser network --failed              # 404s, 500s, CORS and blocked requests
+    kero browser network body 12               # a response's body, by its #id
+    kero browser emulate device iphone-15      # or viewport 390x844 --mobile --touch
+    kero browser emulate network slow-3g       # or offline, 3g, 4g; emulate reset undoes
 
 Refs last until the page goes to another; one whose element is gone
 fails: take a new snapshot.
+
+When a page misbehaves, read its console and network before guessing:
+console shows console.* output, uncaught errors and promises none
+caught, and what the browser told of (CORS, failed loads), each with its
+file and line; network shows each request with its status, and why one
+failed. Both keep what came since the pane's page was made, the first
+load too: --clear empties them, so that the next read shows only what a
+reload or a click caused. --json prints their fields. emulate lasts while
+the pane is open, through reloads and other pages; take a screenshot to
+see the layout, and emulate reset when done. network and emulate work on
+Windows only; on macOS and Linux, console has what the page's current
+document logged.
 
 When a page needs the user signed in, don't ask for their password: ask
 them to turn on remote debugging in their browser, at
@@ -206,7 +223,7 @@ by its URL or title:
     const page = browser.contexts()[0].pages().find((p) => p.url().startsWith("http://localhost:3000"));
 
 Use kero browser for what it does; the port is for what it doesn't, such
-as tracing, network and a Playwright script. Don't turn the port on
+as tracing, intercepting requests and a Playwright script. Don't turn the port on
 yourself: any program on the computer can then use the panes' sign-ins,
 so ask the user. Open pages in panes (kero split --url), not with the
 tool's own new tabs.

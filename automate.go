@@ -184,6 +184,8 @@ func (a *App) browse(h *host, r *proto.BrowserRequest, answer func(*proto.Browse
 			}
 			return &proto.BrowserResult{PNG: png}, nil
 		})
+	case "console", "network", "emulate":
+		e.devtoolsOp(r, do)
 	default:
 		fail("no browser command %q", r.Op)
 	}

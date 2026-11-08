@@ -16,17 +16,17 @@ import (
 
 // browserCommands are what kero browser does to a page, which name no
 // target: kero browser text is this session's browser's text.
-var browserCommands = []string{"open", "back", "forward", "reload", "text", "html", "snapshot", "click", "type", "wait", "eval", "screenshot", "cookies", "wait-message", "pick"}
+var browserCommands = []string{"open", "back", "forward", "reload", "text", "html", "snapshot", "click", "type", "wait", "eval", "screenshot", "cookies", "wait-message", "pick", "console", "network", "emulate"}
 
 // browserCmd drives a browser pane's page, which the app has: kerod asks
 // the app, and hands its answer back.
 func browserCmd(c *client.Client, st proto.State, args []string) error {
-	f, err := parse(args, map[string]string{"timeout": "timeout", "t": "timeout", "o": "out", "out": "out", "text": "text", "ref": "ref", "domain": "domain"},
-		map[string]string{"enter": "enter", "E": "enter", "json": "json"})
+	f, err := parse(args, map[string]string{"timeout": "timeout", "t": "timeout", "o": "out", "out": "out", "text": "text", "ref": "ref", "domain": "domain", "url": "url", "scale": "scale"},
+		map[string]string{"enter": "enter", "E": "enter", "json": "json", "errors": "errors", "clear": "clear", "failed": "failed", "mobile": "mobile", "touch": "touch"})
 	if err != nil {
 		return err
 	}
-	const use = "kero browser [target] <open|back|forward|reload|text|html|snapshot|click|type|wait|eval|screenshot|cookies|wait-message|pick> [args…]"
+	const use = "kero browser [target] <open|back|forward|reload|text|html|snapshot|click|type|wait|eval|screenshot|cookies|wait-message|pick|console|network|emulate> [args…]"
 	pos := f.pos
 	var t target
 	if len(pos) > 0 && !slices.Contains(browserCommands, pos[0]) {
@@ -57,8 +57,14 @@ func browserCmd(c *client.Client, st proto.State, args []string) error {
 	if err != nil {
 		return err
 	}
+	if slices.Contains(devlogCommands, op) {
+		return devlogCmd(c, proto.BrowserParams{ID: pane, Op: op, Timeout: timeout, Ref: f.vals["ref"]}, op, pos, f)
+	}
+	if err := devlogFlag(f, op); err != nil {
+		return err
+	}
 	if f.set["json"] && op != "wait-message" {
-		return usageErr("--json is wait-message's")
+		return usageErr("--json is wait-message's, console's, network's and emulate's")
 	}
 	if op == "wait-message" {
 		return waitMessage(c, pane, timeout, pos, f)

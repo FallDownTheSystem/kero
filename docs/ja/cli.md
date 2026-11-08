@@ -148,6 +148,9 @@ kero browser text h1                       # 要素のテキスト
 kero browser click 'button[type=submit]'
 kero browser screenshot -o page.png
 kero browser eval 'document.title'
+kero browser console --errors              # ページが投げたエラーとログ、ファイルと行つき
+kero browser network --failed              # 失敗したか 4xx/5xx を返したリクエスト
+kero browser emulate device iphone-15      # スマートフォンと同じようにページを表示
 ```
 
 | コマンド                        | 動作 |
@@ -164,12 +167,22 @@ kero browser eval 'document.title'
 | `cookies import <chrome\|edge>`  | 実行中の自分のブラウザの Cookie と、開いているタブのサイトの localStorage と IndexedDB をコピーし、ペインをブラウザと同じサイトにサインインさせる。`--domain` でサイトの分だけ（[手順](./panes.md#signing-in-with-your-browsers-cookies)） |
 | `wait-message [--json]`         | ページが [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) で送る次のメッセージを待ち、ページの情報を付けて表示します。`--json` は `id`、`from`、`label`、`url`、`title`、`text`、`at` を表示します |
 | `pick`                          | 要素を選ぶモードをオンにし、ユーザーが要素を選んでメモを書けるようにする。選んだ要素はページのエージェントへのメッセージとして届く（[詳しく](./panes.md#エージェントのために要素を選ぶ)） |
+| `console [--errors] [--clear]`  | ページが `console.*` で出力したもの、投げたエラー、誰も捕まえなかった Promise、CORS エラーや読み込みの失敗などブラウザが伝えたものを、それぞれファイルと行つきで出力。`--errors` はエラーだけ、`--clear` は出力後にログを空にする |
+| `network [--failed] [--url text] [--clear]` | ページのリクエストを 1 行ずつ出力: `#id`、メソッド、ステータス、種類、サイズ、時間、URL と、失敗した理由（`net::ERR_…`、`CORS …`、`blocked: …`）。`--failed` は失敗したか 4xx・5xx を返したものだけ、`--url` は URL にそのテキストを含むものだけ |
+| `network body <id> [-o file]`   | 一覧にあるレスポンスの本文を出力、またはファイルに保存 |
+| `emulate device <name>`         | スマートフォンやタブレットと同じようにページを表示: ビューポート、スケール、タッチ、ユーザーエージェント。`emulate device` で一覧（`iphone-se`、`iphone-15`、`iphone-15-pro-max`、`pixel-8`、`galaxy-s24`、`ipad`、`ipad-pro`） |
+| `emulate viewport <w>x<h>`      | そのサイズでページをレイアウト。`--scale` は CSS ピクセルあたりのデバイスのピクセル、`--mobile` はスマートフォンのようにレイアウト、`--touch` はタッチを受け付ける。`none` で元に戻す |
+| `emulate user-agent <ua…>`      | 別のユーザーエージェントを送る。`none` で元に戻す |
+| `emulate network <preset>`      | ネットワークを遅くする（`slow-3g`、`3g`、`4g`）、`offline` にする、または戻す（`none`） |
+| `emulate [reset]`               | ページの表示のされ方を出力。`reset` ですべて元に戻す |
 
 `wait-message` は `--timeout` を指定しない限り届くまで待ち、何も届かなければ `timed out` で失敗します: エージェントは、シェルツール自体のタイムアウトより短いタイムアウトで待ち直します。Remote Control は不要です。
 
 セレクタは CSS セレクタです。シェルでは引用符で囲んでください。要素が必要なコマンドは要素が現れるのを待ち、`--timeout`（デフォルト `10s`）でそれらとページの読み込みにかけてよい時間を設定します。`type` と `eval` は、`-` で標準入力からテキストを受け取ります。
 
 クリックと入力は本物のマウスとキーボードと同じイベントを送るので、React などのフレームワークで作られたページもそれを受け取ります。スクリーンショットにはペインが画面に表示されている必要があります: 先に `kero focus` で表示してください。それ以外は、表示されているかどうかにかかわらず、どのブラウザペインでも動きます。
+
+`console` と `network` は、ペインのページが作られてから（最初の読み込みも含め）のものを、それぞれ最新の 1,000 件まで保ちます。`--clear` で空にすると、次に読むときには再読み込みやクリックで起きたことだけが出ます。`--json` はそれぞれの項目を出力し、`emulate` の状態も出力します。`emulate` で設定したものは、ペインが開いている間、再読み込みやほかのページへの移動のあとも続きます。`network` と `emulate` は DevTools Protocol を使い、ブラウザペインでこれがあるのは Windows だけです。macOS と Linux では、`console` には現在のドキュメントが出力したものが入ります。
 
 `kero do` と同じく、`kero browser` には **設定 › エージェント** のリモート操作と、アプリが開いていることが必要です。
 
