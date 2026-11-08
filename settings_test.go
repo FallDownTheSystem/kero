@@ -852,6 +852,54 @@ func TestAdListToggles(t *testing.T) {
 	}
 }
 
+// The DevTools port shows on Windows alone, and its switch saves
+// browser-devtools, which asks to start Kero again as the port opens as
+// it starts ($KERO_SHOTS).
+func TestDevToolsSetting(t *testing.T) {
+	was := devToolsPlatform
+	t.Cleanup(func() { devToolsPlatform = was })
+	a := testApp(t)
+	a.ss.page = "browser"
+	tt := ui.NewTester(a.settingsView, 820, 1300)
+	devToolsPlatform = false
+	tt.Frame()
+	if tt.HasText("DevTools port") {
+		t.Error("the DevTools port shows where the web view opens none")
+	}
+	devToolsPlatform = true
+	tt.Frame()
+	r, ok := tt.Find("DevTools port")
+	if !ok {
+		t.Fatalf("no DevTools port; texts %q", tt.Texts())
+	}
+	restart := func() bool {
+		return slices.ContainsFunc(tt.Texts(), func(s string) bool { return strings.Contains(s, "start it again") })
+	}
+	if restart() || !slices.ContainsFunc(tt.Texts(), func(s string) bool { return strings.Contains(s, "port 9222 on 127.0.0.1") }) {
+		t.Errorf("texts %q", tt.Texts())
+	}
+	shot(t, tt, "settings-devtools-off")
+	d, ok := tt.Find(locales.SetDevToolsDetail("9222"))
+	if !ok {
+		t.Fatalf("no detail; texts %q", tt.Texts())
+	}
+	tt.ClickAt(752, (r.Y+d.Y+d.H)/2) // its switch, at the row's end, beside the label and detail
+	tt.Frame()
+	tt.Frame()
+	if !a.set.DevTools || !settings.Load().DevTools {
+		t.Fatalf("devtools %v, saved %v", a.set.DevTools, settings.Load().DevTools)
+	}
+	if !restart() {
+		t.Errorf("no word of starting Kero again; texts %q", tt.Texts())
+	}
+	if devToolsArguments(a.set) != "--remote-debugging-port=9222" {
+		t.Errorf("arguments %q", devToolsArguments(a.set))
+	}
+	tt.Advance(time.Second) // the switch's animation
+	tt.Frame()
+	shot(t, tt, "settings-devtools-on")
+}
+
 // Importing a browser's sign-ins that has no remote debugging on, as a
 // browser that isn't running hasn't, says where to turn it on, in the
 // row of that browser, and leaves the other's as it was.

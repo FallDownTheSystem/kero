@@ -136,6 +136,12 @@ Usage:
                                   selector
       --domain <domain>           cookies of a site and its subdomains
       -t, --timeout <dur>         how long to wait (default 10s)
+  kero browser devtools [--json]
+                                the browser panes' DevTools port, for
+                                Playwright's connectOverCDP and
+                                chrome-devtools-mcp, and each pane's page
+                                there (Windows; browser-devtools = true,
+                                then start Kero again)
   kero history [query] [-p project] [-n count] [--json]
                                 the agents' conversations panes ran, the
                                 last to run first, to resume
@@ -1060,6 +1066,10 @@ func run(args []string, host string) error {
 		return nil
 
 	case "browser":
+		// The browser's DevTools port, which no pane is the target of.
+		if len(args) > 0 && args[0] == "devtools" {
+			return devtoolsCmd(st, args[1:])
+		}
 		return browserCmd(c, st, args)
 
 	case "notify":
