@@ -5,6 +5,20 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.7
+
+- **Deleting Ama's chats**: History in Ama's window has Delete Chat, to
+  delete one past chat, and Delete All Chats…, to delete all but the one
+  running, each after a confirmation. A deleted chat leaves Ama's
+  History; its agent keeps its own record of it
+- Ama's window no longer has Clear, which cleared the screen of a
+  full-screen agent and so did nothing
+- Ama's header has room between the frog, Ama's name and its status
+- The frog's dot for an answer you haven't read is the theme's green, not
+  grey on the grey frog
+- A confirmation in a small window, as Ama's can be, keeps a margin
+  around it
+
 ## 2.1.35-fork.6
 
 - **Ama knows Kero's docs**: Kero writes its docs into Ama's folder, in
