@@ -160,7 +160,7 @@ kero browser eval 'document.title'
 | `wait [selector] [--text text]` | 等到元素或文本出现；两者都不给时，等到页面加载完成 |
 | `eval <js…>`                    | 在页面中运行 JavaScript 并打印结果：字符串原样输出，其他值输出为 JSON |
 | `screenshot [-o file.png]`      | 保存页面截图，并打印保存位置；`-o -` 会写到标准输出 |
-| `cookies import <chrome\|edge>`  | 从正在运行的浏览器复制 Cookie，让面板在你于浏览器中登录过的网站上也处于登录状态；`--domain` 只复制某个网站的（[步骤](./panes.md#signing-in-with-your-browsers-cookies)） |
+| `cookies import <chrome\|edge>`  | 从正在运行的浏览器复制 Cookie，以及其打开的标签页中网站的 localStorage 和 IndexedDB，让面板在你于浏览器中登录过的网站上也处于登录状态；`--domain` 只复制某个网站的（[步骤](./panes.md#signing-in-with-your-browsers-cookies)） |
 | `wait-message [--json]`         | 等待页面用 [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) 发送的下一条消息，并附上页面信息打印出来；`--json` 打印其 `id`、`from`、`label`、`url`、`title`、`text` 和 `at` |
 | `pick`                          | 打开选取元素模式，让用户选取元素并为每个写备注；选取结果作为消息发给页面的智能体（[详情](./panes.md#为智能体选取元素)） |
 

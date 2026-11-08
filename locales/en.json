@@ -672,8 +672,8 @@
   "setAdListFanboyAnnoyance": "Pop-ups, newsletter prompts and chat boxes, and the cookie and social lists' too.",
   "setAdListsNote": "More lists hide more, and may break a page now and then. Add other lists as browser-filter-list in the configuration.",
   "setSignIns": "Sign-ins",
-  "setSignInsNote": "Browser panes keep cookies of their own. Import gives them your browser's, so you're signed in where you are there. First turn on remote debugging in the browser, at chrome://inspect/#remote-debugging or edge://inspect/#remote-debugging, then allow Kero in the dialog it shows. Cookies sign you in: agents in your sessions can use them too.",
-  "setSignInsFrom": "Import the cookies of {browser} as it runs.",
+  "setSignInsNote": "Browser panes keep cookies and site storage of their own. Import gives them your browser's cookies, and the storage of the sites of its open tabs, which many web apps keep their sign-in in: open such a site in the browser first. Turn on remote debugging in the browser, at chrome://inspect/#remote-debugging or edge://inspect/#remote-debugging, then allow Kero in the dialog it shows. These sign you in: agents in your sessions can use them too.",
+  "setSignInsFrom": "Import the cookies of {browser}, and the storage of its open tabs, as it runs.",
   "@setSignInsFrom": {
     "placeholders": {
       "browser": {
@@ -689,10 +689,13 @@
       }
     }
   },
-  "setSignInsDone": "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}.",
+  "setSignInsDone": "{count, plural, one {Imported # cookie} other {Imported # cookies}} from {browser}, and {sites, plural, =0 {no site storage, as no open tab had any} one {the storage of # site} other {the storage of # sites}}.",
   "@setSignInsDone": {
     "placeholders": {
       "count": {
+        "type": "int"
+      },
+      "sites": {
         "type": "int"
       },
       "browser": {
@@ -700,6 +703,17 @@
       }
     }
   },
+  "@setSignInsLeftOut": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "setSignInsLeftOut": "{count, plural, one {Left out # item} other {Left out # items}}: kero browser cookies import {name} lists them.",
   "setSignInsImport": "Import",
   "changesUnmodified": "{count, plural, one {# unmodified line} other {# unmodified lines}}",
   "@changesUnmodified": {
