@@ -7,6 +7,29 @@ top of it.
 
 ## 2.1.35-fork.3
 
+- **Orchestrator sessions**: an agent session that plans the work, starts
+  other sessions for it, its children, and follows them, while you talk to
+  it alone. Start one with **Orchestrator** and an optional **Goal** in the
+  New Session dialog, `kero new --orchestrator --goal "…"`, or make a
+  session one with its menu's Make Orchestrator or `kero orchestrator
+  <session>`. Its agent starts on a role prompt you can replace in Settings
+  › Agents › Orchestrators (`orchestrator-prompt`)
+- A session an orchestrator starts with `kero new` is its child, one level
+  only: a child's `kero new` starts another child of the same orchestrator.
+  `kero new --parent <session|none>` sets it, and
+  `orchestrator-max-children` limits how many run at once
+- Kero types into the orchestrator's prompt when a child waits for input,
+  goes idle after working, fails, exits or closes, as one message for what
+  comes close together and nothing for a flicker; a child sends its own
+  result with `kero report --to-parent "<summary>"`
+- In the sidebar, an orchestrator's row has its mark and its goal in its
+  tooltip, and its children follow right under it with a ↳; its chevron
+  folds them, counting those that need you. Children don't notify you or
+  count on the badge, unless Settings › Notifications › An orchestrator's
+  sessions (`notify-children`) is on
+- Closing an orchestrator asks whether to close its children too or keep
+  them (`kero close <orchestrator> --children`); `kero ls` and `kero status`
+  show the tree
 - Ama, Kero's helper agent, named after *amagaeru*, the Japanese tree frog. Open it from the frog at the bottom of the sessions sidebar, with Ctrl+Shift+A (⇧⌘A), or from View › Ama, and ask it to start, find, review or close sessions, worktrees and projects for you. It runs your default agent, or the one in Settings › Agents › Ama, in a real terminal, in a folder of its own beside Kero's configuration. It keeps running when you close it. New Chat starts a fresh conversation, History goes back to an earlier one, and Clear clears the screen. The sidebar doesn't list it, Needs You doesn't count it, and the frog shows a dot while it waits for you.
 - Kero writes Ama's instructions as CLAUDE.md and AGENTS.md in its folder and keeps its skill installed for Ama's agent. Your own instructions go in USER.md, which Kero never changes. Settings › Agents › Ama opens it.
 - Ama drives the app (kero do, kero focus, kero browser, kero pr review) without Remote Control, which still decides for every other agent.
