@@ -228,6 +228,61 @@ func TestPickHighlight(t *testing.T) {
 	if img.RGBAAt(198, 96) == pickAccent {
 		t.Error("the page's picture drew on the capture itself")
 	}
+
+	// An element at the page's top, as example.com's <body> at 122,0:
+	// its top line is inside it, at the picture's first row, the others
+	// outside it, as there is room. One that goes on past the top has no
+	// line there, as it has no edge there.
+	body := highlight(img, pickRect{X: 50, Y: 0, W: 60, H: 40}, 2)
+	// The crop: 48 above the box can't be, so it starts at the box's top.
+	for _, at := range []struct {
+		name string
+		x, y int
+		want bool
+	}{
+		{"top, inside", 48 + 60, 0, true},
+		{"top, inside, second row", 48 + 60, 3, true},
+		{"under the top line", 48 + 60, 5, false},
+		{"left, outside", 48 - 2, 40, true},
+		{"just inside the left", 48, 40, false},
+		{"bottom, outside", 48 + 60, 80 + 1, true},
+	} {
+		if got := body.RGBAAt(at.x, at.y) == pickAccent; got != at.want {
+			t.Errorf("element at the top: %s (%d,%d) blue %v, want %v", at.name, at.x, at.y, got, at.want)
+		}
+	}
+	tall := highlight(img, pickRect{X: 50, Y: -20, W: 60, H: 100}, 2)
+	if tall.RGBAAt(48+60, 0) == pickAccent || tall.RGBAAt(48+60, 3) == pickAccent {
+		t.Error("an element past the top has a top line")
+	}
+	if tall.RGBAAt(48-2, 40) != pickAccent {
+		t.Error("an element past the top lost its left line")
+	}
+	// At the right and bottom edges too.
+	corner := highlight(img, pickRect{X: 170, Y: 130, W: 30, H: 20}, 2)
+	cb := corner.Bounds()
+	if corner.RGBAAt(cb.Max.X-1, cb.Max.Y-30) != pickAccent || corner.RGBAAt(cb.Max.X-30, cb.Max.Y-1) != pickAccent {
+		t.Error("an element in the bottom right corner lost its right or bottom line")
+	}
+
+	// In the page's picture, its badge goes inside the box, under the top
+	// line, whole.
+	top := pagePicture(img, []pickedElem{{Rect: pickRect{X: 50, Y: 0, W: 60, H: 40}}}, 2)
+	if top.RGBAAt(160, 0) != pickAccent {
+		t.Error("the page's picture: no top line for an element at the top")
+	}
+	blue = 0
+	for y := 4; y < 34; y++ {
+		for x := 96; x < 120; x++ {
+			if top.RGBAAt(x, y) == pickAccent {
+				blue++
+			}
+		}
+	}
+	if blue < 200 {
+		t.Errorf("no badge inside an element at the top: %d blue pixels", blue)
+	}
+
 	for _, tc := range []struct {
 		r    pickRect
 		want bool

@@ -754,17 +754,47 @@ func scaled(r pickRect, scale float64) image.Rectangle {
 	return image.Rect(int(r.X*scale), int(r.Y*scale), int((r.X+r.W)*scale+0.5), int((r.Y+r.H)*scale+0.5))
 }
 
-// drawBox draws a box around box, outside it, 2 CSS pixels wide.
+// drawBox draws a box around box, 2 CSS pixels wide: outside it where the
+// picture has room, inside it on a side that touches the picture's edge,
+// as an element at the page's top or side does, so that every side shows.
+// A side past the picture's edge, of an element that goes on beyond it,
+// has no line.
 func drawBox(out *image.RGBA, box image.Rectangle, scale float64) {
 	w := max(int(2*scale), 2)
+	b := out.Bounds()
+	// The box's outer edge on each side, and whether the side is drawn.
+	o := box
+	side := func(edge, limit int, outward int) (int, bool) {
+		room := (limit - edge) * outward
+		switch {
+		case room >= w:
+			return edge + w*outward, true
+		case room > -w: // on the picture's edge: inside, from it
+			if outward < 0 {
+				return max(edge, limit), true
+			}
+			return min(edge, limit), true
+		}
+		return edge, false
+	}
+	var top, bottom, left, right bool
+	o.Min.Y, top = side(box.Min.Y, b.Min.Y, -1)
+	o.Max.Y, bottom = side(box.Max.Y, b.Max.Y, 1)
+	o.Min.X, left = side(box.Min.X, b.Min.X, -1)
+	o.Max.X, right = side(box.Max.X, b.Max.X, 1)
 	edge := image.NewUniform(pickAccent)
-	for _, s := range []image.Rectangle{
-		image.Rect(box.Min.X-w, box.Min.Y-w, box.Max.X+w, box.Min.Y),
-		image.Rect(box.Min.X-w, box.Max.Y, box.Max.X+w, box.Max.Y+w),
-		image.Rect(box.Min.X-w, box.Min.Y, box.Min.X, box.Max.Y),
-		image.Rect(box.Max.X, box.Min.Y, box.Max.X+w, box.Max.Y),
+	for _, s := range []struct {
+		r  image.Rectangle
+		on bool
+	}{
+		{image.Rect(o.Min.X, o.Min.Y, o.Max.X, o.Min.Y+w), top},
+		{image.Rect(o.Min.X, o.Max.Y-w, o.Max.X, o.Max.Y), bottom},
+		{image.Rect(o.Min.X, o.Min.Y, o.Min.X+w, o.Max.Y), left},
+		{image.Rect(o.Max.X-w, o.Min.Y, o.Max.X, o.Max.Y), right},
 	} {
-		draw.Draw(out, s.Intersect(out.Bounds()), edge, image.Point{}, draw.Src)
+		if s.on {
+			draw.Draw(out, s.r.Intersect(b), edge, image.Point{}, draw.Src)
+		}
 	}
 }
 
