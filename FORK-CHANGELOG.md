@@ -5,6 +5,30 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.8
+
+- **An orchestrator hears what its child said**: when a child of Claude
+  Code, Codex or Pi finishes its turn, its report carries the reply it
+  ended the turn with, so that the orchestrator answers a question at
+  once, without reading the child's screen. A long reply comes as its
+  first and last thousand characters, and `kero read <child> --reply`
+  prints it whole
+- The report says what the child left running in the background, as "1
+  shell, 1 monitor still running", so that the orchestrator knows it isn't
+  done
+- No report for a turn with no new reply, as one that only compacted the
+  conversation, nor for one the child ended with its own
+  `kero report --to-parent`
+- Children are told that their last reply goes to their orchestrator, so
+  they end a turn with their result or their question
+- **`kero prompt` sends a long text whole**: it pastes the text, so that
+  its lines reach an agent as one prompt, instead of typing them one by
+  one, each line's end an Enter that sent only the last line. It presses
+  Enter once the agent has the text, and its timeout says that the prompt
+  went and the agent is still working
+- `kero read --reply` prints an agent's last reply, whole, from its
+  transcript
+
 ## 2.1.35-fork.7
 
 - **Deleting Ama's chats**: History in Ama's window has Delete Chat, to
