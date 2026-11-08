@@ -147,6 +147,9 @@ kero browser text h1                       # 某个元素的文本
 kero browser click 'button[type=submit]'
 kero browser screenshot -o page.png
 kero browser eval 'document.title'
+kero browser console --errors              # 页面抛出的错误和日志，附文件和行号
+kero browser network --failed              # 失败或返回 4xx/5xx 的请求
+kero browser emulate device iphone-15      # 像手机那样显示页面
 ```
 
 | 命令                            | 作用 |
@@ -163,12 +166,22 @@ kero browser eval 'document.title'
 | `cookies import <chrome\|edge>`  | 从正在运行的浏览器复制 Cookie，以及其打开的标签页中网站的 localStorage 和 IndexedDB，让面板在你于浏览器中登录过的网站上也处于登录状态；`--domain` 只复制某个网站的（[步骤](./panes.md#signing-in-with-your-browsers-cookies)） |
 | `wait-message [--json]`         | 等待页面用 [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) 发送的下一条消息，并附上页面信息打印出来；`--json` 打印其 `id`、`from`、`label`、`url`、`title`、`text` 和 `at` |
 | `pick`                          | 打开选取元素模式，让用户选取元素并为每个写备注；选取结果作为消息发给页面的智能体（[详情](./panes.md#为智能体选取元素)） |
+| `console [--errors] [--clear]`  | 打印页面用 `console.*` 输出的内容、抛出的错误、无人捕获的 Promise，以及浏览器报告的内容（如 CORS 错误和加载失败），每条附文件和行号；`--errors` 只打印错误，`--clear` 在打印后清空日志 |
+| `network [--failed] [--url text] [--clear]` | 打印页面的请求，每个一行：`#id`、方法、状态、类型、大小、耗时和 URL，以及失败原因（`net::ERR_…`、`CORS …`、`blocked: …`）；`--failed` 只打印失败或返回 4xx、5xx 的，`--url` 只打印 URL 含该文本的 |
+| `network body <id> [-o file]`   | 打印列表中某个响应的正文，或保存到文件 |
+| `emulate device <name>`         | 像手机或平板那样显示页面：视口、缩放、触摸和 user agent；`emulate device` 列出可选设备（`iphone-se`、`iphone-15`、`iphone-15-pro-max`、`pixel-8`、`galaxy-s24`、`ipad`、`ipad-pro`） |
+| `emulate viewport <w>x<h>`      | 按该尺寸布局页面；`--scale` 设定每个 CSS 像素对应的设备像素，`--mobile` 像手机那样布局，`--touch` 让页面接收触摸；`none` 恢复 |
+| `emulate user-agent <ua…>`      | 发送另一个 user agent；`none` 恢复 |
+| `emulate network <preset>`      | 让网络变慢（`slow-3g`、`3g`、`4g`）、断网（`offline`），或恢复（`none`） |
+| `emulate [reset]`               | 打印页面当前的显示方式；`reset` 全部恢复原样 |
 
 除非用 `--timeout` 指定，`wait-message` 会一直等待；没有收到消息时以 `timed out` 失败：智能体应以短于其 shell 工具自身超时的时间重新等待。它不需要 Remote Control。
 
 选择器是 CSS 选择器，在 shell 中记得加引号。需要元素的命令会等它出现，`--timeout`（默认 `10s`）设定这些命令以及页面加载最多等多久。`type` 和 `eval` 接受 `-`，表示从标准输入读取文本。
 
 点击和输入发送的是真实鼠标和键盘会产生的事件，所以 React 等框架构建的页面也能收到。截图需要窗格显示在屏幕上：先用 `kero focus` 显示它。其余命令对任何浏览器窗格都有效，无论是否显示。
+
+`console` 和 `network` 保留窗格的页面创建以来（包括首次加载）的内容，各自最多最近 1,000 条；`--clear` 清空它们，这样下次读取时只显示重新加载或点击所引起的内容。`--json` 打印它们的字段，以及 `emulate` 的状态。`emulate` 的设置在窗格打开期间一直有效，重新加载和前往其他页面后也是。`network` 和 `emulate` 使用 DevTools Protocol，只有 Windows 上的浏览器窗格才有；在 macOS 和 Linux 上，`console` 只包含当前文档输出的内容。
 
 和 `kero do` 一样，`kero browser` 需要开启 **设置 › 智能体** 中的 **远程控制**，并且 app 处于打开状态。
 

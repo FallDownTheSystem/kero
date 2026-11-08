@@ -880,7 +880,8 @@ type (
 	BrowserParams struct {
 		ID string `json:"id"`
 		// Op is what to do: open, back, forward, reload, text, html,
-		// snapshot, click, type, wait, eval, screenshot or cookies.
+		// snapshot, click, type, wait, eval, screenshot, cookies,
+		// console, network or emulate.
 		Op       string `json:"op"`
 		Selector string `json:"selector,omitempty"`
 		// Ref names the element a snapshot gave a ref, in place of a
@@ -898,6 +899,14 @@ type (
 		// Storage is the sites' storage to load with them, which cookies
 		// import took of the user's browser.
 		Storage []SiteStorage `json:"storage,omitempty"`
+		// Clear empties the console's or the network's log once read.
+		Clear bool `json:"clear,omitempty"`
+		// Request is the number the network's log gave the request whose
+		// response body to read (network, Text "body").
+		Request int `json:"request,omitempty"`
+		// Emulate is what emulate sets: the device, its viewport, the
+		// user agent or the network, as Text says.
+		Emulate *Emulation `json:"emulate,omitempty"`
 		// Timeout is how long to wait for the element, or the page to
 		// load, in ms: 0 for the app's default.
 		Timeout int64 `json:"timeout,omitempty"`
@@ -915,6 +924,72 @@ type (
 		Text    string   `json:"text,omitempty"`
 		PNG     []byte   `json:"png,omitempty"`
 		Cookies []Cookie `json:"cookies,omitempty"`
+		// Console and Network are the page's logs, Body a response's
+		// body, and Emulation what emulate set.
+		Console   []ConsoleEntry   `json:"console,omitempty"`
+		Network   []NetworkRequest `json:"network,omitempty"`
+		Body      []byte           `json:"body,omitempty"`
+		Emulation *Emulation       `json:"emulation,omitempty"`
+	}
+	// ConsoleEntry is a line of a browser pane's console: what the page
+	// logged, or an error it threw or the browser told of.
+	ConsoleEntry struct {
+		Time int64 `json:"time"` // unix ms
+		// Level is error, warning, info or debug.
+		Level string `json:"level"`
+		// Source is console for console.*, exception for an uncaught
+		// error, rejection for a promise none caught, or the browser's
+		// own: network, security, deprecation, violation, ...
+		Source string `json:"source"`
+		Text   string `json:"text"`
+		// URL, Line and Column are where it came from, from 1.
+		URL    string   `json:"url,omitempty"`
+		Line   int      `json:"line,omitempty"`
+		Column int      `json:"column,omitempty"`
+		Stack  []string `json:"stack,omitempty"`
+	}
+	// NetworkRequest is a request of a browser pane's page, as its
+	// network's log keeps it.
+	NetworkRequest struct {
+		ID     int    `json:"id"` // the log's number of it
+		Method string `json:"method"`
+		URL    string `json:"url"`
+		// Type is the browser's: Document, Stylesheet, Script, XHR,
+		// Fetch, Image, Font, ...
+		Type       string `json:"type,omitempty"`
+		Status     int    `json:"status,omitempty"`
+		StatusText string `json:"statusText,omitempty"`
+		MIMEType   string `json:"mimeType,omitempty"`
+		// Error is why it failed: net::ERR_…, a CORS error, or what
+		// blocked it.
+		Error string `json:"error,omitempty"`
+		Time  int64  `json:"time"` // unix ms it was sent
+		// Duration is how long it took, in ms; Size how many bytes it
+		// took to load, headers too.
+		Duration  float64 `json:"duration"`
+		Size      int64   `json:"size"`
+		FromCache bool    `json:"fromCache,omitempty"`
+		Pending   bool    `json:"pending,omitempty"`
+	}
+	// Emulation is the device and network a browser pane's page is shown
+	// as, by kero browser emulate: zero, as it is.
+	Emulation struct {
+		Device string `json:"device,omitempty"`
+		// Width and Height are the viewport's, in CSS pixels, Scale the
+		// device's pixels to one; Mobile lays the page out as a phone
+		// does, with its meta viewport, and Touch has it take touches.
+		Width     int     `json:"width,omitempty"`
+		Height    int     `json:"height,omitempty"`
+		Scale     float64 `json:"scale,omitempty"`
+		Mobile    bool    `json:"mobile,omitempty"`
+		Touch     bool    `json:"touch,omitempty"`
+		UserAgent string  `json:"userAgent,omitempty"`
+		// Network is offline, a preset's name, or none; Latency (ms),
+		// Download and Upload (bytes a second) its numbers.
+		Network  string  `json:"network,omitempty"`
+		Latency  float64 `json:"latency,omitempty"`
+		Download float64 `json:"download,omitempty"`
+		Upload   float64 `json:"upload,omitempty"`
 	}
 	// Cookie is a cookie of the browser panes' pages, in the shape of
 	// Playwright's storage state.

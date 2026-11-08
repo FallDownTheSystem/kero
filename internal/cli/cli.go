@@ -132,6 +132,26 @@ Usage:
                                   with window.kero.send, and print it
                                   (needs no Remote Control; no timeout
                                   unless given one)
+      console [--errors] [--clear] [--json]
+                                  print what the page logged, threw and
+                                  the browser told of, with where from:
+                                  since the pane's page was made (on macOS
+                                  and Linux, its document); --clear
+                                  empties the log after
+      network [--failed] [--url s] [--clear] [--json]
+                                  print the page's requests: method,
+                                  status, type, size, time, URL, and why
+                                  one failed (CORS, blocked, net::ERR_…)
+      network body <id> [-o file] print a response's body (#id from the
+                                  list)
+      emulate device <name>       show the page as a phone or a tablet
+                                  does (no name lists them)
+      emulate viewport <w>x<h> [--scale n] [--mobile] [--touch]
+      emulate user-agent <ua…>
+      emulate network <offline|slow-3g|3g|4g|none>
+      emulate reset               as it is again; emulate alone prints
+                                  what the page is shown as (network
+                                  and emulate: Windows only)
       --ref <ref>                 a snapshot's element, in place of a
                                   selector
       --domain <domain>           cookies of a site and its subdomains

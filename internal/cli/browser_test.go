@@ -4,6 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"kero/internal/proto"
@@ -61,6 +62,22 @@ func TestBrowserTarget(t *testing.T) {
 		{"cookies"},
 		{"cookies", "import"},
 		{"cookies", "export", "chrome"},
+		{"console", "now"},
+		{"console", "--failed"},
+		{"text", "--clear"},
+		{"screenshot", "--touch"},
+		{"network", "body"},
+		{"network", "body", "x"},
+		{"network", "headers", "3"},
+		{"network", "-o", "x.txt"},
+		{"emulate", "phone"},
+		{"emulate", "device", "nokia-3310"},
+		{"emulate", "viewport", "big"},
+		{"emulate", "viewport", "390x"},
+		{"emulate", "network", "5g"},
+		{"emulate", "reset", "now"},
+		{"emulate", "network", "3g", "--scale", "2"},
+		{"emulate", "viewport", "390x844", "--scale", "0"},
 	} {
 		err := browserCmd(nil, st, args)
 		if !errors.Is(err, errUsage) && !(len(args) == 1 && args[0] == "bogus" && errors.Is(err, errNotFound)) {
@@ -104,5 +121,44 @@ func TestCookieFiles(t *testing.T) {
 	}
 	if _, err := parseCookies([]byte("not\ta cookie\n")); err == nil {
 		t.Error("a line of no cookie read")
+	}
+}
+
+// The console prints a line an entry, as a console shows it; the
+// network a line a request, with why one failed.
+func TestDevtoolsOutput(t *testing.T) {
+	var b strings.Builder
+	printConsole(&b, []proto.ConsoleEntry{
+		{Level: "info", Source: "console", Text: "ready", URL: "http://localhost:3000/main.js", Line: 3, Column: 9},
+		{Level: "error", Source: "exception", Text: "Uncaught TypeError: x is not a function", URL: "http://localhost:3000/app.js", Line: 12, Column: 5,
+			Stack: []string{"go (http://localhost:3000/app.js:12:5)"}},
+		{Level: "warning", Source: "deprecation", Text: "two\nlines", URL: "http://x.dev/"},
+	})
+	want := "[info] ready  (http://localhost:3000/main.js:3:9)\n" +
+		"[exception] Uncaught TypeError: x is not a function  (http://localhost:3000/app.js:12:5)\n" +
+		"    at go (http://localhost:3000/app.js:12:5)\n" +
+		"[warning deprecation] two  (http://x.dev/)\n    lines\n"
+	if b.String() != want {
+		t.Errorf("console:\n%s\nwant:\n%s", b.String(), want)
+	}
+
+	b.Reset()
+	printNetwork(&b, []proto.NetworkRequest{
+		{ID: 1, Method: "GET", URL: "http://localhost:3000/", Type: "Document", Status: 200, Duration: 85.4, Size: 12345},
+		{ID: 12, Method: "POST", URL: "https://api.dev/x", Type: "Fetch", Error: "net::ERR_FAILED CORS MissingAllowOriginHeader", Duration: 1500},
+		{ID: 13, Method: "GET", URL: "http://localhost:3000/slow", Type: "XHR", Pending: true},
+	})
+	want = "#1   GET   200     Document  12.3 kB  85 ms    http://localhost:3000/\n" +
+		"#12  POST  failed  Fetch              1.50 s   https://api.dev/x  net::ERR_FAILED CORS MissingAllowOriginHeader\n" +
+		"#13  GET   …       XHR                pending  http://localhost:3000/slow\n"
+	if b.String() != want {
+		t.Errorf("network:\n%q\nwant:\n%q", b.String(), want)
+	}
+
+	for s, want := range map[string][2]int{"390x844": {390, 844}, "1280×800": {1280, 800}, "390X844": {390, 844}, "x844": {}, "0x10": {}, "390": {}} {
+		w, h, ok := parseViewport(s)
+		if [2]int{w, h} != want || ok != (want != [2]int{}) {
+			t.Errorf("viewport %q: %d, %d, %v", s, w, h, ok)
+		}
 	}
 }

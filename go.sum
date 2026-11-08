@@ -20,6 +20,8 @@ github.com/FallDownTheSystem/mygo v0.0.0-20261108075214-bc84643c568e h1:3yoRP3ki
 github.com/FallDownTheSystem/mygo v0.0.0-20261108075214-bc84643c568e/go.mod h1:M9l8H3dNtckOTlEpDp8JrLNL5mXOYMpYqv3tLuyPylI=
 github.com/FallDownTheSystem/mygo v0.0.0-20261108081953-06b5e830d51d h1:RW1SBZlH4hTlOb0shy7hWD9asYSLvcncbIdKrksblNA=
 github.com/FallDownTheSystem/mygo v0.0.0-20261108081953-06b5e830d51d/go.mod h1:M9l8H3dNtckOTlEpDp8JrLNL5mXOYMpYqv3tLuyPylI=
+github.com/FallDownTheSystem/mygo v0.0.0-20261108082211-5d02e65e5baf h1:C/wfHUy/2cz8aa7yz3KRfCUjSfob+t+pGRPT/WkkyRU=
+github.com/FallDownTheSystem/mygo v0.0.0-20261108082211-5d02e65e5baf/go.mod h1:M9l8H3dNtckOTlEpDp8JrLNL5mXOYMpYqv3tLuyPylI=
 github.com/ProtonMail/go-crypto v1.4.1 h1:9RfcZHqEQUvP8RzecWEUafnZVtEvrBVL9BiF67IQOfM=
 github.com/ProtonMail/go-crypto v1.4.1/go.mod h1:e1OaTyu5SYVrO9gKOEhTc+5UcXtTUa+P3uLudwcgPqo=
 github.com/cloudflare/circl v1.6.2 h1:hL7VBpHHKzrV5WTfHCaBsgx/HGbBYlgrwvNXEVDYYsQ=
