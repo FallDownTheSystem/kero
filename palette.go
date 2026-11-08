@@ -460,6 +460,10 @@ func confirmDialog(c *ui.Context, pal *palette, pending **confirmation) bool {
 		// them, while the window has room: they wrap only past that.
 		winW, _ := c.Size()
 		width = max(width, min(buttonsWidth(c, labels, keys)+44+1, winW-40))
+		// A small window, as Ama's can be, still shows a margin around it.
+		if winW > 0 {
+			width = min(width, winW-24)
+		}
 		floating(panel.Width(width).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(cf.title)
 		ui.Text(c, cf.title).FontSize(15).FontWeight(650).TextColor(pal.text)
 		ui.Text(c, cf.detail).FontSize(13).TextColor(pal.textMuted).LineHeight(1.4)

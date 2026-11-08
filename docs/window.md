@@ -51,7 +51,7 @@ A file you click in Files, Changes or Search, and a pull request you click in Re
 
 ## Ama's window
 
-[Ama](./ama.md) opens in a window of its own, above Kero's, from the frog or with <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd> (<kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>A</kbd> on macOS). Its header has **New Chat**, **History** and **Clear**.
+[Ama](./ama.md) opens in a window of its own, above Kero's, from the frog or with <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd> (<kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>A</kbd> on macOS). Its header has **New Chat**, **History**, which also deletes past chats, and **Close**.
 
 ## Kero's icon
 

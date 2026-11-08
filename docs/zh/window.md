@@ -51,7 +51,7 @@ Kero 的窗口从左到右分为三部分：**会话边栏**、你所在会话�
 
 ## Ama 的窗口
 
-[Ama](./ama.md) 在 Kero 窗口之上的独立窗口中打开，可以从青蛙打开，或按 <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd>（macOS 上为 <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>A</kbd>）。它的标题栏中有**新对话**、**历史**和**清屏**。
+[Ama](./ama.md) 在 Kero 窗口之上的独立窗口中打开，可以从青蛙打开，或按 <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd>（macOS 上为 <kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>A</kbd>）。它的标题栏中有**新对话**、也能删除过去对话的**历史**，以及**关闭**。
 
 ## Kero 的图标
 

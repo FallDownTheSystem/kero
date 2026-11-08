@@ -75,12 +75,34 @@ func TestAmaFrogAndWindow(t *testing.T) {
 			win.Frame()
 			win.Frame()
 			closeLabel := a.tip(locales.CommonClose(), amaAction)
-			for _, label := range []string{locales.AmaNewChat(), locales.AmaHistory(), locales.AmaClear(), closeLabel} {
+			for _, label := range []string{locales.AmaNewChat(), locales.AmaHistory(), closeLabel} {
 				if _, ok := win.Find(label); !ok {
 					t.Errorf("the window has no %s", label)
 				}
 			}
 			shot(t, win, "ama-window-"+side)
+
+			// Deleting chats asks first, in Ama's window, and the running
+			// one stays.
+			a.ama.history = []proto.Conversation{
+				{Agent: "claude", ID: "c1", Title: "Close old sessions", Session: "ama1"},
+				{Agent: "claude", ID: "c2", Title: "Which need me"},
+				{Agent: "claude", ID: "c3", Title: "Start a worktree"},
+			}
+			a.askDeleteAmaChats(a.ama.history[1:])
+			win.Frame()
+			if _, ok := win.Find(locales.AmaDeleteAllTitle(2)); !ok {
+				t.Fatalf("no confirmation in Ama's window; texts %q", win.Texts())
+			}
+			del, ok := win.Find(locales.EndedDelete())
+			if !ok {
+				t.Fatal("the confirmation has no Delete")
+			}
+			win.ClickAt(del.X+del.W/2, del.Y+del.H/2)
+			win.Frame()
+			if a.ama.confirm != nil || len(a.ama.history) != 1 || a.ama.history[0].ID != "c1" {
+				t.Errorf("after Delete: confirm %v, history %+v", a.ama.confirm != nil, a.ama.history)
+			}
 			if c, ok := win.Find(closeLabel); ok {
 				win.ClickAt(c.X+c.W/2, c.Y+c.H/2)
 				win.Frame()
