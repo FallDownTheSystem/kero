@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/updater/native"
@@ -138,6 +139,7 @@ func runApp() {
 		a.connect()
 		a.syncHosts()
 		go a.watchConfig()
+		go prunePickShots(os.TempDir(), time.Now())
 	})
 	// window.kero.send of local pages in browser panes (bridge.go).
 	mygo.BindAs("Kero", &pageBridge{a: a})

@@ -65,8 +65,10 @@ type pickResult struct {
 	Scroll      struct{ X, Y float64 } `json:"scroll"`
 	Picks       []pickedElem           `json:"picks"`
 
-	// pageShot is the file of the page's picture.
+	// pageShot is the file of the page's picture; remote, that the page's
+	// session runs on a host, whose source the app does not look in.
 	pageShot string
+	remote   bool
 }
 
 type pickedElem struct {
@@ -230,11 +232,11 @@ func (a *App) pickPane() string {
 func (a *App) sendPicks(id string, e *webEntry, res *pickResult) {
 	// The source is on the disk of the machine the session runs on, and
 	// the agent reads its pictures there: a host's sessions get neither.
-	local := !a.hostOf(id).remote()
+	res.remote = a.hostOf(id).remote()
 	dirs := a.pickDirs(id)
 	view := e.view
 	go func() {
-		if local {
+		if !res.remote {
 			for i := range res.Picks {
 				res.Picks[i].sources = pickSources(&res.Picks[i], res.URL, dirs)
 			}
@@ -598,6 +600,11 @@ func pickShots(view *mygo.WebView, res *pickResult, pane string) {
 	if !res.Screenshots && !res.PageShot || res.Viewport.W <= 0 {
 		return
 	}
+	dir := filepath.Join(os.TempDir(), pickShotDir)
+	prunePickShots(os.TempDir(), time.Now())
+	if os.MkdirAll(dir, 0o755) != nil {
+		return
+	}
 	// The picker's boxes are gone from the page by its next frame.
 	time.Sleep(150 * time.Millisecond)
 	img, err := capture(view)
@@ -611,7 +618,7 @@ func pickShots(view *mygo.WebView, res *pickResult, pane string) {
 		if png.Encode(&buf, img) != nil {
 			return ""
 		}
-		path := filepath.Join(os.TempDir(), fmt.Sprintf("kero-pick-%s-%s-%s.png", pane, stamp, name))
+		path := filepath.Join(dir, fmt.Sprintf("%s-%s-%s.png", pane, stamp, name))
 		if os.WriteFile(path, buf.Bytes(), 0o644) != nil {
 			return ""
 		}
@@ -640,6 +647,27 @@ func pickShots(view *mygo.WebView, res *pickResult, pane string) {
 		}
 		if out := highlight(src, at, scale); out != nil {
 			el.shot = save(out, strconv.Itoa(i+1))
+		}
+	}
+}
+
+// pickShotDir is the folder of the temporary directory the picker's
+// screenshots go to, and pickShotAge how long they stay there: long
+// enough for an agent to read them, from a message it got late.
+const (
+	pickShotDir = "kero-picks"
+	pickShotAge = 24 * time.Hour
+)
+
+// prunePickShots deletes the picker's screenshots older than pickShotAge,
+// of tmp's pickShotDir, and those older Kero builds left in tmp itself
+// (kero-pick-*.png), as a pick takes new ones and the app starts.
+func prunePickShots(tmp string, now time.Time) {
+	old, _ := filepath.Glob(filepath.Join(tmp, pickShotDir, "*.png"))
+	legacy, _ := filepath.Glob(filepath.Join(tmp, "kero-pick-*.png"))
+	for _, f := range append(old, legacy...) {
+		if st, err := os.Stat(f); err == nil && now.Sub(st.ModTime()) > pickShotAge {
+			os.Remove(f)
 		}
 	}
 }
@@ -802,6 +830,13 @@ func pickMessage(res *pickResult, dirs []string) string {
 			b.WriteString("Note: " + strings.ReplaceAll(el.Note, "\n", "\n  ") + "\n")
 		} else {
 			b.WriteString("Note: (none)\n")
+		}
+		switch {
+		case len(el.sources) > 0:
+		case res.remote:
+			b.WriteString("Source location: not looked up (the page's session runs on another machine); grep the search hints\n")
+		default:
+			b.WriteString("Source location: none (not a development build Kero reads, nor a local file); grep the search hints\n")
 		}
 		for j, s := range el.sources {
 			if j == 0 {

@@ -172,11 +172,14 @@ without you asking), and their picks come to you as one message labelled
 "element picks", typed into your prompt, or to kero browser wait-message
 if you wait for the page. For each element it gives, strongest first:
 Source, the file and line from the framework's development build or the
-page's own HTML file, checked against the file; Search hints, strings
-likely written in the source as they are (★ marks one no other element
-on the page has), to grep for; where it sits on the page and its HTML;
+page's own HTML file, checked against the file, or "Source location:
+none" when the page tells none; Search hints, strings likely written in
+the source as they are (★ marks one no other element on the page has),
+to grep for: text hints are short phrases, as the source may wrap the
+text or write ’ and — as entities; where it sits on the page and its HTML;
 then the page's selector, which is not the source's, and its styles.
-Screenshots are PNG files whose paths the message gives: one of each
+Screenshots are PNG files whose paths the message gives, removed a day
+later: one of each
 element, boxed, and one of the page with the elements boxed and numbered
 as the message numbers them. Open them to see what the user means. Go
 to Source first, then grep the hints.
