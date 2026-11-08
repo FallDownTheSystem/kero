@@ -5,6 +5,14 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.4
+
+- The picker's HTML of an element, its parent and its siblings shows a
+  `<script>`, `<style>`, inline `<svg>`, `<template>` or `<noscript>` as
+  its tag and attributes with its contents' size, such as
+  `<style data-vite-dev-id="…">/* 1.2 KB omitted */</style>`, rather
+  than the code or path data
+
 ## 2.1.35-fork.3
 
 - **Orchestrator sessions**: an agent session that plans the work, starts
