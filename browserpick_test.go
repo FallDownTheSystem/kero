@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // A development build may tell a line of its own output, as React 18's
@@ -129,6 +130,47 @@ func TestPickMessage(t *testing.T) {
 	}
 	if !strings.Contains(msg, `class="btn px-4" (3 on the page)`) || strings.Contains(msg, `px-4" ★`) {
 		t.Errorf("a class three elements share is marked unique:\n%s", msg)
+	}
+	if strings.Contains(msg, "Source location: none") {
+		t.Errorf("an element with a source location is told it has none:\n%s", msg)
+	}
+
+	// With no source location, the agent is told so, before the hints,
+	// to grep them rather than look for one; of a host's page, that the
+	// source was not looked in.
+	res.Picks[0].sources = nil
+	msg = pickMessage(res, nil)
+	if i, j := strings.Index(msg, "Source location: none"), strings.Index(msg, "Search hints"); i < 0 || j < i {
+		t.Errorf("no source location, untold or told after the hints:\n%s", msg)
+	}
+	res.remote = true
+	if msg = pickMessage(res, nil); !strings.Contains(msg, "Source location: not looked up") {
+		t.Errorf("a host's page:\n%s", msg)
+	}
+}
+
+// The picker's screenshots go a day after they were taken, as do those
+// older builds left in the temporary directory itself; newer ones, and
+// what else is there, stay.
+func TestPrunePickShots(t *testing.T) {
+	tmp := t.TempDir()
+	now := time.Now()
+	os.MkdirAll(filepath.Join(tmp, pickShotDir), 0o755)
+	file := func(name string, age time.Duration) string {
+		p := filepath.Join(tmp, name)
+		os.WriteFile(p, []byte("png"), 0o644)
+		os.Chtimes(p, now.Add(-age), now.Add(-age))
+		return p
+	}
+	old := file(filepath.Join(pickShotDir, "p1-20261101-page.png"), 25*time.Hour)
+	legacy := file("kero-pick-p1-20261101-1.png", 48*time.Hour)
+	fresh := file(filepath.Join(pickShotDir, "p1-20261108-1.png"), 23*time.Hour)
+	other := file("someone-else.png", 72*time.Hour)
+	prunePickShots(tmp, now)
+	for p, want := range map[string]bool{old: false, legacy: false, fresh: true, other: true} {
+		if _, err := os.Stat(p); (err == nil) != want {
+			t.Errorf("%s: kept %v, want %v", filepath.Base(p), err == nil, want)
+		}
 	}
 }
 
