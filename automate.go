@@ -23,7 +23,7 @@ const browseTimeout = 10 * time.Second
 // as kero do does.
 func (a *App) browse(h *host, r *proto.BrowserRequest, answer func(*proto.BrowserResult, error)) {
 	fail := func(format string, args ...any) { answer(nil, fmt.Errorf(format, args...)) }
-	if !a.remoteControl(h) {
+	if !a.drives(h, r.Ama) {
 		if h.remote() {
 			fail("Remote Control of %s is off: turn it on in Kero's Settings › Hosts", h.name)
 		} else {

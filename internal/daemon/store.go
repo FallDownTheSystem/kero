@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"kero/internal/ama"
 	"kero/internal/proto"
 	"kero/internal/settings"
 )
@@ -40,6 +41,7 @@ type savedSession struct {
 	Orchestrator bool   `json:"orchestrator,omitempty"`
 	Goal         string `json:"goal,omitempty"`
 	Parent       string `json:"parent,omitempty"`
+	Ama          bool   `json:"ama,omitempty"`
 }
 
 type savedPane struct {
@@ -92,7 +94,7 @@ func (d *Daemon) saveState() {
 	st := savedState{Version: 2, Projects: d.projects, Saved: time.Now().UnixMilli()}
 	for _, s := range d.sessions {
 		ss := savedSession{ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed, Created: s.created, Layout: s.layout, Focus: s.focus, Worktree: s.worktree, Review: s.review, PR: s.pr,
-			Orchestrator: s.orchestrator, Goal: s.goal, Parent: s.parent}
+			Orchestrator: s.orchestrator, Goal: s.goal, Parent: s.parent, Ama: s.ama}
 		for _, p := range s.panes {
 			p.mu.Lock()
 			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL, File: p.info.File, Preview: p.info.Preview,
@@ -158,7 +160,13 @@ func (d *Daemon) restore() {
 	when := time.UnixMilli(st.Saved).Format("Mon Jan 2 15:04")
 	for _, ss := range st.Sessions {
 		s := &session{id: ss.ID, project: ss.Project, name: ss.Name, agentNamed: ss.AgentNamed, created: ss.Created, restored: true, focus: ss.Focus, worktree: ss.Worktree, review: ss.Review, pr: ss.PR,
-			orchestrator: ss.Orchestrator, goal: ss.Goal, parent: ss.Parent}
+			orchestrator: ss.Orchestrator, goal: ss.Goal, parent: ss.Parent, ama: ss.Ama}
+		if s.ama {
+			d.markAma(s.id)
+			// Its instructions as this Kero writes them, before its agent
+			// resumes and reads them.
+			ama.Prepare()
+		}
 		for _, sp := range ss.Panes {
 			if p := d.restorePane(s.id, sp, when, set.ResumeAgents); p != nil {
 				s.panes = append(s.panes, p)

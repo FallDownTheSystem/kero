@@ -552,6 +552,13 @@ func (a *App) remoteControl(h *host) bool {
 	return h.cfg.RemoteControl
 }
 
+// drives reports whether a call of a host's programs may drive the app:
+// with Remote Control, or Ama's (ama), which this machine's kerod tells by
+// its secret, and which needs none (ama.go).
+func (a *App) drives(h *host, ama bool) bool {
+	return a.remoteControl(h) || ama && !h.remote()
+}
+
 // hostedName is a session's name, with its host's for a remote one, as
 // a notification and the window's title say it, so that a host cannot
 // pass for this machine.

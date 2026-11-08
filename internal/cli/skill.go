@@ -14,7 +14,7 @@ import (
 // installs, from this binary, so that it follows kero's updates.
 const skillGuide = `---
 name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), read a browser pane's console errors and network requests and show its page as a phone or on a slow network (kero browser console, network, emulate), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), orchestrate: start child sessions and follow them from Kero's reports, or report your result to your orchestrator (kero new --orchestrator, kero report --to-parent), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree. Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
+description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), read a browser pane's console errors and network requests and show its page as a phone or on a slow network (kero browser console, network, emulate), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), orchestrate: start child sessions and follow them from Kero's reports, or report your result to your orchestrator (kero new --orchestrator, kero report --to-parent), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree; and manage Kero as its app does: add, rename and remove projects, list and close sessions by project and status, move them, make, remove, clean up and prune worktrees, list a repository's pull requests and start reviews of them, and read and write settings (as Kero's helper agent, Ama, does). Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
 ---
 
 # Kero
@@ -375,6 +375,32 @@ merge can't be undone. Pass --head with the commit you checked, so
 that a merge refuses commits pushed since. A worktree that has the pull
 request already is used as it is: kero pr checkout says where, rather
 than check it out twice.
+
+## Manage Kero
+
+What the app's sidebar, dialogs and Settings do, these do from a shell;
+Kero's helper agent, Ama, works with them:
+
+    kero ls -p api --status waiting           # sessions of a project, in these statuses
+    kero projects add ~/code/api -n api       # a project of a folder; prints its id
+    kero projects rename api backend
+    kero projects remove backend --force      # --force: it has sessions, which close
+    kero move <session> <project>
+    kero close --all -p api --status idle,exited --dry-run   # see which, then without --dry-run
+    kero close <session> <session>…           # several at once
+    kero worktree create fix-login -p api -- claude "fix the login"   # a session in a new worktree
+    kero worktree remove fix-login -p api [--branch] [--force]
+    kero worktree cleanup --dry-run           # what the automatic cleanup would remove; then without
+    kero worktree prune -p api                # forget worktrees whose folders are gone
+    kero pr list -p api [--json]              # the repository's open pull requests
+    kero pr review 123 -p api                 # an agent's review in a worktree, as the Review tab starts it
+    kero config get default-agent             # a setting, by the key kero config show lists
+    kero config set notify-on-done false      # write one, as Settings does
+
+kero close with --all, -p or --status never closes Ama's session, nor the
+one it runs in. kero pr review needs the app open, and Remote Control, as
+kero do does, unless Ama runs it. Close, remove and change settings only
+as the user asked, and show them what --dry-run lists first.
 
 ## Tell the user
 

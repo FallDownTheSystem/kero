@@ -262,7 +262,13 @@ func (d *Daemon) prCreate(p proto.PRCreateParams) (proto.PRCreated, error) {
 func (d *Daemon) prFetch(p proto.PRFetchParams) (proto.PRFetched, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	r, _, _, err := d.paneRepo(ctx, p.Pane)
+	var r git.Repo
+	var err error
+	if p.Pane == "" && p.Dir != "" {
+		r, err = git.Open(ctx, p.Dir)
+	} else {
+		r, _, _, err = d.paneRepo(ctx, p.Pane)
+	}
 	if err != nil {
 		return proto.PRFetched{}, err
 	}

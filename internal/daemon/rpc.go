@@ -374,6 +374,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
+		ama := d.fromAma(p.Token)
 		d.mu.Lock()
 		s := d.findSessionLocked(p.Session)
 		if s != nil && p.Pane != "" {
@@ -393,7 +394,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		d.mu.Lock()
 		for sub := range d.subs {
 			sub.event(proto.Message{Event: "state", State: &st})
-			sub.event(proto.Message{Event: "select", Select: s.id})
+			sub.event(proto.Message{Event: "select", Select: s.id, Ama: ama})
 		}
 		n := len(d.subs)
 		d.mu.Unlock()
@@ -405,9 +406,10 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
+		ama := d.fromAma(p.Token)
 		d.mu.Lock()
 		for sub := range d.subs {
-			sub.event(proto.Message{Event: "action", Action: p.Action, Args: p.Args})
+			sub.event(proto.Message{Event: "action", Action: p.Action, Args: p.Args, Ama: ama})
 		}
 		n := len(d.subs)
 		d.mu.Unlock()
@@ -962,6 +964,8 @@ func (d *Daemon) browse(c *controlConn, s *pane, p proto.BrowserParams) (any, er
 	if !browser {
 		return nil, fmt.Errorf("pane %s is a terminal, not a browser", id)
 	}
+	ama := d.fromAma(p.Token)
+	p.Token = ""
 	d.mu.Lock()
 	n := len(d.subs)
 	if n == 0 {
@@ -976,7 +980,7 @@ func (d *Daemon) browse(c *controlConn, s *pane, p proto.BrowserParams) (any, er
 	ch := make(chan proto.BrowserAnswer, n)
 	d.asks[req] = ch
 	for sub := range d.subs {
-		sub.event(proto.Message{Event: "browser", Browser: &proto.BrowserRequest{Req: req, Pane: id, BrowserParams: p}})
+		sub.event(proto.Message{Event: "browser", Browser: &proto.BrowserRequest{Req: req, Pane: id, Ama: ama, BrowserParams: p}})
 	}
 	d.mu.Unlock()
 	defer func() {

@@ -92,6 +92,9 @@ type Message struct {
 	Review *PRReviewRef `json:"review,omitempty"`
 	// Delivery tells a message's delivery to an agent (agent.send).
 	Delivery *Delivery `json:"delivery,omitempty"`
+	// Ama tells a select, action or browser request of Ama's (its
+	// $KERO_AMA, checked by kerod), which needs no Remote Control.
+	Ama bool `json:"ama,omitempty"`
 }
 
 // Notice is a desktop notification a program in a session sent.
@@ -354,6 +357,10 @@ type Session struct {
 	Orchestrator bool   `json:"orchestrator,omitempty"`
 	Goal         string `json:"goal,omitempty"`
 	Parent       string `json:"parent,omitempty"`
+	// Ama marks the session of Ama, the app's helper agent: of no project,
+	// in a folder of its own (AmaDir), which the sidebar lists apart, and
+	// which kerod keeps one of.
+	Ama bool `json:"ama,omitempty"`
 }
 
 // Worktree is a linked git worktree kero made for a session: Path checks
@@ -837,6 +844,9 @@ type (
 		// child of that orchestrator, unless Parent says otherwise.
 		Parent string `json:"parent,omitempty"`
 		By     string `json:"by,omitempty"`
+		// Ama makes the session Ama's (Session.Ama), in place of the one
+		// there is, which closes once this one started.
+		Ama bool `json:"ama,omitempty"`
 	}
 	// OrchestratorParams make session ID an orchestrator, or with Off an
 	// ordinary session again, whose children become top-level sessions;
@@ -903,13 +913,20 @@ type (
 	ViewParams struct {
 		ID string `json:"id"` // "" when no window shows a session
 	}
+	// DoParams run an action of the app (kero do). Token is $KERO_AMA of
+	// the caller, which kerod gives Ama's panes alone: with it, the app
+	// takes the action without Remote Control (Message.Ama).
 	DoParams struct {
 		Action string            `json:"action"`
 		Args   map[string]string `json:"args,omitempty"`
+		Token  string            `json:"token,omitempty"`
 	}
+	// FocusParams show a session in the app (kero focus); Token as
+	// DoParams'.
 	FocusParams struct {
 		Session string `json:"session"`
 		Pane    string `json:"pane"`
+		Token   string `json:"token,omitempty"`
 	}
 	LayoutParams struct {
 		Session string  `json:"session"`
@@ -969,12 +986,16 @@ type (
 		// Timeout is how long to wait for the element, or the page to
 		// load, in ms: 0 for the app's default.
 		Timeout int64 `json:"timeout,omitempty"`
+		// Token is the caller's $KERO_AMA, as DoParams'.
+		Token string `json:"token,omitempty"`
 	}
 	// BrowserRequest is a browser call as kerod hands it to the app: Req
-	// is what the app answers it by, and Pane the browser pane's id.
+	// is what the app answers it by, and Pane the browser pane's id; Ama,
+	// that Ama asks (Message.Ama), its token checked and gone.
 	BrowserRequest struct {
 		Req  int64  `json:"req"`
 		Pane string `json:"pane"`
+		Ama  bool   `json:"ama,omitempty"`
 		BrowserParams
 	}
 	// BrowserResult is what the page answered: text for text, html,
@@ -1108,9 +1129,12 @@ type (
 	// ConversationParams names a conversation (Conversation), to resume
 	// in a session after After, of Cols and Rows, to forget, or to
 	// archive or not, as Archived.
+	// ConversationParams name a conversation; to resume it, Ama resumes
+	// it as Ama's session (CreateParams' Ama).
 	ConversationParams struct {
 		Agent    string `json:"agent"`
 		ID       string `json:"id"`
+		Ama      bool   `json:"ama,omitempty"`
 		After    string `json:"after,omitempty"`
 		Cols     int    `json:"cols,omitempty"`
 		Rows     int    `json:"rows,omitempty"`

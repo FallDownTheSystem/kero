@@ -69,7 +69,7 @@ func browserCmd(c *client.Client, st proto.State, args []string) error {
 	if op == "wait-message" {
 		return waitMessage(c, pane, timeout, pos, f)
 	}
-	p := proto.BrowserParams{ID: pane, Op: op, Timeout: timeout, Ref: f.vals["ref"]}
+	p := proto.BrowserParams{ID: pane, Op: op, Timeout: timeout, Ref: f.vals["ref"], Token: amaToken()}
 	// --ref names the element in place of the selector.
 	sel := func(pos []string) []string {
 		if p.Ref == "" {

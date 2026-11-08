@@ -20,10 +20,18 @@ func worktreeCommand(c *client.Client, args []string) error {
 			return worktreeListCommand(c, args[1:])
 		case "status":
 			return worktreeStatusCommand(c, args[1:])
+		case "create", "new":
+			return worktreeCreate(c, args[1:])
+		case "remove", "rm":
+			return worktreeRemove(c, args[1:])
+		case "cleanup":
+			return worktreeCleanup(c, args[1:])
+		case "prune":
+			return worktreePrune(c, args[1:])
 		}
 	}
 	if len(args) == 0 || args[0] != "handoff" {
-		return usageErr("kero worktree list|status|handoff (see kero help)")
+		return usageErr("kero worktree list|status|create|remove|cleanup|prune|handoff (see kero help)")
 	}
 	f, err := parse(args[1:], map[string]string{"base": "base", "prompt": "prompt", "p": "prompt"}, map[string]string{"json": "json"})
 	if err != nil {
