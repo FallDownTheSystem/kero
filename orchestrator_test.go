@@ -51,6 +51,7 @@ func TestOrchestratorSidebar(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			a := treeApp(t)
 			a.set.SidebarRows = mode
+			a.session("o").Since = time.Now().UnixMilli()
 			tt := ui.NewTester(a.view, 1100, 640)
 			tt.Frame()
 			tt.Advance(time.Second)
@@ -70,6 +71,20 @@ func TestOrchestratorSidebar(t *testing.T) {
 			fold, ok := tt.Find(locales.SidebarHideChildren())
 			if !ok {
 				t.Fatal("no chevron to fold the children")
+			}
+			// A detailed row has the mark at the end of its second line,
+			// under the time; a compact one, on its one line.
+			name, _ := tt.Find("boss")
+			now, ok := tt.Find(locales.AgoNow())
+			if !ok {
+				t.Fatalf("no time; texts %q", tt.Texts())
+			}
+			below := fold.Y >= name.Y+name.H
+			if below != (mode == "detailed") {
+				t.Errorf("chevron at y %v, the name's line %v–%v", fold.Y, name.Y, name.Y+name.H)
+			}
+			if mode == "detailed" && fold.X+fold.W < now.X+now.W {
+				t.Errorf("chevron ends at x %v, left of the time's end %v", fold.X+fold.W, now.X+now.W)
 			}
 			tt.ClickAt(fold.X+fold.W/2, fold.Y+fold.H/2)
 			tt.Frame()
