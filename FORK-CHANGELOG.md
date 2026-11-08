@@ -5,6 +5,20 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.6
+
+- **Ama knows Kero's docs**: Kero writes its docs into Ama's folder, in
+  `docs/`, with an index of them in its CLAUDE.md and AGENTS.md, so that
+  Ama reads the page it needs before it answers, as how setup scripts in
+  `kero.json` work, instead of searching
+- **New pages in the docs**: Worktrees (with setup scripts), Files &
+  Search, Pull Requests, Orchestrators, Ama, The Window and
+  Troubleshooting, in English, Japanese and Chinese, and fixes to the
+  others: `kero daemon stop` saves the sessions, `kero do` runs actions,
+  the keybind syntax, the environment that Kero gives agents
+- **Ama's icon** is the frog of Kero's logo, solid with its face, belly
+  and feet, as large as the icons beside it
+
 ## 2.1.35-fork.5
 
 - **Ama's role prompt** is a setting: Settings › Agents › Ama › Role
