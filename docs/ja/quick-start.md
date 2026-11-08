@@ -11,6 +11,8 @@ Kero をインストールしてプロジェクトを開き、終了しても動
 
 [リリースページ](https://github.com/egoist/kero/releases)から最新の Kero をダウンロードします。macOS では **Kero.app** を“アプリケーション”フォルダにドラッグします。Windows では **Kero Setup** インストーラを実行します。管理者権限は不要です。
 
+この Kero のビルドは Windows 向けのフォークで、[専用のリリースページ](https://github.com/FallDownTheSystem/kero/releases)で `kero-setup-<version>-amd64.exe` として公開されています。`%LOCALAPPDATA%\Programs\Kero` にインストールされ、そこからアップデートされます。
+
 Windows では、セッションは PowerShell 7 がインストールされていればそれで、なければ Windows PowerShell で動きます。`cmd` や Git Bash の `bash` など別のシェルは、**設定 › シェル**で選べます。疑似コンソールを使うため、Kero には Windows 10 1809 以降が必要です。
 
 ### コマンドラインツールのインストール
@@ -58,3 +60,5 @@ kero new -n fix-login -- claude
 
 - [ペイン](./panes.md): セッションを分割して、エージェントの横で開発サーバーを動かす
 - [コーディングエージェント](./agents.md): `kero skill setup` を実行して、エージェントに Kero の使い方を覚えさせる
+- [ウインドウ](./window.md): ウインドウの各部分が表示するもの
+- [Ama](./ama.md): Kero のヘルパーエージェントに、Kero の操作を任せる

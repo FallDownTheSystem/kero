@@ -7,6 +7,8 @@ description: kero CLI で、シェルやスクリプトから Kero のセッシ�
 
 `kero` コマンドは、あなたのシェル、スクリプト、エージェントなど、どのシェルからでもセッションを操作できます。**Kero › コマンドラインツールをインストール…** でインストールします。
 
+`kero help` はすべてのコマンドとオプションを、`kero version` は Kero と kerod が話すプロトコルのバージョンを表示します。`kero list` は `kero ls`、`kero capture` は `kero read`、`kero kill` は `kero close` と同じです。
+
 ## 対象
 
 ほとんどのコマンドは**対象**を取ります: セッションかペインです。対象には次のものを指定できます:
@@ -21,6 +23,7 @@ Kero の中では、`$KERO_SESSION` と `$KERO_PANE` がコマンドを実行す
 
 ```sh
 kero ls                          # すべてのセッションとそのペイン
+kero ls -p api -s waiting,error  # プロジェクトの、これらの状態のセッション。-a ですべてのホストでも
 kero new -n api -d ~/code/api    # セッションを開始し、その ID を出力
 kero new -- npm run dev          # コマンドを実行するセッションを開始
 kero split --down -- npm test    # このペインの横にペイン
@@ -43,7 +46,7 @@ kero close boss --children       # オーケストレーターとその子を閉
 kero report --to-parent "完了: テスト成功"   # 子の要約をオーケストレーターへ
 ```
 
-`kero worktree handoff <branch>` は、起点のブランチ `--base <ref>` と、ワークツリーで再び起動したエージェントが続ける内容 `--prompt <text|->` を取ります（[詳しく](./changes.md#moving-a-session-into-a-worktree)）。
+`kero worktree handoff <branch>` は、起点のブランチ `--base <ref>` と、ワークツリーで再び起動したエージェントが続ける内容 `--prompt <text|->` を取ります（[詳しく](./worktrees.md#moving-a-session-into-a-worktree)）。
 
 `kero new` のオプション:
 
@@ -57,9 +60,9 @@ kero report --to-parent "完了: テスト成功"   # 子の要約をオーケ�
 | `-u`, `--url <url>`         | シェルの代わりに、ページを表示するブラウザを開く。ローカルファイルのパスならそのファイルを表示 |
 | `--file <path>`             | シェルの代わりに、ファイルのエディタを開く      |
 | `--preview`                 | `--file` の Markdown ファイルを、テキストではなく表示どおりに見せる |
-| `--worktree <branch>`       | 専用の git ワークツリーで、新しいブランチで開始する（[詳しく](./changes.md#sessions-in-their-own-worktree)） |
+| `--worktree <branch>`       | 専用の git ワークツリーで、新しいブランチで開始する（[詳しく](./worktrees.md)） |
 | `--base <ref>`              | ワークツリーのブランチの起点（既定: デフォルトブランチ） |
-| `--orchestrator`            | [オーケストレーター](./agents.md#orchestrator-sessions)を開始する。エージェント（指定したコマンドか `default-agent`）は役割プロンプトから始める |
+| `--orchestrator`            | [オーケストレーター](./orchestrators.md)を開始する。エージェント（指定したコマンドか `default-agent`）は役割プロンプトから始める |
 | `--goal <text>`             | オーケストレーターの目標                        |
 | `--parent <session\|none>`  | 子として属するオーケストレーター（既定: 実行したセッションのもの）。`none` でどれにも属さない |
 
@@ -173,7 +176,7 @@ kero browser emulate device iphone-15      # スマートフォンと同じよ�
 | `screenshot [-o file.png]`      | ページの画像を保存し、その場所を出力。`-o -` で標準出力に書き出す |
 | `cookies import <chrome\|edge>`  | 実行中の自分のブラウザの Cookie と、開いているタブのサイトの localStorage と IndexedDB をコピーし、ペインをブラウザと同じサイトにサインインさせる。`--domain` でサイトの分だけ（[手順](./panes.md#signing-in-with-your-browsers-cookies)） |
 | `wait-message [--json]`         | ページが [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) で送る次のメッセージを待ち、ページの情報を付けて表示します。`--json` は `id`、`from`、`label`、`url`、`title`、`text`、`at` を表示します |
-| `pick`                          | 要素を選ぶモードをオンにし、ユーザーが要素を選んでメモを書けるようにする。選んだ要素はページのエージェントへのメッセージとして届く（[詳しく](./panes.md#エージェントのために要素を選ぶ)） |
+| `pick`                          | 要素を選ぶモードをオンにし、ユーザーが要素を選んでメモを書けるようにする。選んだ要素はページのエージェントへのメッセージとして届く（[詳しく](./panes.md#picking-elements-for-an-agent)） |
 | `console [--errors] [--clear]`  | ページが `console.*` で出力したもの、投げたエラー、誰も捕まえなかった Promise、CORS エラーや読み込みの失敗などブラウザが伝えたものを、それぞれファイルと行つきで出力。`--errors` はエラーだけ、`--clear` は出力後にログを空にする |
 | `network [--failed] [--url text] [--clear]` | ページのリクエストを 1 行ずつ出力: `#id`、メソッド、ステータス、種類、サイズ、時間、URL と、失敗した理由（`net::ERR_…`、`CORS …`、`blocked: …`）。`--failed` は失敗したか 4xx・5xx を返したものだけ、`--url` は URL にそのテキストを含むものだけ |
 | `network body <id> [-o file]`   | 一覧にあるレスポンスの本文を出力、またはファイルに保存 |
@@ -227,9 +230,11 @@ kero diff review --branch                 # デフォルトブランチ以降
 
 [変更](./changes.md)を参照してください。
 
+<a id="draft-reviews"></a>
+
 ## 下書きのレビュー
 
-プルリクエストをレビューするエージェントは、コメントを[下書きのレビュー](./changes.md#draft-reviews)に書き、それを Kero から投稿します。行はプルリクエストのヘッドでのファイルの行 (`--base` ではベースの行) で、プルリクエストの差分の中にある必要があります:
+プルリクエストをレビューするエージェントは、コメントを[下書きのレビュー](./pull-requests.md#draft-reviews)に書き、それを Kero から投稿します。行はプルリクエストのヘッドでのファイルの行 (`--base` ではベースの行) で、プルリクエストの差分の中にある必要があります:
 
 ```sh
 kero pr comment src/parse.go:42 "This drops the last token."
@@ -245,7 +250,7 @@ Kero から始めたレビューでは、ペインがそのプルリクエスト
 
 ## レビューガイド
 
-エージェントは `kero pr guide` で、プルリクエストの[レビューガイド](./changes.md#review-guides) (ガイドタブの案内) を書きます。ストップは追加した順に並び、`--at <n>` で n 番目に置けます。行はプルリクエストの差分を含む必要があり、パスだけならファイル全体です。GitHub には何も送られません:
+エージェントは `kero pr guide` で、プルリクエストの[レビューガイド](./pull-requests.md#review-guides) (ガイドタブの案内) を書きます。ストップは追加した順に並び、`--at <n>` で n 番目に置けます。行はプルリクエストの差分を含む必要があり、パスだけならファイル全体です。GitHub には何も送られません:
 
 ```sh
 kero pr guide summary "Moves retries onto a queue."
@@ -259,7 +264,7 @@ kero pr guide clear                       # start the tour again
 
 Kero から始めたガイドでは、ペインがそのプルリクエストを知っています。それ以外では `--pr <番号>` で指定します。
 
-Kero がセッションのエージェントのために見守る、セッションの[プルリクエスト](./changes.md#セッションのプルリクエスト):
+Kero がセッションのエージェントのために見守る、セッションの[プルリクエスト](./pull-requests.md#a-session-s-pull-request):
 
 ```sh
 kero pr link                 # セッションのブランチの開いたプルリクエスト
@@ -322,7 +327,7 @@ kero -H devbox daemon update     # そこの Kero をこちらのバージョン
 <a id="managing-kero"></a>
 ## Kero を管理する
 
-サイドバーとそのメニュー、設定でできることを、シェルから次のコマンドで行えます。[Ama](./agents.md#ヘルパーエージェント-ama) もこれらを使います:
+サイドバーとそのメニュー、設定でできることを、シェルから次のコマンドで行えます。[Ama](./ama.md) もこれらを使います:
 
 ```sh
 kero ls -p api --status waiting                # プロジェクトのセッションを状態で絞り込む
@@ -344,17 +349,30 @@ kero config set notify-on-done false           # 設定と同じように書き�
 
 `--all`、`-p`、`--status` を付けた `kero close` は、Ama のセッションと、コマンドを実行しているセッションは閉じません。`kero worktree remove` は履歴タブと同じようにワークツリーを削除します。Kero がセッション用に作ったワークツリーはそのセッションを閉じ、他のセッションが使っているものは残ります。`kero pr review` はアプリが開いている必要があり、Ama 以外からはリモート操作も必要です。値なしの `kero config set` はデフォルトに戻します。リスト設定は値ごとに引数を渡し、何も渡さなければ空になります。
 
+<a id="running-app-actions"></a>
+
 ## アプリのアクションを実行する
 
-`kero do` は、メニューと同じアプリのアクションをどれでも実行します。**設定 › エージェント** のリモート操作（デフォルトでオン）が必要です。
+`kero do` は、メニューと同じようにアプリのアクションを実行します: `kero actions` が一覧する、あなたのダイアログやフォーカスを必要としないアクションです。**終了してすべてのセッションを終える…**、**ワークツリーで新規セッション…**、**セッション名を変更**、**検索** などほかのアクションはメニューだけのもので、`kero do` は `no action` と表示します。**設定 › エージェント** のリモート操作（デフォルトでオン）と、アプリが開いていることが必要です。Ama にはリモート操作は不要です。
 
 ```sh
-kero actions                     # 一覧を表示
+kero actions                     # 一覧を、キーとともに表示
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
 kero do files.show path=src/main.go
 ```
+
+引数を取るアクションもあり、`key=value` の形で渡します:
+
+| アクション | 引数 |
+| --- | --- |
+| `session.new` | `dir=` 開始するフォルダ、または `project=` プロジェクト |
+| `session.newHome` | `project=` |
+| `pane.browser` | `url=` 表示するページ |
+| `files.show` | `path=` ビューアで開くファイル、またはツリーで開くフォルダ |
+| `search.show` | `query=` 検索するテキスト |
+| `history.show` | `path=` その履歴だけを表示するファイルかフォルダ |
 
 相対パスの `path=` または `dir=` は、`kero do` を実行したディレクトリを基準にします。
 

@@ -16,6 +16,19 @@ On Windows and Linux, <kbd>Ctrl</kbd> with a letter belongs to the shell (<kbd>C
 | Settings…                    | <kbd>⌘</kbd> <kbd>,</kbd>              | <kbd>Ctrl</kbd> <kbd>,</kbd>                  | `settings.open`  |
 | Quit (sessions keep running) | <kbd>⌘</kbd> <kbd>Q</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Q</kbd> |                  |
 | Quit and End All Sessions…   | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>Q</kbd> | –                                             | `app.quitAll`    |
+| Install Command Line Tool…   | –                                      | –                                             | `cli.install`    |
+
+`kero actions` lists the actions `kero do` runs, with their keys on this computer. The others here, such as `app.quitAll`, `session.rename` or `find.open`, take a key, but `kero do` doesn't run them ([Running app actions](./cli.md#running-app-actions)).
+
+## Edit
+
+| Action        | macOS                                  | Windows & Linux                               | Action id       |
+| ------------- | -------------------------------------- | --------------------------------------------- | --------------- |
+| Find…         | <kbd>⌘</kbd> <kbd>F</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>F</kbd> | `find.open`     |
+| Find Next     | <kbd>⌘</kbd> <kbd>G</kbd>              | –                                             | `find.next`     |
+| Find Previous | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>G</kbd> | –                                             | `find.previous` |
+
+Find searches the pane you're in. In the viewer, it searches its file or diff, and in the right sidebar's tree, it opens [Search](./files.md#search).
 
 ## Session
 
@@ -49,6 +62,7 @@ On Windows and Linux, <kbd>Ctrl</kbd> with a letter belongs to the shell (<kbd>C
 | Open Location | <kbd>⌘</kbd> <kbd>L</kbd>              | –                                                 | `browser.address`  |
 | Pick Elements | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>C</kbd> | <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd> | `browser.pick` |
 | Zoom Pane     | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>↩</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Enter</kbd> | `pane.zoom`        |
+| Toggle Markdown Preview | –                            | –                                                 | `pane.preview`     |
 | Next Pane     | <kbd>⌘</kbd> <kbd>]</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>]</kbd>     | `pane.next`        |
 | Previous Pane | <kbd>⌘</kbd> <kbd>[</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>[</kbd>     | `pane.previous`    |
 | Pane Left     | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>←</kbd> | <kbd>Alt</kbd> <kbd>←</kbd>                       | `pane.left`        |
@@ -67,12 +81,19 @@ On Windows and Linux, <kbd>Ctrl</kbd> with a letter belongs to the shell (<kbd>C
 | Toggle History | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Y</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Y</kbd> | `history.toggle` |
 | Toggle Search  | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>F</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>S</kbd> | `search.toggle`  |
 | Toggle Review  | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>P</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>K</kbd> | `review.toggle`  |
+| Show Changes, Files, History, Search | – | – | `changes.show`, `files.show`, `history.show`, `search.show` |
 | Bigger         | <kbd>⌘</kbd> <kbd>=</kbd> | <kbd>Ctrl</kbd> <kbd>=</kbd>                  | `text.bigger`    |
 | Smaller        | <kbd>⌘</kbd> <kbd>-</kbd> | <kbd>Ctrl</kbd> <kbd>-</kbd>                  | `text.smaller`   |
 | Actual Size    | <kbd>⌘</kbd> <kbd>0</kbd> | <kbd>Ctrl</kbd> <kbd>0</kbd>                  | `text.reset`     |
 | Toggle Dark Mode | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>L</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>L</kbd> | `theme.toggle` |
 | Quick Terminal | –                         | –                                             | `quickTerminal.toggle` |
 | Ama            | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>A</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd> | `ama.toggle` |
+
+The Toggle actions show a tab of the right sidebar, or hide it when it shows; the Show actions only show it, as `kero do` runs them for agents.
+
+## The command palette
+
+**Go to Session…** (<kbd>⌘</kbd> <kbd>P</kbd>, <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd> on Windows and Linux) is the command palette: type to find a session by its name, or a recent conversation to resume, or to run a command: every menu action, a page of Settings (**Settings: Git**), **Restart Background Service**, keeping the computer awake, a new session in each project, and on each host, and, for a web address, **Open in Browser Pane**. Commands are found by their English names in any language.
 
 ## Quick terminal
 

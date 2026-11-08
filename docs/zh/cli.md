@@ -7,6 +7,8 @@ description: 用 kero 命令行，从 shell 或脚本中操控 Kero 的会话和
 
 `kero` 命令可以在任何 shell 中操控会话：你自己的、脚本的，或者智能体的。通过 **Kero › 安装命令行工具…** 安装它。
 
+`kero help` 打印所有命令和选项，`kero version` 打印 Kero 的版本以及 kerod 所用协议的版本。`kero list` 等同于 `kero ls`，`kero capture` 等同于 `kero read`，`kero kill` 等同于 `kero close`。
+
 ## 目标
 
 大多数命令都接受一个**目标**：一个会话或一个窗格。目标可以是：
@@ -21,6 +23,7 @@ description: 用 kero 命令行，从 shell 或脚本中操控 Kero 的会话和
 
 ```sh
 kero ls                          # 列出所有会话及其窗格
+kero ls -p api -s waiting,error  # 某个项目中处于这些状态的会话；-a：也包括每台主机上的
 kero new -n api -d ~/code/api    # 新建会话，并打印它的 id
 kero new -- npm run dev          # 新建一个运行某条命令的会话
 kero split --down -- npm test    # 在当前窗格旁新建一个窗格
@@ -43,7 +46,7 @@ kero close boss --children       # 关闭编排器及其子会话
 kero report --to-parent "完成：测试通过"   # 子会话把总结发给编排器
 ```
 
-`kero worktree handoff <branch>` 接受 `--base <ref>`（新分支的起点）和 `--prompt <text|->`（代理在工作树中重新启动后接着做的事）（[详情](./changes.md#moving-a-session-into-a-worktree)）。
+`kero worktree handoff <branch>` 接受 `--base <ref>`（新分支的起点）和 `--prompt <text|->`（代理在工作树中重新启动后接着做的事）（[详情](./worktrees.md#moving-a-session-into-a-worktree)）。
 
 `kero new` 的选项：
 
@@ -57,9 +60,9 @@ kero report --to-parent "完成：测试通过"   # 子会话把总结发给编�
 | `-u`, `--url <url>`         | 打开显示该网页的浏览器，而不是 shell；本地文件的路径则显示该文件 |
 | `--file <path>`             | 打开该文件的编辑器，而不是 shell                |
 | `--preview`                 | 对 `--file` 的 Markdown 文件，按渲染后的样子显示，而不是文本 |
-| `--worktree <branch>`       | 在专属的 git 工作树中、以新分支启动（[详情](./changes.md#sessions-in-their-own-worktree)） |
+| `--worktree <branch>`       | 在专属的 git 工作树中、以新分支启动（[详情](./worktrees.md)） |
 | `--base <ref>`              | 工作树分支的起点（默认：默认分支）              |
-| `--orchestrator`            | 启动[编排器](./agents.md#orchestrator-sessions)：其智能体（给定的命令或 `default-agent`）以角色提示词开始 |
+| `--orchestrator`            | 启动[编排器](./orchestrators.md)：其智能体（给定的命令或 `default-agent`）以角色提示词开始 |
 | `--goal <text>`             | 编排器的目标                                    |
 | `--parent <session\|none>`  | 会话所属的编排器（默认：运行命令的会话所属的编排器）；`none` 表示不属于任何编排器 |
 
@@ -146,7 +149,9 @@ kero events --for waiting --once          # 第一个事件之后就退出
 ```sh
 kero split --url localhost:3000            # 打开网页，并打印窗格的 id
 kero browser open localhost:3000/todos     # 前往某个网页，并等待加载完成
-kero browser type '#new-todo' "Buy milk" --enter
+kero browser snapshot                      # 页面上有什么，每个元素都带一个 ref
+kero browser type --ref e3 "Buy milk" --enter
+kero browser click --ref e5
 kero browser wait '.todo-list li'          # 等到某个元素出现
 kero browser wait --text "1 item left"     # 等到某段文本出现
 kero browser text                          # 页面的文本
@@ -165,14 +170,17 @@ kero browser emulate device iphone-15      # 像手机那样显示页面
 | `back`, `forward`, `reload`     | 后退、前进或重新加载页面，并等待完成 |
 | `text [selector]`               | 打印页面的可见文本，或第一个匹配元素的文本 |
 | `html [selector]`               | 打印页面的 HTML，或该元素的 HTML |
+| `snapshot [selector]`           | 以角色和名称组成的树（`button "Add"`、`textbox "Email"`）打印页面显示的内容，每个元素都带一个 ref；给出选择器时只打印该元素的部分 |
 | `click <selector>`              | 像鼠标一样点击该元素 |
 | `type <selector> <text…>`       | 向输入框输入文本，替换原有内容；`--enter` 会在之后按回车，从而提交所在表单 |
 | `wait [selector] [--text text]` | 等到元素或文本出现；两者都不给时，等到页面加载完成 |
 | `eval <js…>`                    | 在页面中运行 JavaScript 并打印结果：字符串原样输出，其他值输出为 JSON |
 | `screenshot [-o file.png]`      | 保存页面截图，并打印保存位置；`-o -` 会写到标准输出 |
+| `cookies save [file]`           | 把浏览器的 Cookie 保存到文件，或打印出来；`--domain` 只保留某个网站的 |
+| `cookies load <file>`           | 从文件载入 Cookie；`--domain` 只载入某个网站的 |
 | `cookies import <chrome\|edge>`  | 从正在运行的浏览器复制 Cookie，以及其打开的标签页中网站的 localStorage 和 IndexedDB，让面板在你于浏览器中登录过的网站上也处于登录状态；`--domain` 只复制某个网站的（[步骤](./panes.md#signing-in-with-your-browsers-cookies)） |
 | `wait-message [--json]`         | 等待页面用 [`window.kero.send`](./panes.md#sending-to-an-agent-from-a-page) 发送的下一条消息，并附上页面信息打印出来；`--json` 打印其 `id`、`from`、`label`、`url`、`title`、`text` 和 `at` |
-| `pick`                          | 打开选取元素模式，让用户选取元素并为每个写备注；选取结果作为消息发给页面的智能体（[详情](./panes.md#为智能体选取元素)） |
+| `pick`                          | 打开选取元素模式，让用户选取元素并为每个写备注；选取结果作为消息发给页面的智能体（[详情](./panes.md#picking-elements-for-an-agent)） |
 | `console [--errors] [--clear]`  | 打印页面用 `console.*` 输出的内容、抛出的错误、无人捕获的 Promise，以及浏览器报告的内容（如 CORS 错误和加载失败），每条附文件和行号；`--errors` 只打印错误，`--clear` 在打印后清空日志 |
 | `network [--failed] [--url text] [--clear]` | 打印页面的请求，每个一行：`#id`、方法、状态、类型、大小、耗时和 URL，以及失败原因（`net::ERR_…`、`CORS …`、`blocked: …`）；`--failed` 只打印失败或返回 4xx、5xx 的，`--url` 只打印 URL 含该文本的 |
 | `network body <id> [-o file]`   | 打印列表中某个响应的正文，或保存到文件 |
@@ -184,9 +192,11 @@ kero browser emulate device iphone-15      # 像手机那样显示页面
 
 除非用 `--timeout` 指定，`wait-message` 会一直等待；没有收到消息时以 `timed out` 失败：智能体应以短于其 shell 工具自身超时的时间重新等待。它不需要 Remote Control。
 
-选择器是 CSS 选择器，在 shell 中记得加引号。需要元素的命令会等它出现，`--timeout`（默认 `10s`）设定这些命令以及页面加载最多等多久。`type` 和 `eval` 接受 `-`，表示从标准输入读取文本。
+选择器是 CSS 选择器，在 shell 中记得加引号。凡是接受选择器的命令，都可以用 `--ref` 代替它，传入 `snapshot` 给出的 ref：`kero browser click --ref e5`。元素的 ref 在页面前往其他页面之前一直有效；元素已不存在的 ref 会直接失败，而不会去猜另一个元素。需要元素的命令会等它出现，`--timeout`（默认 `10s`）设定这些命令以及页面加载最多等多久。`type` 和 `eval` 接受 `-`，表示从标准输入读取文本。
 
-点击和输入发送的是真实鼠标和键盘会产生的事件，所以 React 等框架构建的页面也能收到。截图需要窗格显示在屏幕上：先用 `kero focus` 显示它。其余命令对任何浏览器窗格都有效，无论是否显示。
+点击和输入发送的是真实鼠标和键盘会产生的事件，所以 React 等框架构建的页面也能收到。每个命令都对任何浏览器窗格有效，无论是否显示：为不在屏幕上的窗格截图，不会抢走你正在做的事的焦点。
+
+浏览器窗格共享 Cookie，并在 Kero 重启后保留它们。`cookies` 以 Playwright 的存储状态格式（JSON）保存它们；文件名以 `.txt` 结尾时，则保存为 curl 和浏览器扩展使用的 Netscape `cookies.txt` 格式；`load` 两种都能读取。Cookie 能让你登录网站：只把它们的文件交给你愿意托付登录信息的程序。它们只留在这台 Mac 上，所以主机上的程序无法保存或载入它们。`import` 会把它未复制的内容打印到标准错误输出。它需要在 Chrome（144 或更高版本）或 Edge 的 `chrome://inspect/#remote-debugging` 中开启远程调试，并最多等待两分钟（或 `--timeout`），让你在浏览器的对话框中允许它；它也接受用 `--user-data-dir` 启动的浏览器的用户数据目录。
 
 `console` 和 `network` 保留窗格的页面创建以来（包括首次加载）的内容，各自最多最近 1,000 条；`--clear` 清空它们，这样下次读取时只显示重新加载或点击所引起的内容。`--json` 打印它们的字段，以及 `emulate` 的状态。`emulate` 的设置在窗格打开期间一直有效，重新加载和前往其他页面后也是。`network` 和 `emulate` 使用 DevTools Protocol，只有 Windows 上的浏览器窗格才有；在 macOS 和 Linux 上，`console` 只包含当前文档输出的内容。
 
@@ -226,9 +236,11 @@ kero diff review --branch                 # 自默认分支以来的改动
 
 见 [改动](./changes.md)。
 
+<a id="draft-reviews"></a>
+
 ## 草稿审查
 
-审查拉取请求的智能体把评论写进[草稿审查](./changes.md#draft-reviews)，由你在 Kero 中发布。行号是拉取请求头部中文件的行号（加 `--base` 时为基础分支的行号），并且必须在拉取请求的差异中：
+审查拉取请求的智能体把评论写进[草稿审查](./pull-requests.md#draft-reviews)，由你在 Kero 中发布。行号是拉取请求头部中文件的行号（加 `--base` 时为基础分支的行号），并且必须在拉取请求的差异中：
 
 ```sh
 kero pr comment src/parse.go:42 "This drops the last token."
@@ -244,7 +256,7 @@ kero pr delete 3
 
 ## 审查导览
 
-智能体用 `kero pr guide` 编写拉取请求的[审查导览](./changes.md#review-guides)（导览标签页中的讲解）。站点按添加顺序排列，`--at <n>` 可放在第 n 站；行必须包含拉取请求差异的一部分，只给路径则是整个文件。导览不会发送到 GitHub：
+智能体用 `kero pr guide` 编写拉取请求的[审查导览](./pull-requests.md#review-guides)（导览标签页中的讲解）。站点按添加顺序排列，`--at <n>` 可放在第 n 站；行必须包含拉取请求差异的一部分，只给路径则是整个文件。导览不会发送到 GitHub：
 
 ```sh
 kero pr guide summary "Moves retries onto a queue."
@@ -258,7 +270,7 @@ kero pr guide clear                       # start the tour again
 
 在从 Kero 开始的导览中，窗格知道它的拉取请求；在其他地方，用 `--pr <编号>` 指定。
 
-Kero 为会话的智能体关注的会话[拉取请求](./changes.md#会话的拉取请求)：
+Kero 为会话的智能体关注的会话[拉取请求](./pull-requests.md#a-session-s-pull-request)：
 
 ```sh
 kero pr link                 # 会话分支上打开的拉取请求
@@ -321,7 +333,7 @@ kero -H devbox daemon update     # 将那里的 Kero 更新到本机的版本
 <a id="managing-kero"></a>
 ## 管理 Kero
 
-边栏、其菜单和设置能做的事，用下面的命令也能在 shell 中做到。[Ama](./agents.md#助手代理-ama) 也使用它们：
+边栏、其菜单和设置能做的事，用下面的命令也能在 shell 中做到。[Ama](./ama.md) 也使用它们：
 
 ```sh
 kero ls -p api --status waiting                # 按状态列出项目的会话
@@ -343,17 +355,30 @@ kero config set notify-on-done false           # 与设置的写法相同
 
 带 `--all`、`-p` 或 `--status` 的 `kero close` 从不关闭 Ama 的会话，也不关闭运行它的会话。`kero worktree remove` 像历史标签页那样删除工作树：Kero 为某个会话创建的工作树会连同该会话一起关闭，其他会话正在使用的则保留。`kero pr review` 需要应用已打开，且 Ama 以外需要远程控制。不带值的 `kero config set` 恢复默认值；列表设置每个值一个参数，不给值则清空。
 
+<a id="running-app-actions"></a>
+
 ## 执行 app 操作
 
-`kero do` 可以执行 app 的任意操作，与菜单中的操作相同。它需要 **远程控制**，该选项在 **设置 › 智能体** 中默认开启。
+`kero do` 像菜单一样执行 app 的操作：即 `kero actions` 列出的、不需要对话框或你的焦点的那些操作。其他操作，如 **退出并结束所有会话…**、**在工作树中新建会话…**、**重命名会话** 或 **查找**，只能从菜单中使用，`kero do` 会提示 `no action`。它需要 **远程控制**（该选项在 **设置 › 智能体** 中默认开启），并且 app 处于打开状态；Ama 不需要远程控制。
 
 ```sh
-kero actions                     # 列出所有操作
+kero actions                     # 列出所有操作及其快捷键
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
 kero do files.show path=src/main.go
 ```
+
+有些操作接受 `key=value` 形式的参数：
+
+| 操作 | 参数 |
+| --- | --- |
+| `session.new` | `dir=` 在其中启动的文件夹，或 `project=` 某个项目 |
+| `session.newHome` | `project=` |
+| `pane.browser` | `url=` 网页 |
+| `files.show` | `path=` 要在查看器中打开的文件，或要在文件树中展开的文件夹 |
+| `search.show` | `query=` 要搜索的文本 |
+| `history.show` | `path=` 某个文件或文件夹，只显示它的历史 |
 
 相对路径的 `path=` 或 `dir=` 是相对于运行 `kero do` 时所在的文件夹。
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"kero/docs"
 	"kero/internal/settings"
 )
 
@@ -140,5 +141,52 @@ func TestPromptAndArgs(t *testing.T) {
 	}
 	if !strings.Contains(read("CLAUDE.md"), "## How you drive Kero") || strings.Contains(read("AGENTS.md"), "Only list sessions") {
 		t.Error("an empty ama-prompt didn't bring Kero's back")
+	}
+}
+
+// Ama's folder has Kero's docs, which its instructions list page by page,
+// with a role prompt of the user's too; a page an older Kero left there
+// goes, and a file of someone else's stays.
+func TestDocs(t *testing.T) {
+	t.Setenv("KERO_CONFIG", filepath.Join(t.TempDir(), "config"))
+	os.MkdirAll(DocsDir(), 0o755)
+	stale, other := filepath.Join(DocsDir(), "gone.md"), filepath.Join(DocsDir(), "notes.txt")
+	os.WriteFile(stale, []byte("# A page Kero dropped\n"), 0o644)
+	os.WriteFile(other, []byte("mine"), 0o644)
+
+	set := settings.Default()
+	set.AmaPrompt = "You are Ama. Only list sessions."
+	if err := PrepareWith(set); err != nil {
+		t.Fatal(err)
+	}
+	pages := docs.Pages()
+	if len(pages) == 0 {
+		t.Fatal("no docs")
+	}
+	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+		b, err := os.ReadFile(filepath.Join(Dir(), name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), "## Kero's docs") {
+			t.Errorf("%s has no part on the docs", name)
+		}
+		for _, p := range pages {
+			if !strings.Contains(string(b), "- docs/"+p.Name+": "+p.Title+". ") {
+				t.Errorf("%s doesn't list docs/%s", name, p.Name)
+			}
+		}
+	}
+	for _, p := range pages {
+		b, err := os.ReadFile(filepath.Join(DocsDir(), p.Name))
+		if err != nil || string(b) != string(p.Text) {
+			t.Errorf("docs/%s isn't Kero's: %v", p.Name, err)
+		}
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Error("a page an older Kero left stayed")
+	}
+	if _, err := os.Stat(other); err != nil {
+		t.Error("a file of someone else's went")
 	}
 }

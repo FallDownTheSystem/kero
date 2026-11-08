@@ -11,6 +11,8 @@ description: 安装 Kero，打开项目，启动你的第一个智能体会话�
 
 从[发布页面](https://github.com/egoist/kero/releases)下载最新版 Kero。在 macOS 上，将 **Kero.app** 拖入“应用程序”文件夹；在 Windows 上，运行 **Kero Setup** 安装程序，无需管理员权限。
 
+这个版本的 Kero 是面向 Windows 的分支版本，发布在[它自己的发布页面](https://github.com/FallDownTheSystem/kero/releases)上，文件名为 `kero-setup-<version>-amd64.exe`；它安装在 `%LOCALAPPDATA%\Programs\Kero` 中，并从那里更新。
+
 在 Windows 上，如果装有 PowerShell 7，会话默认使用它，否则使用 Windows PowerShell；如需其他 shell，例如 `cmd` 或 Git Bash 的 `bash`，可在 **设置 › Shell** 中选择。由于依赖伪控制台，Kero 需要 Windows 10 1809 或更高版本。
 
 ### 安装命令行工具
@@ -58,3 +60,5 @@ kero new -n fix-login -- claude
 
 - [窗格](./panes.md)：拆分会话，在智能体旁边运行开发服务器
 - [编程智能体](./agents.md)：运行 `kero skill setup`，让智能体学会使用 Kero
+- [窗口](./window.md)：窗口的每个部分显示什么
+- [Ama](./ama.md)：让 Kero 的助手代理替你操作 Kero

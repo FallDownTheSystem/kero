@@ -1,18 +1,18 @@
 [
   {
     "title": "Getting Started",
-    "items": ["index", "quick-start"]
+    "items": ["index", "quick-start", "window"]
   },
   {
     "title": "Using kero",
-    "items": ["sessions", "panes", "status", "changes"]
+    "items": ["sessions", "panes", "status", "changes", "worktrees", "files", "pull-requests"]
   },
   {
     "title": "Automation",
-    "items": ["cli", "agents", "remote"]
+    "items": ["cli", "agents", "orchestrators", "ama", "remote"]
   },
   {
     "title": "Reference",
-    "items": ["configuration", "shortcuts"]
+    "items": ["configuration", "shortcuts", "troubleshooting"]
   }
 ]
