@@ -5,6 +5,50 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.4
+
+- **Ama's window**: Ama opens in a window of its own, above Kero's, which
+  you move by its header, to another display too, and resize by its edges.
+  Kero remembers its size and its place by the nearest corner of Kero's
+  window, in DIPs, so that it keeps its size on displays of other scales:
+  it goes with Kero's window as that moves or resizes, and stays inside a
+  display as Kero's window nears a screen's edge or a display goes away.
+  Right-click the frog, or Settings › Agents › Ama › Window, to put it back
+  above the frog
+- Ama's text has a size of its own, a point under the terminals' unless
+  Settings › Agents › Ama › Text size (`ama-font-size`) says otherwise
+- Claude Code's status line is off in Ama's window
+  (`ama-hide-status-line`, on): Kero puts an empty one in the
+  `.claude/settings.json` of Ama's folder, beside what you put there, and
+  leaves your own Claude Code settings alone. Claude Code has no way to
+  remove it but turning off every hook, Kero's among them, so an empty row
+  stays where it was
+- With detailed sidebar rows, an orchestrator's mark and the chevron that
+  folds its children sit at the right end of its second line, under the
+  time and status, so its name keeps the first line; compact rows keep
+  them by the name
+- An orchestrator's role prompt, and every report Kero sends it, tell it
+  to answer a report that needs nothing with a plain OK, not a summary
+- A child closed while its orchestrator was busy no longer reaches it as
+  "finished its turn: it is idle" afterwards. Kero handed a report to the
+  agent's mailbox as soon as it was due, where it waited, already
+  written, for the orchestrator's turn to end, and a close never reached
+  it. Reports now wait in Kero until the orchestrator is at its prompt,
+  and a child that closes meanwhile takes its state lines (idle, waiting,
+  failed, exited) out of them: they would have the orchestrator act on a
+  session that is gone, and "closed" says all that is left. What it
+  wrote with kero report --to-parent still goes, as that is its result
+- The picker's HTML of an element, its parent and its siblings shows a
+  `<script>`, `<style>`, inline `<svg>`, `<template>` or `<noscript>` as
+  its tag and attributes with its contents' size, such as
+  `<style data-vite-dev-id="…">/* 1.2 KB omitted */</style>`, rather
+  than the code or path data
+- A message to an agent names the pane's title, the session and the page
+  as they are written, `titled "C:\Program Files\PowerShell\7\pwsh.exe"`
+  rather than with every backslash doubled, and on one line: a line break
+  in a title, or in a label a page sends with, reads as a space, and a `"`
+  in it as `'`
+
 ## 2.1.35-fork.3
 
 - **Orchestrator sessions**: an agent session that plans the work, starts
