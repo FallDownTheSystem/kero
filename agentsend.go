@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -102,10 +103,7 @@ func (a *App) sendExcerpt(from, text string) {
 	h := a.hostOf(from)
 	label := "the terminal pane " + from
 	if s := a.sessionOfPane(from); s != nil {
-		label = fmt.Sprintf("the terminal pane %s of session %q", from, s.DisplayName(a.set.SessionName))
-		if p := s.PaneByID(from); p != nil && p.Process != "" {
-			label += ", running " + p.Process
-		}
+		label += paneSource(s.PaneByID(from)) + fmt.Sprintf(" of session %q", s.DisplayName(a.set.SessionName))
 	}
 	a.chooseAgent(h, locales.AgentChooseTitle(), func(to string) {
 		if to == "" {
@@ -113,6 +111,27 @@ func (a *App) sendExcerpt(from, text string) {
 		}
 		a.sendTo(h, proto.AgentSendParams{To: to, From: from, Label: label, Text: fenced(text), Mode: "push"})
 	})
+}
+
+// paneSource tells what a terminal pane runs, for the agent to know what
+// it reads the output of: " (Claude Code, titled "✳ Fix login")", its
+// agent, else its program, else its shell, and the title the program
+// set, when it says more; "" when nothing is known.
+func paneSource(p *proto.Pane) string {
+	if p == nil {
+		return ""
+	}
+	program := cmp.Or(proto.AgentNames[p.Agent], p.Agent, p.Process, p.Shell)
+	title := strings.TrimSpace(p.Title)
+	switch {
+	case program == "" && title == "":
+		return ""
+	case program == "":
+		return fmt.Sprintf(" (titled %q)", title)
+	case title == "" || strings.EqualFold(title, program):
+		return " (" + program + ")"
+	}
+	return fmt.Sprintf(" (%s, titled %q)", program, title)
 }
 
 // sendTo sends a message to an agent off the main thread, and tells the
