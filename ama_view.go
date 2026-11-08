@@ -26,18 +26,24 @@ import (
 
 const amaAction = "ama.toggle"
 
-// amaFrog is Ama's icon, as given: a frog's face, in currentColor.
-var amaFrog = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="0.833"
-stroke-linecap="round" stroke-linejoin="round">
-  <g>
-    <path d="M3 6.75 C2.25 7.5 2 8.5 2 9.5 C2 12 4.5 13.5 8 13.5 C11.5 13.5 14 12 14 9.5 C14 8.5 13.75 7.5 13 6.75"/>
-    <path d="M7 5.6 C7.65 5.4 8.35 5.4 9 5.6"/>
-    <circle cx="4.75" cy="5.25" r="2.25"/>
-    <circle cx="11.25" cy="5.25" r="2.25"/>
-    <circle cx="4.75" cy="5.25" r="0.55" fill="currentColor" stroke="none"/>
-    <circle cx="11.25" cy="5.25" r="0.55" fill="currentColor" stroke="none"/>
-    <path d="M5.25 10.25 C6.75 11.5 9.25 11.5 10.75 10.25"/>
-  </g>
+// amaFrog is Ama's icon: the frog of Kero's logo, sitting with its feet in
+// front of it, as one solid shape in currentColor. Lines of an outline
+// frog blur together at 16 to 18 pixels; a solid one keeps its face. The
+// mask cuts its eyes and smile out, keeps its belly half seen, and leaves
+// a gap around each foot, so that the feet show in front of the body. The
+// viewBox crops to the frog with a padding of 1 in 24 at each side, as
+// the keylines of Kero's other icons have, so that it shows as large as
+// they do at the same size.
+var amaFrog = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="1.236 1.21 13.527 13.527" fill="none" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round">
+  <mask id="ama-frog">
+    <rect width="16" height="16" fill="white"/>
+    <path d="M5.75 4.5a.9 .9 0 1 0-1.8 0a.9 .9 0 1 0 1.8 0Z M12.05 4.5a.9 .9 0 1 0-1.8 0a.9 .9 0 1 0 1.8 0Z" fill="black"/>
+    <path d="M6.5 5.5 Q8 6.7 9.5 5.5" fill="none" stroke="black"/>
+    <path d="M4.5 10.92 C5.04 9.27 6.3 8.25 8 8.25 C9.7 8.25 10.96 9.27 11.5 10.92 L11.5 13.4 H4.5 Z" fill="#8c8c8c"/>
+    <path d="M2.55 13.4 C2.08 13.4 1.8 13.03 1.8 12.45 C1.8 11.45 2.65 10.85 3.55 10.85 C4.5 10.85 5.25 11.48 5.25 12.45 C5.25 13.03 4.97 13.4 4.5 13.4 Z M11.5 13.4 C11.03 13.4 10.75 13.03 10.75 12.45 C10.75 11.48 11.5 10.85 12.45 10.85 C13.35 10.85 14.2 11.45 14.2 12.45 C14.2 13.03 13.92 13.4 13.45 13.4 Z" fill="none" stroke="black"/>
+    <path d="M2.55 13.4 C2.08 13.4 1.8 13.03 1.8 12.45 C1.8 11.45 2.65 10.85 3.55 10.85 C4.5 10.85 5.25 11.48 5.25 12.45 C5.25 13.03 4.97 13.4 4.5 13.4 Z M11.5 13.4 C11.03 13.4 10.75 13.03 10.75 12.45 C10.75 11.48 11.5 10.85 12.45 10.85 C13.35 10.85 14.2 11.45 14.2 12.45 C14.2 13.03 13.92 13.4 13.45 13.4 Z" fill="white"/>
+  </mask>
+  <path fill="currentColor" mask="url(#ama-frog)" d="M2.25 11.35 C1.95 10.4 1.8 9.6 2.05 8.3 C2.25 7.2 2.7 6.4 3.3 5.75 C2.9 5.1 3.05 4.15 3.55 3.5 C4.1 2.7 5.15 2.55 5.95 2.9 C6.38 3.1 6.7 3.5 6.88 3.9 Q8 3.55 9.12 3.9 C9.3 3.5 9.62 3.1 10.05 2.9 C10.85 2.55 11.9 2.7 12.45 3.5 C12.95 4.15 13.1 5.1 12.7 5.75 C13.3 6.4 13.75 7.2 13.95 8.3 C14.2 9.6 14.05 10.4 13.75 11.35 C13.6 12.5 13.1 13.4 12.2 13.4 H3.8 C2.9 13.4 2.4 12.5 2.25 11.35 Z M2.55 13.4 C2.08 13.4 1.8 13.03 1.8 12.45 C1.8 11.45 2.65 10.85 3.55 10.85 C4.5 10.85 5.25 11.48 5.25 12.45 C5.25 13.03 4.97 13.4 4.5 13.4 Z M11.5 13.4 C11.03 13.4 10.75 13.03 10.75 12.45 C10.75 11.48 11.5 10.85 12.45 10.85 C13.35 10.85 14.2 11.45 14.2 12.45 C14.2 13.03 13.92 13.4 13.45 13.4 Z"/>
 </svg>`))
 
 // amaState is Ama's window's, on the main thread.
@@ -225,7 +231,7 @@ func (a *App) amaButton(c *ui.Context, pal *palette) {
 	waiting := s != nil && s.Status == proto.Waiting
 	unread := s != nil && s.Unread && !a.ama.open
 	b.Children(func() {
-		ui.Icon(c, amaFrog).Size(17, 17)
+		ui.Icon(c, amaFrog).Size(16, 16)
 		if waiting || unread {
 			dot := pal.attention
 			if !waiting {
