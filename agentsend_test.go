@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ func TestSendExcerpt(t *testing.T) {
 		return nil, errors.New("no " + method + " in a test")
 	})
 	a.local().cl = cl
-	a.st.Sessions[0].Panes[0].Process = "go"
+	// A shell at its prompt runs no process of its own: its shell names it.
 	a.st.Sessions[0].Panes[1].Agent = "claude"
 	a.st.Sessions = append(a.st.Sessions, proto.Session{ID: "s2", Project: "p1", Name: "other",
 		Panes: []proto.Pane{{ID: "c", Dir: "/tmp", Agent: "codex", Status: proto.Working, Progress: -1}}, Focus: "c"})
@@ -62,7 +61,7 @@ func TestSendExcerpt(t *testing.T) {
 	if want := "````\nFAIL TestX\n  want ```a```\n````"; p.Text != want {
 		t.Errorf("sent the text as %q, not %q", p.Text, want)
 	}
-	if !strings.Contains(p.Label, `the terminal pane a of session "demo", running go`) {
+	if p.Label != `the terminal pane a (fish) of session "demo"` {
 		t.Errorf("labelled %q", p.Label)
 	}
 
@@ -78,5 +77,25 @@ func TestSendExcerpt(t *testing.T) {
 	case p := <-sent:
 		t.Errorf("sent %+v unchosen", p)
 	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+// A pane's source names its agent before its program, its program before
+// its shell, and the title its program set, unless it only repeats it.
+func TestPaneSource(t *testing.T) {
+	for _, c := range []struct {
+		p    proto.Pane
+		want string
+	}{
+		{proto.Pane{Shell: "pwsh"}, " (pwsh)"},
+		{proto.Pane{Shell: "pwsh", Process: "go", Title: "go test ./..."}, ` (go, titled "go test ./...")`},
+		{proto.Pane{Shell: "zsh", Process: "claude", Agent: "claude", Title: "✳ Fix login"}, ` (Claude Code, titled "✳ Fix login")`},
+		{proto.Pane{Shell: "fish", Title: "FISH"}, " (fish)"},
+		{proto.Pane{Title: "build"}, ` (titled "build")`},
+		{proto.Pane{}, ""},
+	} {
+		if got := paneSource(&c.p); got != c.want {
+			t.Errorf("%+v: %q, want %q", c.p, got, c.want)
+		}
 	}
 }

@@ -23,7 +23,7 @@ In the sidebar, a split session's row shows how many panes it has, after its nam
 
 When a pane's program exits, the pane stays so you can read its output. **Restart Pane** starts its shell again in the same directory.
 
-To show an agent what a terminal printed, such as a failing test's output, select the text, right-click it and choose **Send to Session…**, then the agent's session. The agent gets the text as a code block, with the pane it came from, typed into its prompt once it is at it.
+To show an agent what a terminal printed, such as a failing test's output, select the text, right-click it and choose **Send to Session…**, then the agent's session. The agent gets the text as a code block, with the pane it came from and what it runs (an agent such as Claude Code, a program, or the shell, such as pwsh), typed into its prompt once it is at it.
 
 ## From the command line
 
