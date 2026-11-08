@@ -188,7 +188,7 @@ Browser panes keep cookies of their own, so a site you're signed in to in Chrome
 
 1. In Chrome (144 or later) or Edge, open `chrome://inspect/#remote-debugging` (`edge://inspect/#remote-debugging` in Edge) and turn on remote debugging. It lasts until the browser quits.
 2. In **Settings › Browser**, under **Sign-ins**, click **Import** beside the browser, or run `kero browser cookies import chrome` (or `edge`).
-3. The browser asks whether to allow the connection: allow it.
+3. The browser asks whether to allow the connection: allow it. The dialog can show in any of the browser's windows, including an installed app's (PWA), such as a desktop app you added from a site. Look there if no regular window shows it. The import is the same either way: an installed app runs in the browser and its profile.
 
 Kero copies the cookies of the browser's profile it deems the default, which signs the panes in where you are there, and leaves the browser as it was: it reads the cookies and disconnects.
 

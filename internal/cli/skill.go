@@ -206,7 +206,8 @@ When a page needs the user signed in, don't ask for their password: ask
 them to turn on remote debugging in their browser, at
 chrome://inspect/#remote-debugging (edge://inspect/#remote-debugging),
 then run kero browser cookies import chrome --domain <site> (or edge)
-and have them allow Kero in the browser's dialog; the import waits two
+and have them allow Kero in the browser's dialog, which can show in any
+of its windows, an installed app's (PWA) too; the import waits two
 minutes for it. It copies their browser's cookies into the panes, and the
 site's localStorage and IndexedDB, where single-page apps keep their
 sign-in, from a tab of the site (one it opens unseen if none is open);
