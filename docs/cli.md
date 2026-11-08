@@ -7,6 +7,8 @@ description: Drive Kero sessions and panes from a shell or a script with the ker
 
 The `kero` command drives sessions from any shell: yours, a script's or an agent's. Install it with **Kero › Install Command Line Tool…**.
 
+`kero help` prints every command and option, and `kero version` the version of Kero and of the protocol kerod speaks. `kero list` is `kero ls`, `kero capture` is `kero read`, and `kero kill` is `kero close`.
+
 ## Targets
 
 Most commands take a **target**: a session or a pane. A target can be:
@@ -21,6 +23,7 @@ Inside Kero, `$KERO_SESSION` and `$KERO_PANE` name the session and pane a comman
 
 ```sh
 kero ls                          # every session and its panes
+kero ls -p api -s waiting,error  # a project's, in these statuses; -a: on every host too
 kero new -n api -d ~/code/api    # start a session, print its id
 kero new -- npm run dev          # start one running a command
 kero split --down -- npm test    # a pane beside this one
@@ -43,7 +46,7 @@ kero close boss --children       # an orchestrator and its children
 kero report --to-parent "Done: tests pass"   # a child's summary, to its orchestrator
 ```
 
-`kero worktree handoff <branch>` takes `--base <ref>`, the branch to start from, and `--prompt <text|->`, what the agent goes on with once it starts again in the worktree ([more](./changes.md#moving-a-session-into-a-worktree)).
+`kero worktree handoff <branch>` takes `--base <ref>`, the branch to start from, and `--prompt <text|->`, what the agent goes on with once it starts again in the worktree ([more](./worktrees.md#moving-a-session-into-a-worktree)).
 
 `kero new` options:
 
@@ -57,9 +60,9 @@ kero report --to-parent "Done: tests pass"   # a child's summary, to its orchest
 | `-u`, `--url <url>`         | Open a browser showing the page instead of a shell; a path to a local file shows that file |
 | `--file <path>`             | Open an editor of the file instead of a shell   |
 | `--preview`                 | With `--file` of a Markdown file, show it as it reads rather than its text |
-| `--worktree <branch>`       | Start it in a git worktree of its own, on a new branch ([more](./changes.md#sessions-in-their-own-worktree)) |
+| `--worktree <branch>`       | Start it in a git worktree of its own, on a new branch ([more](./worktrees.md)) |
 | `--base <ref>`              | The branch the worktree's starts from (default: the default branch) |
-| `--orchestrator`            | Start an [orchestrator](./agents.md#orchestrator-sessions): its agent, the command given or `default-agent`, starts on the role prompt |
+| `--orchestrator`            | Start an [orchestrator](./orchestrators.md): its agent, the command given or `default-agent`, starts on the role prompt |
 | `--goal <text>`             | The orchestrator's goal                         |
 | `--parent <session\|none>`  | The orchestrator the session is a child of (default: the one of the session it's run in, if any); `none` for none |
 
@@ -234,7 +237,7 @@ See [Changes](./changes.md).
 
 ## Draft reviews
 
-An agent that reviews a pull request writes its comments to a [draft review](./changes.md#draft-reviews), which you post from Kero. Lines are the file's lines at the pull request's head, or of the base with `--base`, and must be in the pull request's diff:
+An agent that reviews a pull request writes its comments to a [draft review](./pull-requests.md#draft-reviews), which you post from Kero. Lines are the file's lines at the pull request's head, or of the base with `--base`, and must be in the pull request's diff:
 
 ```sh
 kero pr comment src/parse.go:42 "This drops the last token."
@@ -250,7 +253,7 @@ In a review started from Kero, the pane knows its pull request; elsewhere, name 
 
 ## Review guides
 
-An agent writes a pull request's [review guide](./changes.md#review-guides), the tour of its Guide tab, with `kero pr guide`. Stops go in the order added, or nth with `--at <n>`; lines must show some of the pull request's diff, and a path alone is the whole file. Nothing of it goes to GitHub:
+An agent writes a pull request's [review guide](./pull-requests.md#review-guides), the tour of its Guide tab, with `kero pr guide`. Stops go in the order added, or nth with `--at <n>`; lines must show some of the pull request's diff, and a path alone is the whole file. Nothing of it goes to GitHub:
 
 ```sh
 kero pr guide summary "Moves retries onto a queue."
@@ -264,7 +267,7 @@ kero pr guide clear                       # start the tour again
 
 In a guide started from Kero, the pane knows its pull request; elsewhere, name it with `--pr <number>`.
 
-A session's [pull request](./changes.md#a-session-s-pull-request), which Kero watches for the session's agent:
+A session's [pull request](./pull-requests.md#a-session-s-pull-request), which Kero watches for the session's agent:
 
 ```sh
 kero pr link                 # the open pull request of the session's branch
@@ -326,7 +329,7 @@ Inside a pane, `kero` talks to the kerod of the machine the pane runs on, wherev
 
 ## Managing Kero
 
-What the sidebar, its menus and Settings do, these commands do from a shell. [Ama](./agents.md#ama-the-helper-agent) works with them:
+What the sidebar, its menus and Settings do, these commands do from a shell. [Ama](./ama.md) works with them:
 
 ```sh
 kero ls -p api --status waiting                # a project's sessions, in these statuses
@@ -350,15 +353,26 @@ kero config set notify-on-done false           # as Settings writes it
 
 ## Running app actions
 
-`kero do` runs any of the app's actions, the same ones as its menus. It needs Remote Control, which is on by default in **Settings › Agents**.
+`kero do` runs the app's actions, as its menus do: those `kero actions` lists, which need no dialog or focus of yours. Others, such as **Quit and End All Sessions…**, **New Session in Worktree…**, **Rename Session** or **Find**, are the menus' alone, and `kero do` says `no action`. It needs Remote Control, which is on by default in **Settings › Agents**, and the app open; Ama needs no Remote Control.
 
 ```sh
-kero actions                     # list them
+kero actions                     # list them, with their keys
 kero do pane.split.right
 kero do pane.browser url=localhost:3000
 kero do sidebar.toggle
 kero do files.show path=src/main.go
 ```
+
+Some actions take arguments, as `key=value`:
+
+| Action | Arguments |
+| --- | --- |
+| `session.new` | `dir=` a folder to start it in, or `project=` a project |
+| `session.newHome` | `project=` |
+| `pane.browser` | `url=` the page |
+| `files.show` | `path=` a file to open in the viewer, or a folder to open in the tree |
+| `search.show` | `query=` the text to search for |
+| `history.show` | `path=` a file or folder, for its history alone |
 
 A relative `path=` or `dir=` is of the folder you run `kero do` in.
 

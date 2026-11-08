@@ -25,6 +25,8 @@ Kero は、コーディングエージェントの状態を画面の表示から
 
 サイドバーのセッションの行は、状態の元になっているペインで動いているプログラムのアイコンで始まります: Claude Code、Codex、Gemini などのエージェント、スクリプトなら Node.js や Bun、それ以外はターミナルです。エージェントが動いている間ははっきりと（固有の色があるエージェントはその色で）表示され、シェルに戻ったりペインが終了したりすると薄くなります。
 
+<a id="your-own-agents"></a>
+
 ## 独自のエージェント
 
 Kero は Claude Code、Codex、Gemini、OpenCode、Amp、Cursor、Droid、Qwen、Copilot、Kiro、Cline、Kimi、Pi の画面を、[herdr](https://github.com/ogulcancelik/herdr) から借りたルールで読み取ります。[設定ファイル](./configuration.md)の隣の `agents.toml` に書くと、ほかのエージェントを教えたり、画面が変わったエージェントのルールを直したりできます。各エージェントは herdr のマニフェストと同じルールを持つ `[[agents]]` テーブルです：
@@ -56,6 +58,8 @@ any = [{ contains = ["hopping…"] }, { regex = ['[⠋⠙⠹⠸⠼⠴⠦⠧⠇�
 `id` が Kero のエージェント（`claude` や `codex` など）と同じエージェントは、そのルールを置き換え、`executables` は Kero がそれと見なすプログラム名を追加します。
 
 kerod は起動時にファイルを読むので、変更後は `kero daemon restart`（セッションを再起動します）を実行してください。`kero config check` はエージェントの問題を報告し、kerod は問題のあるエージェントだけを除いて残りを使います。
+
+<a id="notifications"></a>
 
 ## 通知
 

@@ -15,6 +15,8 @@ Kero 按以下优先顺序读取：
 2. `$XDG_CONFIG_HOME/kero/config`
 3. `~/.config/kero/config`
 
+在 Windows 上，配置文件同样是 `~/.config/kero/config`，即 `C:\Users\<you>\.config\kero\config`；`kero config path` 会打印它的位置。它旁边是 `agents.toml`（[你自己的智能体](./status.md#your-own-agents)）和 `ama`（[Ama 的文件夹](./ama.md#its-folder)）。Kero 的其他文件，如日志和会话，位于它的数据文件夹中（[故障排除](./troubleshooting.md#where-kero-keeps-things)）。
+
 它采用 Ghostty 的语法：每行一个 `key = value`，`#` 开头为注释，列表类的配置项写成多行重复。凡是含义与 Ghostty 相同的配置项，都沿用 Ghostty 的名字。
 
 ```ini
@@ -32,10 +34,15 @@ keybind = cmd+shift+d=pane.split.down
 文件里只需写你要改的项，其余都保持默认。
 
 ```sh
-kero config edit              # 在 $EDITOR 中打开
-kero config show              # 列出所有配置项及其当前值
-kero config check             # 报告未知的配置项、无效的值和agents.toml 的问题
+kero config edit              # 在 $VISUAL 中打开，否则在 $EDITOR 中，再否则用系统的文本编辑器
+kero config show              # 列出所有配置项及其当前值，并说明每项的作用
+kero config show --defaults   # 列出所有配置项的默认值
+kero config get font-size     # 某个配置项的值
+kero config set font-size 14  # 像设置窗口那样设置某一项；不给值则恢复默认
+kero config check             # 报告未知的配置项、无效的值和 agents.toml 的问题
 ```
+
+**设置 › 高级 › 重置所有设置** 会把每个配置项恢复为默认值，包括键盘快捷键；你的会话会保留。设置窗口的搜索框可以按名称或配置项查找设置。
 
 ## 通用
 
@@ -81,6 +88,7 @@ kero config check             # 报告未知的配置项、无效的值和agents
 | `line-height`         | `1.22`  | 字体默认行高的倍数                                                       |
 | `cell-width`          | `1`     | 单元格宽度，字体宽度的倍数，`0.8` 到 `2`；文字大小不变                   |
 | `font-ligatures`      | `true`  | 按字体的设计连写字符                                                     |
+| `font-feature`        |         | 字体的 OpenType 特性，同 Ghostty：`ss01` 开启一项，`-calt` 关闭一项，`cv05=2` 选择一种替代字形。用逗号分隔或写成多行，在 `font-ligatures` 之后应用 |
 | `font-thicken`        | `false` | 加粗笔画，同 Ghostty                                                     |
 | `minimum-contrast`    | `3`     | 文字与背景之间保持的最低对比度，从 `1`（不限制）到 `21`，让为深色背景设计的颜色在浅色背景上也清晰可读，同 Ghostty |
 | `window-padding-color` | `extend` | 终端文字周围的留白显示什么：`background` 为终端背景；`extend` 为相邻单元格的颜色（保持背景色的行除外）；`extend-always` 总是相邻单元格的颜色，同 Ghostty。设为 `background` 时，程序底部的栏保持一行高 |
@@ -125,24 +133,24 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `notify-sound`      | `false` | 通知时播放提示音                               |
 | `dock-badge`        | `true`  | 在 Dock 图标上显示有多少会话需要你             |
 | `dock-bounce`       | `false` | 有会话开始需要你时，Dock 图标跳动一次          |
-| `notify-children`   | `false` | 也通知[编排器](./agents.md#orchestrator-sessions)的子会话；关闭时只有编排器自己的等待和错误会通知 |
+| `notify-children`   | `false` | 也通知[编排器](./orchestrators.md)的子会话；关闭时只有编排器自己的等待和错误会通知 |
 
 ## 智能体
 
 | 配置项           | 默认值  | 说明                                                |
 | ---------------- | ------- | --------------------------------------------------- |
-| `remote-control` | `true`  | 允许 `kero do` 和 `kero focus` 操控应用             |
+| `remote-control` | `true`  | 允许智能体操控应用：`kero do`、`kero focus`、`kero browser` 和 `kero pr review`（[详情](./agents.md#remote-control)） |
 | `agent`          | `claude` | [新建会话对话框](./sessions.md#new-session-dialog)的智能体会话可启动的命令，像你自己的命令和函数一样在你的 shell 中运行，如 `cc` 或 `codex --full-auto`。每个智能体写一行 |
 | `default-agent`  | `claude` | 新建会话对话框打开时选中的智能体 |
 | `orchestrator-prompt` |  | 编排器的角色提示词，即其智能体收到的第一条消息，行间用 `\n`；其中 `{goal}` 是目标，`{agent}` 是 `default-agent`；为空则使用 Kero 的 |
 | `orchestrator-max-children` | `0` | 一个编排器同时可运行的子会话数：超过时 `kero new` 会拒绝；`0` 表示不限 |
 | `orchestrator-agent-args` |  | 无论用哪个智能体，加在编排器的智能体命令之后的参数，例如 `--model opus`，按 shell 的读法传入；恢复时也会加上 |
-| `ama-agent` |  | [Ama](./agents.md#助手代理-ama) 从下一次对话起运行的智能体命令；为空时用 `default-agent` 的 |
+| `ama-agent` |  | [Ama](./ama.md) 从下一次对话起运行的智能体命令；为空时用 `default-agent` 的 |
 | `ama-agent-args` |  | 无论用哪个智能体，加在 Ama 的智能体命令之后的参数，例如 `--model sonnet`；恢复时也会加上 |
 | `ama-prompt` |  | Ama 的角色提示词，Kero 会写入其文件夹中的 `CLAUDE.md` 和 `AGENTS.md`，行间用 `\n`；为空时用 Kero 的 |
 | `ama-font-size` | `0` | Ama 窗口中文字的大小（磅）；`0` 表示比 `font-size` 小 1 磅 |
 | `ama-hide-status-line` | `true` | 仅对 Ama 隐藏 Claude Code 的状态栏（在 Ama 文件夹的 `.claude/settings.json` 中写一个空的）；你自己的 Claude Code 设置保持不变 |
-| `resume-command-claude` |  | 恢复 Claude Code 对话的命令，用于恢复、[搜索](./sessions.md#搜索)和恢复会话，像你自己的命令和函数一样在你的 shell 中运行，如 `cc --yolo --resume {session}`；其中的 `{session}` 会换成对话的 ID，没有时 ID 加在末尾；留空则为 `claude --resume {session}` |
+| `resume-command-claude` |  | 恢复 Claude Code 对话的命令，用于恢复、[搜索](./sessions.md#search)和恢复会话，像你自己的命令和函数一样在你的 shell 中运行，如 `cc --yolo --resume {session}`；其中的 `{session}` 会换成对话的 ID，没有时 ID 加在末尾；留空则为 `claude --resume {session}` |
 | `resume-command-codex` |  | Codex 的同类命令；留空则为 `codex resume {session}` |
 | `resume-command-pi` |  | Pi 的同类命令；留空则为 `pi --session {session}` |
 | `resume-command-opencode` |  | OpenCode 的同类命令；留空则为 `opencode --session {session}` |
@@ -166,12 +174,13 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `diff-layout` | `auto`  | 改动标签页中的 diff 布局：`unified`、`split`（左右对照）或 `auto`（够宽时左右对照）               |
 | `wrap-lines`  | `false` | diff 和从文件标签页打开的文件中的长行自动换行，而不是横向滚动                                       |
 | `branch-max-age` | `0` | 在分支切换器中隐藏那么多周没有提交的分支，除非筛选找到它们；`0` 表示不隐藏 |
-| `worktree-base` | `default` | [会话专属工作树](./changes.md#sessions-in-their-own-worktree)中你命名的新分支的起点：`default` 为仓库的默认分支，`current` 为项目文件夹所在的分支 || `worktree-dir` |        | 会话专属工作树的存放位置，各自放在仓库名之下；留空则放在仓库内的 `.kero/worktrees` |
+| `worktree-base` | `default` | [会话专属工作树](./worktrees.md)中你命名的新分支的起点：`default` 为仓库的默认分支，`current` 为项目文件夹所在的分支 |
+| `worktree-dir` |        | 会话专属工作树的存放位置，各自放在仓库名之下；留空则放在仓库内的 `.kero/worktrees` |
 | `worktree-from-origin` | `true` | 创建会话专属工作树前先获取基础分支，并从远程的分支创建；获取失败时（如离线），或本地分支有远程没有的提交时，从本地分支创建 |
 | `worktree-branch-prefix` | `semantic` | Kero [根据新工作树的任务](./sessions.md#new-session-dialog)命名的分支前缀：`semantic` 为工作类型，如 `feat/` 或 `fix/`；`static` 为 `worktree-branch-static-prefix`；`custom` 则按 `worktree-branch-prompt` 的要求 |
 | `worktree-branch-static-prefix` | `kero/` | `worktree-branch-prefix` 为 `static` 时的前缀；其中的 `{type}` 是工作类型 |
 | `worktree-branch-prompt` |        | 如何根据任务为新工作树的分支命名，替代 Kero 自带的，行之间用 `\n` |
-| `worktree-cleanup-enabled` | `false` | 在 Kero 启动时和每小时一次，按下方任一规则[删除 Kero 创建的工作树](./changes.md#cleaning-up-worktrees) |
+| `worktree-cleanup-enabled` | `false` | 在 Kero 启动时和每小时一次，按下方任一规则[删除 Kero 创建的工作树](./worktrees.md#cleaning-up-worktrees) |
 | `worktree-cleanup-inactive-days` | `30` | 删除这么多天里没有提交、检出或会话的工作树；`0` 表示从不 |
 | `worktree-cleanup-merged` | `true` | 分支在 GitHub 上的拉取请求按工作树所在的提交合并后，删除该工作树 |
 | `worktree-cleanup-unchanged` | `false` | 删除没有默认分支之外提交的工作树 |
@@ -179,17 +188,17 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `worktree-cleanup-project` |  | 项目自己的清理，按文件夹：`<文件夹>=off`，或 `<文件夹>=` 加上逗号分隔的 `inactive:<天数>`、`merged`、`unchanged`、`closed`；可重复 |
 | `commit-message-command` |  | 为已暂存的改动[撰写提交信息](./changes.md#committing)的命令，在你的 shell 中运行，提示通过标准输入传入，如 `llm -m gpt-5`；其中的 `{session}` 会换成要分叉的窗格中智能体对话的 ID，如 `cc -p --resume {session} --fork-session`；留空则分叉窗格中智能体的对话，没有对话时新运行 Claude Code 或 Codex |
 | `commit-message-prompt` |  | 智能体撰写提交信息的方式：放在最近的提交和已暂存的差异之前的说明；留空则用 Kero 自己的（显示在 设置 › Git 中）。换行写作 `\n` |
-| `pr-message-prompt` |  | 智能体撰写[拉取请求](./changes.md#new-pull-request)标题和描述的方式，同 `commit-message-prompt` |
-| `pr-notify` | `review` | 项目所在 GitHub 仓库的哪些新拉取请求会[通知你](./changes.md#pull-request-notifications)：`review`，请求你审查的；`all`，别人打开的每一个；`off`，都不通知，此时也停止检查 |
+| `pr-message-prompt` |  | 智能体撰写[拉取请求](./pull-requests.md#new-pull-request)标题和描述的方式，同 `commit-message-prompt` |
+| `pr-notify` | `review` | 项目所在 GitHub 仓库的哪些新拉取请求会[通知你](./pull-requests.md#pull-request-notifications)：`review`，请求你审查的；`all`，别人打开的每一个；`off`，都不通知，此时也停止检查 |
 | `pr-poll-interval` | `5` | Kero 检查新拉取请求的间隔，单位为分钟 |
-| `pr-watch-wake` | `all` | [会话的拉取请求](./changes.md#会话的拉取请求)的哪些情况会唤醒会话中的智能体：`all`，检查失败和通过、他人的评论和审查、合并冲突；`failures`，检查失败和合并冲突；`off`，什么也不做，并停止关注 |
-| `review-command` |  | [审查](./changes.md#review)仓库拉取请求的智能体命令，如 `owner/name=codex --full-auto`；留空则为 `claude`。智能体把提示词作为一个参数收到，放在 `{prompt}` 处，否则放在命令之后；其中也可使用拉取请求的占位符。每个仓库重复一行 |
+| `pr-watch-wake` | `all` | [会话的拉取请求](./pull-requests.md#a-session-s-pull-request)的哪些情况会唤醒会话中的智能体：`all`，检查失败和通过、他人的评论和审查、合并冲突；`failures`，检查失败和合并冲突；`off`，什么也不做，并停止关注 |
+| `review-command` |  | [审查](./pull-requests.md#reviewing-with-an-agent)仓库拉取请求的智能体命令，如 `owner/name=codex --full-auto`；留空则为 `claude`。智能体把提示词作为一个参数收到，放在 `{prompt}` 处，否则放在命令之后；其中也可使用拉取请求的占位符。每个仓库重复一行 |
 | `review-prompt` |  | 交给审查智能体的提示词，如 `owner/name=/code-review {ticket} #{number}`；留空则用 Kero 自己的。换行写作 `\n`。每个仓库重复一行 |
-| `pr-review-prompt` |  | 没有自己的 `review-prompt` 的仓库中，交给[审查](./changes.md#review)智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
-| `pr-guide-prompt` |  | 交给编写拉取请求[审查导览](./changes.md#review-guides)的智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
+| `pr-review-prompt` |  | 没有自己的 `review-prompt` 的仓库中，交给[审查](./pull-requests.md#reviewing-with-an-agent)智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
+| `pr-guide-prompt` |  | 交给编写拉取请求[审查导览](./pull-requests.md#review-guides)的智能体的提示词；留空则用 Kero 自己的。换行写作 `\n` |
 | `repo-commit-message-prompt` |  | 仓库自己的 `commit-message-prompt`，如 `owner/name=Write in Finnish`。每个仓库重复一行 |
 | `repo-pr-message-prompt` |  | 仓库自己的 `pr-message-prompt`，同 `repo-commit-message-prompt` |
-| `repo-merge-method` |  | 仓库拉取请求默认的[合并](./changes.md#review)方式，例如 `owner/name=rebase`：`merge`、`squash` 或 `rebase`。未设置时，使用仓库允许的压缩、合并、变基中的第一个 |
+| `repo-merge-method` |  | 仓库拉取请求默认的[合并](./pull-requests.md#merging-and-other-actions)方式，例如 `owner/name=rebase`：`merge`、`squash` 或 `rebase`。未设置时，使用仓库允许的压缩、合并、变基中的第一个 |
 
 ## 文件
 
@@ -233,6 +242,8 @@ browser-filter-list = https://example.com/my-filters.txt
 ## 键盘
 
 `keybind` 用于重新绑定操作，格式为 `<keys>=<action>`。每个绑定写一行。把操作设为 `unbind` 即可释放对应按键。
+
+按键由修饰键和一个键用 `+` 连接而成。`cmd`（或 `super`、`command`）在 macOS 上是 ⌘，在 Windows 和 Linux 上是 <kbd>Ctrl</kbd>；`ctrl`（`control`）是 <kbd>Ctrl</kbd>；`alt`（`opt`、`option`）是 <kbd>Alt</kbd> 或 <kbd>⌥</kbd>；还有 `shift`。键可以是字母、数字或标点符号，也可以是 `enter`（`return`）、`tab`、`space`、`backspace`、`delete`、`escape`（`esc`）、`up`、`down`、`left`、`right`、`home`、`end`、`pageup`、`pagedown`，以及表示 <kbd>+</kbd> 的 `plus`。因此下面的 `cmd+shift+d` 在 Windows 上是 <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>D</kbd>。
 
 ```ini
 keybind = cmd+shift+d=pane.split.down

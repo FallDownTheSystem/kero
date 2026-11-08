@@ -4,6 +4,9 @@
 // own, beside Kero's configuration, which holds its instructions: Kero's,
 // as CLAUDE.md and AGENTS.md, which Kero writes anew as it updates, and
 // the user's, USER.md, which Kero makes once and never touches again.
+// Beside them, docs holds Kero's user docs, of this Kero, which the
+// instructions list, so that Ama answers questions about Kero from them
+// rather than from what it guesses or finds in Kero's program.
 // Its .claude/settings.json turns Claude Code's status line off for Ama
 // alone, as the ama-hide-status-line setting asks.
 package ama
@@ -12,10 +15,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"kero/docs"
 	"kero/internal/commitmsg"
 	"kero/internal/proto"
 	"kero/internal/settings"
@@ -28,6 +33,10 @@ func Dir() string { return filepath.Join(filepath.Dir(settings.ConfigPath()), "a
 // UserFile is the user's own instructions for Ama, which Kero never
 // changes.
 func UserFile() string { return filepath.Join(Dir(), "USER.md") }
+
+// DocsDir is Kero's docs in Ama's folder, which Kero writes anew as it
+// updates.
+func DocsDir() string { return filepath.Join(Dir(), "docs") }
 
 // Within reports whether dir is Ama's folder, or in it: a conversation
 // there is Ama's.
@@ -77,9 +86,9 @@ func SkillAgent(command []string) string {
 	return ""
 }
 
-// Prepare makes Ama's folder, with Kero's instructions as they are in
-// this Kero, and the user's file, empty, once; and Claude Code's status
-// line off or on, as the settings ask.
+// Prepare makes Ama's folder, with Kero's instructions and docs as they
+// are in this Kero, and the user's file, empty, once; and Claude Code's
+// status line off or on, as the settings ask.
 func Prepare() error { return PrepareWith(settings.Load()) }
 
 // PrepareWith is Prepare of the settings set, as they changed.
@@ -91,8 +100,13 @@ func PrepareWith(set settings.Settings) error {
 	// A settings file the user broke stays as they left it, and Ama starts
 	// all the same.
 	StatusLine(set.AmaHideStatusLine)
+	pages := docs.Pages()
+	if err := writeDocs(pages); err != nil {
+		return err
+	}
 	prompt := Prompt(set)
-	for name, text := range map[string]string{"CLAUDE.md": claudeFile(prompt), "AGENTS.md": agentsFile(prompt)} {
+	index := docsIndex(pages)
+	for name, text := range map[string]string{"CLAUDE.md": claudeFile(prompt, index), "AGENTS.md": agentsFile(prompt, index)} {
 		if err := writeIfChanged(filepath.Join(dir, name), text); err != nil {
 			return err
 		}
@@ -101,6 +115,51 @@ func PrepareWith(set settings.Settings) error {
 		return os.WriteFile(UserFile(), []byte(userTemplate), 0o644)
 	}
 	return nil
+}
+
+// writeDocs puts the docs' pages in DocsDir, and takes out the pages an
+// older Kero put there that this one moved or dropped, which would answer
+// for a Kero that is gone. Only Markdown files go: what else is there was
+// put there by someone else.
+func writeDocs(pages []docs.Page) error {
+	dir := DocsDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	keep := map[string]bool{}
+	for _, p := range pages {
+		keep[p.Name] = true
+		if err := writeIfChanged(filepath.Join(dir, p.Name), string(p.Text)); err != nil {
+			return err
+		}
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".md") && !keep[e.Name()] {
+			os.Remove(filepath.Join(dir, e.Name()))
+		}
+	}
+	return nil
+}
+
+// docsIndex is the instructions' part on Kero's docs: where they are, when
+// to read them, and a line for each page, which a role prompt of the
+// user's keeps too, as it says nothing of the docs.
+func docsIndex(pages []docs.Page) string {
+	var b strings.Builder
+	b.WriteString("\n## Kero's docs\n\n" +
+		"Kero's user docs, of the version of Kero that runs you, are in docs/ in this folder. When the user asks " +
+		"how Kero does something, what a setting, file or button does, where something is in the app, or why " +
+		"something fails, read the page it is about first, and answer from it; search docs/ when you don't know " +
+		"which page. Don't search Kero's program, its tests or its other files for it: when the docs don't say, " +
+		"say so. For the options of a kero command, kero help is the last word.\n\n")
+	for _, p := range pages {
+		fmt.Fprintf(&b, "- docs/%s: %s. %s\n", p.Name, p.Title, p.Description)
+	}
+	return b.String()
 }
 
 // writeIfChanged writes text to path unless it holds it already: an
@@ -183,11 +242,13 @@ func sameJSON(x, y json.RawMessage) bool {
 const keroHeader = "<!-- Written by Kero, which rewrites this file as it updates, from its role prompt for Ama or yours (Settings › Agents › Ama › Role prompt, ama-prompt): put your own instructions in USER.md, beside it. -->\n\n"
 
 // claudeFile is CLAUDE.md: Claude Code imports USER.md itself (@USER.md).
-func claudeFile(prompt string) string { return keroHeader + prompt + "\n@USER.md\n" }
+func claudeFile(prompt, index string) string {
+	return keroHeader + prompt + index + "\n@USER.md\n"
+}
 
 // agentsFile is AGENTS.md, for Codex and the other agents, which import
 // nothing: the instructions tell them to read USER.md.
-func agentsFile(prompt string) string { return keroHeader + prompt }
+func agentsFile(prompt, index string) string { return keroHeader + prompt + index }
 
 const userTemplate = `# My instructions for Ama
 
@@ -259,6 +320,8 @@ const Instructions = "# You are Ama\n\n" +
 	"answer with their names and projects, and offer to show one with kero focus.\n\n" +
 	"\"Close every finished session in project Y\": kero close --all -p Y --status idle,exited --dry-run, " +
 	"tell the user the list, then run it without --dry-run once they agree.\n\n" +
+	"\"How do I run a setup script in new worktrees?\": read docs/worktrees.md (Kero's docs, below), its setup " +
+	"scripts part, and answer from it: the kero.json to write, what the script gets, how to see how it went.\n\n" +
 	"## Rules\n\n" +
 	"- Ask before what can't be undone: closing sessions that are working or waiting, removing a worktree " +
 	"that would lose changes, merging, deleting branches. Show the list with --dry-run first.\n" +

@@ -50,7 +50,7 @@ A file, or a local page, that a pane of the session already shows isn't split ag
 
 ## Editor panes
 
-An editor pane shows a file beside your terminals, highlighted as its language is, to read and edit: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, only as it was when it was read, as in the [viewer](./changes.md#editing). It splits, zooms, moves and closes like any pane, and comes back on the same file when Kero restarts. Closing it with edits not saved asks first.
+An editor pane shows a file beside your terminals, highlighted as its language is, to read and edit: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, only as it was when it was read, as in the [viewer](./files.md#editing). It splits, zooms, moves and closes like any pane, and comes back on the same file when Kero restarts. Closing it with edits not saved asks first.
 
 Open one from the Files tab: right-click a file and choose **Open in Pane**, or click **Open in Pane** in the viewer's header while it shows the file. Or drag a file onto a pane: dropped near an edge, it opens beside the pane on that side; dropped in the middle of an editor pane, it takes the place of its file, unless that one has unsaved edits. Files and folders dragged from your file manager open the same way, a folder in a terminal there; on a terminal, only near its left, right or top edge, as the rest of it pastes their paths. From a shell, or an agent:
 
@@ -181,6 +181,8 @@ Choose the lists under **Block ads** in **Settings › Browser**: lists of cooki
 Kero blocks what WebKit's content blockers can: requests to ad and tracker servers, and the elements the lists hide. Filters that need a blocker's own scripts, such as those that hide elements by their text or rewrite what a page loads, are left out. A page on a domain the lists block doesn't open in a browser pane.
 
 To browse without blocking, turn off **Block ads** in **Settings › Browser**, or set `browser-block-ads = false` in the [configuration](./configuration.md#browser). Open pages keep what they loaded until they reload.
+
+<a id="signing-in-with-your-browsers-cookies"></a>
 
 ### Signing in with your browser's cookies
 

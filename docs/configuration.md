@@ -15,6 +15,8 @@ Kero reads, in order of preference:
 2. `$XDG_CONFIG_HOME/kero/config`
 3. `~/.config/kero/config`
 
+On Windows too, the file is `~/.config/kero/config`, as `C:\Users\<you>\.config\kero\config`; `kero config path` prints where it is. Beside it are `agents.toml`, [your own agents](./status.md#your-own-agents), and `ama`, [Ama's folder](./ama.md#its-folder). Kero's other files, such as its log and its sessions, are in its data folder ([Troubleshooting](./troubleshooting.md#where-kero-keeps-things)).
+
 It uses Ghostty's syntax: one `key = value` per line, `#` for comments, and repeated lines for keys that hold lists. Where a key means what it means in Ghostty, it has Ghostty's name.
 
 ```ini
@@ -32,10 +34,15 @@ keybind = cmd+shift+d=pane.split.down
 The file only needs what you change. Everything else keeps its default.
 
 ```sh
-kero config edit              # open it in $EDITOR
-kero config show              # every key with its current value
+kero config edit              # open it in $VISUAL, else $EDITOR, else the system's text editor
+kero config show              # every key with its current value, each with what it does
+kero config show --defaults   # every key as Kero comes
+kero config get font-size     # one key's value
+kero config set font-size 14  # set one, as Settings does; no value restores its default
 kero config check             # report unknown keys and bad values, and agents.toml's
 ```
+
+**Settings › Advanced › Reset all settings** puts every key back to its default, the keyboard shortcuts too; your sessions stay. The Settings window's search field finds a setting by its name or its key.
 
 ## General
 
@@ -81,6 +88,7 @@ kero config check             # report unknown keys and bad values, and agents.t
 | `line-height`         | `1.22`  | A multiple of the font's                                                 |
 | `cell-width`          | `1`     | The width of cells, a multiple of the font's, from `0.8` to `2`; the text keeps its size |
 | `font-ligatures`      | `true`  | Join characters the way the font draws them                              |
+| `font-feature`        |         | The font's OpenType features, as in Ghostty: `ss01` turns one on, `-calt` turns one off, `cv05=2` picks an alternate. Comma-separated or repeated, and applied after `font-ligatures` |
 | `font-thicken`        | `false` | A heavier stroke, as in Ghostty                                          |
 | `minimum-contrast`    | `3`     | The least contrast text keeps with its background, from `1` (none) to `21`, so that colors meant for a dark background stay readable on a light one, as in Ghostty |
 | `window-padding-color` | `extend` | What the padding around a terminal's text shows: `background`, the terminal's background; `extend`, the colors of the cells beside it, but for a row left at the background; or `extend-always`, theirs always, as in Ghostty. With `background`, a program's bottom bar stays one row tall |
@@ -125,19 +133,19 @@ The file theme colors the editor panes and the viewer, whose code takes its 16 c
 | `notify-sound`      | `false` | Play a sound with notifications                |
 | `dock-badge`        | `true`  | Show how many sessions need you on the Dock icon |
 | `dock-bounce`       | `false` | Bounce the Dock icon once when a session comes to need you |
-| `notify-children`   | `false` | Notify of an [orchestrator's](./agents.md#orchestrator-sessions) child sessions too; off, only the orchestrator's own waiting and errors notify |
+| `notify-children`   | `false` | Notify of an [orchestrator's](./orchestrators.md) child sessions too; off, only the orchestrator's own waiting and errors notify |
 
 ## Agents
 
 | Key              | Default | Description                                         |
 | ---------------- | ------- | --------------------------------------------------- |
-| `remote-control` | `true`  | Let `kero do` and `kero focus` drive the app        |
+| `remote-control` | `true`  | Let agents drive the app: `kero do`, `kero focus`, `kero browser` and `kero pr review` ([more](./agents.md#remote-control)) |
 | `agent`          | `claude` | A command an agent session of the [New Session dialog](./sessions.md#new-session-dialog) may start, run in your shell as your own commands and functions are, as `cc` or `codex --full-auto`. Repeat it for each agent |
 | `default-agent`  | `claude` | The agent the New Session dialog has chosen as it opens |
 | `orchestrator-prompt` |  | An orchestrator's role prompt, its agent's first message, with `\n` between lines; `{goal}` in it is its goal, `{agent}` `default-agent`; empty for Kero's |
 | `orchestrator-max-children` | `0` | How many of an orchestrator's child sessions may run at once: `kero new` refuses another; `0` for any number |
 | `orchestrator-agent-args` |  | Arguments an orchestrator's agent gets after its command, whichever agent it runs, as `--model opus`, read as the shell reads them; when it resumes too |
-| `ama-agent` |  | The agent command [Ama](./agents.md#ama-the-helper-agent) runs, from its next chat on; empty for `default-agent`'s |
+| `ama-agent` |  | The agent command [Ama](./ama.md) runs, from its next chat on; empty for `default-agent`'s |
 | `ama-agent-args` |  | Arguments Ama's agent gets after its command, whichever agent it runs, as `--model sonnet`; when it resumes too |
 | `ama-prompt` |  | Ama's role prompt, which Kero writes into `CLAUDE.md` and `AGENTS.md` in its folder, with `\n` between lines; empty for Kero's |
 | `ama-font-size` | `0` | The size of the text in Ama's window, in points; `0` for a point under `font-size` |
@@ -166,13 +174,13 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `diff-layout` | `auto`  | Diffs of the Changes tab: `unified`, `split` (side by side), or `auto`, side by side once they're wide |
 | `wrap-lines`  | `false` | Wrap the long lines of diffs and of files from Files rather than scrolling them sideways          |
 | `branch-max-age` | `0` | Hide from the branch switcher the branches with no commit in that many weeks, unless its filter finds them; `0` hides none |
-| `worktree-base` | `default` | What a [session's own worktree](./changes.md#sessions-in-their-own-worktree) branches from, for a new branch you name: `default`, the repository's default branch, or `current`, the branch of the project's folder |
+| `worktree-base` | `default` | What a [session's own worktree](./worktrees.md) branches from, for a new branch you name: `default`, the repository's default branch, or `current`, the branch of the project's folder |
 | `worktree-dir` |        | Where sessions' own worktrees go, each under its repository's name; empty for `.kero/worktrees` in the repository |
 | `worktree-from-origin` | `true` | Fetch the base branch before making a session's own worktree, and branch from the remote's copy; from the local branch when the fetch fails, as offline, or the local branch has commits the remote's lacks |
 | `worktree-branch-prefix` | `semantic` | What goes before a branch Kero [names from a new worktree's task](./sessions.md#new-session-dialog): `semantic`, the kind of the work, as `feat/` or `fix/`; `static`, `worktree-branch-static-prefix`; or `custom`, what `worktree-branch-prompt` asks for |
 | `worktree-branch-static-prefix` | `kero/` | The prefix while `worktree-branch-prefix` is `static`; `{type}` in it is the kind of the work |
 | `worktree-branch-prompt` |        | How a new worktree's branch is named from its task, over Kero's own, with `\n` between lines |
-| `worktree-cleanup-enabled` | `false` | [Remove the worktrees Kero made](./changes.md#cleaning-up-worktrees) as Kero starts and hourly, once one of the rules below says so |
+| `worktree-cleanup-enabled` | `false` | [Remove the worktrees Kero made](./worktrees.md#cleaning-up-worktrees) as Kero starts and hourly, once one of the rules below says so |
 | `worktree-cleanup-inactive-days` | `30` | Remove a worktree with no commit, checkout or session in it for that many days; `0` for never |
 | `worktree-cleanup-merged` | `true` | Remove a worktree once its branch's pull request on GitHub merged, at the commit the worktree is on |
 | `worktree-cleanup-unchanged` | `false` | Remove a worktree with no commit of its own beyond the default branch |
@@ -180,17 +188,17 @@ Other machines whose sessions the app shows, and `kero -H` reaches. See [Remote 
 | `worktree-cleanup-project` |  | A project's own cleanup, by its folder: `<folder>=off`, or `<folder>=` and rules, comma-separated, of `inactive:<days>`, `merged`, `unchanged` and `closed`; repeat it |
 | `commit-message-command` |  | The command that [writes a commit message](./changes.md#committing) of what's staged, run in your shell and given the prompt on its stdin, as `llm -m gpt-5`; `{session}` in it is the ID of the pane's agent's conversation, to fork it, as `cc -p --resume {session} --fork-session`; empty for a fork of the conversation of the agent in the pane, else a new run of Claude Code's or Codex's |
 | `commit-message-prompt` |  | How the agent writes a commit message: the instructions before the recent commits and the staged diff; empty for Kero's own, which Settings › Git shows. Write a line break as `\n` |
-| `pr-message-prompt` |  | How the agent writes a [pull request](./changes.md#new-pull-request)'s title and description, as `commit-message-prompt` |
-| `pr-notify` | `review` | Which new pull requests of your projects' GitHub repositories [notify you](./changes.md#pull-request-notifications): `review`, those that ask for your review; `all`, every one someone else opens; `off`, none, which stops checking |
+| `pr-message-prompt` |  | How the agent writes a [pull request](./pull-requests.md#new-pull-request)'s title and description, as `commit-message-prompt` |
+| `pr-notify` | `review` | Which new pull requests of your projects' GitHub repositories [notify you](./pull-requests.md#pull-request-notifications): `review`, those that ask for your review; `all`, every one someone else opens; `off`, none, which stops checking |
 | `pr-poll-interval` | `5` | How often Kero checks for new pull requests, in minutes |
-| `pr-watch-wake` | `all` | What of a [session's pull request](./changes.md#a-session-s-pull-request) wakes the agent in the session: `all`, failing and passing checks, others' comments and reviews, and merge conflicts; `failures`, failing checks and merge conflicts; `off`, nothing, which stops watching |
-| `review-command` |  | The agent command that [reviews](./changes.md#review) a repository's pull requests, as `owner/name=codex --full-auto`; empty for `claude`. The agent gets the prompt as one argument, in place of `{prompt}`, else after the command; the pull request's placeholders work in it too. Repeat it for each repository |
+| `pr-watch-wake` | `all` | What of a [session's pull request](./pull-requests.md#a-session-s-pull-request) wakes the agent in the session: `all`, failing and passing checks, others' comments and reviews, and merge conflicts; `failures`, failing checks and merge conflicts; `off`, nothing, which stops watching |
+| `review-command` |  | The agent command that [reviews](./pull-requests.md#reviewing-with-an-agent) a repository's pull requests, as `owner/name=codex --full-auto`; empty for `claude`. The agent gets the prompt as one argument, in place of `{prompt}`, else after the command; the pull request's placeholders work in it too. Repeat it for each repository |
 | `review-prompt` |  | What the review agent is asked, as `owner/name=/code-review {ticket} #{number}`; empty for Kero's own. Write a line break as `\n`. Repeat it for each repository |
-| `pr-review-prompt` |  | What a [review](./changes.md#review) agent is asked, for every repository without its own `review-prompt`; empty for Kero's own. Write a line break as `\n` |
-| `pr-guide-prompt` |  | What the agent that writes a pull request's [review guide](./changes.md#review-guides) is asked; empty for Kero's own. Write a line break as `\n` |
+| `pr-review-prompt` |  | What a [review](./pull-requests.md#reviewing-with-an-agent) agent is asked, for every repository without its own `review-prompt`; empty for Kero's own. Write a line break as `\n` |
+| `pr-guide-prompt` |  | What the agent that writes a pull request's [review guide](./pull-requests.md#review-guides) is asked; empty for Kero's own. Write a line break as `\n` |
 | `repo-commit-message-prompt` |  | A repository's own `commit-message-prompt`, as `owner/name=Write in Finnish`. Repeat it for each repository |
 | `repo-pr-message-prompt` |  | A repository's own `pr-message-prompt`, as `repo-commit-message-prompt` |
-| `repo-merge-method` |  | How a repository's pull requests [merge](./changes.md#review) by default, as `owner/name=rebase`: `merge`, `squash` or `rebase`. Without one, the first the repository allows of squash, merge and rebase |
+| `repo-merge-method` |  | How a repository's pull requests [merge](./pull-requests.md#merging-and-other-actions) by default, as `owner/name=rebase`: `merge`, `squash` or `rebase`. Without one, the first the repository allows of squash, merge and rebase |
 
 ## Files
 
@@ -230,6 +238,8 @@ browser-filter-list = https://example.com/my-filters.txt
 ## Keyboard
 
 `keybind` rebinds an action, as `<keys>=<action>`. Repeat it for each binding. Use `unbind` as the action to free keys.
+
+Keys are modifiers and a key joined by `+`. `cmd` (or `super`, `command`) is ⌘ on macOS and <kbd>Ctrl</kbd> on Windows and Linux; `ctrl` (`control`) is <kbd>Ctrl</kbd>; `alt` (`opt`, `option`) is <kbd>Alt</kbd> or <kbd>⌥</kbd>; and `shift`. A key is a letter, a digit or a punctuation mark, or `enter` (`return`), `tab`, `space`, `backspace`, `delete`, `escape` (`esc`), `up`, `down`, `left`, `right`, `home`, `end`, `pageup`, `pagedown`, and `plus` for <kbd>+</kbd>. So `cmd+shift+d` below is <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>D</kbd> on Windows.
 
 ```ini
 keybind = cmd+shift+d=pane.split.down

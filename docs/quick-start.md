@@ -11,6 +11,8 @@ Install Kero, open a project, and run your first agent in a session that keeps g
 
 Download the latest Kero from the [releases page](https://github.com/egoist/kero/releases). On macOS, drag **Kero.app** into your Applications folder; on Windows, run the **Kero Setup** installer, which needs no administrator rights.
 
+This build of Kero is a fork for Windows, released on [its own releases page](https://github.com/FallDownTheSystem/kero/releases) as `kero-setup-<version>-amd64.exe`; it installs in `%LOCALAPPDATA%\Programs\Kero` and updates from there.
+
 On Windows, sessions run in PowerShell 7 when it is installed, else Windows PowerShell; choose another shell, such as `cmd` or Git Bash's `bash`, in **Settings › Shell**. Kero needs Windows 10 1809 or later, for its pseudo consoles.
 
 ### Install the command line tool
@@ -58,3 +60,5 @@ Press <kbd>⌘</kbd> <kbd>Q</kbd>. Your sessions keep running in kerod. Open Ker
 
 - [Panes](./panes.md): split a session to run a dev server beside your agent
 - [Coding Agents](./agents.md): run `kero skill setup` so agents learn to use Kero
+- [The Window](./window.md): what each part of the window shows
+- [Ama](./ama.md): ask Kero's helper agent to run Kero for you

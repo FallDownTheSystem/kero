@@ -73,7 +73,7 @@ pane=$(kero split --down -- go test ./...)
 kero wait "$pane" --exit || kero read "$pane" -n 80
 ```
 
-查看仓库的工作树，附带 `git worktree list` 没有的信息：每个工作树中的会话、是否由 Kero 创建、删除会丢失什么、自动清理会如何处理；查看自己会话的工作树、设置和拉取请求；把自己的会话连同对话移到新的 git 工作树中，并在本轮结束后在那里继续（[详情](./changes.md#moving-a-session-into-a-worktree)）：
+查看仓库的工作树，附带 `git worktree list` 没有的信息：每个工作树中的会话、是否由 Kero 创建、删除会丢失什么、自动清理会如何处理；查看自己会话的工作树、设置和拉取请求；把自己的会话连同对话移到新的 git 工作树中，并在本轮结束后在那里继续（[详情](./worktrees.md#moving-a-session-into-a-worktree)）：
 
 ```sh
 kero worktree list
@@ -81,7 +81,7 @@ kero worktree status
 kero worktree handoff fix-login --prompt "go on with the fix"
 ```
 
-处理拉取请求：编写[评审导览](./changes.md#review-guides)，查看会话关联的拉取请求。Kero 会为智能体关注它，在检查失败时向其提示符输入一条以“Kero PR watch:”开头的消息。在你要求时，还能合并、更新或检出拉取请求（[全部命令](./cli.md)）：
+处理拉取请求：编写[评审导览](./pull-requests.md#review-guides)，查看会话关联的拉取请求。Kero 会为智能体关注它，在检查失败时向其提示符输入一条以“Kero PR watch:”开头的消息。在你要求时，还能合并、更新或检出拉取请求（[全部命令](./cli.md)）：
 
 ```sh
 kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
@@ -101,59 +101,16 @@ kero report done "Deployed to staging"
 
 `blocked` 报告会把会话变为*等待中*并通知你，所以智能体只应在离开你就无法继续时使用它。
 
-<a id="orchestrator-sessions"></a>
+## 运行其他智能体的智能体
 
-## 编排器会话
+- [编排器](./orchestrators.md)是一个智能体会话：它规划工作，为其启动子会话并跟进，而你只需和它交谈。
+- [Ama](./ama.md) 是 Kero 的助手代理，替你启动和管理会话、工作树、项目和设置，并回答关于 Kero 的问题。
 
-编排器是一个智能体会话：它规划工作，为其启动其他会话（它的**子会话**）并跟进，而你只需和它交谈。在[新建会话对话框](./sessions.md#new-session-dialog)中选择 **编排器** 并可填写 **目标**，或者：
-
-```sh
-kero new --orchestrator --goal "上线新的登录页"
-kero orchestrator <session>       # 把会话设为编排器；加 off 则撤销
-```
-
-所选的智能体（否则为 `default-agent`）以角色提示词开始：规划并委派，用 `kero new` 启动子会话，能答的自己答，只在必要时问你，对无需处理的报告只回一句“OK”而不写总结，始终记住目标。可在 **设置 › 智能体 › 编排器**（`orchestrator-prompt`）中替换提示词，其中 `{goal}` 是目标，`{agent}` 是默认智能体。要只给编排器的智能体传入 `--model opus` 这样的参数（无论用哪个智能体），在同一处设置**参数**（`orchestrator-agent-args`）：编排器启动和恢复时，Kero 会把它们加在智能体命令之后。
-
-- **子会话。** 编排器用 `kero new` 启动的会话就是它的子会话，位于同一项目。只有一层：子会话自己的 `kero new` 会为同一编排器再启动一个子会话，而不是孙会话。`kero new --parent <session>` 指定编排器，`--parent none` 启动不属于任何编排器的会话。`orchestrator-max-children` 限制同时运行的子会话数量。
-- **报告。** 当子会话开始等待输入、工作后转为空闲、失败、退出或被关闭时，Kero 会在编排器回到提示符时把这些输入给它：接近的变化合并为一条消息，持续不到两秒的状态不报告。子会话可用 `kero report --to-parent "<总结>"` 发送自己的结果，随下一次报告一起送达。编排器自己关闭的子会话不会被报告。报告会等到编排器回到提示符时才送出；在此期间被关闭的子会话，其状态行会被移除，只留下“已关闭”和它发送的总结。
-- **侧边栏。** 编排器的行带有标记，提示中显示其目标；子会话无论如何移动都紧跟在它下方，每个前面有 ↳。用它的展开箭头可折叠子会话（Kero 会记住）；折叠时会显示需要你处理的子会话数量。
-- **通知。** 子会话的变化会更新侧边栏，但不通知你，也不计入 Dock 徽标：编排器会得知它们。编排器自己的等待和错误照常通知。`notify-children`（**设置 › 通知**）可恢复子会话的通知。
-- **你仍可直接与子会话交谈**：点击它并输入。编排器会从下一次报告得知。
-- **关闭**编排器时会询问是同时关闭子会话，还是保留为顶层会话（`kero close <orchestrator> --children` 会一并关闭）；拥有专属工作树的子会话会保留工作树，交给[清理](./changes.md)。关闭子会话会把它移出树，工作树中的子会话照常询问如何处理工作树。
-
-`kero ls` 会标出编排器和子会话；`kero status <orchestrator>` 显示其目标和子会话，`kero status <child>` 显示其编排器。
-
-## 助手代理 Ama
-
-Ama 是替你操作 Kero 的智能体，名字来自日本树蛙（雨蛙，*amagaeru*）。点击会话边栏底部的青蛙，或按 **Ctrl+Shift+A**（macOS 上为 **⇧⌘A**），或选择**显示 › Ama**，然后这样请它：
-
-- “为项目 X 中每个打开的 PR 启动代码评审。”
-- “清理所有旧的工作树。”
-- “为这个文件夹添加新项目，并用这个目标在那里启动一个编排器。”
-- “哪些会话需要我？”
-- “关闭项目 Y 中所有已完成的会话。”
-
-Ama 是在真实终端中运行的普通智能体会话。它运行你的默认智能体，或你在**设置 › 智能体 › Ama** 中选择的智能体（`ama-agent`）。它自己不做项目工作：真正的工作，它会在合适的项目中启动会话或编排器。它不属于任何项目，在 Kero 配置文件旁的专属文件夹 `ama`（`~/.config/kero/ama`）中运行。边栏不列出它，“需要你”不计入它，它也不发通知。Ama 等待你时，青蛙上会显示一个圆点。
-
-Ama 在 Kero 窗口之上的独立窗口中打开。拖动它的标题栏可以移动它（也可以移到另一台显示器上），拖动边缘可以调整大小。Kero 会记住它的大小，以及它相对于 Kero 窗口的位置：移动或调整 Kero 窗口时它会跟着走；Kero 窗口靠近屏幕边缘或某台显示器被移除时，它会留在显示器内。大小和位置以 DIP 保存，所以在缩放比例不同的显示器之间它保持同样大小。关闭窗口后 Ama 继续运行，下次打开时仍是同一对话。在标题栏中：
-
-- **新对话**开始一段新对话。
-- **历史**回到 Ama 之前的某段对话。
-- **清屏**清除屏幕。
-
-要让窗口以最初的大小回到青蛙上方，右键点击青蛙并选择**重置窗口位置**，或在**设置 › 智能体 › Ama** 中点击**重置**。
-
-Ama 的文字比终端小 1 磅（**设置 › 智能体 › Ama** 中的**文字大小**，`ama-font-size`；`0` 为自动）。Ama 的窗口中隐藏 Claude Code 的状态栏（`ama-hide-status-line`，默认开启）：Kero 在 Ama 文件夹的 `.claude/settings.json` 中写入一个空的状态栏，不改动你自己的 Claude Code 设置。Claude Code 没有能在不关闭钩子的情况下彻底去掉状态栏的设置，所以原处会留下一行空行。如果该文件中已有你自己的状态栏，Kero 不会改动它；旁边的 `.claude/settings.local.json` 优先于二者。
-
-Kero 把 Ama 的指示写入它的文件夹，作为 `CLAUDE.md` 和 `AGENTS.md`，并在 Kero 更新时重写。内容是 Kero 给 Ama 的角色提示词，可在**设置 › 智能体 › Ama › 角色提示词**（`ama-prompt`）中替换；**恢复默认**会还原 Kero 的版本。Ama 的智能体从下一次对话起读取它。**参数**（`ama-agent-args`）加在 Ama 的智能体命令之后，例如 `--model sonnet`，因此不必为 Ama 另加一个智能体：Ama 启动和恢复时，Kero 都会加上它们。你自己的指示写在旁边的 `USER.md` 中：Kero 只创建一次该文件，之后从不修改，Ama 会先读它。可从**设置 › 智能体 › Ama** 打开。Ama 启动前，Kero 还会像 `kero skill setup` 那样为 Ama 的智能体安装技能。
-
-Ama 用[管理 Kero](./cli.md#managing-kero) 中的命令管理 Kero。
+<a id="remote-control"></a>
 
 ## 远程控制
 
-开启**远程控制**后（默认开启，位于**设置 › 智能体**），智能体还能操控应用本身：用 `kero focus` 显示某个会话，或用 `kero do` 执行菜单操作。设置 `remote-control = false` 可将其关闭，让智能体只能操作自己的会话。
-
-Ama 不需要远程控制：kerod 只给 Ama 的窗格一个秘密值 `$KERO_AMA`，即用 kerod 每次启动时重新生成的密钥对 Ama 的会话做的哈希。`kero do`、`kero focus` 和 `kero browser` 会传递它，只有 kerod 确认它属于 Ama 时，应用才会在没有远程控制的情况下执行操作。它不存入任何文件，其他窗格拿不到，对其他机器的 kerod 也无意义，所以其他智能体仍由远程控制设置决定。
+开启**远程控制**后（默认开启，位于**设置 › 智能体**），智能体还能操控应用本身：用 `kero focus` 显示某个会话，用 `kero do` 执行菜单操作，用 `kero browser` 操作浏览器窗格，用 `kero pr review` 开始拉取请求的审查。设置 `remote-control = false` 可将其关闭，让智能体只能操作自己的会话。[Ama](./ama.md#without-remote-control) 不需要它。
 
 ## 环境变量
 
@@ -163,5 +120,14 @@ Ama 不需要远程控制：kerod 只给 Ama 的窗格一个秘密值 `$KERO_AMA
 | -------------- | ------------------------------ |
 | `KERO_SESSION` | 窗格所在会话的 id              |
 | `KERO_PANE`    | 窗格的 id                      |
+| `KERO_SOCKET`  | kerod 监听的位置，供 `kero` 连接它 |
+| `TERM`、`COLORTERM` | `xterm-256color` 和 `truecolor` |
+| `TERM_PROGRAM`、`TERM_PROGRAM_VERSION` | `ghostty` 和 Ghostty 的版本：Kero 的终端就是 Ghostty 的终端，因此了解 Ghostty 按键和通知的程序会使用它们 |
+| `LC_TERMINAL`、`LC_TERMINAL_VERSION` | `kero`，以及它的协议版本 |
+| `SHELL`        | 窗格的 shell；在 Windows 上，仅当它是 POSIX shell（如 bash）时才设置 |
+| `LANG`         | `en_US.UTF-8`，当 kerod 没有 `LANG`、`LC_ALL` 和 `LC_CTYPE` 中的任何一个时 |
+| `PATH`         | kerod 的 `PATH`，末尾加上 Kero 自己的 `bin` 文件夹，其中有 `kero` |
+
+`env` 设置中的变量在这些之后设置，并优先生效。窗格还会获得 kerod 启动时的其余环境（即应用的环境），但属于其他终端或智能体的变量除外，如 `TMUX`、`VSCODE_*`、`GHOSTTY_*`、`CLAUDECODE` 和 `CLAUDE_CODE_*`。所以请从不含 `NO_COLOR` 的 shell 启动 Kero，否则所有窗格都会失去颜色（[故障排除](./troubleshooting.md#panes-without-colors)）。[Ama](./ama.md) 的窗格还会获得 `KERO_AMA`，工作树的[设置脚本](./worktrees.md#setup-scripts)会获得 `KERO_WORKTREE_PATH`、`KERO_PROJECT_ROOT` 和 `KERO_WORKTREE_BRANCH`。
 
 检查 `$KERO_PANE` 即可判断脚本是否运行在 Kero 中。

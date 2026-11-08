@@ -15,6 +15,8 @@ Kero は次の順に優先して読み込みます:
 2. `$XDG_CONFIG_HOME/kero/config`
 3. `~/.config/kero/config`
 
+Windows でもファイルは `~/.config/kero/config`、つまり `C:\Users\<you>\.config\kero\config` です。`kero config path` でその場所を表示します。隣には `agents.toml`（[独自のエージェント](./status.md#your-own-agents)）と `ama`（[Ama のフォルダ](./ama.md#its-folder)）があります。ログやセッションなど Kero のほかのファイルは、データフォルダにあります（[トラブルシューティング](./troubleshooting.md#where-kero-keeps-things)）。
+
 構文は Ghostty と同じです: 1 行に 1 つの `key = value`、コメントは `#`、リストを持つキーは行を繰り返します。Ghostty と同じ意味のキーには、Ghostty と同じ名前が付いています。
 
 ```ini
@@ -32,10 +34,15 @@ keybind = cmd+shift+d=pane.split.down
 ファイルには変更したものだけを書けば十分です。それ以外はデフォルトのままです。
 
 ```sh
-kero config edit              # $EDITOR で開く
-kero config show              # すべてのキーと現在の値
+kero config edit              # $VISUAL、なければ $EDITOR、なければシステムのテキストエディタで開く
+kero config show              # すべてのキーと現在の値、それぞれの働き
+kero config show --defaults   # Kero の初期状態のすべてのキー
+kero config get font-size     # 1 つのキーの値
+kero config set font-size 14  # 設定と同じように 1 つ設定する。値なしならデフォルトに戻す
 kero config check             # 不明なキー、不正な値、agents.toml の問題を報告
 ```
+
+**設定 › 詳細 › すべての設定をリセット** は、キーボードショートカットも含めてすべてのキーをデフォルトに戻します。セッションはそのまま残ります。設定ウインドウの検索欄で、設定を名前やキーで探せます。
 
 ## 一般
 
@@ -81,6 +88,7 @@ kero config check             # 不明なキー、不正な値、agents.toml の
 | `line-height`         | `1.22`     | フォントの行の高さに対する倍率                                           |
 | `cell-width`          | `1`        | セルの幅。フォントの幅に対する倍率で、`0.8` から `2`。文字の大きさは変わらない |
 | `font-ligatures`      | `true`     | フォントが描くとおりに文字をつなげる                                     |
+| `font-feature`        |            | フォントの OpenType 機能。Ghostty と同じく、`ss01` で有効にし、`-calt` で無効にし、`cv05=2` で異体字を選ぶ。カンマ区切りか繰り返しで指定し、`font-ligatures` の後に適用される |
 | `font-thicken`        | `false`    | Ghostty と同じく、線を太くする                                           |
 | `minimum-contrast`    | `3`        | テキストが背景に対して保つ最小のコントラスト。`1`（なし）から `21`。Ghostty と同じく、暗い背景向けの色が明るい背景でも読めるようにする |
 | `window-padding-color` | `extend` | ターミナルの文字の周りの余白に表示するもの。`background` はターミナルの背景、`extend` は隣のセルの色（背景のままの行を除く）、`extend-always` は常に隣のセルの色。Ghostty と同じ。`background` にすると、プログラムの下部のバーは 1 行の高さのままになる |
@@ -125,24 +133,24 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `notify-sound`      | `false`    | 通知とともにサウンドを再生する                 |
 | `dock-badge`        | `true`     | 対応が必要なセッションの数を Dock アイコンに表示する |
 | `dock-bounce`       | `false`    | セッションが対応を求めたときに Dock アイコンを 1 回弾ませる |
-| `notify-children`   | `false`    | [オーケストレーター](./agents.md#orchestrator-sessions)の子セッションも通知する。オフでは、オーケストレーター自身の入力待ちとエラーだけが通知される |
+| `notify-children`   | `false`    | [オーケストレーター](./orchestrators.md)の子セッションも通知する。オフでは、オーケストレーター自身の入力待ちとエラーだけが通知される |
 
 ## エージェント
 
 | キー             | デフォルト | 説明                                                |
 | ---------------- | ---------- | --------------------------------------------------- |
-| `remote-control` | `true`     | `kero do` と `kero focus` によるアプリの操作を許可する |
+| `remote-control` | `true`     | エージェントによるアプリの操作を許可する: `kero do`、`kero focus`、`kero browser`、`kero pr review`（[詳しく](./agents.md#remote-control)） |
 | `agent`          | `claude`   | [新規セッションのダイアログ](./sessions.md#new-session-dialog)のエージェントセッションで起動できるコマンド。自分のコマンドや関数と同じようにシェルで実行されます（`cc` や `codex --full-auto` など）。エージェントごとに繰り返して指定する |
 | `default-agent`  | `claude`   | 新規セッションのダイアログを開いたときに選ばれているエージェント |
 | `orchestrator-prompt` |  | オーケストレーターの役割プロンプト（エージェントへの最初のメッセージ）。行の区切りは `\n`。`{goal}` は目標、`{agent}` は `default-agent`。空なら Kero のもの |
 | `orchestrator-max-children` | `0` | 1 つのオーケストレーターの子が同時にいくつ動けるか。超えると `kero new` は拒否する。`0` で無制限 |
 | `orchestrator-agent-args` |  | どのエージェントでも、オーケストレーターのエージェントのコマンドの後ろに付ける引数（`--model opus` など）。シェルが読むとおりに渡し、再開時にも付ける |
-| `ama-agent` |  | [Ama](./agents.md#ヘルパーエージェント-ama) が次のチャットから実行するエージェントのコマンド。空なら `default-agent` のもの |
+| `ama-agent` |  | [Ama](./ama.md) が次のチャットから実行するエージェントのコマンド。空なら `default-agent` のもの |
 | `ama-agent-args` |  | どのエージェントでも、Ama のエージェントのコマンドの後ろに付ける引数（`--model sonnet` など）。再開時にも付ける |
 | `ama-prompt` |  | Ama の役割プロンプト。Kero がそのフォルダの `CLAUDE.md` と `AGENTS.md` に書く。行の区切りは `\n`。空なら Kero のもの |
 | `ama-font-size` | `0` | Ama のウインドウの文字サイズ（ポイント）。`0` で `font-size` より 1 ポイント小さく |
 | `ama-hide-status-line` | `true` | Ama だけ Claude Code のステータスラインを隠す（Ama のフォルダの `.claude/settings.json` に空のものを書く）。あなた自身の Claude Code の設定は変わらない |
-| `resume-command-claude` |  | Claude Code の会話を再開するコマンド。再開、[検索](./sessions.md#検索)、セッションの復元で使われ、自分のコマンドや関数と同じようにシェルで実行されます（`cc --yolo --resume {session}` など）。中の `{session}` は会話の ID になり、なければ ID は末尾に付きます。空なら `claude --resume {session}` |
+| `resume-command-claude` |  | Claude Code の会話を再開するコマンド。再開、[検索](./sessions.md#search)、セッションの復元で使われ、自分のコマンドや関数と同じようにシェルで実行されます（`cc --yolo --resume {session}` など）。中の `{session}` は会話の ID になり、なければ ID は末尾に付きます。空なら `claude --resume {session}` |
 | `resume-command-codex` |  | Codex について同じ。空なら `codex resume {session}` |
 | `resume-command-pi` |  | Pi について同じ。空なら `pi --session {session}` |
 | `resume-command-opencode` |  | OpenCode について同じ。空なら `opencode --session {session}` |
@@ -166,12 +174,13 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `diff-layout` | `auto`     | 変更タブの差分: `unified`、`split`（左右に並べる）、または広くなると左右に並べる `auto`            |
 | `wrap-lines`  | `false`    | 差分とファイルタブで開いたファイルの長い行を、横にスクロールせずに折り返す                           |
 | `branch-max-age` | `0` | ブランチの切り替えで、その週数コミットのないブランチを隠します（フィルタで見つけたものは表示）。`0` で隠しません |
-| `worktree-base` | `default` | [セッション専用のワークツリー](./changes.md#sessions-in-their-own-worktree)で名前を付けて作る新しいブランチの起点: リポジトリのデフォルトブランチ `default`、またはプロジェクトのフォルダのブランチ `current` || `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
+| `worktree-base` | `default` | [セッション専用のワークツリー](./worktrees.md)で名前を付けて作る新しいブランチの起点: リポジトリのデフォルトブランチ `default`、またはプロジェクトのフォルダのブランチ `current` |
+| `worktree-dir` |           | セッション専用のワークツリーを置く場所。それぞれリポジトリ名の下に置かれます。空ならリポジトリ内の `.kero/worktrees` |
 | `worktree-from-origin` | `true` | セッション専用のワークツリーを作る前に元のブランチを取得し、リモートのブランチから作ります。取得に失敗したとき（オフラインなど）や、ローカルのブランチにリモートにないコミットがあるときは、ローカルのブランチから作ります |
 | `worktree-branch-prefix` | `semantic` | [新しいワークツリーのタスクから](./sessions.md#new-session-dialog)名前を付けたブランチの接頭辞: 作業の種類（`feat/`、`fix/` など）の `semantic`、`worktree-branch-static-prefix` の `static`、`worktree-branch-prompt` の指示どおりの `custom` |
 | `worktree-branch-static-prefix` | `kero/` | `worktree-branch-prefix` が `static` のときの接頭辞。`{type}` は作業の種類になります |
 | `worktree-branch-prompt` |        | 新しいワークツリーのブランチ名をタスクから付ける方法。Kero のものの代わりに使い、行の間は `\n` |
-| `worktree-cleanup-enabled` | `false` | Kero の起動時と 1 時間ごとに、下の条件のいずれかに当てはまる [Kero が作ったワークツリーを削除](./changes.md#cleaning-up-worktrees)します |
+| `worktree-cleanup-enabled` | `false` | Kero の起動時と 1 時間ごとに、下の条件のいずれかに当てはまる [Kero が作ったワークツリーを削除](./worktrees.md#cleaning-up-worktrees)します |
 | `worktree-cleanup-inactive-days` | `30` | その日数、コミット、チェックアウト、セッションがないワークツリーを削除します。`0` で削除しません |
 | `worktree-cleanup-merged` | `true` | ブランチの GitHub のプルリクエストが、ワークツリーのコミットでマージされたら削除します |
 | `worktree-cleanup-unchanged` | `false` | デフォルトブランチ以外のコミットがないワークツリーを削除します |
@@ -179,17 +188,17 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `worktree-cleanup-project` |  | プロジェクト独自の整理。フォルダごとに `<フォルダ>=off`、または `<フォルダ>=` に続けて `inactive:<日数>`、`merged`、`unchanged`、`closed` をカンマ区切りで。繰り返し指定できます |
 | `commit-message-command` |  | ステージした変更の[コミットメッセージを書く](./changes.md#committing)コマンド。シェルで実行され、プロンプトを標準入力で受け取ります（`llm -m gpt-5` など）。中の `{session}` はフォークするペインのエージェントの会話の ID になります（`cc -p --resume {session} --fork-session` など）。空なら、ペインのエージェントの会話をフォークし、なければ Claude Code か Codex を新しく実行します |
 | `commit-message-prompt` |  | エージェントがコミットメッセージを書く方法。最近のコミットとステージした差分の前に置く指示です。空なら Kero のもの（設定 › Git に表示）。改行は `\n` と書きます |
-| `pr-message-prompt` |  | エージェントが[プルリクエスト](./changes.md#new-pull-request)のタイトルと説明を書く方法。`commit-message-prompt` と同様です |
-| `pr-notify` | `review` | プロジェクトの GitHub リポジトリの新しいプルリクエストのうち、[通知する](./changes.md#pull-request-notifications)もの。`review` はレビューを依頼するもの、`all` は他の人が開いたものすべて、`off` はなし (確認も止まります) |
+| `pr-message-prompt` |  | エージェントが[プルリクエスト](./pull-requests.md#new-pull-request)のタイトルと説明を書く方法。`commit-message-prompt` と同様です |
+| `pr-notify` | `review` | プロジェクトの GitHub リポジトリの新しいプルリクエストのうち、[通知する](./pull-requests.md#pull-request-notifications)もの。`review` はレビューを依頼するもの、`all` は他の人が開いたものすべて、`off` はなし (確認も止まります) |
 | `pr-poll-interval` | `5` | 新しいプルリクエストを確認する間隔 (分) |
-| `pr-watch-wake` | `all` | [セッションのプルリクエスト](./changes.md#セッションのプルリクエスト)の何でセッションのエージェントを起こすか: `all` は失敗・成功したチェック、他の人のコメントとレビュー、マージコンフリクト。`failures` は失敗したチェックとマージコンフリクト。`off` は何もせず、見守りも止まります |
-| `review-command` |  | リポジトリのプルリクエストを[レビュー](./changes.md#review)するエージェントのコマンド（`owner/name=codex --full-auto` など）。空なら `claude`。エージェントはプロンプトを 1 つの引数として、`{prompt}` の位置に、なければコマンドの後に受け取ります。プルリクエストのプレースホルダーも使えます。リポジトリごとに繰り返します |
+| `pr-watch-wake` | `all` | [セッションのプルリクエスト](./pull-requests.md#a-session-s-pull-request)の何でセッションのエージェントを起こすか: `all` は失敗・成功したチェック、他の人のコメントとレビュー、マージコンフリクト。`failures` は失敗したチェックとマージコンフリクト。`off` は何もせず、見守りも止まります |
+| `review-command` |  | リポジトリのプルリクエストを[レビュー](./pull-requests.md#reviewing-with-an-agent)するエージェントのコマンド（`owner/name=codex --full-auto` など）。空なら `claude`。エージェントはプロンプトを 1 つの引数として、`{prompt}` の位置に、なければコマンドの後に受け取ります。プルリクエストのプレースホルダーも使えます。リポジトリごとに繰り返します |
 | `review-prompt` |  | レビューするエージェントへの指示（`owner/name=/code-review {ticket} #{number}` など）。空なら Kero のもの。改行は `\n` と書きます。リポジトリごとに繰り返します |
-| `pr-review-prompt` |  | 自分の `review-prompt` がないリポジトリで、[レビュー](./changes.md#review)するエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
-| `pr-guide-prompt` |  | プルリクエストの[レビューガイド](./changes.md#review-guides)を書くエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
+| `pr-review-prompt` |  | 自分の `review-prompt` がないリポジトリで、[レビュー](./pull-requests.md#reviewing-with-an-agent)するエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
+| `pr-guide-prompt` |  | プルリクエストの[レビューガイド](./pull-requests.md#review-guides)を書くエージェントへの指示。空なら Kero のもの。改行は `\n` と書きます |
 | `repo-commit-message-prompt` |  | リポジトリ独自の `commit-message-prompt`（`owner/name=Write in Finnish` など）。リポジトリごとに繰り返します |
 | `repo-pr-message-prompt` |  | リポジトリ独自の `pr-message-prompt`。`repo-commit-message-prompt` と同様です |
-| `repo-merge-method` |  | リポジトリのプルリクエストを[マージ](./changes.md#review)する既定の方法。`owner/name=rebase` のように、`merge`、`squash`、`rebase` のいずれか。なければ、スカッシュ、マージ、リベースのうちリポジトリが許す最初のもの |
+| `repo-merge-method` |  | リポジトリのプルリクエストを[マージ](./pull-requests.md#merging-and-other-actions)する既定の方法。`owner/name=rebase` のように、`merge`、`squash`、`rebase` のいずれか。なければ、スカッシュ、マージ、リベースのうちリポジトリが許す最初のもの |
 
 ## ファイル
 
@@ -233,6 +242,8 @@ browser-filter-list = https://example.com/my-filters.txt
 ## キーボード
 
 `keybind` は `<keys>=<action>` の形でアクションの割り当てを変えます。割り当てごとに繰り返します。キーを空けるには、アクションに `unbind` を使います。
+
+キーは、修飾キーとキーを `+` でつないで書きます。`cmd`（または `super`、`command`）は macOS では ⌘、Windows と Linux では <kbd>Ctrl</kbd> です。`ctrl`（`control`）は <kbd>Ctrl</kbd>、`alt`（`opt`、`option`）は <kbd>Alt</kbd> または <kbd>⌥</kbd>、そして `shift` です。キーは文字、数字、記号、または `enter`（`return`）、`tab`、`space`、`backspace`、`delete`、`escape`（`esc`）、`up`、`down`、`left`、`right`、`home`、`end`、`pageup`、`pagedown`、そして <kbd>+</kbd> を表す `plus` です。そのため、下の `cmd+shift+d` は Windows では <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>D</kbd> です。
 
 ```ini
 keybind = cmd+shift+d=pane.split.down

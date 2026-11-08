@@ -35,7 +35,7 @@ The **+** beside a project's name in the sidebar, and **New Session** in the pro
 - **New File**: an editor on a new file in the project's folder, `untitled.txt`, else `untitled-2.txt` and on, which its first save makes.
 - **Browser**: a browser on a blank page.
 
-For an agent or a terminal, **In a worktree** starts the session in a [git worktree of its own](./changes.md#sessions-in-their-own-worktree). **Branch** is the project folder's branch as the dialog opens: click it to pick another, the most recent first, or type a name no branch has to make that branch. Git checks a branch out in one worktree alone, and the project's folder has its own branch checked out already, so a branch checked out elsewhere asks where the session goes: **Open in that worktree**, or **New branch from** it, in a new worktree, under a name Kero suggests and you can change.
+For an agent or a terminal, **In a worktree** starts the session in a [git worktree of its own](./worktrees.md). **Branch** is the project folder's branch as the dialog opens: click it to pick another, the most recent first, or type a name no branch has to make that branch. Git checks a branch out in one worktree alone, and the project's folder has its own branch checked out already, so a branch checked out elsewhere asks where the session goes: **Open in that worktree**, or **New branch from** it, in a new worktree, under a name Kero suggests and you can change.
 
 For an agent on a **New branch**, **Task** is what the agent starts on: Kero gives it to the agent as its first prompt and, while **Branch name** is empty, names the branch from it as you press **Start**, with the command that writes commit messages (**Settings › Git**), a quick run of Claude Code's or Codex's unless you set one. ✨ beside the name names it now, for you to change before starting. Type a name yourself and Kero uses yours. **Settings › Git › Worktree branch names** sets the prefix: the kind of the work, as `feat/` or `fix/`, which the model picks; a fixed one, as `kero/`; or none but what your own prompt asks for. A name a branch has already gets a number after it.
 
@@ -81,8 +81,10 @@ Sessions run in **kerod**, a daemon that the app starts on demand. Kero is a win
 ```sh
 kero daemon status       # is kerod running?
 kero daemon restart      # restart it (sessions start again)
-kero daemon stop         # stop it and end every session
+kero daemon stop         # stop it: the programs in the panes end
 ```
+
+`kero daemon stop` and `restart` save the sessions first, as a reboot does: as kerod starts again, so do they, unless `restore-sessions` is off. To end every session for good, choose **Quit and End All Sessions…**, in the **Kero** menu (on Windows and Linux, in the sidebar's **Menus** button) or in the menu of Kero's icon in the notification area or menu bar; it asks first. See [Troubleshooting](./troubleshooting.md#restarting-kerod) for when to restart it.
 
 ## Past conversations
 

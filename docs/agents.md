@@ -72,7 +72,7 @@ pane=$(kero split --down -- go test ./...)
 kero wait "$pane" --exit || kero read "$pane" -n 80
 ```
 
-See the repository's worktrees, with what `git worktree list` doesn't tell: the sessions in each, which Kero made, what removing one would lose and what the automatic cleanup will do with it; check their own session's worktree, setup and pull request; and move their own session, with its conversation, into a new git worktree, to go on there once their turn ends ([more](./changes.md#moving-a-session-into-a-worktree)):
+See the repository's worktrees, with what `git worktree list` doesn't tell: the sessions in each, which Kero made, what removing one would lose and what the automatic cleanup will do with it; check their own session's worktree, setup and pull request; and move their own session, with its conversation, into a new git worktree, to go on there once their turn ends ([more](./worktrees.md#moving-a-session-into-a-worktree)):
 
 ```sh
 kero worktree list
@@ -80,7 +80,7 @@ kero worktree status
 kero worktree handoff fix-login --prompt "go on with the fix"
 ```
 
-Work with pull requests: write a [review guide](./changes.md#review-guides), see the session's linked pull request, which Kero watches for them, typing a message starting "Kero PR watch:" into their prompt when its checks fail, and merge, update or check one out when you ask them to ([all of it](./cli.md)):
+Work with pull requests: write a [review guide](./pull-requests.md#review-guides), see the session's linked pull request, which Kero watches for them, typing a message starting "Kero PR watch:" into their prompt when its checks fail, and merge, update or check one out when you ask them to ([all of it](./cli.md)):
 
 ```sh
 kero pr guide stop src/queue.go:10-42 --title "The new queue" "Why it exists."
@@ -100,57 +100,14 @@ kero report done "Deployed to staging"
 
 A `blocked` report turns the session to *waiting* and notifies you, so agents should use it only when they can't continue without you.
 
-## Orchestrator sessions
+## Agents that run other agents
 
-An orchestrator is an agent session that plans the work, starts other sessions for it, its **children**, and follows them, while you talk to it alone. Start one from the [New Session dialog](./sessions.md#new-session-dialog) with **Orchestrator** and an optional **Goal**, or:
-
-```sh
-kero new --orchestrator --goal "Ship the new login page"
-kero orchestrator <session>       # make a session one; kero orchestrator <session> off undoes it
-```
-
-Its agent, the one chosen (else `default-agent`), starts on a role prompt: plan and delegate, start children with `kero new`, answer what it can, ask you only what it must, reply to a report that needs nothing with a plain OK rather than a summary, and keep the goal in mind. Replace the prompt in **Settings › Agents › Orchestrators** (`orchestrator-prompt`), where `{goal}` is its goal and `{agent}` the default agent. To give orchestrators' agents arguments of their own, such as `--model opus`, whichever agent they run, set **Arguments** there (`orchestrator-agent-args`): Kero adds them after the agent's command when an orchestrator starts and when it resumes.
-
-- **Children.** A session an orchestrator starts with `kero new` is its child, in its project. There is one level: a child's own `kero new` starts another child of the same orchestrator, never a grandchild. `kero new --parent <session>` names the orchestrator, `--parent none` starts a session of none. `orchestrator-max-children` limits how many run at once.
-- **Reports.** Kero types into the orchestrator's prompt, once it's at it, when a child comes to wait for input, goes idle after working, fails, exits or closes: one message for what comes close together, and nothing for a state that lasts under two seconds. A child sends its own result with `kero report --to-parent "<summary>"`, which goes with the next report. A child its orchestrator closes itself isn't reported. A report waits until the orchestrator is at its prompt, and a child closed meanwhile takes its state lines with it: the orchestrator hears only that it closed, and still gets its summary.
-- **The sidebar.** The orchestrator's row has its mark, and its goal in its tooltip; its children show right under it, each with a ↳, wherever they are moved. Its chevron folds them, which Kero remembers; folded, it counts the children that need you.
-- **Notifications.** Children change the sidebar but don't notify you, nor count on the Dock's badge: the orchestrator hears of them. Its own waiting and errors notify as any session's. `notify-children` (**Settings › Notifications**) turns the children's back on.
-- **You can still talk to a child**: click it and type. The orchestrator hears of it from the next report.
-- **Closing** an orchestrator asks whether to close its children too or keep them as top-level sessions (`kero close <orchestrator> --children` closes them); a child in a worktree of its own keeps it, for the [cleanup](./changes.md). Closing a child takes it out of the tree, a worktree child asking about its worktree as any does.
-
-`kero ls` marks orchestrators and children; `kero status <orchestrator>` shows its goal and children, and `kero status <child>` its orchestrator.
-
-## Ama, the helper agent
-
-Ama is an agent that runs Kero for you. Its name comes from *amagaeru*, the Japanese tree frog. Click the frog at the bottom of the sessions sidebar, or press **Ctrl+Shift+A** (**⇧⌘A** on macOS), or choose **View › Ama**, and ask it things such as:
-
-- "Start a code review for every open PR in project X."
-- "Clean up all old worktrees."
-- "Add a new project for this folder and start an orchestrator there with this goal."
-- "Which sessions need me?"
-- "Close every finished session in project Y."
-
-Ama is an ordinary agent session in a real terminal. It runs your default agent, or the one you pick in **Settings › Agents › Ama** (`ama-agent`). It doesn't do project work itself: for real work it starts a session, or an orchestrator, in the right project. It belongs to no project and runs in a folder of its own, `ama` beside Kero's configuration file (`~/.config/kero/ama`). The sidebar doesn't list it, Needs You doesn't count it, and it sends no notifications. The frog shows a dot while Ama waits for you.
-
-Ama opens in a window of its own, above Kero's. Drag its header to move it, even to another display, and drag its edges to resize it. Kero remembers its size and its place relative to Kero's window: the window follows Kero's as you move or resize it, and stays on a display when Kero's window nears a screen edge or a display goes away. Kero stores the size and place in DIPs, so the window keeps its size across displays with different scaling. Ama keeps running when you close its window, and the next time you open it you're back in the same conversation. In its header:
-
-- **New Chat** starts a fresh conversation.
-- **History** goes back to one of Ama's earlier conversations.
-- **Clear** clears the screen.
-
-To put the window back above the frog, at its first size, right-click the frog and choose **Reset Window Position**, or click **Reset** in **Settings › Agents › Ama**.
-
-Ama's text is a point smaller than the terminals' (**Text size** in **Settings › Agents › Ama**, `ama-font-size`; `0` is automatic). Claude Code's status line is hidden in Ama's window (`ama-hide-status-line`, on by default). Kero puts an empty status line in `.claude/settings.json` in Ama's folder and leaves your own Claude Code settings alone. Claude Code has no setting that removes the status line entirely without also turning off hooks, so one blank row stays where it was. If that file already has a status line of your own, Kero leaves it, and `.claude/settings.local.json` beside it overrides both.
-
-Kero writes Ama's instructions into its folder as `CLAUDE.md` and `AGENTS.md`, and rewrites them as Kero updates. They are Kero's role prompt for Ama, unless you replace it in **Settings › Agents › Ama › Role prompt** (`ama-prompt`); **Reset to Default** brings Kero's back. Ama's agent reads the prompt from its next chat. **Arguments** (`ama-agent-args`) go after Ama's agent command, such as `--model sonnet`, so you needn't add another agent for Ama: Kero adds them when Ama starts and when it resumes. Your own instructions go in `USER.md` beside them. Kero creates that file once and never changes it, and Ama reads it first. **Settings › Agents › Ama** opens it. Kero also installs its skill for Ama's agent before Ama starts, as `kero skill setup` does.
-
-Ama manages Kero with the commands in [Managing Kero](./cli.md#managing-kero).
+- An [orchestrator](./orchestrators.md) is an agent session that plans the work, starts child sessions for it and follows them, while you talk to it alone.
+- [Ama](./ama.md) is Kero's helper agent, which starts and manages your sessions, worktrees, projects and settings for you, and answers questions about Kero.
 
 ## Remote Control
 
-With **Remote Control** on (the default, in **Settings › Agents**), agents can also drive the app itself: show a session with `kero focus`, or run menu actions with `kero do`. Turn it off with `remote-control = false` to keep agents to their own sessions.
-
-Ama doesn't need Remote Control: kerod gives Ama's panes a secret, `$KERO_AMA`, which is a hash of Ama's session with a key that kerod makes anew each time it starts. `kero do`, `kero focus` and `kero browser` pass it on, and the app takes the action without Remote Control only when kerod confirms the secret is Ama's. No file holds it, other panes never get it, and it means nothing to another machine's kerod, so Remote Control still decides for every other agent.
+With **Remote Control** on (the default, in **Settings › Agents**), agents can also drive the app itself: show a session with `kero focus`, run menu actions with `kero do`, drive browser panes with `kero browser`, and start pull request reviews with `kero pr review`. Turn it off with `remote-control = false` to keep agents to their own sessions. [Ama](./ama.md#without-remote-control) doesn't need it.
 
 ## Environment
 
@@ -160,5 +117,14 @@ Every pane gets:
 | -------------- | ------------------------------ |
 | `KERO_SESSION` | The id of the pane's session   |
 | `KERO_PANE`    | The id of the pane             |
+| `KERO_SOCKET`  | Where kerod listens, for `kero` to reach it |
+| `TERM`, `COLORTERM` | `xterm-256color` and `truecolor` |
+| `TERM_PROGRAM`, `TERM_PROGRAM_VERSION` | `ghostty` and Ghostty's version, as Kero's terminal is Ghostty's, so programs that know Ghostty's keys and notifications use them |
+| `LC_TERMINAL`, `LC_TERMINAL_VERSION` | `kero`, and its protocol's version |
+| `SHELL`        | The pane's shell; on Windows, only when it is a POSIX shell, as bash |
+| `LANG`         | `en_US.UTF-8`, when kerod had none of `LANG`, `LC_ALL` and `LC_CTYPE` |
+| `PATH`         | kerod's, with Kero's own `bin` folder, which has `kero`, at its end |
+
+The `env` setting's variables come after these, and win. A pane gets the rest of the environment kerod started with, the app's, but for what belongs to another terminal or agent, such as `TMUX`, `VSCODE_*`, `GHOSTTY_*`, `CLAUDECODE` and `CLAUDE_CODE_*`. So start Kero from a shell without `NO_COLOR` in it, or every pane loses its colors ([Troubleshooting](./troubleshooting.md#panes-without-colors)). [Ama's](./ama.md) panes also get `KERO_AMA`, and a worktree's [setup script](./worktrees.md#setup-scripts) gets `KERO_WORKTREE_PATH`, `KERO_PROJECT_ROOT` and `KERO_WORKTREE_BRANCH`.
 
 Check `$KERO_PANE` to tell whether a script runs inside Kero.

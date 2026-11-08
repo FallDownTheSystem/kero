@@ -16,6 +16,19 @@ Windows と Linux では、<kbd>Ctrl</kbd> と文字キーの組み合わせは�
 | 設定…                            | <kbd>⌘</kbd> <kbd>,</kbd>              | <kbd>Ctrl</kbd> <kbd>,</kbd>                  | `settings.open`  |
 | 終了（セッションは動き続ける）   | <kbd>⌘</kbd> <kbd>Q</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Q</kbd> |                  |
 | 終了してすべてのセッションを終える… | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>Q</kbd> | –                                          | `app.quitAll`    |
+| コマンドラインツールをインストール… | –                                   | –                                             | `cli.install`    |
+
+`kero actions` は、`kero do` が実行するアクションを、このコンピュータでのキーとともに一覧します。ここにあるほかのアクション（`app.quitAll`、`session.rename`、`find.open` など）はキーを割り当てられますが、`kero do` では実行できません（[アプリのアクションを実行する](./cli.md#running-app-actions)）。
+
+## 編集
+
+| アクション | macOS                                  | Windows と Linux                              | アクション ID   |
+| ---------- | -------------------------------------- | --------------------------------------------- | --------------- |
+| 検索…      | <kbd>⌘</kbd> <kbd>F</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>F</kbd> | `find.open`     |
+| 次を検索   | <kbd>⌘</kbd> <kbd>G</kbd>              | –                                             | `find.next`     |
+| 前を検索   | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>G</kbd> | –                                             | `find.previous` |
+
+検索は今いるペインを検索します。ビューアではそのファイルや差分を検索し、右サイドバーのツリーでは[検索](./files.md#search)を開きます。
 
 ## セッション
 
@@ -49,12 +62,15 @@ Windows と Linux では、<kbd>Ctrl</kbd> と文字キーの組み合わせは�
 | 場所を開く         | <kbd>⌘</kbd> <kbd>L</kbd>              | –                                                 | `browser.address`  |
 | 要素を選ぶ | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>C</kbd> | <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd> | `browser.pick` |
 | ペインを拡大       | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>↩</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Enter</kbd> | `pane.zoom`        |
+| Markdownプレビューの切り替え | –                            | –                                                 | `pane.preview`     |
 | 次のペイン         | <kbd>⌘</kbd> <kbd>]</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>]</kbd>     | `pane.next`        |
 | 前のペイン         | <kbd>⌘</kbd> <kbd>[</kbd>              | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>[</kbd>     | `pane.previous`    |
 | 左のペイン         | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>←</kbd> | <kbd>Alt</kbd> <kbd>←</kbd>                       | `pane.left`        |
 | 右のペイン         | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>→</kbd> | <kbd>Alt</kbd> <kbd>→</kbd>                       | `pane.right`       |
 | 上のペイン         | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>↑</kbd> | <kbd>Alt</kbd> <kbd>↑</kbd>                       | `pane.up`          |
 | 下のペイン         | <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>↓</kbd> | <kbd>Alt</kbd> <kbd>↓</kbd>                       | `pane.down`        |
+
+<a id="view"></a>
 
 ## 表示
 
@@ -67,6 +83,7 @@ Windows と Linux では、<kbd>Ctrl</kbd> と文字キーの組み合わせは�
 | 履歴の切り替え         | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>Y</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>Y</kbd> | `history.toggle` |
 | 検索の切り替え         | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>F</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>S</kbd> | `search.toggle`  |
 | レビューの切り替え     | <kbd>⌥</kbd> <kbd>⌘</kbd> <kbd>P</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>K</kbd> | `review.toggle`  |
+| 変更、ファイル、履歴、検索を表示 | –                            | –                                             | `changes.show`、`files.show`、`history.show`、`search.show` |
 | 拡大                   | <kbd>⌘</kbd> <kbd>=</kbd>              | <kbd>Ctrl</kbd> <kbd>=</kbd>                  | `text.bigger`    |
 | 縮小                   | <kbd>⌘</kbd> <kbd>-</kbd>              | <kbd>Ctrl</kbd> <kbd>-</kbd>                  | `text.smaller`   |
 | 実際のサイズ           | <kbd>⌘</kbd> <kbd>0</kbd>              | <kbd>Ctrl</kbd> <kbd>0</kbd>                  | `text.reset`     |
@@ -74,9 +91,19 @@ Windows と Linux では、<kbd>Ctrl</kbd> と文字キーの組み合わせは�
 | クイックターミナル     | –                                      | –                                             | `quickTerminal.toggle` |
 | Ama            | <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>A</kbd> | <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>A</kbd> | `ama.toggle` |
 
+切り替えのアクションは右サイドバーのタブを表示し、表示中なら隠します。表示のアクションは表示するだけで、`kero do` がエージェントのために実行するのはこちらです。
+
+<a id="the-command-palette"></a>
+
+## コマンドパレット
+
+**セッションへ移動…**（<kbd>⌘</kbd> <kbd>P</kbd>、Windows と Linux では <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd>）はコマンドパレットです: 入力して、セッションを名前で探したり、再開する最近の会話を探したり、コマンドを実行したりします。コマンドには、すべてのメニューのアクション、設定のページ（**設定: Git**）、**バックグラウンドサービスを再起動**、コンピュータをスリープさせないこと、各プロジェクト・各ホストでの新規セッション、そして Web アドレスなら **ブラウザペインで開く** があります。コマンドはどの言語でも英語の名前で見つかります。
+
+<a id="quick-terminal"></a>
+
 ## クイックターミナル
 
-クイックターミナルは、Ghostty のクイックターミナルや Quake 風のコンソールのように、どのアプリの上でも画面の上端から降りてきて、ショートカットをもう一度押すか別の場所をクリックすると戻ります。ショートカットはどのアプリでも効くため、**設定 › キーボード** か[設定ファイル](./configuration.md#キーボード)で割り当てるまでは何も割り当てられていません:
+クイックターミナルは、Ghostty のクイックターミナルや Quake 風のコンソールのように、どのアプリの上でも画面の上端から降りてきて、ショートカットをもう一度押すか別の場所をクリックすると戻ります。ショートカットはどのアプリでも効くため、**設定 › キーボード** か[設定ファイル](./configuration.md#keyboard)で割り当てるまでは何も割り当てられていません:
 
 ```ini
 keybind = ctrl+`=quickTerminal.toggle
