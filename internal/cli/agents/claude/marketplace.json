@@ -1,0 +1,12 @@
+{
+  "name": "kero",
+  "owner": { "name": "Kero" },
+  "description": "Installed by Kero (kero skill setup), which replaces it as Kero updates.",
+  "plugins": [
+    {
+      "name": "kero",
+      "source": "./plugin",
+      "description": "Gives Claude Code the messages Kero has for it, as orchestrator reports, without typing into its prompt."
+    }
+  ]
+}

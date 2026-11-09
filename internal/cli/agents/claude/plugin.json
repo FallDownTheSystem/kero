@@ -1,0 +1,13 @@
+{
+  "name": "kero",
+  "description": "Gives Claude Code the messages Kero has for it, as orchestrator reports, without typing into its prompt. Outside Kero it does nothing.",
+  "experimental": {
+    "monitors": [
+      {
+        "name": "kero",
+        "command": __INBOX__,
+        "description": "a message for you from Kero, as if the user sent it; \\n in it are its line breaks"
+      }
+    ]
+  }
+}

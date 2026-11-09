@@ -114,6 +114,25 @@ func TestTyped(t *testing.T) {
 	}
 }
 
+// A wheel or a click of the pane, in any of the mouse reports, is not the
+// user writing in the prompt; keys, a pasted text and an arrow are.
+func TestKeys(t *testing.T) {
+	for in, want := range map[string]bool{
+		"\x1b[<64;3;4M": false,
+		"\x1b[<0;3;4m":  false,
+		"\x1b[M`!!":     false,
+		"\x1b[96;3;4M":  false,
+		"a":             true,
+		"\x1b[A":        true,
+		"\x1b[200~MM":   true,
+		"\r":            true,
+	} {
+		if got := keys([]byte(in)); got != want {
+			t.Errorf("keys(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
+
 // serveDialer dials d as the app does this machine's kerod.
 type serveDialer struct{ d *Daemon }
 

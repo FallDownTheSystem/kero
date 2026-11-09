@@ -372,7 +372,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "projects", "skill", "hook", "inbox", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -640,6 +640,8 @@ func run(args []string, host string) error {
 		return skillCmd(args)
 	case "hook":
 		return hookCmd(args)
+	case "inbox":
+		return inboxCmd(args)
 	case "config":
 		return configCmd(args)
 	}
