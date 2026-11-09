@@ -5,6 +5,27 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.10
+
+- **Kero's messages no longer type over what you are writing**: an
+  orchestrator's reports, PR watch messages and a page's answers reach
+  the agent through its own way in, as a turn of its own, and your
+  half-written prompt stays as it is. Claude Code gets them through
+  Kero's plugin, Codex through `codex queue`, OpenCode through its
+  service, and Pi and OMP through Kero's extension
+- **Press Update in Settings, or run `kero skill setup`, once** to add
+  Kero's plugin to Claude Code. `kero skill status` shows it as missing
+  until then, and messages are typed in as before
+- A long message reaches Claude Code as its start and a file with the
+  whole text, which Claude reads
+- Where a message is still typed in, as for an agent with no way in,
+  Kero stops pressing Enter for it once you type, so it never sends your
+  own text with it
+- **New Session with no worktree starts in the project's checkout**:
+  from a session in a worktree, the dialog with the worktree switch off
+  started the new session in that worktree. It now starts it in the same
+  folder of the main checkout
+
 ## 2.1.35-fork.9
 
 - **An orchestrator hears of a child's turn when it ends**: Kero's hook
