@@ -266,6 +266,7 @@ func hookContext(c *client.Client, pane, sid string, away bool) string {
 // hook it into Kero: a hook in its settings, or a plugin of its own.
 type integration interface {
 	name() string // the agent, as `kero hook` takes it
+	kind() string // what the agent calls it: "hook" or "plugin"
 	path() string // where it goes
 	state() string
 	install() error
@@ -280,6 +281,7 @@ type agentHook struct {
 }
 
 func (h agentHook) name() string { return h.agent }
+func (h agentHook) kind() string { return "hook" }
 func (h agentHook) path() string { return h.file }
 
 // kero is the kero command of Kero's own directory (package clilink),
@@ -538,6 +540,7 @@ type agentPlugin struct {
 var agentAssets embed.FS
 
 func (p agentPlugin) name() string { return p.agent }
+func (p agentPlugin) kind() string { return "plugin" }
 
 func (p agentPlugin) path() string {
 	if p.own || len(p.files) != 1 {

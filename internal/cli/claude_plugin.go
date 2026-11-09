@@ -43,6 +43,7 @@ func newClaudePlugin(claudeDir string) claudePlugin {
 }
 
 func (c claudePlugin) name() string { return "claude" }
+func (c claudePlugin) kind() string { return "plugin" }
 func (c claudePlugin) path() string { return c.files.dir }
 
 type claudeMarkets map[string]struct {

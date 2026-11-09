@@ -449,7 +449,7 @@ func skillCmd(args []string) error {
 			fmt.Printf("%-8s skill  %-9s %s\n", name, skillState(dirs[name]), proto.ShortDir(dirs[name]))
 		}
 		for _, h := range hooks {
-			fmt.Printf("%-8s hook   %-9s %s\n", h.name(), h.state(), proto.ShortDir(h.path()))
+			fmt.Printf("%-8s %-6s %-9s %s\n", h.name(), h.kind(), h.state(), proto.ShortDir(h.path()))
 		}
 		return nil
 	case "setup", "remove":
@@ -473,17 +473,17 @@ func skillCmd(args []string) error {
 		for _, h := range hooks {
 			switch {
 			case f.set["dry"]:
-				fmt.Printf("would %s the hook in %s (%s)\n", sub, proto.ShortDir(h.path()), h.name())
+				fmt.Printf("would %s the %s in %s (%s)\n", sub, h.kind(), proto.ShortDir(h.path()), h.name())
 			case sub == "remove":
 				if err := h.remove(); err != nil {
 					return err
 				}
-				fmt.Printf("removed the hook from %s\n", proto.ShortDir(h.path()))
+				fmt.Printf("removed the %s from %s\n", h.kind(), proto.ShortDir(h.path()))
 			default:
 				if err := h.install(); err != nil {
 					return err
 				}
-				fmt.Printf("installed the hook in %s (%s)\n", proto.ShortDir(h.path()), h.name())
+				fmt.Printf("installed the %s in %s (%s)\n", h.kind(), proto.ShortDir(h.path()), h.name())
 			}
 		}
 		if sub == "setup" && !f.set["dry"] && len(hooks) > 0 {
