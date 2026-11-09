@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"errors"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -56,6 +57,9 @@ type newSessionAsk struct {
 	fresh     bool
 	newBranch string
 	trees     *proto.GitWorktrees
+	// main is the repository's main checkout, "" until the worktrees load
+	// or when it has none.
+	main string
 	// task is what an agent's session on a new branch starts on, which
 	// names the branch while newBranch is "" (newsession_branch.go);
 	// naming, the id of the naming under way, and nameErr why it failed.
@@ -143,6 +147,7 @@ func (a *App) loadNewSession(w *newSessionAsk) {
 				return
 			}
 			bs.Branches = slices.DeleteFunc(bs.Branches, func(b proto.GitBranch) bool { return b.Tag })
+			w.main = mainCheckout(trees)
 			w.branches.list, w.trees = &bs, dialogTrees(trees)
 			if w.sel.name == "" {
 				if b := startBranch(&bs, w.base); b != nil {
@@ -173,6 +178,63 @@ func dialogTrees(trees proto.GitWorktrees) *proto.GitWorktrees {
 	trees.Worktrees = slices.DeleteFunc(trees.Worktrees, func(t proto.GitWorktree) bool { return t.Main || t.Prunable })
 	slices.SortStableFunc(trees.Worktrees, func(x, y proto.GitWorktree) int { return cmp.Compare(y.Used, x.Used) })
 	return &trees
+}
+
+// mainCheckout is the main checkout of the repository trees are of, "" for
+// none.
+func mainCheckout(trees proto.GitWorktrees) string {
+	for _, t := range trees.Worktrees {
+		if t.Main {
+			return t.Path
+		}
+	}
+	return ""
+}
+
+// outOfWorktree is dir, or, when dir is in one of the repository's linked
+// worktrees, the same folder in its main checkout: the switch off starts
+// the session in the project's checkout, as the worktree the session shown
+// is in would otherwise be its folder (the new-session-directory setting),
+// and the dialog's worktree list is where to start in one. A folder the
+// main checkout lacks, as one only the worktree's branch has, gives the
+// checkout itself; on another machine, which the dialog cannot look on,
+// the checkout is all it gives.
+func (w *newSessionAsk) outOfWorktree(dir string) string {
+	if dir == "" || w.main == "" || w.trees == nil {
+		return dir
+	}
+	for _, t := range w.trees.Worktrees {
+		rest, ok := cutDir(dir, t.Path)
+		if !ok {
+			continue
+		}
+		if rest == "" || w.host != nil && w.host.remote() {
+			return w.main
+		}
+		if fi, err := os.Stat(w.main + rest); err != nil || !fi.IsDir() {
+			return w.main
+		}
+		return w.main + rest
+	}
+	return dir
+}
+
+// cutDir is what follows root in dir, its separator first, when dir is
+// root or in it. A Windows path, with its drive, compares without case.
+func cutDir(dir, root string) (string, bool) {
+	root = strings.TrimRight(root, `/\`)
+	if len(dir) < len(root) {
+		return "", false
+	}
+	head, rest := dir[:len(root)], dir[len(root):]
+	same := head == root
+	if !same && len(root) > 1 && root[1] == ':' {
+		same = strings.EqualFold(head, root)
+	}
+	if !same || rest != "" && rest[0] != '/' && rest[0] != '\\' {
+		return "", false
+	}
+	return rest, true
 }
 
 // removeDialogWorktree removes one of the dialog's worktrees, as
@@ -292,6 +354,13 @@ func (w *newSessionAsk) params(there string) (p proto.CreateParams, ok bool) {
 		return p, true
 	}
 	if !w.worktree || !w.worktreeKind() || w.gitErr != "" {
+		if w.worktreeKind() || w.kind == kindOrchestrator {
+			// Not before the worktrees are known, which may move it.
+			if p.Dir != "" && w.trees == nil && w.gitErr == "" {
+				return p, false
+			}
+			p.Dir = w.outOfWorktree(p.Dir)
+		}
 		return p, true
 	}
 	if w.branches.list == nil {

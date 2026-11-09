@@ -950,6 +950,67 @@ func TestNewSessionBranch(t *testing.T) {
 	}
 }
 
+// With the worktree switch off, a session shown in a linked worktree gives
+// the new one the same folder of the main checkout, not the worktree; an
+// existing worktree of the list is still where the user picks it; a folder
+// the main checkout lacks gives the checkout.
+func TestNewSessionLeavesWorktree(t *testing.T) {
+	src := t.TempDir()
+	app, fix := filepath.Join(src, "app"), filepath.Join(src, "app--fix")
+	for _, d := range []string{filepath.Join(app, "web"), filepath.Join(fix, "web"), filepath.Join(fix, "new")} {
+		os.MkdirAll(d, 0o755)
+	}
+	trees := proto.GitWorktrees{Worktrees: []proto.GitWorktree{
+		{Path: app, Main: true},
+		{Path: fix, Branch: "fix"},
+	}}
+	w := &newSessionAsk{kind: kindAgent, agent: "claude", dir: app, p: proto.CreateParams{Project: "p1", Dir: filepath.Join(fix, "web")}}
+	if _, ok := w.params(""); ok {
+		t.Error("starts before the worktrees are known")
+	}
+	w.main, w.trees = mainCheckout(trees), dialogTrees(trees)
+	web := filepath.Join(app, "web")
+	for kind, want := range map[string]string{kindAgent: web, kindTerminal: web, kindOrchestrator: web} {
+		w.kind = kind
+		if p, ok := w.params(""); !ok || p.Dir != want || p.Worktree != "" {
+			t.Errorf("%s: %+v %v", kind, p, ok)
+		}
+	}
+	w.kind, w.p.Dir = kindAgent, filepath.Join(fix, "new")
+	if p, _ := w.params(""); p.Dir != app {
+		t.Errorf("a folder only the worktree has: %q", p.Dir)
+	}
+	w.p.Dir = fix
+	if p, _ := w.params(""); p.Dir != app {
+		t.Errorf("the worktree's own folder: %q", p.Dir)
+	}
+	w.p.Dir = fix + "ed"
+	if p, _ := w.params(""); p.Dir != fix+"ed" {
+		t.Errorf("a folder beside the worktree moved: %q", p.Dir)
+	}
+	if p, ok := w.params(fix); !ok || p.Dir != fix {
+		t.Errorf("the worktree picked from the list: %+v %v", p, ok)
+	}
+}
+
+// A Windows path's folder matches its root in any case, a POSIX one only
+// in its own.
+func TestCutDir(t *testing.T) {
+	for _, c := range []struct {
+		dir, root, rest string
+		ok              bool
+	}{
+		{`c:\SRC\app--fix\web`, `C:\src\app--fix`, `\web`, true},
+		{`C:\src\app--fixed`, `C:\src\app--fix`, "", false},
+		{"/src/App/web", "/src/app", "", false},
+		{"/src/app/web", "/src/app/", "/web", true},
+	} {
+		if rest, ok := cutDir(c.dir, c.root); rest != c.rest || ok != c.ok {
+			t.Errorf("cutDir(%q, %q) = %q, %v", c.dir, c.root, rest, ok)
+		}
+	}
+}
+
 // A session's row marks it as in a worktree: one kero made for it, or a
 // linked one it was started in, not the main checkout.
 func TestInWorktree(t *testing.T) {
