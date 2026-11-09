@@ -196,12 +196,13 @@ func TestAgentPlugins(t *testing.T) {
 		}
 		return
 	}
-	if got := strings.Join(names(), ","); got != "claude" {
+	// Claude Code's hooks, and Kero's plugin for it.
+	if got := strings.Join(names(), ","); got != "claude,claude" {
 		t.Fatalf("with no agents installed: %s", got)
 	}
 	os.MkdirAll(filepath.Join(home, ".pi", "agent"), 0o755)
 	os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o755)
-	if got := strings.Join(names(), ","); got != "claude,pi,opencode" {
+	if got := strings.Join(names(), ","); got != "claude,claude,pi,opencode" {
 		t.Fatalf("with Pi and OpenCode: %s", got)
 	}
 	for _, it := range agentHooks("agents") {

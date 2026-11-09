@@ -54,6 +54,11 @@ type pane struct {
 	shellPID int
 	fgPGID   int
 	cwdAt    time.Time
+	// keyed is when the user last typed into the pane, from an app; keys
+	// is held while the user's input is told and written, and while
+	// submit tells it and writes its Enter, so neither comes between.
+	keyed time.Time
+	keys  sync.Mutex
 
 	dirty bool // output since the history on disk
 	// seen is what the screen showed when the status last came from it,
@@ -478,22 +483,26 @@ var enterWait = 2 * time.Second // a test's shorter
 // what comes soon after a paste for more of it, an Enter a new line that
 // leaves the prompt unsent, and takes longer to draw a long paste on a
 // busy machine. kerod, not the app, does it: the app's window may be
-// hidden, and its pane's status is kerod's own.
+// hidden, and its pane's status is kerod's own. Once the user types after
+// the paste, the prompt is theirs: an Enter would send what they are
+// writing, half done, so none follows.
 func (s *pane) submit(from time.Time) {
 	for {
 		time.Sleep(50 * time.Millisecond)
 		s.mu.Lock()
-		last, closed := time.UnixMilli(s.info.Activity), s.closed
+		last, closed, keyed := time.UnixMilli(s.info.Activity), s.closed, s.keyed.After(from)
 		s.mu.Unlock()
 		now := time.Now()
-		if closed {
+		if closed || keyed {
 			return
 		}
 		if now.Sub(from) >= submitWait || now.Sub(from) >= submitSettle && now.Sub(last) >= submitQuiet {
 			break
 		}
 	}
-	s.input([]byte("\r"))
+	if !s.enter(from) {
+		return
+	}
 	// A program that is no agent takes its Enter at once: none to retry.
 	s.mu.Lock()
 	agent := s.info.Agent
@@ -506,11 +515,44 @@ func (s *pane) submit(from time.Time) {
 		s.mu.Lock()
 		idle := !s.closed && s.info.Agent != "" && s.info.Status == proto.Idle
 		s.mu.Unlock()
-		if !idle {
+		if !idle || !s.enter(from) {
 			return
 		}
-		s.input([]byte("\r"))
 	}
+}
+
+// enter presses Enter for a paste at from, unless the user has typed into
+// the pane since, reporting whether it did.
+func (s *pane) enter(from time.Time) bool {
+	s.keys.Lock()
+	defer s.keys.Unlock()
+	s.mu.Lock()
+	keyed := s.keyed.After(from)
+	s.mu.Unlock()
+	if keyed {
+		return false
+	}
+	s.input([]byte("\r"))
+	return true
+}
+
+// typedIn records that the user typed into the pane, from an app.
+func (s *pane) typedIn(now time.Time) {
+	s.mu.Lock()
+	s.keyed = now
+	s.mu.Unlock()
+}
+
+// userInput writes what the user typed in an app to the program, typed
+// telling it is the user's keys (typed and keys in daemon.go), which then
+// end the Enters of a paste (submit).
+func (s *pane) userInput(p []byte, typed bool) {
+	s.keys.Lock()
+	defer s.keys.Unlock()
+	if typed {
+		s.typedIn(time.Now())
+	}
+	s.input(p)
 }
 
 // acted is the user acting in the pane, which ends what waited for them,

@@ -321,6 +321,21 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.waitMessage(c, pn, time.Duration(p.Timeout)*time.Millisecond)
 
+	case "agent.inbox":
+		var p proto.InboxParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		pn, err := findPane(p.Pane)
+		if err != nil {
+			return nil, err
+		}
+		if p.Back != "" {
+			d.inboxBack(pn, p.Back)
+			return proto.InboxMessage{}, nil
+		}
+		return d.agentInbox(c, pn, time.Duration(p.Timeout)*time.Millisecond)
+
 	case "browser.answer":
 		var p proto.BrowserAnswer
 		if err := decode(&p); err != nil {

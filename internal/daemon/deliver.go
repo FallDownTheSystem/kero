@@ -14,12 +14,15 @@ import (
 
 // Kero's one way of giving a coding agent a message, labelled with where
 // it comes from (agent.send): Send to Session… of a terminal's text,
-// review's Send to Agent, PR watch and the page bridge (window.kero.send)
-// all send through it. A message is pushed, typed into the agent's prompt
-// as kero prompt does once the agent is at it (agentReady), or kept for an
-// agent waiting for its page's messages (kero browser wait-message). The
-// app hears when one from a pane reached its agent, or never will
-// (proto.Delivery), to tell the page it came from.
+// review's Send to Agent, PR watch, orchestrators' reports and the page
+// bridge (window.kero.send) all send through it. A message is pushed once
+// the agent is at its prompt (agentReady), or kept for an agent waiting
+// for its page's messages (kero browser wait-message). A pushed message
+// goes through the agent's own way in, where it has one, which leaves
+// what the user is typing in its prompt alone (inbox.go); else it is
+// typed into the prompt, as kero prompt does. The app hears when one from
+// a pane reached its agent, or never will (proto.Delivery), to tell the
+// page it came from.
 
 const (
 	deliverTick = 500 * time.Millisecond
@@ -51,7 +54,17 @@ type mailbox struct {
 	// waiters wait for them, by the same pane.
 	kept    map[string][]proto.AgentMessage
 	waiters map[string][]chan proto.AgentMessage
-	wake    chan struct{}
+	// inbox are the agents' own listeners waiting for their messages, by
+	// the agent's pane (kero inbox), and heard when one last stopped
+	// waiting, to come back for the next.
+	inbox map[string][]chan string
+	heard map[string]time.Time
+	// pending are the panes whose messages are on their way through the
+	// agent's own way in (native.go); noNative, by pane, the agent's
+	// session whose way in failed, which gets its messages typed in.
+	pending  map[string]bool
+	noNative map[string]string
+	wake     chan struct{}
 }
 
 type outMsg struct {
@@ -63,6 +76,8 @@ func (mb *mailbox) initLocked() {
 	if mb.out == nil {
 		mb.out, mb.typed, mb.since, mb.noAgent = map[string][]outMsg{}, map[string]time.Time{}, map[string]int64{}, map[string]time.Time{}
 		mb.kept, mb.waiters = map[string][]proto.AgentMessage{}, map[string][]chan proto.AgentMessage{}
+		mb.inbox, mb.heard = map[string][]chan string{}, map[string]time.Time{}
+		mb.pending, mb.noNative = map[string]bool{}, map[string]string{}
 		mb.wake = make(chan struct{}, 1)
 	}
 }
@@ -293,13 +308,44 @@ func (d *Daemon) flushOutbox(now time.Time) {
 		if !ready && !gone {
 			continue
 		}
+		var as proto.AgentSession
+		native := false
+		if !gone {
+			_, as, native = nativeSession(pn)
+		}
+		// Whether a listener of the agent takes them, or one between two
+		// waits will, is told under the same hold of mb.mu as they are
+		// taken, so that one stopping meanwhile can't make them typed in.
 		mb.mu.Lock()
+		waiting, between := mb.listenerLocked(id, now)
+		if !gone && (between || mb.pending[id]) {
+			mb.mu.Unlock()
+			continue
+		}
+		native = native && !waiting && mb.noNative[id] != as.ID
 		msgs := mb.out[id]
 		delete(mb.out, id)
 		delete(mb.noAgent, id)
 		if gone {
 			delete(mb.typed, id)
 			delete(mb.since, id)
+		}
+		texts := make([]string, len(msgs))
+		for i, m := range msgs {
+			texts[i] = m.text
+		}
+		text := strings.Join(texts, "\n\n")
+		switch {
+		case gone || len(msgs) == 0:
+		case waiting:
+			// The newest listener, as one of an agent restarted in the pane
+			// replaces the old one's, which may outlive its agent.
+			ws := mb.inbox[id]
+			last := len(ws) - 1
+			ws[last] <- text // its room for one, which nothing else fills
+			mb.setInboxLocked(id, ws[:last])
+		case native:
+			mb.pending[id] = true
 		}
 		mb.mu.Unlock()
 		if len(msgs) == 0 {
@@ -311,21 +357,58 @@ func (d *Daemon) flushOutbox(now time.Time) {
 			}
 			continue
 		}
-		texts := make([]string, len(msgs))
-		for i, m := range msgs {
-			texts[i] = m.text
+		if native && !waiting {
+			// A program's run or a request, which may take seconds: the
+			// other agents' messages don't wait for it.
+			go d.deliverNative(pn, id, msgs, text)
+			continue
 		}
-		pn.paste(strings.Join(texts, "\n\n"))
-		pn.mu.Lock()
-		after := pn.info.Since
-		pn.mu.Unlock()
-		mb.mu.Lock()
-		mb.typed[id], mb.since[id] = now, after
-		mb.mu.Unlock()
-		go pn.submit(now)
-		for _, m := range msgs {
-			d.tellDelivery(proto.Delivery{ID: m.id, From: m.from, To: id, State: "delivered"})
+		if !waiting {
+			pn.paste(text)
+			go pn.submit(now)
 		}
+		d.delivered(pn, id, msgs, now)
+	}
+}
+
+// delivered records that msgs reached the agent of pane pn, id, at now:
+// the agent is left alone till it worked on them (deliverHold), and the
+// apps hear of it.
+func (d *Daemon) delivered(pn *pane, id string, msgs []outMsg, now time.Time) {
+	pn.mu.Lock()
+	after := pn.info.Since
+	pn.mu.Unlock()
+	mb := &d.mail
+	mb.mu.Lock()
+	mb.typed[id], mb.since[id] = now, after
+	mb.mu.Unlock()
+	for _, m := range msgs {
+		d.tellDelivery(proto.Delivery{ID: m.id, From: m.from, To: id, State: "delivered"})
+	}
+}
+
+// deliverNative gives msgs to the agent of pane pn, id, through its own way
+// in (native.go). When that fails, they wait again, first, and the agent's
+// session gets its messages typed in from then on, by the next flush, as
+// the agent is still at its prompt then.
+func (d *Daemon) deliverNative(pn *pane, id string, msgs []outMsg, text string) {
+	_, as, _ := nativeSession(pn)
+	ok := d.sendNative(pn, text)
+	mb := &d.mail
+	mb.mu.Lock()
+	delete(mb.pending, id)
+	if !ok {
+		mb.out[id] = append(slices.Clone(msgs), mb.out[id]...)
+		mb.noNative[id] = as.ID
+	}
+	mb.mu.Unlock()
+	if ok {
+		d.delivered(pn, id, msgs, time.Now())
+		return
+	}
+	select {
+	case mb.wake <- struct{}{}:
+	default:
 	}
 }
 
@@ -429,6 +512,13 @@ func (d *Daemon) mailGone(id string) {
 		close(w)
 	}
 	delete(mb.waiters, id)
+	for _, w := range mb.inbox[id] {
+		close(w)
+	}
+	delete(mb.inbox, id)
+	delete(mb.heard, id)
+	delete(mb.pending, id)
+	delete(mb.noNative, id)
 	mb.mu.Unlock()
 	for _, m := range out {
 		d.tellDelivery(proto.Delivery{ID: m.id, From: m.from, To: id, State: "failed", Error: "the agent's pane closed"})

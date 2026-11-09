@@ -2,10 +2,13 @@
 // updates; `kero skill remove` removes it. Inside Kero, it tells Pi or
 // OMP which session and pane it runs in, and tells Kero their session,
 // to resume it after Kero's background service restarts, and each end of
-// their turns, with the reply, for an orchestrator's reports. Outside
-// Kero it does nothing.
-import { execFile } from "node:child_process";
+// their turns, with the reply, for an orchestrator's reports. It gives the
+// agent the messages Kero has for it, as orchestrator reports, as prompts
+// of their own, leaving what the user is typing alone. Outside Kero it
+// does nothing.
+import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
+import { createInterface } from "node:readline";
 
 const KERO = __KERO__;
 const AGENT = __AGENT__;
@@ -58,8 +61,43 @@ function sessionOf(ctx: any): string {
   }
 }
 
+// listen runs `kero inbox --follow --json`, which waits for the messages
+// Kero has for this pane's agent, and gives each to the agent: at once
+// when it is idle, else after the turn it is in. Kero gives them here,
+// rather than typing them into the prompt, while it runs. A callback that
+// throws would end the session (OMP), so none does.
+function listen(pi: any, current: () => any): ChildProcess | undefined {
+  let child: ChildProcess;
+  try {
+    child = spawn(KERO, ["inbox", "--follow", "--json"], { stdio: ["ignore", "pipe", "ignore"], windowsHide: true });
+  } catch {
+    return undefined;
+  }
+  child.on("error", () => {});
+  createInterface({ input: child.stdout! }).on("line", (line) => {
+    try {
+      const text = JSON.parse(line)?.text;
+      if (typeof text !== "string" || !text) return;
+      const ctx = current();
+      const idle = typeof ctx?.isIdle === "function" ? ctx.isIdle() : false;
+      Promise.resolve(idle ? pi.sendUserMessage(text) : pi.sendUserMessage(text, { deliverAs: "followUp" })).catch(() => {});
+    } catch {}
+  });
+  return child;
+}
+
 export default function (pi: any) {
   if (!process.env.KERO_PANE) return;
+  // Each session's runtime has its own pi, and its own listener, which
+  // stops with the session.
+  let listener: ChildProcess | undefined;
+  let latest: any;
+  pi.on("session_shutdown", () => {
+    try {
+      listener?.kill();
+    } catch {}
+    listener = undefined;
+  });
   let context = "";
   let reported: string | undefined;
   const sync = async (ctx: any) => {
@@ -86,7 +124,11 @@ export default function (pi: any) {
     }
     context = await hook(sessionID);
   };
-  pi.on("session_start", (_event: any, ctx: any) => sync(ctx));
+  pi.on("session_start", (_event: any, ctx: any) => {
+    latest = ctx;
+    if (!listener && ctx?.mode === "tui") listener = listen(pi, () => latest);
+    sync(ctx);
+  });
   pi.on("session_switch", (_event: any, ctx: any) => sync(ctx));
   // The turn's end: Pi's agent_settled, once no retry or follow-up is
   // left, with the reply of the run before it; OMP's last agent_end, which
@@ -112,7 +154,10 @@ export default function (pi: any) {
     }
     reply = null;
   });
-  pi.on("turn_end", (_event: any, ctx: any) => sync(ctx));
+  pi.on("turn_end", (_event: any, ctx: any) => {
+    latest = ctx;
+    sync(ctx);
+  });
   pi.on("before_agent_start", (event: any) => {
     if (!context) return;
     // Pi keeps prompt sections; OMP has none and replaces the prompt array.

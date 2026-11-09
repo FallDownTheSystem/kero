@@ -23,7 +23,7 @@ In the sidebar, a split session's row shows how many panes it has, after its nam
 
 When a pane's program exits, the pane stays so you can read its output. **Restart Pane** starts its shell again in the same directory.
 
-To show an agent what a terminal printed, such as a failing test's output, select the text, right-click it and choose **Send to Session…**, then the agent's session. The agent gets the text as a code block, with the pane it came from and what it runs (an agent such as Claude Code, a program, or the shell, such as pwsh), typed into its prompt once it is at it.
+To show an agent what a terminal printed, such as a failing test's output, select the text, right-click it and choose **Send to Session…**, then the agent's session. The agent gets the text as a code block, with the pane it came from and what it runs (an agent such as Claude Code, a program, or the shell, such as pwsh), once it is at its prompt, [through its own way in](./agents.md#how-agents-get-keros-messages).
 
 ## From the command line
 
@@ -107,14 +107,14 @@ kero browser text main
 
 ### Sending to an agent from a page
 
-A local page (`file:`) in a browser pane can send a message to an agent, such as the choices you made on a decision brief the agent showed you. The page calls `window.kero.send(message, options)`; Kero types the message into the prompt of the agent whose pane opened the page with `kero split --url` (or showed it again), once the agent is at its prompt, or hands it to the agent while it waits with [`kero browser wait-message`](./cli.md#browsing). A page no agent opened asks you which agent to send to, as **Send to Session…** does, and keeps sending there.
+A local page (`file:`) in a browser pane can send a message to an agent, such as the choices you made on a decision brief the agent showed you. The page calls `window.kero.send(message, options)`; Kero sends the message to the agent whose pane opened the page with `kero split --url` (or showed it again), once the agent is at its prompt ([how](./agents.md#how-agents-get-keros-messages)), or hands it to the agent while it waits with [`kero browser wait-message`](./cli.md#browsing). A page no agent opened asks you which agent to send to, as **Send to Session…** does, and keeps sending there.
 
 Each message tells the agent where it came from: `Kero: message from database pick, from the page "Pick and send" (file:///…/send-to-agent.html) in browser pane 3f2a:`, then its text. The promise `send` returns resolves once the agent has the message, so the page can say it's sent, and rejects if the agent's pane closes first.
 
 | Option    | What it does |
 | --------- | ------------ |
 | `label`   | What the message is, before the page's title and URL |
-| `mode`    | `"push"` always types it into the prompt; `"wait"` keeps it for `kero browser wait-message` alone; unset, it goes to an agent waiting for it, else into the prompt |
+| `mode`    | `"push"` always sends it to the agent at its prompt; `"wait"` keeps it for `kero browser wait-message` alone; unset, it goes to an agent waiting for it, else to the agent at its prompt |
 | `onState` | Hears `"queued"` (the agent is working: it gets it at its prompt) or `"waiting"` (kept for `wait-message`) before the promise resolves |
 
 A message that isn't a string is sent as JSON. `window.kero` is there only in Kero, so a page tells by it whether it can send, and copies the message to the clipboard where it can't:
@@ -159,7 +159,7 @@ A `kero:delivery` event on `window` tells each message's delivery too, with its 
 
 To show an agent what to change on a page, turn on **Pick Elements**: the pointer-in-a-box button in the pane's toolbar, <kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>C</kbd> (<kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd> on Windows and Linux), or the Pane menu. Click an element, write what you want of it in the note that opens, and pick more; moving the pointer while you write leaves the note as it is. **Parent** picks the element around it: point at it to see what it would pick, outlined dashed. **Send**, or <kbd>Ctrl</kbd> <kbd>Enter</kbd>, sends them all; <kbd>Esc</kbd> stops.
 
-The picks go where the page's own messages go ([Sending to an agent from a page](#sending-to-an-agent-from-a-page)): to the agent that opened the page with `kero split --url`, typed into its prompt once it is at it, or to an agent waiting for the page's messages. For a page no agent opened, Kero asks you which agent, once, and remembers; close the list without choosing and Kero copies the picks for you to paste.
+The picks go where the page's own messages go ([Sending to an agent from a page](#sending-to-an-agent-from-a-page)): to the agent that opened the page with `kero split --url`, once it is at its prompt, or to an agent waiting for the page's messages. For a page no agent opened, Kero asks you which agent, once, and remembers; close the list without choosing and Kero copies the picks for you to paste.
 
 A CSS selector rarely leads an agent to the source, so each element comes with what does, strongest first:
 

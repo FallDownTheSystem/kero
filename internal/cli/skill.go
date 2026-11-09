@@ -223,7 +223,7 @@ To have the user show you what to change on a page, rather than describe
 it, turn on Pick mode: kero browser pick. The user clicks elements and
 writes a note on each (they can also do this from the pane's toolbar
 without you asking), and their picks come to you as one message labelled
-"element picks", typed into your prompt, or to kero browser wait-message
+"element picks", once you are at your prompt, or to kero browser wait-message
 if you wait for the page. For each element it gives, strongest first:
 Source, the file and line from the framework's development build or the
 page's own HTML file, checked against the file, or "Source location:
@@ -283,8 +283,8 @@ message to the clipboard where it isn't:
 The message goes to the agent whose pane opened the page with kero split
 --url (or showed it again), labelled with the page: "Kero: message from
 decision brief, from the page "Brief" (file:///…/brief.html) in browser
-pane 3f2a:", then its text. Kero types it into your prompt once you are at
-it; or, while you wait for it, hands it to kero browser wait-message:
+pane 3f2a:", then its text. Kero gives it to you once you are at your
+prompt; or, while you wait for it, hands it to kero browser wait-message:
 
     kero split --url .backlog/pages/brief.html
     kero browser wait-message --json --timeout 9m   # until the page sends: {id, from, label, url, title, text, at}
@@ -488,13 +488,16 @@ func skillCmd(args []string) error {
 		}
 		if sub == "setup" && !f.set["dry"] && len(hooks) > 0 {
 			fmt.Println("\nAgents started from now on in Kero learn which session they're in.")
+			// Once each: Claude Code's hooks and its plugin share theirs.
+			notes := map[string]string{
+				"claude":   "Claude Code runs hooks only in folders you trust.",
+				"codex":    "Codex asks you to approve a new hook: run /hooks in it.",
+				"opencode": "OpenCode's background service loads plugins as it starts: run `opencode service restart` when no session is busy.",
+			}
 			for _, h := range hooks {
-				if note := map[string]string{
-					"claude":   "Claude Code runs hooks only in folders you trust.",
-					"codex":    "Codex asks you to approve a new hook: run /hooks in it.",
-					"opencode": "OpenCode's background service loads plugins as it starts: run `opencode service restart` when no session is busy.",
-				}[h.name()]; note != "" {
+				if note := notes[h.name()]; note != "" {
 					fmt.Println(note)
+					delete(notes, h.name())
 				}
 			}
 		}
@@ -580,9 +583,14 @@ func SyncSkill() {
 			writeSkill(dir)
 		}
 	}
-	for _, it := range agentHooks("agents") {
-		if p, ok := it.(agentPlugin); ok && p.ours() && p.state() == "outdated" {
-			p.install()
+	for _, it := range agentHooks("") {
+		switch p := it.(type) {
+		case agentPlugin:
+			if p.ours() && p.state() == "outdated" {
+				p.install()
+			}
+		case claudePlugin:
+			p.sync()
 		}
 	}
 }

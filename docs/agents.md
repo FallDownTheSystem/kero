@@ -22,11 +22,13 @@ The hook goes where each agent looks for one, for the agents you have installed:
 
 | Agent       | Where the hook goes                                                          |
 | ----------- | ---------------------------------------------------------------------------- |
-| Claude Code | `SessionStart`, `Stop` and `StopFailure` hooks in `~/.claude/settings.json`  |
+| Claude Code | `SessionStart`, `Stop` and `StopFailure` hooks in `~/.claude/settings.json`, and Kero's plugin `kero@kero` |
 | Codex       | `SessionStart`, `Stop` and `Interrupt` hooks in `~/.codex/hooks.json`        |
 | Pi          | An extension, `~/.pi/agent/extensions/kero.ts`         |
 | OMP         | An extension, `~/.omp/agent/extensions/kero.ts`        |
 | OpenCode    | A plugin, `~/.config/opencode/plugins/kero`            |
+
+Claude Code's plugin lives in Kero's own folder, as a plugin marketplace named `kero`, which setup adds and installs from with Claude Code's `claude plugin` commands. Claude Code reads it from there as each session starts, so it follows Kero as it updates.
 
 Kero follows `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR`, `PI_CONFIG_DIR` and `XDG_CONFIG_HOME` when they move an agent's files, and leaves the rest of each settings file as it was.
 
@@ -47,6 +49,19 @@ The hook works only in agent sessions started after setup, and agents may ask fi
 OpenCode runs an agent's commands in its background service rather than in the pane, so they don't have `KERO_SESSION` and `KERO_PANE`. Kero tells the agent its pane instead, for it to name as the target. For the same reason, `kero report` from an OpenCode agent doesn't reach its pane.
 
 Outside Kero, the hook does nothing.
+
+## How agents get Kero's messages
+
+Kero sends agents messages: an [orchestrator's](./orchestrators.md) reports of its children, [PR watch](./pull-requests.md), a page's answers and **Send to Session…**. Each goes once the agent is at its prompt, through the agent's own way in, so that it never touches what you are typing in the prompt:
+
+| Agent       | How the message comes                                                         |
+| ----------- | ----------------------------------------------------------------------------- |
+| Claude Code | Kero's plugin runs `kero inbox` for the whole session, and Claude gets each message from it as an event. A long message comes as its start, and a file in Kero's folder holds it whole for Claude to read. |
+| Codex       | `codex queue`, which Codex runs as a turn of its own. After you stop a turn, Codex holds it until your next prompt. |
+| OpenCode    | OpenCode's background service, as a prompt queued after the turn.              |
+| Pi, OMP     | Kero's extension, as a prompt of its own, or a follow-up of the turn it is in. |
+
+Other agents, and an agent whose way in fails, as one started before setup, get the message typed into their prompt and Enter pressed. Once you type in the pane after it, Kero presses no more Enters, so that your own text isn't sent.
 
 ## What agents can do
 

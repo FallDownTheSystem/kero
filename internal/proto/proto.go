@@ -1323,8 +1323,8 @@ const (
 // with kero split --url. From is the pane the message comes from, to
 // tell of its delivery (Delivery), "" for none.
 //
-// Mode is how: "push" types it into the agent's prompt once the agent is
-// at its prompt, as PR watch does; "wait" keeps it for the agent to take
+// Mode is how: "push" gives it to the agent once the agent is at its
+// prompt, through the agent's own way in or typed in, as PR watch does; "wait" keeps it for the agent to take
 // with kero browser wait-message, From's; "" pushes it, unless an agent
 // waits for From's messages already.
 type AgentSendParams struct {
@@ -1395,6 +1395,23 @@ func OneLine(s string) string {
 type MessageParams struct {
 	ID      string `json:"id"`
 	Timeout int64  `json:"timeout,omitempty"`
+}
+
+// InboxParams wait for the next of the messages Kero has for a terminal
+// pane's agent (agent.inbox), as code of Kero's running in the agent does
+// (kero inbox): Timeout ms at most, 0 for as long as it takes. Back is a
+// message it took and could not give its agent, which then waits first
+// again, for the next way to it; no wait follows.
+type InboxParams struct {
+	Pane    string `json:"pane"`
+	Timeout int64  `json:"timeout,omitempty"`
+	Back    string `json:"back,omitempty"`
+}
+
+// InboxMessage is what agent.inbox gives: the messages waiting, as one
+// prompt; "" when the wait timed out.
+type InboxMessage struct {
+	Text string `json:"text,omitempty"`
 }
 
 // Delivery tells the app that a message from pane From reached its agent,

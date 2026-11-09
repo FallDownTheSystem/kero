@@ -830,10 +830,11 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 		}
 		switch kind {
 		case proto.FrameInput:
-			if typed(payload) {
+			user := typed(payload)
+			if user {
 				s.claim(a)
 			}
-			s.input(payload)
+			s.userInput(payload, user && keys(payload))
 		case proto.FrameResize:
 			if c, rr, cw, ch, ok := proto.ParseResizePixels(payload); ok {
 				s.ask(a, c, rr, cw, ch)
@@ -859,6 +860,20 @@ func (d *Daemon) serveAttach(conn net.Conn, r *bufio.Reader, hello proto.Hello, 
 func typed(input []byte) bool {
 	s := string(input)
 	return s != "\x1b[I" && s != "\x1b[O"
+}
+
+// keys reports whether the user's input is from the keyboard, not a mouse
+// report (SGR, X10 or urxvt) a wheel or a click of the pane sends: only
+// keys may hold text the user is writing in the prompt.
+func keys(input []byte) bool {
+	s := string(input)
+	if strings.HasPrefix(s, "\x1b[<") || strings.HasPrefix(s, "\x1b[M") {
+		return false
+	}
+	if rest, ok := strings.CutPrefix(s, "\x1b["); ok && strings.HasSuffix(rest, "M") {
+		return strings.Trim(rest[:len(rest)-1], "0123456789;") != ""
+	}
+	return true
 }
 
 func (d *Daemon) serveControl(conn net.Conn, r *bufio.Reader) {

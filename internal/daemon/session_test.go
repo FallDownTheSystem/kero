@@ -375,6 +375,21 @@ func TestSubmit(t *testing.T) {
 	if n := enters(proto.Working); n != 1 {
 		t.Errorf("a working agent got %d Enters", n)
 	}
+
+	// The user typed after the paste: the prompt is theirs, and no Enter
+	// sends what they are writing.
+	os.Truncate(out, 0)
+	pn.mu.Lock()
+	pn.info.Status = proto.Idle
+	pn.mu.Unlock()
+	from := time.Now()
+	pn.paste("report")
+	pn.typedIn(from.Add(time.Millisecond))
+	pn.submit(from)
+	time.Sleep(200 * time.Millisecond)
+	if b, _ := os.ReadFile(out); strings.Contains(string(b), "\r") {
+		t.Errorf("Enter after the user typed: %q", b)
+	}
 }
 
 // Ama's and an orchestrator's arguments go after their agent's command,

@@ -24,11 +24,13 @@ kero skill setup
 
 | エージェント | フックの場所                                          |
 | ------------ | ----------------------------------------------------- |
-| Claude Code  | `~/.claude/settings.json` の `SessionStart`、`Stop`、`StopFailure` フック |
+| Claude Code  | `~/.claude/settings.json` の `SessionStart`、`Stop`、`StopFailure` フックと、Kero のプラグイン `kero@kero` |
 | Codex        | `~/.codex/hooks.json` の `SessionStart`、`Stop`、`Interrupt` フック       |
 | Pi           | 拡張機能 `~/.pi/agent/extensions/kero.ts`              |
 | OMP          | 拡張機能 `~/.omp/agent/extensions/kero.ts`             |
 | OpenCode     | プラグイン `~/.config/opencode/plugins/kero`           |
+
+Claude Code のプラグインは Kero 自身のフォルダーにあり、プラグインマーケットプレイス `kero` として提供されます。セットアップ時に Claude Code の `claude plugin` コマンドでマーケットプレイスを追加してインストールします。Claude Code は各セッションの開始時にそこから読み込むため、Kero の更新に追従します。
 
 `CLAUDE_CONFIG_DIR`、`CODEX_HOME`、`PI_CODING_AGENT_DIR`、`PI_CONFIG_DIR`、`XDG_CONFIG_HOME` でエージェントのファイルの場所が変わっている場合、Kero はそれに従い、各設定ファイルのほかの部分はそのままにします。
 
@@ -49,6 +51,21 @@ kero skill remove    # スキルとフックをアンインストール
 OpenCode はエージェントのコマンドをペインではなくバックグラウンドサービスで実行するので、`KERO_SESSION` と `KERO_PANE` がありません。代わりに Kero がエージェントにペインを伝え、エージェントはそれを対象として指定します。同じ理由で、OpenCode のエージェントからの `kero report` はそのペインに届きません。
 
 Kero の外では、フックは何もしません。
+
+<a id="how-agents-get-keros-messages"></a>
+
+## エージェントは Kero のメッセージをどう受け取るか
+
+Kero はエージェントにメッセージを送ります: 子の報告を伝える[オーケストレーター](./orchestrators.md)、[PR の見守り](./pull-requests.md)、ページからの回答、**セッションに送る…** などです。それぞれ、エージェントがプロンプトに戻ったときに、そのエージェント独自の受け取り方法で一度だけ届きます。プロンプトであなたが入力中の内容には触れません:
+
+| エージェント | メッセージの受け取り方 |
+| ------------ | ---------------------- |
+| Claude Code  | Kero のプラグインがセッション全体で `kero inbox` を実行し、Claude は各メッセージをイベントとして受け取ります。長いメッセージは冒頭が届き、Kero のフォルダーにあるファイルから全文を読めます。 |
+| Codex        | Codex が独立したターンとして実行する `codex queue`。ターンを止めた後は、次のプロンプトまで Codex が保持します。 |
+| OpenCode     | OpenCode のバックグラウンドサービスが、ターンの後にキューへ入れたプロンプトとして届けます。 |
+| Pi、OMP      | Kero の拡張機能が独立したプロンプトとして、または進行中のターンの続きとして届けます。 |
+
+ほかのエージェントや、受け取りに失敗したエージェント（セットアップ前に起動したものなど）には、プロンプトにメッセージを入力して Enter を押します。その後あなたがペインに入力し始めると、Kero はそれ以上 Enter を押さないため、あなた自身の入力が送信されることはありません。
 
 ## エージェントにできること
 

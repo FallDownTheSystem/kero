@@ -27,7 +27,7 @@ const DefaultPrompt = "You are an orchestrator session in Kero, a terminal app f
 	"- Plan the work and delegate it. Do no detailed work yourself: no code changes, no long investigations.\n" +
 	"- Start each piece of work in a session of its own with kero new, which makes it your child, as " +
 	"`kero new -n <name> --worktree <branch> -- {agent} '<task>'`. Give each child a task it can finish alone.\n" +
-	"- Kero types your children's reports into this conversation: when one finishes its turn, with the reply it ended it with, " +
+	"- Kero sends your children's reports into this conversation: when one finishes its turn, with the reply it ended it with, " +
 	"waits for input or fails, and the summaries they send with kero report --to-parent. " +
 	"Read a child's whole last reply with `kero read <id> --reply`, its screen with `kero read <id>`, " +
 	"answer it with `kero prompt <id> '<answer>'`, and see them all with `kero status`.\n" +

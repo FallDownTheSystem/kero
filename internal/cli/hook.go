@@ -550,11 +550,27 @@ func (p agentPlugin) path() string {
 }
 
 // content is a file as kero writes it: the asset, with the kero command
-// it runs.
+// it runs, as a path or, for a shell, as the command line of kero inbox.
 func (p agentPlugin) content(asset string) []byte {
 	b, _ := agentAssets.ReadFile(asset)
 	b = bytes.ReplaceAll(b, []byte("__KERO__"), marshal(kero()))
+	b = bytes.ReplaceAll(b, []byte("__INBOX__"), marshal(inboxCommand()))
 	return bytes.ReplaceAll(b, []byte("__AGENT__"), marshal(p.agent))
+}
+
+// inboxCommand is kero inbox as a command line for any shell, as Claude
+// Code runs its plugins' monitors in Git Bash or PowerShell. A path with a
+// space goes in its short form: anyShell's cmd /d /c is lost on Git Bash,
+// which takes /d and /c for paths.
+func inboxCommand() string {
+	if runtime.GOOS == "windows" {
+		exe := kero()
+		if strings.ContainsRune(exe, ' ') {
+			exe = shortPath(exe)
+		}
+		return anyShell(exe) + " inbox --follow"
+	}
+	return "'" + strings.ReplaceAll(kero(), "'", `'\''`) + "' inbox --follow"
 }
 
 func (p agentPlugin) state() string {
@@ -647,6 +663,7 @@ func agentHooks(agent string) []integration {
 		it         integration
 	}{
 		{"claude", claude, agentHook{"claude", filepath.Join(claude, "settings.json")}},
+		{"claude", claude, newClaudePlugin(claude)},
 		{"codex", codex, agentHook{"codex", filepath.Join(codex, "hooks.json")}},
 		{"pi", pi, agentPlugin{agent: "pi", dir: filepath.Join(pi, "extensions"), files: map[string]string{"kero.ts": "agents/pi.ts"}}},
 		{"omp", omp, agentPlugin{agent: "omp", dir: filepath.Join(omp, "extensions"), files: map[string]string{"kero.ts": "agents/pi.ts"}}},

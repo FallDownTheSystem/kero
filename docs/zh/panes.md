@@ -23,7 +23,7 @@ description: 把会话拆分成多个窗格，并排运行开发服务器、测�
 
 窗格中的程序退出后，窗格会保留下来，方便你查看输出。**重启窗格**会在同一目录下重新启动它的 shell。
 
-要让智能体看到终端输出的内容，例如失败测试的输出，选中文本，右键点击并选择 **发送到会话…**，再选择智能体的会话。智能体会以代码块的形式收到这段文本，并附上来源窗格及其中运行的内容（Claude Code 等智能体、某个程序，或 pwsh 等 shell）；它回到提示符时，文本就会输入进去。
+要让智能体看到终端输出的内容，例如失败测试的输出，选中文本，右键点击并选择 **发送到会话…**，再选择智能体的会话。智能体会以代码块的形式收到这段文本，并附上来源窗格及其中运行的内容（Claude Code 等智能体、某个程序，或 pwsh 等 shell）；它回到提示符时，消息会[通过智能体自己的接收方式](./agents.md#how-agents-get-keros-messages)送达。
 
 ## 通过命令行
 
@@ -110,14 +110,14 @@ kero browser text main
 <a id="sending-to-an-agent-from-a-page"></a>
 ### 从页面发送给智能体
 
-浏览器窗格中的本地页面（`file:`）可以给智能体发送消息，例如你在智能体展示的决策简报（decision brief）上做的选择。页面调用 `window.kero.send(message, options)`；Kero 会在智能体回到提示符时，把消息输入到用 `kero split --url` 打开（或再次显示）该页面的智能体窗格中；如果智能体正用 [`kero browser wait-message`](./cli.md#browsing) 等待，就直接交给它。对于不是智能体打开的页面，Kero 会像 **发送到会话…** 一样询问发给哪个智能体，之后都发到那里。
+浏览器窗格中的本地页面（`file:`）可以给智能体发送消息，例如你在智能体展示的决策简报（decision brief）上做的选择。页面调用 `window.kero.send(message, options)`；Kero 会在智能体回到提示符时，通过[智能体自己的接收方式](./agents.md#how-agents-get-keros-messages)，将消息发送到用 `kero split --url` 打开（或再次显示）该页面的智能体窗格中；如果智能体正用 [`kero browser wait-message`](./cli.md#browsing) 等待，就直接交给它。对于不是智能体打开的页面，Kero 会像 **发送到会话…** 一样询问发给哪个智能体，之后都发到那里。
 
 每条消息都会告诉智能体它来自哪里：`Kero: message from database pick, from the page "Pick and send" (file:///…/send-to-agent.html) in browser pane 3f2a:`，后面是消息文本。`send` 返回的 Promise 会在智能体收到消息后完成，页面就能显示"已发送"；如果智能体的窗格先关闭，则会 reject。
 
 | 选项      | 作用 |
 | --------- | ---- |
 | `label`   | 消息是什么，放在页面标题和 URL 之前 |
-| `mode`    | `"push"` 总是输入到提示符；`"wait"` 只留给 `kero browser wait-message`；不设置时，交给正在等待的智能体，否则输入到提示符 |
+| `mode`    | `"push"` 总是发送给位于提示符的智能体；`"wait"` 只留给 `kero browser wait-message`；不设置时，交给正在等待的智能体，否则发送给位于提示符的智能体 |
 | `onState` | 在 Promise 完成之前收到 `"queued"`（智能体正在工作：回到提示符时收到）或 `"waiting"`（留给 `wait-message`） |
 
 不是字符串的消息会以 JSON 发送。`window.kero` 只存在于 Kero 中，所以页面可以据此判断能否发送，不能发送时把消息复制到剪贴板：
@@ -164,7 +164,7 @@ send.onclick = async () => {
 
 要告诉智能体页面上哪里需要修改，打开**选取元素**：窗格工具栏中方框加指针的按钮，<kbd>⌘</kbd> <kbd>⌥</kbd> <kbd>C</kbd>（Windows 和 Linux 上为 <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd>），或窗格菜单。点击一个元素，在弹出的备注中写下你想要的修改，然后继续选取；书写时移动指针，备注保持不变。**Parent** 会改选它外层的元素：把指针放在按钮上，会用虚线框出将选中的元素。**Send** 或 <kbd>Ctrl</kbd> <kbd>Enter</kbd> 一次全部发送，<kbd>Esc</kbd> 停止。
 
-选取的元素和页面自己的消息发往同一处：发给用 `kero split --url` 打开该页面的智能体，在它回到提示符时输入；正在等待该页面消息的智能体会直接收到。对于不是由智能体打开的页面，Kero 会询问一次发给哪个智能体并记住；不选择就关闭时，Kero 会复制它们，方便你粘贴。
+选取的元素和页面自己的消息发往同一处：用 `kero split --url` 打开该页面的智能体回到提示符时，会[通过智能体自己的接收方式](./agents.md#how-agents-get-keros-messages)收到消息；正在等待该页面消息的智能体会直接收到。对于不是由智能体打开的页面，Kero 会询问一次发给哪个智能体并记住；不选择就关闭时，Kero 会复制它们，方便你粘贴。
 
 CSS 选择器很难把智能体带到源码，所以每个元素都附带能带它找到源码的信息，从强到弱：
 

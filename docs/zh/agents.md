@@ -23,11 +23,13 @@ kero skill setup
 
 | 智能体      | 钩子位置                                              |
 | ----------- | ----------------------------------------------------- |
-| Claude Code | `~/.claude/settings.json` 中的 `SessionStart`、`Stop` 和 `StopFailure` 钩子 |
+| Claude Code | `~/.claude/settings.json` 中的 `SessionStart`、`Stop` 和 `StopFailure` 钩子，以及 Kero 的插件 `kero@kero` |
 | Codex       | `~/.codex/hooks.json` 中的 `SessionStart`、`Stop` 和 `Interrupt` 钩子       |
 | Pi          | 扩展 `~/.pi/agent/extensions/kero.ts`                  |
 | OMP         | 扩展 `~/.omp/agent/extensions/kero.ts`                 |
 | OpenCode    | 插件 `~/.config/opencode/plugins/kero`                 |
+
+Claude Code 的插件位于 Kero 自己的文件夹中，是名为 `kero` 的插件市场；安装时会通过 Claude Code 的 `claude plugin` 命令添加并安装。Claude Code 每次会话启动时都会从那里读取，因此会随 Kero 更新。
 
 如果 `CLAUDE_CONFIG_DIR`、`CODEX_HOME`、`PI_CODING_AGENT_DIR`、`PI_CONFIG_DIR` 或 `XDG_CONFIG_HOME` 改变了智能体文件的位置，Kero 会跟着走，并且不会改动各设置文件里的其他内容。
 
@@ -48,6 +50,21 @@ kero skill remove    # 卸载技能和钩子
 OpenCode 在后台服务而非窗格中运行智能体的命令，所以这些命令拿不到 `KERO_SESSION` 和 `KERO_PANE`。Kero 会改为把窗格告诉智能体，由它显式指定为目标。出于同样的原因，OpenCode 智能体执行的 `kero report` 无法到达它的窗格。
 
 在 Kero 之外，钩子什么也不做。
+
+<a id="how-agents-get-keros-messages"></a>
+
+## 智能体如何收到 Kero 的消息
+
+Kero 会向智能体发送消息：通过[编排器](./orchestrators.md)转达子会话的报告、[PR 关注](./pull-requests.md)、页面上的答案，以及 **发送到会话…** 等。每条消息都会在智能体回到提示符时，通过该智能体自己的接收方式发送一次，不会触碰你正在提示符中输入的内容：
+
+| 智能体      | 消息如何送达                                                               |
+| ----------- | -------------------------------------------------------------------------- |
+| Claude Code | Kero 的插件会在整个会话期间运行 `kero inbox`，Claude 会将收到的每条消息作为事件处理。长消息会先收到开头，Kero 文件夹中的文件保存着完整内容供 Claude 阅读。 |
+| Codex       | `codex queue`，由 Codex 作为独立回合运行。你结束一个回合后，Codex 会保留它，直到你下次输入提示词。 |
+| OpenCode    | OpenCode 的后台服务会在回合结束后，将消息作为排队的提示词发送。            |
+| Pi、OMP     | Kero 的扩展会将消息作为独立提示词发送，或作为当前回合的后续内容。           |
+
+其他智能体，以及接收方式失败的智能体（例如在安装前启动的智能体），会收到输入到提示符中的消息，并由 Kero 按下 Enter。之后，只要你开始在窗格中输入，Kero 就不会再按 Enter，因此不会发送你自己的文字。
 
 ## 智能体能做什么
 
