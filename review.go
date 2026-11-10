@@ -525,7 +525,7 @@ func (a *App) sendReview(pane *proto.Pane, rv *review) {
 		name = locales.GitAnAgent()
 	}
 	go func() {
-		res, err := a.sendToAgent(cl, proto.AgentSendParams{To: id, Text: text, Mode: "push"})
+		res, err := a.sendToAgent(cl, proto.AgentSendParams{To: id, Text: text, Mode: "push", User: true})
 		a.update(func() {
 			if err != nil {
 				a.toast(locales.ReviewSendFailed(err.Error()))

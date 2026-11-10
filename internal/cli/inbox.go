@@ -47,7 +47,9 @@ func inboxCmd(args []string) error {
 	}
 	next := func(c *client.Client, timeout time.Duration) (string, error) {
 		var m proto.InboxMessage
-		err := c.Call("agent.inbox", proto.InboxParams{Pane: pane, Timeout: timeout.Milliseconds()}, &m)
+		// JSON is for the extension in Pi and OMP, which gives each message
+		// as the user's turn; a line, Claude Code's monitor's, an event.
+		err := c.Call("agent.inbox", proto.InboxParams{Pane: pane, Timeout: timeout.Milliseconds(), Turns: f.set["json"]}, &m)
 		return m.Text, err
 	}
 	if !f.set["follow"] {

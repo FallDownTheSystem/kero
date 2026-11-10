@@ -48,10 +48,16 @@ func idleAgain(pn *pane) {
 // listen starts a listener of the pane's agent, as kero inbox, and
 // returns what it gets.
 func listen(t *testing.T, d *Daemon, pn *pane) chan proto.InboxMessage {
+	return listenAs(t, d, pn, false)
+}
+
+// listenAs starts a listener that gives the agent its messages as the
+// user's turns, or as events of its own.
+func listenAs(t *testing.T, d *Daemon, pn *pane, turns bool) chan proto.InboxMessage {
 	t.Helper()
 	got := make(chan proto.InboxMessage, 1)
 	go func() {
-		m, err := d.agentInbox(nil, pn, 3*time.Second)
+		m, err := d.agentInbox(nil, pn, 3*time.Second, turns)
 		if err != nil {
 			t.Error(err)
 		}
@@ -116,12 +122,51 @@ func TestInboxTakesMessages(t *testing.T) {
 	}
 }
 
+// A message the user sent never goes to a listener that gives it as an
+// event of the agent's own, which the agent would take for no word of the
+// user's: it is typed in. One that gives the user's turns takes it.
+func TestInboxLeavesTheUsersWords(t *testing.T) {
+	d := testDaemon(t)
+	pn := quietAgent(t, d, "claude")
+	id := pn.info.ID
+
+	got := listenAs(t, d, pn, false)
+	res, err := d.agentSend(proto.AgentSendParams{To: id, Label: "decision brief", Text: "accept", User: true})
+	if err != nil || res.State != "delivered" {
+		t.Fatalf("sent %+v, %v", res, err)
+	}
+	if n := queued(d, id); n != 0 {
+		t.Errorf("%d messages wait", n)
+	}
+	d.mail.mu.Lock()
+	still := len(d.mail.inbox[id])
+	d.mail.mu.Unlock()
+	if still != 1 {
+		t.Errorf("the monitor's listener was used: %d waiting", still)
+	}
+	select {
+	case m := <-got:
+		t.Errorf("the monitor got the user's words: %q", m.Text)
+	default:
+	}
+	<-got
+
+	pn2 := quietAgent(t, d, "pi")
+	got = listenAs(t, d, pn2, true)
+	if res, err := d.agentSend(proto.AgentSendParams{To: pn2.info.ID, Text: "accept", User: true}); err != nil || res.State != "delivered" {
+		t.Fatalf("sent %+v, %v", res, err)
+	}
+	if m := <-got; m.Text != "accept" {
+		t.Errorf("the extension got %q", m.Text)
+	}
+}
+
 // A listener's wait that ends with no message gives "", and a message
 // given to it as it stops waiting is still its own.
 func TestInboxTimeout(t *testing.T) {
 	d := testDaemon(t)
 	pn := quietAgent(t, d, "claude")
-	m, err := d.agentInbox(nil, pn, 20*time.Millisecond)
+	m, err := d.agentInbox(nil, pn, 20*time.Millisecond, false)
 	if err != nil || m.Text != "" {
 		t.Errorf("timed out with %+v, %v", m, err)
 	}

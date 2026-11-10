@@ -334,7 +334,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			d.inboxBack(pn, p.Back)
 			return proto.InboxMessage{}, nil
 		}
-		return d.agentInbox(c, pn, time.Duration(p.Timeout)*time.Millisecond)
+		return d.agentInbox(c, pn, time.Duration(p.Timeout)*time.Millisecond, p.Turns)
 
 	case "browser.answer":
 		var p proto.BrowserAnswer

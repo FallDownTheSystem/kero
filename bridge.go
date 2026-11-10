@@ -92,7 +92,7 @@ func (a *App) pageSend(ctx context.Context, id string, m PageMessage) (PageSent,
 	}
 	// The agent the user chose for the page, when kerod found none: its
 	// opener closed, or it never had one.
-	p := proto.AgentSendParams{From: id, To: w.chosen, Label: m.Label, Text: m.Text, Mode: m.Mode}
+	p := proto.AgentSendParams{From: id, To: w.chosen, Label: m.Label, Text: m.Text, Mode: m.Mode, User: true}
 	res, err := a.sendToAgent(cl, p)
 	if err != nil && p.To != "" {
 		// The agent chosen before is gone: choose again.

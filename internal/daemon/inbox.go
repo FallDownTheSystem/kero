@@ -23,8 +23,9 @@ import (
 const inboxGrace = 3 * time.Second
 
 // agentInbox waits for the messages for pane pn's agent (agent.inbox), and
-// takes them, as one prompt.
-func (d *Daemon) agentInbox(c *controlConn, pn *pane, timeout time.Duration) (proto.InboxMessage, error) {
+// takes them, as one prompt; turns, for a listener that gives them as the
+// user's turns (InboxParams.Turns).
+func (d *Daemon) agentInbox(c *controlConn, pn *pane, timeout time.Duration, turns bool) (proto.InboxMessage, error) {
 	pn.mu.Lock()
 	id, closed := pn.info.ID, pn.closed
 	pn.mu.Unlock()
@@ -35,7 +36,7 @@ func (d *Daemon) agentInbox(c *controlConn, pn *pane, timeout time.Duration) (pr
 	ch := make(chan string, 1)
 	mb.mu.Lock()
 	mb.initLocked()
-	mb.inbox[id] = append(mb.inbox[id], ch)
+	mb.inbox[id] = append(mb.inbox[id], inboxListener{ch, turns})
 	mb.mu.Unlock()
 	// The pane may have closed, and let go of its listeners, since.
 	pn.mu.Lock()
@@ -82,7 +83,7 @@ func (d *Daemon) agentInbox(c *controlConn, pn *pane, timeout time.Duration) (pr
 	if got {
 		return proto.InboxMessage{Text: text}, nil
 	}
-	mb.setInboxLocked(id, slices.DeleteFunc(mb.inbox[id], func(w chan string) bool { return w == ch }))
+	mb.setInboxLocked(id, slices.DeleteFunc(mb.inbox[id], func(w inboxListener) bool { return w.ch == ch }))
 	select {
 	case text = <-ch:
 	default:
@@ -115,7 +116,7 @@ func (d *Daemon) inboxBack(pn *pane, text string) {
 
 // setInboxLocked sets the listeners waiting for pane id's messages; mb.mu
 // is held.
-func (mb *mailbox) setInboxLocked(id string, ws []chan string) {
+func (mb *mailbox) setInboxLocked(id string, ws []inboxListener) {
 	if len(ws) == 0 {
 		delete(mb.inbox, id)
 	} else {
