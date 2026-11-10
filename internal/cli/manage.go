@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -215,16 +216,56 @@ func moveSession(c *client.Client, st proto.State, args []string) error {
 }
 
 // configValue is kero config get and set: a setting by its key, as the
-// configuration file writes it; a list's values a line each.
+// configuration file writes it; a list's values a line each. Its options
+// come before the key, as what follows the key is the value, flags and
+// all: --repo, one repository's line of a key that holds a line a
+// repository; --text, a prompt as its lines, not as the file escapes
+// them; get's --default, Kero's own value, its own prompt where the
+// setting is empty; set's --file, the value from a file, - for stdin,
+// as its lines.
 func configValue(sub string, args []string) error {
-	if len(args) == 0 {
-		return usageErr("kero config %s <key>%s (kero config show lists the keys)", sub, map[string]string{"set": " [value…]"}[sub])
+	usage := map[string]string{
+		"get": "kero config get [--repo <owner>/<name>] [--text] [--default] <key>",
+		"set": "kero config set [--repo <owner>/<name>] [--file <path>|-] <key> [value…]",
+	}[sub]
+	var repo, file string
+	text, builtin, fromFile := false, false, false
+options:
+	for len(args) > 0 {
+		switch {
+		case args[0] == "--repo" && len(args) > 1:
+			repo, args = args[1], args[2:]
+		case args[0] == "--text":
+			text, args = true, args[1:]
+		case args[0] == "--default" && sub == "get":
+			builtin, args = true, args[1:]
+		case args[0] == "--file" && sub == "set" && len(args) > 1:
+			file, fromFile, args = args[1], true, args[2:]
+		case strings.HasPrefix(args[0], "--") && args[0] != "--":
+			return usageErr("%s (unknown option %s)", usage, args[0])
+		default:
+			break options
+		}
 	}
+	if len(args) == 0 {
+		return usageErr("%s (kero config show lists the keys)", usage)
+	}
+	name := args[0]
 	if sub == "get" {
 		if len(args) != 1 {
-			return usageErr("kero config get <key>")
+			return usageErr(usage)
 		}
-		vals, err := settings.Get(args[0])
+		if text || builtin || repo != "" {
+			v, err := settings.Value(name, repo, builtin)
+			if err != nil {
+				return fmt.Errorf("%w: %v", errNotFound, err)
+			}
+			if v != "" {
+				fmt.Println(v)
+			}
+			return nil
+		}
+		vals, err := settings.Get(name)
 		if err != nil {
 			return fmt.Errorf("%w: %v", errNotFound, err)
 		}
@@ -237,7 +278,27 @@ func configValue(sub string, args []string) error {
 	if len(vals) > 0 && vals[0] == "--" {
 		vals = vals[1:]
 	}
-	if err := settings.Set(args[0], vals); err != nil {
+	var err error
+	switch {
+	case fromFile:
+		if len(vals) > 0 {
+			return usageErr("%s (--file is the value: give no other)", usage)
+		}
+		var b []byte
+		if file == "-" {
+			b, err = io.ReadAll(os.Stdin)
+		} else {
+			b, err = os.ReadFile(file)
+		}
+		if err == nil {
+			err = settings.SetValue(name, repo, string(b))
+		}
+	case text || repo != "":
+		err = settings.SetValue(name, repo, strings.Join(vals, " "))
+	default:
+		err = settings.Set(name, vals)
+	}
+	if err != nil {
 		return err
 	}
 	if p := settings.Problems(); len(p) > 0 {

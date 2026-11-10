@@ -354,9 +354,19 @@ kero pr list -p api
 kero pr review 123 -p api                      # 与评审标签页的启动方式相同
 kero config get default-agent
 kero config set notify-on-done false           # 与设置的写法相同
+kero config get --default pr-review-prompt > prompt.md   # Kero 自己的提示词，按原样分行
+kero config set --file prompt.md pr-review-prompt
+kero config set --repo acme/web --file prompt.md review-prompt   # 只改一个仓库的值
 ```
 
 带 `--all`、`-p` 或 `--status` 的 `kero close` 从不关闭 Ama 的会话，也不关闭运行它的会话。`kero worktree remove` 像历史标签页那样删除工作树：Kero 为某个会话创建的工作树会连同该会话一起关闭，其他会话正在使用的则保留。`kero pr review` 需要应用已打开，且 Ama 以外需要远程控制。不带值的 `kero config set` 恢复默认值；列表设置每个值一个参数，不给值则清空。
+
+设置窗口中的每项设置都有一个配置项，GitHub 仓库自己的设置也有。`kero config get` 和 `set` 的选项放在配置项之前：
+
+- `--text` 按原样的多行读写提示词，而不是文件中写的 `\n`。
+- `--default` 给出 Kero 自己的值。留空的提示词设置使用 Kero 自己的提示词，`--default` 会输出该提示词。
+- `--file <path>` 从文件设置值，`-` 表示从标准输入读取。
+- `--repo <owner>/<name>` 只读写 `review-prompt` 等配置项中该仓库的那一行，其他仓库的行保持不变。
 
 <a id="running-app-actions"></a>
 

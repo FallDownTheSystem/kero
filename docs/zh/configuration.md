@@ -40,7 +40,11 @@ kero config show --defaults   # 列出所有配置项的默认值
 kero config get font-size     # 某个配置项的值
 kero config set font-size 14  # 像设置窗口那样设置某一项；不给值则恢复默认
 kero config check             # 报告未知的配置项、无效的值和 agents.toml 的问题
+kero config get --default pr-review-prompt > prompt.md            # Kero 自己的提示词，按原样分行
+kero config set --repo acme/web --file prompt.md review-prompt   # 一个仓库的提示词
 ```
+
+[CLI 参考](cli.md)介绍了 `--text`、`--default`、`--file` 和 `--repo` 选项。
 
 **设置 › 高级 › 重置所有设置** 会把每个配置项恢复为默认值，包括键盘快捷键；你的会话会保留。设置窗口的搜索框可以按名称或配置项查找设置。
 

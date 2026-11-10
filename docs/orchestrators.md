@@ -21,7 +21,7 @@ kero orchestrator <session>       # make a session one; kero orchestrator <sessi
 
 ## Its role prompt and agent
 
-Its agent, the one chosen (else `default-agent`), starts on a role prompt: plan and delegate, start children with `kero new`, answer what it can, ask you only what it must, reply to a report that needs nothing with a plain OK rather than a summary, and keep the goal in mind. Replace the prompt in **Settings › Agents › Orchestrators** (`orchestrator-prompt`), where `{goal}` is its goal and `{agent}` the default agent. To give orchestrators' agents arguments of their own, such as `--model opus`, whichever agent they run, set **Arguments** there (`orchestrator-agent-args`): Kero adds them after the agent's command when an orchestrator starts and when it resumes.
+Its agent, the one chosen (else `default-agent`), starts on a role prompt: plan and delegate, to a subagent of its own or to a child it starts with `kero new`, whichever fits; have each child show you its decisions as a page in its own session and report when one waits, and tell you only which session waits rather than relay them; answer what it can, ask you only what it must, reply to a report that needs nothing with a plain OK rather than a summary, and keep the goal in mind. Replace the prompt in **Settings › Agents › Orchestrators** (`orchestrator-prompt`), where `{goal}` is its goal and `{agent}` the default agent. To give orchestrators' agents arguments of their own, such as `--model opus`, whichever agent they run, set **Arguments** there (`orchestrator-agent-args`): Kero adds them after the agent's command when an orchestrator starts and when it resumes.
 
 ## Children, reports and the sidebar
 

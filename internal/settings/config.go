@@ -48,7 +48,10 @@ type key struct {
 	name string
 	doc  string
 	list bool // repeats, one value a line
-	get  func(*Settings) []string
+	// text, a value of lines, which the file holds on one line (escapeText);
+	// repo, a line a GitHub repository, <owner>/<name>=<value>.
+	text, repo bool
+	get        func(*Settings) []string
 	set  func(*Settings, []string) error
 }
 
@@ -87,7 +90,7 @@ func stringKey(name, doc string, f func(*Settings) *string) key {
 // textKey is a string of lines, which the file holds on one line, as
 // escapeText writes it.
 func textKey(name, doc string, f func(*Settings) *string) key {
-	return key{name: name, doc: doc,
+	return key{name: name, doc: doc, text: true,
 		get: func(s *Settings) []string { return []string{escapeText(*f(s))} },
 		set: func(s *Settings, v []string) error { *f(s) = unescapeText(v[len(v)-1]); return nil }}
 }
@@ -96,7 +99,7 @@ func textKey(name, doc string, f func(*Settings) *string) key {
 // <owner>/<name>=<value>, the value as escapeText writes it. The keys of
 // the setup's other fields leave them as they are.
 func reviewKey(name, doc string, f func(*ReviewSetup) *string) key {
-	return key{name: name, doc: doc, list: true,
+	return key{name: name, doc: doc, list: true, text: true, repo: true,
 		get: func(s *Settings) []string {
 			var out []string
 			for _, repo := range slices.Sorted(maps.Keys(s.Reviews)) {

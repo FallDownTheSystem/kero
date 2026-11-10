@@ -40,7 +40,11 @@ kero config show --defaults   # Kero の初期状態のすべてのキー
 kero config get font-size     # 1 つのキーの値
 kero config set font-size 14  # 設定と同じように 1 つ設定する。値なしならデフォルトに戻す
 kero config check             # 不明なキー、不正な値、agents.toml の問題を報告
+kero config get --default pr-review-prompt > prompt.md            # Kero 自身のプロンプトを行のまま
+kero config set --repo acme/web --file prompt.md review-prompt   # 1 つのリポジトリのプロンプト
 ```
+
+`--text`、`--default`、`--file`、`--repo` オプションは [CLI リファレンス](cli.md) で説明しています。
 
 **設定 › 詳細 › すべての設定をリセット** は、キーボードショートカットも含めてすべてのキーをデフォルトに戻します。セッションはそのまま残ります。設定ウインドウの検索欄で、設定を名前やキーで探せます。
 

@@ -322,12 +322,18 @@ Usage:
                                 the configuration file: where it is, every
                                 key with its value (--defaults: as kero
                                 comes), open it in $EDITOR, check it
-  kero config get <key>         a setting's value (a list's, a line each)
-  kero config set <key> [value…]
+  kero config get [--repo <owner>/<name>] [--text] [--default] <key>
+                                a setting's value (a list's, a line each);
+                                --text, a prompt as its lines; --default,
+                                Kero's own, its prompt where the setting is
+                                empty; --repo, that repository's line alone
+  kero config set [--repo <owner>/<name>] [--file <path>|-] <key> [value…]
                                 set a setting, as Settings does, keeping
                                 the file's comments; no value for its
                                 default (a list: each value a line, none
-                                to empty it)
+                                to empty it); --file, the value from a
+                                file or stdin, as its lines; --repo, that
+                                repository's line alone, the others kept
   kero projects [--json]        list projects, in the sidebar's order
   kero projects add <dir> [-n <name>] [--json]
                                 add a project of a folder, printing its id

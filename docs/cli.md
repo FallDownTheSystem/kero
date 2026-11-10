@@ -350,9 +350,19 @@ kero pr list -p api
 kero pr review 123 -p api                      # as the Review tab starts one
 kero config get default-agent
 kero config set notify-on-done false           # as Settings writes it
+kero config get --default pr-review-prompt > prompt.md   # Kero's own prompt, as its lines
+kero config set --file prompt.md pr-review-prompt
+kero config set --repo acme/web --file prompt.md review-prompt   # one repository's alone
 ```
 
 `kero close` with `--all`, `-p` or `--status` never closes Ama's session, nor the one it runs in. `kero worktree remove` removes a worktree as the History tab does: a worktree Kero made for a session closes that session, and one that other sessions work in stays. `kero pr review` needs the app open, and Remote Control unless Ama runs it. `kero config set` with no value restores the default. For a list setting, give each value as a separate argument, or none to empty it.
+
+Every setting in the Settings window has a key, a GitHub repository's own settings too. The options of `kero config get` and `set` go before the key:
+
+- `--text` gives or takes a prompt as its lines, not with the `\n` the file writes.
+- `--default` gives Kero's own value. A prompt setting left empty uses Kero's own prompt, and `--default` prints that prompt.
+- `--file <path>` sets the value from a file, or from stdin with `-`.
+- `--repo <owner>/<name>` reads or sets that repository's line of a key such as `review-prompt` alone, and keeps the other repositories' lines.
 
 ## Running app actions
 
