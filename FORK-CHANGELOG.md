@@ -5,6 +5,27 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.11
+
+- **Claude Code acts on your page answers again**: an answer you send
+  from a page, **Send to Session…** and a review's **Send to Agent**
+  reached Claude Code as a background event, which Claude would not take
+  as your words, and it refused to act on your "accept". What you send
+  yourself is now typed into Claude's prompt as yours. Orchestrators'
+  reports and PR watch messages still arrive as events
+- **Orchestrators work in a new way**: an orchestrator gives each piece of
+  work to a subagent of its own or to a child session, whichever fits.
+  It tells each child to show its decisions to you as a page in the
+  child's own session, and to report when a decision waits. The
+  orchestrator then tells you only which session waits, and does not
+  copy the decisions into its own chat
+- **Agents can change any setting, the prompts too**: `kero config get
+  --default <key>` prints Kero's own prompt, `--text` reads a prompt as
+  its lines, and `kero config set --file <path> <key>` sets it from a
+  file. `--repo owner/name` reads or sets one repository's value, such
+  as its review prompt, and keeps the other repositories' values
+- Ama answers in a cheerful, quirky way
+
 ## 2.1.35-fork.10
 
 - **Kero's messages no longer type over what you are writing**: an
