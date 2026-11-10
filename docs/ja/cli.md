@@ -348,9 +348,19 @@ kero pr list -p api
 kero pr review 123 -p api                      # レビュータブと同じように開始
 kero config get default-agent
 kero config set notify-on-done false           # 設定と同じように書き込む
+kero config get --default pr-review-prompt > prompt.md   # Kero 自身のプロンプトを行のまま
+kero config set --file prompt.md pr-review-prompt
+kero config set --repo acme/web --file prompt.md review-prompt   # 1 つのリポジトリの値だけ
 ```
 
 `--all`、`-p`、`--status` を付けた `kero close` は、Ama のセッションと、コマンドを実行しているセッションは閉じません。`kero worktree remove` は履歴タブと同じようにワークツリーを削除します。Kero がセッション用に作ったワークツリーはそのセッションを閉じ、他のセッションが使っているものは残ります。`kero pr review` はアプリが開いている必要があり、Ama 以外からはリモート操作も必要です。値なしの `kero config set` はデフォルトに戻します。リスト設定は値ごとに引数を渡し、何も渡さなければ空になります。
+
+設定ウィンドウのすべての設定にはキーがあり、GitHub リポジトリごとの設定にもあります。`kero config get` と `set` のオプションはキーの前に置きます。
+
+- `--text` は、プロンプトをファイルが書く `\n` ではなく、行のまま読み書きします。
+- `--default` は Kero 自身の値を出力します。空のプロンプト設定は Kero 自身のプロンプトを使い、`--default` はそのプロンプトを出力します。
+- `--file <path>` はファイルから値を設定します。`-` なら標準入力から読みます。
+- `--repo <owner>/<name>` は、`review-prompt` などのキーのそのリポジトリの行だけを読み書きし、他のリポジトリの行は残します。
 
 <a id="running-app-actions"></a>
 

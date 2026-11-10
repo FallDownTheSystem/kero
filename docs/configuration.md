@@ -40,7 +40,11 @@ kero config show --defaults   # every key as Kero comes
 kero config get font-size     # one key's value
 kero config set font-size 14  # set one, as Settings does; no value restores its default
 kero config check             # report unknown keys and bad values, and agents.toml's
+kero config get --default pr-review-prompt > prompt.md            # Kero's own prompt, as its lines
+kero config set --repo acme/web --file prompt.md review-prompt   # one repository's prompt
 ```
+
+The [CLI reference](cli.md) describes the `--text`, `--default`, `--file` and `--repo` options.
 
 **Settings › Advanced › Reset all settings** puts every key back to its default, the keyboard shortcuts too; your sessions stay. The Settings window's search field finds a setting by its name or its key.
 
