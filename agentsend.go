@@ -108,7 +108,7 @@ func (a *App) sendExcerpt(from, text string) {
 		if to == "" {
 			return
 		}
-		a.sendTo(h, proto.AgentSendParams{To: to, From: from, Label: label, Text: fenced(text), Mode: "push"})
+		a.sendTo(h, proto.AgentSendParams{To: to, From: from, Label: label, Text: fenced(text), Mode: "push", User: true})
 	})
 }
 

@@ -1341,6 +1341,12 @@ type AgentSendParams struct {
 	// report --to-parent does, with the next report of its children's
 	// states (Session.Parent), in place of To.
 	ToParent bool `json:"toParent,omitempty"`
+	// User tells that the user sent it, as a page's picks, Send to
+	// Session… or review's Send to Agent: it reaches the agent as the
+	// user's own prompt, never as an event beside the user's turns (a
+	// listener without InboxParams.Turns), which an agent rightly takes
+	// for no word of the user's.
+	User bool `json:"user,omitempty"`
 }
 
 // NoParent is CreateParams' Parent of a session that is to be no child,
@@ -1401,11 +1407,16 @@ type MessageParams struct {
 // pane's agent (agent.inbox), as code of Kero's running in the agent does
 // (kero inbox): Timeout ms at most, 0 for as long as it takes. Back is a
 // message it took and could not give its agent, which then waits first
-// again, for the next way to it; no wait follows.
+// again, for the next way to it; no wait follows. Turns tells that the
+// listener gives each message to its agent as a turn of the user's, as
+// the extension in Pi and OMP does; without it, as Claude Code's monitor,
+// as an event of the agent's own, which gets no message the user sent
+// (AgentSendParams.User).
 type InboxParams struct {
 	Pane    string `json:"pane"`
 	Timeout int64  `json:"timeout,omitempty"`
 	Back    string `json:"back,omitempty"`
+	Turns   bool   `json:"turns,omitempty"`
 }
 
 // InboxMessage is what agent.inbox gives: the messages waiting, as one

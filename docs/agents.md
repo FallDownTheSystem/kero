@@ -61,6 +61,8 @@ Kero sends agents messages: an [orchestrator's](./orchestrators.md) reports of i
 | OpenCode    | OpenCode's background service, as a prompt queued after the turn.              |
 | Pi, OMP     | Kero's extension, as a prompt of its own, or a follow-up of the turn it is in. |
 
+What you send yourself, a page's answers, **Send to Session…** and a review's **Send to Agent**, never reaches Claude Code as an event: Claude rightly takes an event for none of your words, and would not act on your answer. It is typed into Claude's prompt instead, as yours.
+
 Other agents, and an agent whose way in fails, as one started before setup, get the message typed into their prompt and Enter pressed. Once you type in the pane after it, Kero presses no more Enters, so that your own text isn't sent.
 
 ## What agents can do
