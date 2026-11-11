@@ -573,6 +573,12 @@ var ticketPattern = regexp.MustCompile(`\b[A-Z][A-Z0-9]{1,9}-[0-9]+\b`)
 
 // prTicket is the issue a pull request is of, as the first key its title,
 // its description or its branch names; "" for none.
+// reviewName names a review's session after its pull request: its number
+// and its title, as the sidebar shows it.
+func reviewName(pr proto.PullRequest) string {
+	return strings.TrimSpace("#" + strconv.Itoa(pr.Number) + " " + strings.Join(strings.Fields(pr.Title), " "))
+}
+
 func prTicket(pr proto.PullRequest) string {
 	for _, s := range []string{pr.Title, pr.Body, strings.ToUpper(pr.Head)} {
 		if k := ticketPattern.FindString(s); k != "" {
@@ -788,7 +794,7 @@ func (a *App) startReview(w *prReview) {
 	}
 	setup := a.reviewSetup(w.slug)
 	p := proto.CreateParams{Project: s.Project, After: s.ID, Dir: pane.Git.Root, Cols: s.Cols, Rows: s.Rows,
-		Name:    "#" + strconv.Itoa(w.pr.Number),
+		Name:    reviewName(w.pr),
 		Command: reviewArgs(setup.Command, prompt, w.pr, strings.TrimSpace(w.ticket)),
 		Review:  &proto.PRReviewRef{Slug: w.slug, Number: w.pr.Number}}
 	// The new session works in the background, the user where they were:
