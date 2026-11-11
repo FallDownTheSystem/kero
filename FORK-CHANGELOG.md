@@ -5,6 +5,13 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.12
+
+- A pull request's review session is named after the pull request's
+  number and title, `#42 Fix the login redirect`, not its number alone,
+  and its **Review** mark sits at the right of its row, under the time
+  in two-line rows
+
 ## 2.1.35-fork.11
 
 - **Claude Code acts on your page answers again**: an answer you send
