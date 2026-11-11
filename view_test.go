@@ -1775,9 +1775,29 @@ func TestSidebarRows(t *testing.T) {
 	add("s2", "migrate", proto.Working, "Migrating the\ndatabase", nil)
 	add("s3", "login", proto.Idle, "", &proto.GitInfo{Root: "/tmp/demo", Branch: "fix-login-redirect-after-oauth", Default: "main", Ahead: 2, Files: 3, Added: 40, Removed: 2})
 	a.st.Sessions[1].Progress = 40
+	// A review's session goes by its pull request's number and title, and
+	// its Review mark keeps to the row's right, under its time when it
+	// has two lines.
+	add("s4", reviewName(proto.PullRequest{Number: 42, Title: " Fix the\nlogin redirect "}), proto.Working, "", nil)
+	a.st.Sessions[3].Review = &proto.PRReviewRef{Slug: "me/demo", Number: 42}
 	tt := ui.NewTester(a.view, 1100, 700)
+	review := func(mode string) {
+		t.Helper()
+		name, ok := tt.Find("#42 Fix the login redirect")
+		mark, ok2 := tt.Find(locales.SessionReview())
+		if !ok || !ok2 {
+			t.Fatalf("%s: no review row or mark; texts %q", mode, tt.Texts())
+		}
+		if mark.X < name.X+name.W {
+			t.Errorf("%s: the Review mark %v is not right of the name %v", mode, mark, name)
+		}
+		if mode == "detailed" && mark.Y < name.Y+name.H {
+			t.Errorf("%s: the Review mark %v is not under the name's line %v", mode, mark, name)
+		}
+	}
 	tt.Frame()
 	shot(t, tt, "sidebar-rows-detailed")
+	review("detailed")
 	texts := strings.Join(tt.Texts(), "\n")
 	for _, want := range []string{"Migrating the database", "fix-login-redirect-after-oauth ↑2 · 3 files +40 −2", "/Users/someone/dev/demo"} {
 		if !strings.Contains(texts, want) {
@@ -1787,6 +1807,7 @@ func TestSidebarRows(t *testing.T) {
 	a.set.SidebarRows = "compact"
 	tt.Frame()
 	shot(t, tt, "sidebar-rows-compact")
+	review("compact")
 	texts = strings.Join(tt.Texts(), "\n")
 	if strings.Contains(texts, "Migrating the database") {
 		t.Errorf("a compact row shows the message")
