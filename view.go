@@ -793,7 +793,6 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 					name()
-					reviewBadge(c, pal, s)
 					ui.Spacer(c)
 					when()
 					trailing()
@@ -808,15 +807,17 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 						worktreeMark(c, pal)
 					}
 					ui.Text(c, line).FontSize(12).TextColor(fg).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
-					if s.Orchestrator {
+					if s.Orchestrator || s.Review != nil {
 						ui.Spacer(c)
+					}
+					if s.Orchestrator {
 						a.orchestratorMark(c, pal, s)
 					}
+					reviewBadge(c, pal, s)
 				})
 			})
 		} else {
 			name()
-			reviewBadge(c, pal, s)
 			if linked {
 				worktreeMark(c, pal)
 			}
@@ -825,6 +826,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 				ui.Text(c, b).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(3).MinWidth(24).MaxWidth(120)
 			}
 			ui.Spacer(c)
+			reviewBadge(c, pal, s)
 			when()
 			trailing()
 		}

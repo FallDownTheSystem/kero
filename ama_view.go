@@ -465,7 +465,7 @@ func (a *App) reviewFromAgent(h *host, args map[string]string) {
 			}
 			ticket := prTicket(pr)
 			prompt := strings.TrimSpace(fillReview(tpl, pr, ticket))
-			p := proto.CreateParams{Dir: dir, Name: "#" + strconv.Itoa(n), Command: reviewArgs(setup.Command, prompt, pr, ticket),
+			p := proto.CreateParams{Dir: dir, Name: reviewName(pr), Command: reviewArgs(setup.Command, prompt, pr, ticket),
 				Review: &proto.PRReviewRef{Slug: slug, Number: n}, Worktree: got.Branch, Base: got.Base, PushRemote: got.PushRemote, PushBranch: got.PushBranch}
 			a.createThen(h, p, "", false, func(ns proto.Session) {
 				if len(ns.Panes) == 0 {
