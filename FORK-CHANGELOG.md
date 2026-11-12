@@ -5,6 +5,26 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.13
+
+Built on MyGo 0.9.0, MyGo's latest release, past the commit Kero 2.1.35
+requires, with the fork's MyGo changes on top. It brings MyGo's changes
+since then, among them highlighting of Svelte, HCL/Terraform, ERB,
+Jinja and Nix files and of scripts by their `#!` line; the update window
+offering a release that came out while it was open; a transparent
+WebView background and the shadow of borderless windows fixed on
+Windows; Ctrl+I, Ctrl+M and Ctrl+[ sending Tab, Enter and Esc in the
+terminal; and a program killed in the terminal no longer leaving mouse
+and key reporting on.
+
+- **Diffs that aren't edited end where git's do**: a staged change's
+  diff, a commit's and History's no longer show the empty line after a
+  file's last newline. A last line without a newline is marked **No
+  newline at end of file**, and a line that gained or lost its newline
+  shows as that line changed, not as an empty line added or deleted
+- Unstaging chosen lines of a staged change keeps each line's own
+  ending in these diffs, and a file's last line its missing one
+
 ## 2.1.35-fork.12
 
 - A pull request's review session is named after the pull request's
