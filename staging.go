@@ -458,7 +458,7 @@ func (a *App) lineActions(c *ui.Context, pal *palette, section string, sf *sideF
 	if section == baseStaged {
 		// The index's text, the new side, without the lines.
 		if hunkButton(c, "unstage-lines", minusIcon, locales.GitUnstageLines(n), locales.GitUnstageLinesTip(), pal) {
-			text := applyLines(d.Old, d.New, hunks, not(chosen), d.New.LineEnding())
+			text := applyLines(d, hunks, not(chosen), d.New.LineEnding())
 			d.SetSelectedRanges(nil)
 			a.writeIndex(sf, text)
 		}
@@ -469,7 +469,7 @@ func (a *App) lineActions(c *ui.Context, pal *palette, section string, sf *sideF
 	}
 	// The index's text, the old side, with the lines.
 	if hunkButton(c, "stage-lines", plusIcon, locales.GitStageLines(n), locales.GitStageLinesTip(), pal) {
-		text := applyLines(d.Old, d.New, hunks, withEnding(d.New, chosen), indexEnding(sf))
+		text := applyLines(d, hunks, withEnding(d.New, chosen), indexEnding(sf))
 		d.SetSelectedRanges(nil)
 		a.writeIndex(sf, text)
 	}
@@ -492,7 +492,7 @@ func (a *App) discardLines(sf *sideFile, hunks []editor.DiffHunk, chosen func(ed
 			a.toast(locales.GitChangeMoved())
 			return
 		}
-		text := applyLines(d.Old, d.New, hunks, not(chosen), d.New.LineEnding())
+		text := applyLines(d, hunks, not(chosen), d.New.LineEnding())
 		d.SetSelectedRanges(nil)
 		a.writeBack(sf, text, anyway)
 	})
@@ -549,39 +549,51 @@ func chosenLines(hunks []editor.DiffHunk, sel []editor.DiffLineRange) (func(edit
 	return in, n
 }
 
-// applyLines is the old text with the changes take chooses made: of its
-// lines, those removed it takes go, and of the new ones, those added it
-// takes come, in their change's place, each after the old line at its
-// place in the change, which it would replace; with ending's line endings.
-// A text that ends in a line ending has a last line that is empty, which
-// the diff compares as any other: taking it or not keeps the ending or
-// drops it. An empty text has no line, though its buffer holds an empty
-// one, which would put an ending after the lines taken.
-func applyLines(old, new *editor.Buffer, hunks []editor.DiffHunk, take func(editor.DiffSide, int) bool, ending string) string {
+// applyLines is the old text of the diff d with the changes take chooses
+// made: of its lines, those removed it takes go, and of the new ones,
+// those added it takes come, in their change's place, each after the old
+// line at its place in the change, which it would replace; with ending's
+// line endings. An editable diff compares lines without their endings:
+// a text that ends in one has a last line that is empty, which taking or
+// not keeps the ending or drops it, and an empty text has no line, though
+// its buffer holds an empty one. One that is not, as a staged change's,
+// compares them with their endings, as git does, and has no line after a
+// final ending: each line keeps its own, but a text's last without one.
+func applyLines(d *editor.DiffState, hunks []editor.DiffHunk, take func(editor.DiffSide, int) bool, ending string) string {
+	old, new, eol := d.Old, d.New, !d.Editable
 	var out []string
+	ends := false // whether the last line taken keeps its ending
+	add := func(b *editor.Buffer, l int) {
+		out = append(out, b.Line(l))
+		ends = eol && l < b.LineCount()-1
+	}
 	pos := 0
 	n := old.LineCount()
-	if n == 1 && old.Line(0) == "" {
-		n = 0
+	if n == 1 && old.Line(0) == "" || eol && old.Line(n-1) == "" {
+		n--
 	}
 	for _, h := range hunks {
 		for l := pos; l < h.OldStart; l++ {
-			out = append(out, old.Line(l))
+			add(old, l)
 		}
 		for i := 0; i < max(h.OldEnd-h.OldStart, h.NewEnd-h.NewStart); i++ {
 			if l := h.OldStart + i; l < h.OldEnd && !take(editor.DiffOld, l) {
-				out = append(out, old.Line(l))
+				add(old, l)
 			}
 			if l := h.NewStart + i; l < h.NewEnd && take(editor.DiffNew, l) {
-				out = append(out, new.Line(l))
+				add(new, l)
 			}
 		}
 		pos = h.OldEnd
 	}
 	for l := pos; l < n; l++ {
-		out = append(out, old.Line(l))
+		add(old, l)
 	}
-	return strings.Join(out, ending)
+	text := strings.Join(out, ending)
+	if ends {
+		text += ending
+	}
+	return text
 }
 
 // inHunk takes the lines of a change alone, both its old and its new: as
