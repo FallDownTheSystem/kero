@@ -1931,7 +1931,7 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 				// The text is of the lines, not of the buffer after Revert or
 				// Keep, which keeps an empty text's empty line as one.
 				if hunkButton(c, "unstage", minusIcon, locales.GitUnstage(), locales.GitUnstageChangeTip(), pal) {
-					text := applyLines(d.Old, d.New, d.Hunks(), not(inHunk(h.Hunk)), d.New.LineEnding())
+					text := applyLines(d, d.Hunks(), not(inHunk(h.Hunk)), d.New.LineEnding())
 					h.Revert()
 					a.writeIndex(sf, text)
 				}
@@ -1942,7 +1942,7 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 				}
 				// Staged: the index's text, the old side, with it.
 				if hunkButton(c, "stage", plusIcon, locales.GitStage(), locales.GitStageChangeTip(), pal) {
-					text := applyLines(d.Old, d.New, d.Hunks(), inHunk(h.Hunk), indexEnding(sf))
+					text := applyLines(d, d.Hunks(), inHunk(h.Hunk), indexEnding(sf))
 					h.Keep()
 					a.writeIndex(sf, text)
 				}
@@ -1975,7 +1975,7 @@ func (a *App) revertChange(sf *sideFile, h *editor.DiffHunkActions) {
 			a.toast(locales.GitChangeMoved())
 			return
 		}
-		text := applyLines(d.Old, d.New, d.Hunks(), not(inHunk(hunk)), d.New.LineEnding())
+		text := applyLines(d, d.Hunks(), not(inHunk(hunk)), d.New.LineEnding())
 		d.Revert(i)
 		a.writeBack(sf, text, anyway)
 	})

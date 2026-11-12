@@ -1107,6 +1107,15 @@ func TestChangesTreeFolderTools(t *testing.T) {
 	// A folder's buttons are in line with its section title's.
 	at := func(button, row string) {
 		t.Helper()
+		// The operation before ends and its index comes as frames go,
+		// moving the rows: find them once they settled.
+		for range 300 {
+			tt.Frame()
+			if a.side.git.op == nil && len(ch.moves) == 0 && !ch.busy {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 		b, ok := tt.Find(button)
 		r, ok2 := tt.Find(row)
 		if !ok || !ok2 {
