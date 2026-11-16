@@ -1827,14 +1827,12 @@ func (a *App) showText(sf *sideFile, t proto.GitText) {
 
 // replaceText makes a buffer's text text by one edit of what differs
 // between them, on whole characters. The buffer holds its lines ending in
-// \n, and the ending the text has besides.
+// \n, a lone \r breaking a line too, and the ending most of the text's
+// lines have besides.
 func replaceText(b *editor.Buffer, text string) {
-	if strings.Contains(text, "\r\n") {
-		b.SetLineEnding("\r\n")
-		text = strings.ReplaceAll(text, "\r\n", "\n")
-	} else {
-		b.SetLineEnding("\n")
-	}
+	read := editor.NewBuffer(text)
+	b.SetLineEnding(read.LineEnding())
+	text = read.String()
 	cur := b.String()
 	if cur == text {
 		return

@@ -154,14 +154,21 @@ func TestSidePanel(t *testing.T) {
 	shot(t, tt, "side-list-dark")
 }
 
+// A text replaced is written as it is, in its line endings, a lone \r
+// breaking a line too, and the same text again edits nothing.
 func TestReplaceText(t *testing.T) {
 	for _, c := range []struct{ from, to string }{
 		{"abc", "abc"}, {"abc", "abXc"}, {"abc", ""}, {"", "x"}, {"héllo", "hállo"}, {"日本語", "日本人語"}, {"aaa", "aa"},
+		{"a\nb\n", "a\r\nX\r\n"}, {"a\r\nb\r\n", "a\nb\nc\n"}, {"a\rb\r", "a\rB\rc\r"}, {"a\rb\r", "a\rb\r"},
 	} {
 		b := editor.NewBuffer(c.from)
+		v := b.Snapshot().Version()
 		replaceText(b, c.to)
-		if got := b.String(); got != c.to {
+		if got := bufferText(b); got != c.to {
 			t.Errorf("%q → %q: got %q", c.from, c.to, got)
+		}
+		if c.from == c.to && b.Snapshot().Version() != v {
+			t.Errorf("%q again: edited", c.to)
 		}
 	}
 }

@@ -59,12 +59,21 @@ func testApplyLines(t *testing.T, editable bool) {
 		t.Errorf("unstaged %q", got)
 	}
 
-	// A new file's lines, staged one by one.
-	d = &editor.DiffState{Old: editor.NewBuffer(""), New: editor.NewBuffer("x\ny\n"), Editable: editable}
+	// A new file's lines, staged one by one, with their own endings.
+	d = &editor.DiffState{Old: editor.NewBuffer(""), New: editor.NewBuffer("x\r\ny\r\n"), Editable: editable}
 	hunks = d.Hunks()
 	chosen, n := chosenLines(hunks, []editor.DiffLineRange{newLines(1, 1)})
-	if got := applyLines(d, hunks, withEnding(d.New, chosen), "\r\n"); got != "y\r\n" || n != 1 {
+	if got := applyLines(d, hunks, withEnding(d.New, chosen), "\n"); got != "y\r\n" || n != 1 {
 		t.Errorf("a new file's second line staged as %q, %d lines; hunks %+v", got, n, hunks)
+	}
+
+	// A file of mixed line endings: each line staged keeps its own, and
+	// those left as they were theirs, a lone \r too.
+	d = &editor.DiffState{Old: editor.NewBuffer("one\r\ntwo\nthree\rfour\n"), New: editor.NewBuffer("one\r\nTWO\nthree\rfour\nfive\r\n"), Editable: editable}
+	hunks = d.Hunks()
+	chosen, _ = chosenLines(hunks, []editor.DiffLineRange{newLines(4, 4)})
+	if got, want := applyLines(d, hunks, withEnding(d.New, chosen), "\n"), "one\r\ntwo\nthree\rfour\nfive\r\n"; got != want {
+		t.Errorf("a line of mixed endings staged as %q, want %q; hunks %+v", got, want, hunks)
 	}
 }
 
