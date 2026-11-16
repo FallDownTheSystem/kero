@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"path"
 	"slices"
 	"strings"
@@ -552,20 +553,26 @@ func chosenLines(hunks []editor.DiffHunk, sel []editor.DiffLineRange) (func(edit
 // applyLines is the old text of the diff d with the changes take chooses
 // made: of its lines, those removed it takes go, and of the new ones,
 // those added it takes come, in their change's place, each after the old
-// line at its place in the change, which it would replace; with ending's
-// line endings. An editable diff compares lines without their endings:
-// a text that ends in one has a last line that is empty, which taking or
-// not keeps the ending or drops it, and an empty text has no line, though
-// its buffer holds an empty one. One that is not, as a staged change's,
-// compares them with their endings, as git does, and has no line after a
-// final ending: each line keeps its own, but a text's last without one.
+// line at its place in the change, which it would replace. Each line
+// keeps its own line ending, as git add -p keeps it, and a text's last
+// line, which has none, ends with ending when a line comes after it. An
+// editable diff compares lines without their endings: a text that ends
+// in one has a last line that is empty, which taking or not keeps the
+// ending or drops it, and an empty text has no line, though its buffer
+// holds an empty one. One that is not, as a staged change's, compares
+// them with their endings, as git does, and has no line after a final
+// ending: its last line taken keeps its own.
 func applyLines(d *editor.DiffState, hunks []editor.DiffHunk, take func(editor.DiffSide, int) bool, ending string) string {
 	old, new, eol := d.Old, d.New, !d.Editable
-	var out []string
-	ends := false // whether the last line taken keeps its ending
+	var out strings.Builder
+	taken := false
+	end := "" // the ending of the last line taken
 	add := func(b *editor.Buffer, l int) {
-		out = append(out, b.Line(l))
-		ends = eol && l < b.LineCount()-1
+		if taken {
+			out.WriteString(cmp.Or(end, ending))
+		}
+		out.WriteString(b.Line(l))
+		taken, end = true, b.LineEndingOf(l)
 	}
 	pos := 0
 	n := old.LineCount()
@@ -589,11 +596,10 @@ func applyLines(d *editor.DiffState, hunks []editor.DiffHunk, take func(editor.D
 	for l := pos; l < n; l++ {
 		add(old, l)
 	}
-	text := strings.Join(out, ending)
-	if ends {
-		text += ending
+	if eol {
+		out.WriteString(end)
 	}
-	return text
+	return out.String()
 }
 
 // inHunk takes the lines of a change alone, both its old and its new: as

@@ -120,7 +120,7 @@ func (a *App) readMerge(pm *paneMerge, pane, rel, stamp string, f *fileView) {
 
 // resetText sets a version's text, when it changed.
 func resetText(b *editor.Buffer, text string) {
-	if b.String() != strings.ReplaceAll(text, "\r\n", "\n") {
+	if b.String() != editor.NewBuffer(text).String() {
 		b.Reset(text)
 	}
 }
