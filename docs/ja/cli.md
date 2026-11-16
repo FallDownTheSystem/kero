@@ -42,6 +42,7 @@ kero worktree status             # このセッションのワークツリー、
 kero worktree handoff fix-login  # このエージェントのセッションを専用のワークツリーに移す
 kero new --orchestrator --goal "ログインページを出す"   # 子セッションを開始するオーケストレーター
 kero orchestrator backend [on|off]  # セッションをオーケストレーターにする、または戻す
+kero parent fix-login boss       # 開いているセッションをオーケストレーター boss の子にする（none で解除）
 kero close boss --children       # オーケストレーターとその子を閉じる
 kero report --to-parent "完了: テスト成功"   # 子の要約をオーケストレーターへ
 ```
@@ -209,9 +210,10 @@ kero history -p kero -n 50       # ひとつのプロジェクトの会話を、
 kero history login --json        # 「login」に一致するものを JSON で
 kero resume 13b9                 # 再開する: ID、その先頭部分、または名前で
 kero resume fix-login -f         # 再開して、アプリに表示する
+kero resume 13b9 --parent boss   # オーケストレーター boss の子として（none ならどれの子でもなく）
 ```
 
-`kero resume` は、その会話を再開するセッションを会話のディレクトリとプロジェクトで開始し、セッションの ID を表示します。まだペインで動いている会話なら、そのセッションを返します。[過去の会話](./sessions.md#past-conversations)を参照してください。
+`kero resume` は、その会話を再開するセッションを会話のディレクトリとプロジェクトで開始し、セッションの ID を表示します。まだペインで動いている会話なら、そのセッションを返します。子だった会話は、そのオーケストレーターが開いているかぎり再びその子になり、オーケストレーターから再開した会話は `kero new` と同じくその子になります。`--parent` で指定できます。[過去の会話](./sessions.md#past-conversations)を参照してください。
 
 ## 状態
 

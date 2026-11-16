@@ -67,6 +67,11 @@ Usage:
                                 given the role prompt, or with off an
                                 ordinary session again, whose children
                                 become top-level sessions
+  kero parent <session> [orchestrator|none]
+                                make an open session a child of an
+                                orchestrator (default: this session's, run
+                                in an orchestrator or in a child of one),
+                                or with none a top-level session
   kero split [target] [options] [-- cmd…]
                                 start a pane beside a pane, printing its id
       --right (default), --down, --left, --up
@@ -183,10 +188,13 @@ Usage:
   kero history [query] [-p project] [-n count] [--json]
                                 the agents' conversations panes ran, the
                                 last to run first, to resume
-  kero resume <conversation> [-f]
+  kero resume <conversation> [-f] [--parent <session|none>]
                                 start a session resuming a conversation
                                 (its id, a prefix of it, or its name), or
-                                show the one running it, printing its id
+                                show the one running it, printing its id;
+                                a child again of the orchestrator it was a
+                                child of, while that is open, or of this
+                                session's, as kero new
   kero rename <session> <name>
   kero focus <target>           show a session (and pane) in the app
   kero close <target>           end a session (or, given a pane, the pane)
@@ -378,7 +386,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "projects", "skill", "hook", "inbox", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "parent", "projects", "skill", "hook", "inbox", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -1123,12 +1131,20 @@ func run(args []string, host string) error {
 		return nil
 
 	case "resume":
-		f, err := parse(args, nil, map[string]string{"f": "focus", "focus": "focus", "json": "json"})
+		f, err := parse(args, map[string]string{"parent": "parent"}, map[string]string{"f": "focus", "focus": "focus", "json": "json"})
 		if err != nil {
 			return err
 		}
 		if len(f.pos) == 0 {
-			return usageErr("kero resume <conversation> (see kero history)")
+			return usageErr("kero resume <conversation> [--parent <session|none>] (see kero history)")
+		}
+		parent := f.vals["parent"]
+		if parent != "" && parent != proto.NoParent {
+			pt, err := find(st, parent)
+			if err != nil {
+				return err
+			}
+			parent = pt.s.ID
 		}
 		list, err := conversations(c, st, "", "")
 		if err != nil {
@@ -1139,7 +1155,7 @@ func run(args []string, host string) error {
 			return err
 		}
 		var s proto.Session
-		if err := c.Call("conversation.resume", proto.ConversationParams{Agent: conv.Agent, ID: conv.ID, After: os.Getenv("KERO_SESSION")}, &s); err != nil {
+		if err := c.Call("conversation.resume", proto.ConversationParams{Agent: conv.Agent, ID: conv.ID, After: os.Getenv("KERO_SESSION"), Parent: parent, By: current()}, &s); err != nil {
 			return err
 		}
 		if f.set["focus"] {
@@ -1264,6 +1280,43 @@ func run(args []string, host string) error {
 			fmt.Printf("session %s is an orchestrator, but runs no agent Kero knows to give the role prompt to\n", s.ID)
 		default:
 			fmt.Printf("session %s is an orchestrator: its agent gets the role prompt\n", s.ID)
+		}
+		return nil
+
+	case "parent":
+		f, err := parse(args, nil, map[string]string{"json": "json"})
+		if err != nil {
+			return err
+		}
+		if len(f.pos) < 1 || len(f.pos) > 2 {
+			return usageErr("kero parent <session> [orchestrator|none]")
+		}
+		t, err := find(st, f.pos[0])
+		if err != nil {
+			return err
+		}
+		p := proto.ParentParams{ID: t.s.ID, By: current()}
+		if len(f.pos) == 2 {
+			p.Parent = f.pos[1]
+			if p.Parent != proto.NoParent {
+				o, err := find(st, p.Parent)
+				if err != nil {
+					return err
+				}
+				p.Parent = o.s.ID
+			}
+		}
+		var s proto.Session
+		if err := c.Call("parent", p, &s); err != nil {
+			return err
+		}
+		if f.set["json"] {
+			return printJSON(s)
+		}
+		if s.Parent == "" {
+			fmt.Printf("session %s is a top-level session\n", s.ID)
+		} else {
+			fmt.Printf("session %s is a child of orchestrator %s\n", s.ID, s.Parent)
 		}
 		return nil
 

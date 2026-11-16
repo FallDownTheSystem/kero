@@ -262,6 +262,61 @@ func (d *Daemon) childRoomLocked(o *session, most int) error {
 	return nil
 }
 
+// setParent makes a session a child of an orchestrator, in its project
+// right after its other children, or with NoParent of none (rpc parent):
+// as kero new would have, with the same rules, one level and
+// orchestrator-max-children.
+func (d *Daemon) setParent(p proto.ParentParams) (proto.Session, error) {
+	d.mu.Lock()
+	s := d.findSessionLocked(p.ID)
+	if s == nil {
+		d.mu.Unlock()
+		return proto.Session{}, fmt.Errorf("no session %q", p.ID)
+	}
+	if p.Parent == proto.NoParent {
+		s.parent = ""
+	} else if err := d.adoptLocked(s, p); err != nil {
+		d.mu.Unlock()
+		return proto.Session{}, err
+	}
+	info := d.sessionInfo(s)
+	d.mu.Unlock()
+	d.changed()
+	return info, nil
+}
+
+// adoptLocked makes s a child of p's orchestrator; d.mu is held.
+func (d *Daemon) adoptLocked(s *session, p proto.ParentParams) error {
+	switch {
+	case s.ama:
+		return errors.New("Ama's session is no orchestrator's child")
+	case s.orchestrator:
+		return errors.New("an orchestrator is no other's child: there is one level of them")
+	}
+	o, err := d.newParentLocked(proto.CreateParams{Parent: p.Parent, By: p.By})
+	if err != nil {
+		return err
+	}
+	if o == nil {
+		return errors.New("which orchestrator? name one, or run it from an orchestrator's session or a child's")
+	}
+	if o == s || d.parentLocked(s) == o.id {
+		return nil
+	}
+	if err := d.childRoomLocked(o, settings.Load().OrchestratorMaxChildren); err != nil {
+		return err
+	}
+	i := slices.Index(d.sessions, s)
+	d.sessions = slices.Delete(d.sessions, i, i+1)
+	last := o
+	if kids := d.childrenLocked(o); len(kids) > 0 {
+		last = kids[len(kids)-1]
+	}
+	d.sessions = slices.Insert(d.sessions, slices.Index(d.sessions, last)+1, s)
+	s.parent, s.project = o.id, o.project
+	return nil
+}
+
 // orchestratorCommand is the command an orchestrator starts: its agent,
 // command or the default-agent setting's, with orchestrator-agent-args,
 // given the role prompt.

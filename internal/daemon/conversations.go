@@ -193,12 +193,12 @@ func (cs *convStore) find(agent, id string) (proto.Conversation, bool) {
 
 // paneConversation is what a pane tells of the conversation its agent
 // runs, nil for none; p.mu is held. name is its session's.
-func paneConversation(p *pane, project, name string) *proto.Conversation {
+func paneConversation(p *pane, project, name, parent string) *proto.Conversation {
 	as := p.info.AgentSession
 	if as == nil {
 		return nil
 	}
-	c := &proto.Conversation{Agent: as.Agent, ID: as.ID, Dir: p.info.WorkDir(), Project: project, Name: name}
+	c := &proto.Conversation{Agent: as.Agent, ID: as.ID, Dir: p.info.WorkDir(), Project: project, Name: name, Parent: parent}
 	if t := proto.CleanTitle(p.info.Title); t != "" && !genericTitle(t, as.Agent) {
 		c.Title = t
 	}
@@ -224,7 +224,7 @@ func (d *Daemon) noteConversations() {
 	for _, s := range d.sessions {
 		for _, p := range s.panes {
 			p.mu.Lock()
-			if c := paneConversation(p, s.project, s.name); c != nil {
+			if c := paneConversation(p, s.project, s.name, d.parentLocked(s)); c != nil {
 				// When it last wrote: a conversation left at its prompt
 				// for a day ran a day ago.
 				all = append(all, seen{*c, min(max(p.info.Activity, p.info.Created), now)})
@@ -241,11 +241,12 @@ func (d *Daemon) noteConversations() {
 // noteEnded remembers the conversation of a pane whose agent ends, or
 // whose pane closes, now; p.mu is held.
 func (d *Daemon) noteEnded(p *pane) {
-	if c := paneConversation(p, "", ""); c != nil {
-		// The session's name and project stay as last noted.
+	if c := paneConversation(p, "", "", ""); c != nil {
+		// The session's name, project and orchestrator stay as last
+		// noted.
 		old, ok := d.convs.find(c.Agent, c.ID)
 		if ok {
-			c.Name = old.Name
+			c.Name, c.Parent = old.Name, old.Parent
 		}
 		d.convs.note(*c, time.Now().UnixMilli())
 		// Ended, it moves to the sidebar's Ended, if it shows.
@@ -376,9 +377,13 @@ func (d *Daemon) resumeConversation(p proto.ConversationParams) (proto.Session, 
 	// A conversation of Ama's folder goes on as Ama's, in its place, with
 	// the arguments Ama's agent gets.
 	isAma := p.Ama || ama.Within(c.Dir)
+	parent := ""
+	if !isAma {
+		parent = d.resumeParent(p, c)
+	}
 	info, err := d.create(proto.CreateParams{
 		Project: project, Name: c.Name, Dir: c.Dir, Command: withArgs(resumeCommand(&as), roleArgs(settings.Load(), isAma, false)), After: p.After, Cols: p.Cols, Rows: p.Rows,
-		Ama: isAma,
+		Ama: isAma, Parent: parent,
 	})
 	if err != nil {
 		return info, err
@@ -400,6 +405,31 @@ func (d *Daemon) resumeConversation(p proto.ConversationParams) (proto.Session, 
 	d.changed()
 	d.log.Printf("session %s resumes %s conversation %s", info.ID, c.Agent, c.ID)
 	return info, nil
+}
+
+// resumeParent is the orchestrator the session resuming conversation c is
+// a child of, as CreateParams' Parent: p.Parent's; else the one c last
+// was a child of, while it is open and has room for it (a full one
+// leaves it top-level rather than refuse the resume); else, as kero new
+// from an orchestrator or a child of one, By's.
+func (d *Daemon) resumeParent(p proto.ConversationParams, c proto.Conversation) string {
+	if p.Parent != "" {
+		return p.Parent
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if o := d.sessionByIDLocked(c.Parent); o != nil && o.orchestrator {
+		if err := d.childRoomLocked(o, settings.Load().OrchestratorMaxChildren); err == nil {
+			return o.id
+		}
+		d.log.Printf("conversation %s resumes outside orchestrator %s, which is full", c.ID, o.id)
+	}
+	if p.By != "" {
+		if o, _ := d.newParentLocked(proto.CreateParams{By: p.By}); o != nil {
+			return o.id
+		}
+	}
+	return ""
 }
 
 // errNoTranscript: Claude Code keeps no transcript of the conversation.
