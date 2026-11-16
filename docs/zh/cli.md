@@ -42,6 +42,7 @@ kero worktree status             # 本会话的工作树、设置、拉取请求
 kero worktree handoff fix-login  # 把这个代理的会话移入专属工作树
 kero new --orchestrator --goal "上线登录页"   # 启动编排器，由它启动子会话
 kero orchestrator backend [on|off]  # 把会话设为编排器，或改回普通会话
+kero parent fix-login boss       # 让已打开的会话成为编排器 boss 的子会话（none 表示解除）
 kero close boss --children       # 关闭编排器及其子会话
 kero report --to-parent "完成：测试通过"   # 子会话把总结发给编排器
 ```
@@ -215,9 +216,10 @@ kero history -p kero -n 50       # 某个项目的对话，最多 50 个
 kero history login --json        # 与 “login” 匹配的对话，输出 JSON
 kero resume 13b9                 # 恢复一个对话：用 ID、ID 的前缀或名字
 kero resume fix-login -f         # 恢复并在 app 中显示
+kero resume 13b9 --parent boss   # 作为编排器 boss 的子会话（none 表示不属于任何编排器）
 ```
 
-`kero resume` 会在对话的目录和项目中启动一个恢复该对话的会话，并打印会话的 ID。如果某个窗格仍在运行这个对话，则返回那个会话。参见 [过去的对话](./sessions.md#past-conversations)。
+`kero resume` 会在对话的目录和项目中启动一个恢复该对话的会话，并打印会话的 ID。如果某个窗格仍在运行这个对话，则返回那个会话。子会话的对话在其编排器仍打开时会再次成为它的子会话；从编排器中恢复的对话会像 `kero new` 一样成为它的子会话。可用 `--parent` 指定。参见 [过去的对话](./sessions.md#past-conversations)。
 
 ## 状态
 

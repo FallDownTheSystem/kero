@@ -42,6 +42,7 @@ kero worktree status             # this session's worktree, setup, pull request,
 kero worktree handoff fix-login  # move this agent's session into a worktree of its own
 kero new --orchestrator --goal "Ship the login page"   # an orchestrator, which starts child sessions
 kero orchestrator backend [on|off]  # make a session an orchestrator, or an ordinary one again
+kero parent fix-login boss       # make an open session a child of orchestrator boss (none: of none)
 kero close boss --children       # an orchestrator and its children
 kero report --to-parent "Done: tests pass"   # a child's summary, to its orchestrator
 ```
@@ -214,9 +215,10 @@ kero history -p kero -n 50       # one project's, up to 50
 kero history login --json        # those matching "login", as JSON
 kero resume 13b9                 # resume one: its id, a prefix of it, or its name
 kero resume fix-login -f         # and show it in the app
+kero resume 13b9 --parent boss   # as a child of orchestrator boss (none: of none)
 ```
 
-`kero resume` starts a session that resumes the conversation, in its directory and project, and prints the session's id. A conversation a pane still runs gives that session instead. See [Past conversations](./sessions.md#past-conversations).
+`kero resume` starts a session that resumes the conversation, in its directory and project, and prints the session's id. A conversation a pane still runs gives that session instead. A child's conversation is its orchestrator's child again while that is open, and one resumed from an orchestrator becomes its child, as with `kero new`; `--parent` sets it. See [Past conversations](./sessions.md#past-conversations).
 
 ## Status
 

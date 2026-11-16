@@ -302,6 +302,9 @@ type Conversation struct {
 	// Archived: the user moved it to the sidebar's Archived, until it
 	// runs again.
 	Archived bool `json:"archived,omitempty"`
+	// Parent is the orchestrator whose child its session last was, which
+	// resuming it, while that orchestrator is open, makes it again.
+	Parent string `json:"parent,omitempty"`
 }
 
 // Label is what to call a conversation: its session's name, else its
@@ -857,6 +860,15 @@ type (
 		Off  bool    `json:"off,omitempty"`
 		Goal *string `json:"goal,omitempty"`
 	}
+	// ParentParams makes session ID a child of orchestrator Parent, or of
+	// By's orchestrator when Parent is "", or with NoParent of none
+	// (rpc parent): a link an orchestrator repairs, or makes, after the
+	// session started.
+	ParentParams struct {
+		ID     string `json:"id"`
+		Parent string `json:"parent,omitempty"`
+		By     string `json:"by,omitempty"`
+	}
 	IDParams struct {
 		ID string `json:"id"`
 	}
@@ -1167,6 +1179,11 @@ type (
 		Cols     int    `json:"cols,omitempty"`
 		Rows     int    `json:"rows,omitempty"`
 		Archived bool   `json:"archived,omitempty"`
+		// Parent and By are CreateParams': the session resuming it is a
+		// child as kero new's is; else of the orchestrator it last was a
+		// child of (Conversation.Parent), while that is open.
+		Parent string `json:"parent,omitempty"`
+		By     string `json:"by,omitempty"`
 	}
 	// SearchParams asks for the conversations a query finds in the agents'
 	// histories (conversation.search), the Limit best; Preview asks for

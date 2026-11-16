@@ -65,6 +65,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.setOrchestrator(p)
 
+	case "parent":
+		var p proto.ParentParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.setParent(p)
+
 	case "worktree.setup.cancel":
 		var p proto.IDParams
 		if err := decode(&p); err != nil {

@@ -3,6 +3,7 @@ package daemon
 import (
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -419,5 +420,136 @@ func TestOrchestratorReportKept(t *testing.T) {
 	d.reports.mu.Unlock()
 	if rp != nil {
 		t.Errorf("kept for an orchestrator gone: %+v", rp)
+	}
+}
+
+// A child's conversation resumed is a child again of the orchestrator it
+// was a child of, while that is open; --parent none makes it none's, and
+// one resumed from an orchestrator, as kero new, its child.
+func TestResumeAsChild(t *testing.T) {
+	d := testDaemon(t)
+	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
+	d.projects = append(d.projects, proto.Project{ID: "other", Name: "other", Dir: t.TempDir()})
+	o := quietSession(t, d, proto.CreateParams{Project: "other"})
+	makeOrchestrator(d, o.ID, "")
+	conv := func(id string, p proto.CreateParams) {
+		t.Helper()
+		s := quietSession(t, d, p)
+		pn := d.findPane(s.Panes[0].ID)
+		pn.mu.Lock()
+		pn.info.AgentSession = &proto.AgentSession{Agent: "claude", ID: id}
+		pn.mu.Unlock()
+		d.conversations()
+		// Gone, as in a crash none of it came back from.
+		if err := d.removeSession(s.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	resume := func(id string, p proto.ConversationParams) proto.Session {
+		t.Helper()
+		p.Agent, p.ID = "claude", id
+		s, err := d.resumeConversation(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d.conversations()
+		if err := d.removeSession(s.ID); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	conv("kid", proto.CreateParams{By: o.ID, Dir: d.projects[0].Dir})
+	conv("solo", proto.CreateParams{Dir: d.projects[0].Dir})
+	if s := resume("kid", proto.ConversationParams{}); s.Parent != o.ID || s.Project != "other" {
+		t.Errorf("resumed a child as parent %q, project %q", s.Parent, s.Project)
+	}
+	if s := resume("solo", proto.ConversationParams{}); s.Parent != "" {
+		t.Errorf("resumed a top-level session as %q's child", s.Parent)
+	}
+	if s := resume("kid", proto.ConversationParams{Parent: proto.NoParent}); s.Parent != "" {
+		t.Errorf("--parent none: a child of %q", s.Parent)
+	}
+	// Resumed none's above, it is remembered so.
+	if s := resume("kid", proto.ConversationParams{}); s.Parent != "" {
+		t.Errorf("resumed as %q's child after it was none's", s.Parent)
+	}
+	if s := resume("solo", proto.ConversationParams{By: o.Panes[0].ID}); s.Parent != o.ID {
+		t.Errorf("resumed from the orchestrator as %q's child", s.Parent)
+	}
+	// Its orchestrator closed, a child resumes top-level.
+	d.removeSession(o.ID)
+	if s := resume("solo", proto.ConversationParams{}); s.Parent != "" {
+		t.Errorf("a child of %q, closed", s.Parent)
+	}
+}
+
+// kero parent makes an open session a child of an orchestrator, after
+// its others and in its project, or of none; one level and
+// orchestrator-max-children hold.
+func TestSetParent(t *testing.T) {
+	d := testDaemon(t)
+	d.projects = append(d.projects, proto.Project{ID: "other", Name: "other", Dir: t.TempDir()})
+	o := quietSession(t, d, proto.CreateParams{Project: "other"})
+	makeOrchestrator(d, o.ID, "")
+	k := quietSession(t, d, proto.CreateParams{By: o.ID})
+	tail := quietSession(t, d, proto.CreateParams{Project: "other"})
+	x := quietSession(t, d, proto.CreateParams{})
+	s, err := d.setParent(proto.ParentParams{ID: x.ID, By: k.Panes[0].ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Parent != o.ID || s.Project != "other" {
+		t.Errorf("adopted: parent %q, project %q", s.Parent, s.Project)
+	}
+	d.mu.Lock()
+	var order []string
+	for _, s := range d.sessions {
+		order = append(order, s.id)
+	}
+	d.mu.Unlock()
+	if i := slices.Index(order, x.ID); i < 1 || order[i-1] != k.ID || order[i+1] != tail.ID {
+		t.Errorf("order %v: not after %s, its orchestrator's last child", order, k.ID)
+	}
+	if s, err := d.setParent(proto.ParentParams{ID: x.ID, Parent: proto.NoParent}); err != nil || s.Parent != "" {
+		t.Errorf("none: %q, %v", s.Parent, err)
+	}
+	if _, err := d.setParent(proto.ParentParams{ID: o.ID, By: k.Panes[0].ID}); err == nil {
+		t.Error("an orchestrator became a child")
+	}
+	if _, err := d.setParent(proto.ParentParams{ID: x.ID, Parent: tail.ID}); err == nil {
+		t.Error("a child of no orchestrator")
+	}
+	if err := os.WriteFile(os.Getenv("KERO_CONFIG"), []byte("orchestrator-max-children = 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.setParent(proto.ParentParams{ID: x.ID, Parent: o.ID}); err == nil {
+		t.Error("past orchestrator-max-children")
+	}
+}
+
+// Restored after kerod restarts, as after a crash, a child is its
+// orchestrator's child still.
+func TestRestoreKeepsChild(t *testing.T) {
+	d := testDaemon(t)
+	o := quietSession(t, d, proto.CreateParams{})
+	makeOrchestrator(d, o.ID, "")
+	k := quietSession(t, d, proto.CreateParams{By: o.ID})
+	d.saveState()
+	r := testDaemon(t)
+	r.dir = d.dir
+	r.restore()
+	t.Cleanup(func() {
+		for _, id := range []string{o.ID, k.ID} {
+			r.removeSession(id)
+		}
+	})
+	r.mu.Lock()
+	restored := r.sessionByIDLocked(k.ID) != nil && r.sessionByIDLocked(o.ID) != nil
+	r.mu.Unlock()
+	if !restored {
+		t.Fatal("not restored")
+	}
+	if s := sessionOf(r, k.ID); s.Parent != o.ID {
+		t.Errorf("restored with parent %q, not %s", s.Parent, o.ID)
 	}
 }

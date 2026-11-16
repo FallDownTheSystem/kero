@@ -70,7 +70,7 @@ so on stderr.
     kero events [target] [--for waiting,error] [--json]
                                               # a line per change, as it happens
     kero history [query] [--json]             # agents' past conversations, to resume
-    kero resume <conversation>                # a session resuming one
+    kero resume <conversation> [--parent <session|none>]  # a session resuming one
     kero read <target> [-n 40] [-a]           # the screen, or with scrollback
     kero status <target> --json               # status, program, directory
     kero ls                                   # every session and pane here
@@ -120,6 +120,8 @@ lists. Kero's hook tells you when you are one, or a child of one.
     kero orchestrator [session] [on|off] [--goal <text>]  # make one, or undo it
     kero new -n login-form --worktree login-form -- claude "<task>"  # as an orchestrator: a child
     kero new --parent none -- npm run dev     # a session that is no child
+    kero resume <conversation>                # as an orchestrator: a child's conversation, your child again
+    kero parent <session> [orchestrator|none] # make an open session a child, or none's
     kero report --to-parent "Done: the form posts; tests pass"   # as a child: your result
     kero close <child>                        # a child that is done
     kero close <orchestrator> --children      # it and its children
@@ -137,7 +139,13 @@ When a report needs nothing from you, as a child gone idle with nothing
 to act on, reply just "OK": no summary of it.
 There is one level: a child's kero new starts another child of the same
 orchestrator, and orchestrator-max-children may refuse more running at
-once. As a child, end each turn with what your orchestrator needs, your
+once. A child's conversation resumed (kero resume, as after a crash) is
+its orchestrator's child again while that is open, and kero resume from
+an orchestrator makes the session its child (--parent none: none's). A
+session that lost its link becomes a child again with kero parent <id>,
+run from the orchestrator. Don't have a child report with kero prompt
+instead: those read as the user's words, and only a child's waits,
+idles and failures reach its orchestrator. As a child, end each turn with what your orchestrator needs, your
 result or your question: Kero sends it the last reply of each turn, and
 tells it when you wait or fail. Once your task is done, send it a short
 summary with kero report --to-parent.
