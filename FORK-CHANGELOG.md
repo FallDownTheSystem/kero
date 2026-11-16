@@ -5,6 +5,26 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.14
+
+Built on MyGo 0.9.1, MyGo's latest release, with the fork's MyGo changes
+on top. It brings MyGo's changes since 0.9.0, among them a large diff
+(over 10,000 lines) compared in the background, so that opening one no
+longer stalls the window: its changes show a moment later; a file
+opened and saved keeping each line's own line ending, CRLF, LF, CR or
+mixed, and a lone CR breaking a line; a link that wraps onto the next
+rows of the terminal opening whole; the find bar fitting narrow
+editors; brackets and quotes paired around Chinese and Japanese text;
+Backspace taking a combining mark alone; deleting a file too big for
+the Recycle Bin failing rather than deleting it for good; and update
+checks and downloads that no longer hang when the network drops.
+
+- Staging, unstaging or discarding chosen lines of a change keeps each
+  line's own line ending, a lone CR too, rather than giving every line
+  of the file the same one
+- A file whose lines end in a lone CR no longer changes its diff or
+  viewer each time it is read again
+
 ## 2.1.35-fork.13
 
 Built on MyGo 0.9.0, MyGo's latest release, past the commit Kero 2.1.35
