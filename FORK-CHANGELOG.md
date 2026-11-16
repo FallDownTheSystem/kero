@@ -5,6 +5,26 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.15
+
+- A child's conversation resumed (kero resume, History, or Kero's restore
+  after a restart or a crash) is its orchestrator's child again, while
+  that orchestrator is open and has room for it. Kero remembers which
+  orchestrator a conversation's session was a child of. Before, kero
+  resume started it as a top-level session, which could no longer send
+  kero report --to-parent, and whose waits and idles its orchestrator
+  never heard of
+- kero resume run from an orchestrator, or from one of its children,
+  makes the resumed session its child, as kero new does, and takes
+  --parent <session|none>
+- kero parent <session> [orchestrator|none] makes a session that is
+  already open a child of an orchestrator, in its project and under its
+  other children, or a top-level session again; one level and
+  orchestrator-max-children hold as for kero new
+- The orchestrator's role prompt and Kero's skill say to resume children
+  with kero resume, to repair a lost link with kero parent, and never to
+  have a child report with kero prompt, which reads as the user's words
+
 ## 2.1.35-fork.14
 
 Built on MyGo 0.9.1, MyGo's latest release, with the fork's MyGo changes
