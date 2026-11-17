@@ -5,6 +5,17 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.16
+
+Built on MyGo 0.9.2, MyGo's latest release, with the fork's MyGo changes
+on top. It brings MyGo's changes since 0.9.1, among them, on Windows:
+a Kero that quit no longer stays behind as a process when an input
+method's window closes with it, which kept an update's relaunch from
+removing the old executable; a Kero started while the last one is still
+quitting (after a quit, a relaunch or an update) waits for it to end
+rather than running beside it; and a web view's iframes of another
+origin load the scripts, styles and fetches of the app's own schemes.
+
 ## 2.1.35-fork.15
 
 - A child's conversation resumed (kero resume, History, or Kero's restore
