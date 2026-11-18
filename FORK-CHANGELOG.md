@@ -5,6 +5,22 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.35-fork.17
+
+Built on MyGo 0.10.0, MyGo's latest release, with the fork's MyGo changes
+on top. It brings MyGo's changes since 0.9.2, among them, on Windows: a
+finger on a touchscreen scrolls Kero's own views rather than pressing
+and selecting, two fingers pinch and scroll, a tap clicks and press and
+hold right-clicks, while a finger on the title bar still moves the
+window and web views take touch as before; a triple click in a
+multi-line input, such as the commit message, or in selectable text
+selects the whole paragraph rather than the one line it wrapped onto;
+text pasted with old Mac line endings (a lone CR) breaks lines in a
+multi-line input rather than drawing them over each other; a dropdown
+whose list is taller than the window scrolls inside it rather than
+running past its edge; and Arabic and Persian marks are drawn where
+they belong.
+
 ## 2.1.35-fork.16
 
 Built on MyGo 0.9.2, MyGo's latest release, with the fork's MyGo changes
