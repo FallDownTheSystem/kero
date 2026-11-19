@@ -17,7 +17,9 @@ The buttons above the tree make a new file or folder at its top, search the file
 
 The **Filter** field under them finds files and folders by name in all of the folder, its closed folders too, and shows them in the folders they're in. Type a slash to match paths instead, as `src/main`. Folders git ignores, such as `node_modules`, are found by their name, but not searched. <kbd>↓</kbd> or <kbd>Return</kbd> (<kbd>Enter</kbd>) opens the first file found, and <kbd>Esc</kbd> clears the filter.
 
-A file's menu also opens it in an editor pane of its own, and shows its history; a folder's opens a terminal there. Both open in your editor, with another app on Windows, or in File Explorer or Finder, and copy the path, or the path from the worktree. Drag a file onto a pane to open it in an editor pane beside it, or in an editor pane's place. Your editor is the `editor` setting, as `code` or `zed`, or else the app the system opens the file with.
+A file's menu also opens it in an editor pane of its own, and shows its history; a folder's opens a terminal there. Both open in your editor, with another app on Windows, or in File Explorer or Finder, copy the path, or the path from the worktree, and send the path to the agent in the pane: typed there without <kbd>Return</kbd> (<kbd>Enter</kbd>), for you to finish the sentence. Your editor is the `editor` setting, as `code` or `zed`, or else the app the system opens the file with.
+
+Drag a file onto a pane to open it in an editor pane beside it, or in an editor pane's place, and a folder to open a terminal there beside it. On a terminal, a file or folder dropped in the middle types its path instead, quoted for the pane's shell, as a file dropped from File Explorer or Finder does; near the terminal's left, right or top edge it opens beside it. Drop files or folders from File Explorer or Finder on a folder in the tree to copy them into it, on a file to copy them beside it, or below the rows to copy them into the root. If a name is already there, Kero asks whether to replace it or skip it. On a remote host this doesn't work yet.
 
 <a id="editing"></a>
 

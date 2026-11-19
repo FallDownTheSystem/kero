@@ -52,7 +52,7 @@ A file, or a local page, that a pane of the session already shows isn't split ag
 
 An editor pane shows a file beside your terminals, highlighted as its language is, to read and edit: <kbd>⌘</kbd> <kbd>S</kbd> (<kbd>Ctrl</kbd> <kbd>S</kbd>) saves it, only as it was when it was read, as in the [viewer](./files.md#editing). It splits, zooms, moves and closes like any pane, and comes back on the same file when Kero restarts. Closing it with edits not saved asks first.
 
-Open one from the Files tab: right-click a file and choose **Open in Pane**, or click **Open in Pane** in the viewer's header while it shows the file. Or drag a file onto a pane: dropped near an edge, it opens beside the pane on that side; dropped in the middle of an editor pane, it takes the place of its file, unless that one has unsaved edits. Files and folders dragged from your file manager open the same way, a folder in a terminal there; on a terminal, only near its left, right or top edge, as the rest of it pastes their paths. From a shell, or an agent:
+Open one from the Files tab: right-click a file and choose **Open in Pane**, or click **Open in Pane** in the viewer's header while it shows the file. Or drag a file onto a pane: dropped near an edge, it opens beside the pane on that side; dropped in the middle of an editor pane, it takes the place of its file, unless that one has unsaved edits. A folder dragged from the Files tab, and files and folders dragged from your file manager, open the same way, a folder in a terminal there. On a terminal, all of them open beside it only near its left, right or top edge: the rest of it types their paths. From a shell, or an agent:
 
 ```sh
 kero split --file src/main.go
