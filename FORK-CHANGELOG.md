@@ -5,6 +5,45 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.36-fork.1
+
+Built on Kero 2.1.36, with the fork's changes on top, and on the same
+MyGo as 2.1.35-fork.17 (the fork of MyGo 0.10.0, which already has the
+MyGo commit Kero 2.1.36 asks for). From 2.1.36, among others:
+
+- **New sessions start in** (Settings › General) takes a folder of your
+  own (Custom…), as `new-session-directory = ~/Developer` does.
+- Double-click the sidebar's empty space to start a session.
+- `font-zoom = false` stops Ctrl-scroll and the Bigger, Smaller and
+  Actual Size shortcuts from changing the font size. In the fork it
+  stops those shortcuts from zooming a file in the viewer or an editor
+  pane too; the viewer's buttons and menu still zoom it.
+- **Badge the Dock icon** (Settings › Notifications, `dock-badge`) can
+  also count the finished sessions you haven't looked at yet
+  (`waiting-and-unread`), or be off. As before in the fork, an open
+  orchestrator's children count in neither, unless **An orchestrator's
+  sessions** is on (Settings › Notifications).
+- **CodeBuddy Code** and **PiG** are known as agents: their status shows,
+  `kero skill setup` installs their hook, and their conversations resume
+  after kerod restarts.
+- Streaming sessions use less memory in the app and in kerod.
+
+The Files tab takes upstream's new drags and drops, beside the fork's:
+
+- Drag a file or folder onto the middle of a terminal to type its path
+  there, quoted for the pane's shell, as one dropped from File Explorer
+  does. Near a terminal's left, right or top edge, a file still opens in
+  an editor pane beside it, and a folder, which drags now too, opens a
+  terminal there. Before, a file dropped anywhere on a terminal opened
+  beside it, on its nearest side. Files dragged from Changes and Search
+  do the same; on an editor pane or a browser pane, nothing changes.
+- A row's menu has **Send to the Agent**, which types its path in the
+  pane without pressing Enter. Its **Show in File Explorer** is now
+  **Reveal in File Explorer**, as upstream names it.
+- Files and folders dropped from File Explorer on the Files tab are
+  copied into the folder they land on, asking before replacing a name
+  that is already there. This works on this computer only, for now.
+
 ## 2.1.35-fork.17
 
 Built on MyGo 0.10.0, MyGo's latest release, with the fork's MyGo changes
