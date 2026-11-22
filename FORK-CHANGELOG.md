@@ -5,6 +5,50 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.36-fork.2
+
+- kero message <session> "<text>" gives another session's agent a
+  message the way Kero gives its own: through Claude Code's monitor,
+  Pi's and OMP's extension, codex queue or OpenCode's service once the
+  agent is at its prompt, and typed in only when none takes it. The agent
+  reads whom it is from ("your orchestrator, session …"), so an
+  orchestrator's answers to its children no longer read as the user's
+  words, as kero prompt's did. kero prompt and kero key stay for a
+  question or permission an agent asks in its prompt
+- kerod logs each message it types into an agent's prompt, with why: no
+  listener, the user's own words, or the agent's own way in failed; and
+  kero status --json shows "inbox": true on an agent pane whose listener
+  takes its messages
+- Just after kerod starts, a message for Claude Code, Pi or OMP waits up
+  to 15 seconds for its listener to reconnect before it's typed in
+- On Windows, Codex installed with npm takes messages through the
+  codex.exe its package ships, rather than having them all typed in as
+  codex.cmd can't carry them; a Codex session whose way in failed tries
+  it again after five minutes, rather than never
+- **The kero skill is a directory.** Its `SKILL.md` is short, with a
+  description that says when to load it, and lists reference files
+  beside it, each with when to read it: `reference/orchestrating.md`
+  before starting child sessions, `reporting.md` before reporting to an
+  orchestrator, `worktrees-prs.md` before a handoff, a PR watch message
+  or a merge, and the CLI, browser, review, host and settings references.
+  `kero skill show reporting` prints one. `kero skill setup`, and each
+  Kero as it updates, adds and links the files a newer skill brings,
+  removes the ones it drops, and leaves files of your own in the folder
+  alone; `kero skill remove` too.
+- **Orchestrators and children work to the same conventions.** The role
+  prompt, the hook and the skill ask for a brief of the same parts each
+  time (the goal in your words, the decisions made, links, what done
+  looks like and how to check it, the report to send); a report in four
+  parts, Result, Not done, Where and Next, a blocked one starting
+  "Waiting on you:" once all else is done; a sidebar line kept current
+  with `kero report working|done|blocked`; follow-ups to the child that
+  already holds the work; one integrator for work of several parts,
+  released only once every part has reported and you approved the exact
+  action; closing children whose work merged or has nothing to ship; and
+  short replies to you, the result first and then the one decision
+  needed. A report that needs nothing still gets just "OK". Ama briefs
+  the sessions it starts the same way.
+
 ## 2.1.36-fork.1
 
 Built on Kero 2.1.36, with the fork's changes on top, and on the same
