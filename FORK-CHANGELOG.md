@@ -25,6 +25,29 @@ top of it.
   codex.exe its package ships, rather than having them all typed in as
   codex.cmd can't carry them; a Codex session whose way in failed tries
   it again after five minutes, rather than never
+- **The kero skill is a directory.** Its `SKILL.md` is short, with a
+  description that says when to load it, and lists reference files
+  beside it, each with when to read it: `reference/orchestrating.md`
+  before starting child sessions, `reporting.md` before reporting to an
+  orchestrator, `worktrees-prs.md` before a handoff, a PR watch message
+  or a merge, and the CLI, browser, review, host and settings references.
+  `kero skill show reporting` prints one. `kero skill setup`, and each
+  Kero as it updates, adds and links the files a newer skill brings,
+  removes the ones it drops, and leaves files of your own in the folder
+  alone; `kero skill remove` too.
+- **Orchestrators and children work to the same conventions.** The role
+  prompt, the hook and the skill ask for a brief of the same parts each
+  time (the goal in your words, the decisions made, links, what done
+  looks like and how to check it, the report to send); a report in four
+  parts, Result, Not done, Where and Next, a blocked one starting
+  "Waiting on you:" once all else is done; a sidebar line kept current
+  with `kero report working|done|blocked`; follow-ups to the child that
+  already holds the work; one integrator for work of several parts,
+  released only once every part has reported and you approved the exact
+  action; closing children whose work merged or has nothing to ship; and
+  short replies to you, the result first and then the one decision
+  needed. A report that needs nothing still gets just "OK". Ama briefs
+  the sessions it starts the same way.
 
 ## 2.1.36-fork.1
 

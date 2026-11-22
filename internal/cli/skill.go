@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"embed"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -10,447 +14,65 @@ import (
 	"kero/internal/proto"
 )
 
-// skillGuide teaches a coding agent kero: the skill `kero skill setup`
-// installs, from this binary, so that it follows kero's updates.
-const skillGuide = `---
-name: kero
-description: Drive terminal sessions in Kero — start agents and commands in their own sessions or panes, here or on another machine, type into them, wait for them, read their screens, report your own status, see the repository's worktrees and your own (kero worktree list, status), move your own session into a new git worktree (kero worktree handoff), get the user's answers from a page you show them (window.kero.send, kero browser wait-message), read a browser pane's console errors and network requests and show its page as a phone or on a slow network (kero browser console, network, emulate), find the browser panes' DevTools port for Playwright or chrome-devtools-mcp (kero browser devtools), orchestrate: start child sessions and follow them from Kero's reports, or report your result to your orchestrator (kero new --orchestrator, kero report --to-parent), and work with GitHub pull requests: draft review comments, write a review guide, see the session's linked pull request and act on Kero PR watch messages, merge, mark ready or draft, close, reopen, update or delete its branch, and check one out here or in a worktree; and manage Kero as its app does: add, rename and remove projects, list and close sessions by project and status, move them, make, remove, clean up and prune worktrees, list a repository's pull requests and start reviews of them, and read and write settings (as Kero's helper agent, Ama, does). Use when running inside Kero ($KERO_PANE is set) and the task needs another terminal, a long-running process, a parallel agent, the user's attention, a worktree of your own, or a pull request.
----
-
-# Kero
-
-You run inside Kero, a terminal whose sessions keep running in the
-background. $KERO_SESSION is your session and $KERO_PANE your pane; the
-` + "`kero`" + ` command drives them. A target is a session or a pane id (a
-prefix works), or a session's name; a session stands for its focused pane.
-
-## When to use it
-
-Run a command that ends on its own (a test run, a build, a lint, git) with
-your own shell or command tool, as you would outside Kero: it needs no
-pane. Start one with kero only when it should keep running or be seen: a
-dev server or watcher, an interactive program, another agent, or output
-the user should watch. Then make it a pane of your session with split
-rather than a session of its own, and reuse what you started: restart a
-server in its pane (kero key <pane> ctrl+c, then kero send <pane> "npm run
-dev" --enter) rather than open another, and close a pane once its output
-has served.
-
-## Run something beside you
-
-    kero split --down -- npm run dev          # a pane under yours; prints its id
-    kero new -n review -- claude              # a session of its own
-    kero new -n api -d ~/code/app -- npm run dev
-    kero split --url localhost:3000           # a browser pane, to show the user a page
-    kero split --file src/main.go             # an editor pane, to show the user a file
-    kero split --file notes/plan.md           # a file not there yet: saving it makes it
-    kero new --file src/main.go               # an editor in a session of its own
-    kero do files.show path=src/main.go       # show it in the side panel's Files view
-    kero do changes.show                      # show the worktree's changes
-
-## Show the user a document
-
-    kero split --file plans/plan.md --preview # Markdown, rendered as it reads
-    kero split --url .backlog/pages/brief.html # a local HTML page, scripts from CDNs too
-    kero do pane.preview off                  # the plan's text, to edit; on: rendered again
-
-The pane follows the file: rewrite it, and the pane shows the new one,
-unless the user has unsaved edits in it. Running the same kero split again
-focuses the pane that shows the file instead of opening another, and says
-so on stderr.
-
-## Drive it
-
-    kero send <target> "some text" --enter    # type, then press Enter
-    kero key <target> ctrl+c                  # enter, escape, up, tab, ctrl+d…
-    kero prompt <target> "run the tests"      # send + Enter, wait, print screen
-    kero message <target> "use Postgres"      # another agent: a message labelled from you, through its inbox
-    kero wait <target> [--for idle,waiting,error,exited] [--timeout 10m]
-    kero wait <target> --exit                 # until its command ends; exits with its status
-    kero new --worktree <branch> -- claude    # an agent on a new branch, in a worktree of its own
-    kero events [target] [--for waiting,error] [--json]
-                                              # a line per change, as it happens
-    kero history [query] [--json]             # agents' past conversations, to resume
-    kero resume <conversation> [--parent <session|none>]  # a session resuming one
-    kero read <target> [-n 40] [-a]           # the screen, or with scrollback
-    kero status <target> --json               # status, program, directory
-    kero ls                                   # every session and pane here
-
-A pane's status is working, waiting (it needs the user), idle, error or
-exited. ` + "`kero wait`" + ` with no --for waits until it stops working. A
-command such as a test run doesn't show as working: wait for it with --exit,
-or start it with --wait, which exits with the command's status:
-
-    pane=$(kero split --down -- go test ./...)
-    kero wait "$pane" --exit || kero read "$pane" -n 80
-    kero split --down --wait -- make build    # the same, in one step
-
-## Worktrees
-
-What git worktree list doesn't tell: the sessions in each worktree, which
-Kero made, what removing one would lose, and what the automatic cleanup
-will do with it; and of your own session, the worktree Kero made for it,
-its setup script's state, its pull request, and whether a handoff would go:
-
-    kero worktree list                 # --json for all of it
-    kero worktree status               # read it before a handoff
-
-## Move into a worktree
-
-To go on with this conversation in a git worktree of its own, on a new
-branch, move your own session there, rather than start another:
-
-    kero worktree handoff fix-login           # from the default branch
-    kero worktree handoff fix-login --base HEAD --prompt "go on with the fix"
-
-Make it the last thing you do, then end your turn: once it ends, Kero
-starts you again in the worktree, resuming this conversation, and types
---prompt, if given, for you to go on with. Changes not committed stay in
-this checkout: to take your work along, commit it first and hand off with
---base HEAD, which starts the branch from this checkout's. A session that
-has a worktree of its own already, or works in a linked worktree, can't
-move again: kero worktree status says so.
-
-## Orchestrate, or work for an orchestrator
-
-An orchestrator is a session whose agent plans the work and delegates it
-to sessions it starts, its children, which kero status <orchestrator>
-lists. Kero's hook tells you when you are one, or a child of one.
-
-    kero new --orchestrator --goal "Ship the login page"   # start one
-    kero orchestrator [session] [on|off] [--goal <text>]  # make one, or undo it
-    kero new -n login-form --worktree login-form -- claude "<task>"  # as an orchestrator: a child
-    kero new --parent none -- npm run dev     # a session that is no child
-    kero resume <conversation>                # as an orchestrator: a child's conversation, your child again
-    kero parent <session> [orchestrator|none] # make an open session a child, or none's
-    kero report --to-parent "Done: the form posts; tests pass"   # as a child: your result
-    kero close <child>                        # a child that is done
-    kero close <orchestrator> --children      # it and its children
-
-As an orchestrator, don't do the detailed work yourself: start a child for
-each piece, with a task it can finish alone. Kero types its reports into
-your prompt ("Kero: message from your child sessions:"): a child waiting
-for input, idle after its turn, with the reply it ended the turn with
-and the background work it left running, failed, exited or closed, and
-the summaries children send. A long reply comes cut in the middle: kero
-read <id> --reply prints it whole, kero read <id> the child's screen.
-Answer a child with kero prompt <id> "<answer>", and ask the user only
-what you can't answer.
-When a report needs nothing from you, as a child gone idle with nothing
-to act on, reply just "OK": no summary of it.
-There is one level: a child's kero new starts another child of the same
-orchestrator, and orchestrator-max-children may refuse more running at
-once. A child's conversation resumed (kero resume, as after a crash) is
-its orchestrator's child again while that is open, and kero resume from
-an orchestrator makes the session its child (--parent none: none's). A
-session that lost its link becomes a child again with kero parent <id>,
-run from the orchestrator. Don't have a child report with kero prompt
-instead: those read as the user's words, and only a child's waits,
-idles and failures reach its orchestrator. As a child, end each turn with what your orchestrator needs, your
-result or your question: Kero sends it the last reply of each turn, and
-tells it when you wait or fail. Once your task is done, send it a short
-summary with kero report --to-parent.
-
-## Hand work to another machine
-
-The user may have added other machines to Kero, each with a kerod of its
-own: ` + "`kero ls --all`" + ` lists the sessions here and on every one of them,
-under the name that ` + "`-H`" + ` takes, before the command:
-
-    kero ls --all [--json]                    # every machine's sessions; a host out of reach says why
-    kero hosts                                # the machines, and their addresses
-    kero -H build new -n tests -d ~/code/app -- go test ./...
-    kero -H build new -n review -- claude     # an agent there
-    kero -H build prompt review "run the tests and fix them"
-    kero -H build wait review
-    kero -H build read review -n 80
-    kero -H build close review
-
-Every command acting on sessions takes -H. An id or a name is of its own
-machine's sessions: give the same -H each time you act on one. With -H,
-your own session is no default target, so name one each time, even for
-split or notify. Paths there are that machine's, and without -d a session
-starts in its project's directory, or in the home. kero focus, kero do
-and kero browser drive the user's app, which a host may do only with its
-Remote Control on, in Settings › Hosts: if it is off, say so rather than
-work around it.
-
-## Use a web page
-
-A browser pane's page is yours to drive, as a user would, to check what
-you built: open it with kero split --url, then
-
-    kero browser open localhost:3000/todos     # go to a page, wait for it to load
-    kero browser snapshot                      # roles, names and refs: button "Add" [ref=e5]
-    kero browser click --ref e5                # click what a snapshot showed
-    kero browser type --ref e3 "Buy milk"      # fill a field (--enter submits)
-    kero browser click 'button[type=submit]'   # or name an element by CSS selector
-    kero browser wait --text "Welcome"         # or wait <selector>; --timeout 30s
-    kero browser text [selector]               # the page's text, or an element's
-    kero browser html [selector]
-    kero browser eval 'document.title'         # run JavaScript, print its value
-    kero browser screenshot -o /tmp/page.png   # shown or not, without the focus
-    kero browser back|forward|reload
-    kero browser cookies save state.json       # or load: Playwright's, or cookies.txt
-    kero browser cookies import chrome         # or edge: the user's sign-ins, cookies and site storage
-    kero browser pick                          # the user picks elements, with notes, for you
-    kero browser console --errors              # what the page threw and logged, file:line
-    kero browser network --failed              # 404s, 500s, CORS and blocked requests
-    kero browser network body 12               # a response's body, by its #id
-    kero browser emulate device iphone-15      # or viewport 390x844 --mobile --touch
-    kero browser emulate network slow-3g       # or offline, 3g, 4g; emulate reset undoes
-
-Refs last until the page goes to another; one whose element is gone
-fails: take a new snapshot.
-
-When a page misbehaves, read its console and network before guessing:
-console shows console.* output, uncaught errors and promises none
-caught, and what the browser told of (CORS, failed loads), each with its
-file and line; network shows each request with its status, and why one
-failed. Both keep what came since the pane's page was made, the first
-load too: --clear empties them, so that the next read shows only what a
-reload or a click caused. --json prints their fields. emulate lasts while
-the pane is open, through reloads and other pages; take a screenshot to
-see the layout, and emulate reset when done. network and emulate work on
-Windows only; on macOS and Linux, console has what the page's current
-document logged.
-
-When a page needs the user signed in, don't ask for their password: ask
-them to turn on remote debugging in their browser, at
-chrome://inspect/#remote-debugging (edge://inspect/#remote-debugging),
-then run kero browser cookies import chrome --domain <site> (or edge)
-and have them allow Kero in the browser's dialog, which can show in any
-of its windows, an installed app's (PWA) too; the import waits two
-minutes for it. It copies their browser's cookies into the panes, and the
-site's localStorage and IndexedDB, where single-page apps keep their
-sign-in, from a tab of the site (one it opens unseen if none is open);
-the panes keep them. Reload the pane after it. Or they can click Import
-in Settings › Browser themselves, which takes the storage of their open
-tabs' sites.
-
-To have the user show you what to change on a page, rather than describe
-it, turn on Pick mode: kero browser pick. The user clicks elements and
-writes a note on each (they can also do this from the pane's toolbar
-without you asking), and their picks come to you as one message labelled
-"element picks", once you are at your prompt, or to kero browser wait-message
-if you wait for the page. For each element it gives, strongest first:
-Source, the file and line from the framework's development build or the
-page's own HTML file, checked against the file, or "Source location:
-none" when the page tells none; Search hints, strings likely written in
-the source as they are (★ marks one no other element on the page has),
-to grep for: text hints are short phrases, as the source may wrap the
-text or write ’ and — as entities; where it sits on the page and its HTML;
-then the page's selector, which is not the source's, and its styles.
-Screenshots are PNG files whose paths the message gives, removed a day
-later: one of each
-element, boxed, and one of the page with the elements boxed and numbered
-as the message numbers them. Open them to see what the user means. Go
-to Source first, then grep the hints.
-
-With no target, kero browser drives your session's browser pane; name
-one (kero browser <target> text) when there are several. It needs the app
-open and Remote Control on, in Settings › Agents.
-
-On Windows, the user can open a DevTools port for the panes (Settings ›
-Browser › DevTools port, or browser-devtools = true, then start Kero
-again), which tools of the DevTools protocol drive: Playwright's
-connectOverCDP, chrome-devtools-mcp (--browser-url), Puppeteer,
-Lighthouse. Every pane is a page of one browser on one port; pick yours
-by its URL or title:
-
-    kero browser devtools          # the endpoint, then pane, target, URL, title
-    kero browser devtools --json   # {endpoint, port, browser, panes: [{pane, target, url, title, webSocketDebuggerUrl}]}
-
-    const browser = await chromium.connectOverCDP("http://127.0.0.1:9222");
-    const page = browser.contexts()[0].pages().find((p) => p.url().startsWith("http://localhost:3000"));
-
-Use kero browser for what it does; the port is for what it doesn't, such
-as tracing, intercepting requests and a Playwright script. Don't turn the port on
-yourself: any program on the computer can then use the panes' sign-ins,
-so ask the user. Open pages in panes (kero split --url), not with the
-tool's own new tabs.
-
-## Get the user's answers from a page
-
-A local page (file:) you show the user in a browser pane can send you what
-they pick, as a decision brief's picks: it has window.kero.send(message,
-{label, mode}), which a page tells it is in Kero by, and copies the
-message to the clipboard where it isn't:
-
-    <button id="send">Send</button>
-    <script>
-    send.onclick = async () => {
-      const text = "D1: A\nD2: B";
-      if (!window.kero) return navigator.clipboard.writeText(text);
-      send.textContent = "Sending…";
-      await window.kero.send(text, { label: "decision brief",
-        onState: (s) => { if (s === "queued") send.textContent = "Queued" } });
-      send.textContent = "Sent";
-    };
-    </script>
-
-The message goes to the agent whose pane opened the page with kero split
---url (or showed it again), labelled with the page: "Kero: message from
-decision brief, from the page "Brief" (file:///…/brief.html) in browser
-pane 3f2a:", then its text. Kero gives it to you once you are at your
-prompt; or, while you wait for it, hands it to kero browser wait-message:
-
-    kero split --url .backlog/pages/brief.html
-    kero browser wait-message --json --timeout 9m   # until the page sends: {id, from, label, url, title, text, at}
-
-wait-message prints the message, labelled, or with --json its fields, and
-fails with "timed out" when none came in time: wait again, with a timeout
-under your shell tool's own. It needs no Remote Control. A page that sends
-with mode: "wait" keeps its messages, in order, for wait-message alone,
-never typed in; mode: "push" always types them in. The page's promise
-resolves once you have the message, and rejects if your pane closes
-first; onState hears "queued" (you are working) or "waiting" (kept for
-wait-message) before. A page no agent opened asks the user which agent.
-
-## Review a pull request
-
-When the user starts a review of a pull request from Kero, your comments
-go to a draft review, which the user reads, edits and posts to GitHub from
-Kero. Never post them yourself, with gh or otherwise:
-
-    kero pr comment src/parse.go:42 "This drops the last token."
-    kero pr comment src/parse.go:40-44 - <<'EOF'
-    A comment of several lines,
-    read from stdin.
-    EOF
-    kero pr comment src/old.go:10 --base "Why remove this?"   # the base's lines
-    kero pr comment src/api.go "Split this file?"   # the whole file, no lines
-    kero pr summary "Two bugs in the parser; the rest looks good."
-    kero pr show                               # the draft so far, with ids
-    kero pr edit 3 "Clearer text"              # or delete 3
-
-Lines are the file's line numbers at the pull request's head (of the base
-with --base), which is checked out where you review it. GitHub takes
-comments only on lines of the diff, a change and the three lines around
-it: kero pr comment says which lines a file has when it refuses one. A
-path with no lines comments on the whole file. The
-user's own comments show in kero pr show too; don't remove them. Outside a
-review the user started in your pane, name the pull request: --pr 123;
-with no draft yet, ask the user to click Start Draft on it in Kero.
-
-## Write a review guide of a pull request
-
-A review guide is a tour of a pull request that the user reads in Kero's
-Guide tab instead of reading the diff line by line: a summary, then stops
-in reading order, each on the lines worth reading with a note on them. It
-is not a review: write no comments for its author, and post nothing:
-
-    kero pr guide summary "Moves retries onto a queue; the worker is new."
-    kero pr guide stop src/queue.go:10-42 --title "The new queue" - <<'EOF'
-    Why it exists and what to check in it.
-    EOF
-    kero pr guide stop src/api.go:88 --title "Who enqueues" --closely "Is dropping the old path safe?"
-    kero pr guide stop testdata/golden.txt --title "Snapshots"   # whole file
-    kero pr guide show                         # the stops so far, with ids
-    kero pr guide edit 2 --title "Clearer"     # or move 2 --at 1, delete 2
-    kero pr guide clear                        # start the tour again
-
-Stops go in the order you add them (--at <n> puts one nth): start where
-the change starts, follow it outward, and put mechanical changes (renames,
-generated files, snapshots) last. Every changed file should be on some
-stop. --closely marks a stop with a call only a maintainer can make. Lines
-are the pull request's head's (the base's with --base) and must show some
-of the diff; a path with no lines is the whole file. Outside a guide the
-user started in your pane, name the pull request: --pr 123.
-
-## Your pull request
-
-Kero links your session to the pull request of its branch once you push
-it and open one, and watches it while the session is open: it types a
-message starting "Kero PR watch:" into your prompt when its checks fail,
-and, as the user set it, when they pass, when comments or reviews come,
-and when it has merge conflicts. Act on it as the user's request. Link
-another by hand, or see how it stands:
-
-    kero pr link 123        # or its URL; with neither, the branch's
-    kero pr status          # --json for all of it
-    kero pr unlink
-
-## Act on a pull request
-
-These act on GitHub as the user, through gh, on the pull request given by
-its number, else the one your session is linked to:
-
-    kero pr state                      # open, draft, mergeable, methods
-    kero pr ready                      # or draft, close, reopen
-    kero pr update-branch --rebase     # bring it up to date with its base
-    kero pr merge --head "$(git rev-parse HEAD)"   # the repository's default method
-    kero pr merge 123 --squash --delete-branch     # or --merge, --rebase
-    kero pr merge --auto               # once its checks and reviews pass
-    kero pr delete-branch              # once it is closed or merged
-    kero pr checkout 123               # its branch here: refuses changes
-    kero pr checkout 123 --worktree -- claude      # a new session in a worktree
-
-Merge, close and delete a branch only when the user asked for it: a
-merge can't be undone. Pass --head with the commit you checked, so
-that a merge refuses commits pushed since. A worktree that has the pull
-request already is used as it is: kero pr checkout says where, rather
-than check it out twice.
-
-## Manage Kero
-
-What the app's sidebar, dialogs and Settings do, these do from a shell;
-Kero's helper agent, Ama, works with them:
-
-    kero ls -p api --status waiting           # sessions of a project, in these statuses
-    kero projects add ~/code/api -n api       # a project of a folder; prints its id
-    kero projects rename api backend
-    kero projects remove backend --force      # --force: it has sessions, which close
-    kero move <session> <project>
-    kero close --all -p api --status idle,exited --dry-run   # see which, then without --dry-run
-    kero close <session> <session>…           # several at once
-    kero worktree create fix-login -p api -- claude "fix the login"   # a session in a new worktree
-    kero worktree remove fix-login -p api [--branch] [--force]
-    kero worktree cleanup --dry-run           # what the automatic cleanup would remove; then without
-    kero worktree prune -p api                # forget worktrees whose folders are gone
-    kero pr list -p api [--json]              # the repository's open pull requests
-    kero pr review 123 -p api                 # an agent's review in a worktree, as the Review tab starts it
-    kero config get default-agent             # a setting, by the key kero config show lists
-    kero config set notify-on-done false      # write one, as Settings does
-
-Every setting of the Settings window has a key, the prompts and a GitHub
-repository's own too (review-prompt, review-command,
-repo-commit-message-prompt…): change one by its key, never by editing the
-file. Options go before the key. To change a prompt, take it as its lines
-into a file, edit that, and set it from the file; an empty prompt is
-Kero's own, which --default gives:
-
-    kero config get --text pr-review-prompt > prompt.md   # empty: Kero's own,
-    kero config get --default pr-review-prompt > prompt.md   # which this gives
-    kero config set --file prompt.md pr-review-prompt
-    kero config get --repo acme/web review-prompt         # one repository's alone
-    kero config set --repo acme/web --file prompt.md review-prompt   # the others stay
-    kero config set --repo acme/web review-prompt         # no value: removed
-
-kero close with --all, -p or --status never closes Ama's session, nor the
-one it runs in. kero pr review needs the app open, and Remote Control, as
-kero do does, unless Ama runs it. Close, remove and change settings only
-as the user asked, and show them what --dry-run lists first.
-
-## Tell the user
-
-    kero report working "Migrating the database" --progress 40
-    kero report blocked "Approve the production deploy?" --kind permission
-    kero report done "Deployed to staging"
-    kero notify "Need your API key to continue"
-
-Reports are OSC 7501 sequences: Kero shows them in its sidebar, and
-notifies the user when you are blocked or done while they look elsewhere.
-Report blocked only when you truly cannot go on without them.
-
-## Etiquette
-
-- Start a session or pane only when the user should have one: a few you
-  reuse beat one for each command.
-- Close what you started when it is done: ` + "`kero close <target>`" + `.
-- Never type into a pane you did not start unless the user asked.
-- Exit status 3 means no such target, 4 that Kero is not running.
-`
+// skillFS is the skill `kero skill setup` installs, from this binary, so
+// that it follows kero's updates: SKILL.md, a directory of the reference
+// files beside it, which agents read as a task needs one.
+//
+//go:embed skill/SKILL.md skill/reference/*.md
+var skillFS embed.FS
+
+// skillGuide is the skill's SKILL.md.
+var skillGuide = skillText("SKILL.md")
+
+// skillFiles are the skill's files, by their paths in its directory, with
+// / between their parts.
+var skillFiles = func() map[string]string {
+	out := map[string]string{}
+	fs.WalkDir(skillFS, "skill", func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			out[strings.TrimPrefix(p, "skill/")] = skillText(strings.TrimPrefix(p, "skill/"))
+		}
+		return err
+	})
+	return out
+}()
+
+func skillText(name string) string {
+	b, err := skillFS.ReadFile("skill/" + name)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
+// skillMark starts each reference file, so that kero tells a copy of one
+// it wrote, which a later kero may have dropped, from the user's own files.
+const skillMark = "<!-- Part of the kero skill"
+
+// skillShow is the file of the skill that `kero skill show <name>`
+// prints: SKILL.md, or a reference file by its name, with or without
+// reference/ and .md.
+func skillShow(name string) (string, bool) {
+	if name == "" {
+		return skillGuide, true
+	}
+	name = strings.TrimSuffix(strings.TrimPrefix(filepath.ToSlash(name), "reference/"), ".md")
+	if strings.EqualFold(name, "skill") {
+		return skillGuide, true
+	}
+	text, ok := skillFiles["reference/"+name+".md"]
+	return text, ok
+}
+
+func skillNames() []string {
+	var names []string
+	for _, p := range sortedKeys(skillFiles) {
+		if n, ok := strings.CutPrefix(p, "reference/"); ok {
+			names = append(names, strings.TrimSuffix(n, ".md"))
+		}
+	}
+	return names
+}
 
 func skillCmd(args []string) error {
 	f, err := parse(args, map[string]string{"agent": "agent"}, map[string]string{"dry-run": "dry", "n": "dry"})
@@ -465,7 +87,15 @@ func skillCmd(args []string) error {
 	dirs, hooks := skillDirs(agent), hooksFor(agent)
 	switch sub {
 	case "show":
-		fmt.Print(skillGuide)
+		name := ""
+		if len(f.pos) > 1 {
+			name = f.pos[1]
+		}
+		text, ok := skillShow(name)
+		if !ok {
+			return usageErr("kero skill show [" + strings.Join(skillNames(), "|") + "]")
+		}
+		fmt.Print(text)
 		return nil
 	case "status":
 		for _, name := range sortedKeys(dirs) {
@@ -482,7 +112,7 @@ func skillCmd(args []string) error {
 			case f.set["dry"]:
 				fmt.Printf("would %s %s (%s)\n", sub, proto.ShortDir(dir), name)
 			case sub == "remove":
-				if err := os.RemoveAll(dir); err != nil {
+				if err := removeSkill(dir); err != nil {
 					return err
 				}
 				fmt.Printf("removed %s\n", proto.ShortDir(dir))
@@ -526,7 +156,7 @@ func skillCmd(args []string) error {
 		}
 		return nil
 	}
-	return usageErr("kero skill setup|show|status|remove [--agent claude|codebuddy|codex|pi|omp|pig|opencode|agents] [--dry-run]")
+	return usageErr("kero skill setup|show [<file>]|status|remove [--agent claude|codebuddy|codex|pi|omp|pig|opencode|agents] [--dry-run]")
 }
 
 func sortedKeys(m map[string]string) []string {
@@ -539,70 +169,171 @@ func sortedKeys(m map[string]string) []string {
 }
 
 func skillState(dir string) string {
-	b, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
-	switch {
-	case err != nil:
+	if _, err := os.ReadFile(filepath.Join(dir, "SKILL.md")); err != nil {
 		return "missing"
-	case string(b) != skillGuide:
+	}
+	for rel, text := range skillFiles {
+		if b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel))); err != nil || string(b) != text {
+			return "outdated"
+		}
+	}
+	if len(staleSkillFiles(dir)) > 0 {
 		return "outdated"
 	}
 	return "current"
 }
 
-// skillFile is Kero's own copy of the skill, in Kero's directory, which
-// each kero rewrites as it runs (SyncSkill): the agents' SKILL.md links to
+// skillRoot is Kero's own copy of the skill, in Kero's directory, which
+// each kero rewrites as it runs (SyncSkill): the agents' files link to
 // it, so they read the skill of the Kero installed, as it updates.
-func skillFile() string { return filepath.Join(proto.Dir(), "skills", "kero", "SKILL.md") }
+func skillRoot() string { return filepath.Join(proto.Dir(), "skills", "kero") }
 
-// syncSkillFile writes Kero's own copy of the skill, unless it is current.
-func syncSkillFile() error {
-	if b, err := os.ReadFile(skillFile()); err == nil && string(b) == skillGuide {
-		return nil
+func skillFile() string { return filepath.Join(skillRoot(), "SKILL.md") }
+
+// syncSkillFiles writes Kero's own copy of the skill, where it isn't
+// current, and removes the files an older kero wrote there that this one
+// has no more: that directory is Kero's alone.
+func syncSkillFiles() error {
+	root := skillRoot()
+	for rel, text := range skillFiles {
+		p := filepath.Join(root, filepath.FromSlash(rel))
+		if b, err := os.ReadFile(p); err == nil && string(b) == text {
+			continue
+		}
+		if err := writeFileAtomic(p, []byte(text)); err != nil {
+			return err
+		}
 	}
-	return writeFileAtomic(skillFile(), []byte(skillGuide))
+	for _, p := range skillExtras(root) {
+		os.Remove(p)
+	}
+	os.Remove(filepath.Join(root, "reference")) // once empty
+	return nil
 }
 
-// writeSkill installs the skill in an agent's directory: its SKILL.md a
-// link to Kero's own copy. The directory is a real one, as agents list
-// theirs and may pass over links to directories.
+// skillExtras lists the files in a skill's directory that aren't the
+// skill's, but for the ones being written (.name.*, writeFileAtomic's).
+func skillExtras(dir string) []string {
+	var out []string
+	filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || strings.HasPrefix(d.Name(), ".") {
+			return nil
+		}
+		if rel, err := filepath.Rel(dir, p); err == nil {
+			if _, ok := skillFiles[filepath.ToSlash(rel)]; !ok {
+				out = append(out, p)
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// staleSkillFiles lists what kero installed in an agent's skill
+// directory that this kero no longer has: links to Kero's own copy, and
+// copies of a reference file, which start with skillMark. The user's own
+// files there stay.
+func staleSkillFiles(dir string) []string {
+	var out []string
+	for _, p := range skillExtras(dir) {
+		if t, err := os.Readlink(p); err == nil {
+			if rel, err := filepath.Rel(skillRoot(), t); err == nil && filepath.IsLocal(rel) {
+				out = append(out, p)
+			}
+			continue
+		}
+		f, err := os.Open(p)
+		if err != nil {
+			continue
+		}
+		head := make([]byte, len(skillMark))
+		_, err = io.ReadFull(f, head)
+		f.Close()
+		if err == nil && string(head) == skillMark {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// writeSkill installs the skill in an agent's directory: each of its
+// files a link to Kero's own copy. The directories are real ones, as
+// agents list theirs and may pass over links to directories.
 func writeSkill(dir string) error {
-	if err := syncSkillFile(); err != nil {
+	if err := syncSkillFiles(); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+	return linkSkill(dir)
+}
+
+// linkSkill links an agent's skill directory to Kero's own copy, which
+// is current, and removes the files kero put there that it has no more.
+func linkSkill(dir string) error {
+	for rel, text := range skillFiles {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		target := filepath.Join(skillRoot(), filepath.FromSlash(rel))
+		if t, err := os.Readlink(p); err == nil && t == target {
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			return err
+		}
+		os.Remove(p) // a copy, as older keros wrote, or a link to another's
+		if os.Symlink(target, p) == nil {
+			continue
+		}
+		// Where links need a right the user lacks (Windows, out of
+		// Developer Mode): a copy, which SyncSkill keeps current.
+		if err := writeFileAtomic(p, []byte(text)); err != nil {
+			return err
+		}
 	}
-	p := filepath.Join(dir, "SKILL.md")
-	if t, err := os.Readlink(p); err == nil && t == skillFile() {
-		return nil
+	for _, p := range staleSkillFiles(dir) {
+		os.Remove(p)
 	}
-	os.Remove(p) // a copy, as older keros wrote, or a link to another's
-	if os.Symlink(skillFile(), p) == nil {
-		return nil
+	return nil
+}
+
+// removeSkill removes the skill from an agent's directory: its files,
+// and those an older kero put there, but none of the user's, and the
+// directory once it is empty.
+func removeSkill(dir string) error {
+	for _, p := range staleSkillFiles(dir) {
+		os.Remove(p)
 	}
-	// Where links need a right the user lacks (Windows, out of Developer
-	// Mode): a copy, which SyncSkill keeps current.
-	return writeFileAtomic(p, []byte(skillGuide))
+	for rel := range skillFiles {
+		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(rel))); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	os.Remove(filepath.Join(dir, "reference")) // once empty
+	os.Remove(dir)
+	return nil
 }
 
 // SyncSkill keeps what agents load of Kero current with this kero, which
 // every kero, the app and the CLI, does as it starts. It updates what is
 // this Kero's alone, so that a development build, with a directory of its
 // own, takes nothing from the installed Kero: its own copy of the skill,
-// where its installs link to, and the plugins of Pi, OMP, PiG and OpenCode
-// written to run its kero command. The installs older keros wrote, copies of
-// the skill, go to the installed Kero, which makes them links. It installs
-// nothing that isn't.
+// and the links of the installs to it, which it adds as the skill gains
+// files and removes as it drops them; and the plugins of Pi, OMP, PiG and
+// OpenCode written to run its kero command. The installs older keros
+// wrote, copies of the skill, go to the installed Kero, which makes them
+// links. It installs nothing that isn't.
 func SyncSkill() {
+	synced := false
 	for _, dir := range skillDirs("") {
 		p := filepath.Join(dir, "SKILL.md")
 		if t, err := os.Readlink(p); err == nil {
 			if t == skillFile() {
-				syncSkillFile()
+				if !synced {
+					synced = syncSkillFiles() == nil
+				}
+				linkSkill(dir)
 			}
 			continue // or another Kero's
 		}
-		if b, err := os.ReadFile(p); err == nil && string(b) != skillGuide && adoptCopies() {
+		if _, err := os.Stat(p); err == nil && adoptCopies() && skillState(dir) != "current" {
 			writeSkill(dir)
 		}
 	}
@@ -728,5 +459,5 @@ func RemoveSkill(agent string) error {
 			return err
 		}
 	}
-	return os.RemoveAll(dir)
+	return removeSkill(dir)
 }

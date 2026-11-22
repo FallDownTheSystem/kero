@@ -15,7 +15,7 @@ kero skill setup
 
 This installs two things:
 
-- A **skill** that teaches agents the CLI. Claude Code reads it from `~/.claude/skills/kero`, CodeBuddy Code from `~/.codebuddy/skills/kero`, and Codex, OpenCode and other agents from `~/.agents/skills/kero`.
+- A **skill** that teaches agents the CLI. Claude Code reads it from `~/.claude/skills/kero`, CodeBuddy Code from `~/.codebuddy/skills/kero`, and Codex, OpenCode and other agents from `~/.agents/skills/kero`. Its `SKILL.md` is short: a list of the reference files beside it, in `reference/`, each with when to read it, such as `orchestrating.md` before starting child sessions, `reporting.md` before reporting to an orchestrator, and `worktrees-prs.md` before a handoff or a merge. Agents read only the ones a task needs.
 - A **hook** that runs as an agent starts a session. It tells the agent which Kero session and pane it's in, so it doesn't spend time finding out, and has it name an unnamed session after its task, such as `fix-login-redirect`, so you don't have to. It also tells Kero the agent's own session, so that after kerod restarts, as after a reboot, the agent [picks up its conversation](./sessions.md#kerod). The same hook runs as the agent ends each turn, and tells Kero the turn's end and its reply, so that an [orchestrator](./orchestrators.md) hears of a child's turn when it ends, not when its screen looks idle. It prints nothing there, and runs in the background, so it never holds the agent up.
 
 The hook goes where each agent looks for one, for the agents you have installed:
@@ -34,12 +34,12 @@ Claude Code's plugin lives in Kero's own folder, as a plugin marketplace named `
 
 Kero follows `CLAUDE_CONFIG_DIR`, `CODEBUDDY_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR`, `PI_CONFIG_DIR`, `PIG_CODING_AGENT_DIR`, `PIG_HOME` and `XDG_CONFIG_HOME` when they move an agent's files, and leaves the rest of each settings file as it was.
 
-Pass `--agent` with `claude`, `codebuddy`, `codex`, `pi`, `omp`, `pig` or `opencode` to set up one agent only. Setup is once: the skill is a link to Kero's own copy, which follows Kero as it updates, and Kero keeps the Pi, OMP, PiG and OpenCode plugins current too. `kero skill status` tells you whether each part is current. A Claude Code or Codex hook that an older Kero put in shows as outdated, as it has no turn-end hooks yet: run `kero skill setup` again to add them.
+Pass `--agent` with `claude`, `codebuddy`, `codex`, `pi`, `omp`, `pig` or `opencode` to set up one agent only. Setup is once: each of the skill's files is a link to Kero's own copy (a copy, on Windows without Developer Mode), which follows Kero as it updates, gaining the files a newer skill adds and losing those it drops, while files of your own in the skill's folder stay, and Kero keeps the Pi, OMP, PiG and OpenCode plugins current too. `kero skill status` tells you whether each part is current. A Claude Code or Codex hook that an older Kero put in shows as outdated, as it has no turn-end hooks yet: run `kero skill setup` again to add them.
 
 ```sh
 kero skill status    # what's installed, and whether it's current
-kero skill show      # print the skill
-kero skill remove    # uninstall the skill and the hooks
+kero skill show      # print SKILL.md; kero skill show reporting prints reference/reporting.md
+kero skill remove    # uninstall the skill and the hooks, leaving your own files
 ```
 
 The hook works only in agent sessions started after setup, and agents may ask first:
@@ -121,7 +121,7 @@ kero report blocked "Approve the production deploy?"
 kero report done "Deployed to staging"
 ```
 
-A `blocked` report turns the session to *waiting* and notifies you, so agents should use it only when they can't continue without you.
+A `blocked` report turns the session to *waiting* and notifies you, so agents should use it only when they can't continue without you. The skill asks agents to keep the line current, in seven words or fewer: what they work on now, the result they reached ("Fixed login redirect loop", not "Done"), or the question they wait on.
 
 ## Agents that run other agents
 
