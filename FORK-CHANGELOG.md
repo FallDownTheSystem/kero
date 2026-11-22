@@ -5,6 +5,37 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.36-fork.4
+
+- **Assistants**: agents of yours that belong to no project, each with a
+  name, a color (one of eight or any of yours), an avatar (twenty
+  glyphs, eleven of them animals, or an image), a role, what it keeps
+  track of, and checks Kero wakes it for: daily, weekly, or when Kero starts. The toggle at
+  the top of the sessions sidebar switches to the Assistants view, which
+  groups them, shows what each last said and when it checks next, and
+  marks those that need you. **Session › New Assistant…** or its **+**
+  makes one. Checks run only while Kero is running; one missed while Kero
+  was closed runs once when it is next running.
+- An assistant reports to you with `kero assistants report`, in the same
+  four parts as a child's report; one that starts "Waiting on you:" shows
+  it waiting on its question. Kero notifies you when an assistant needs
+  you, failed, or finished a check.
+- An assistant runs in a folder of its own, with Kero's instructions
+  written from its settings, your USER.md and its own MEMORY.md. The
+  sessions it starts are its children, in whichever project they are
+  for, and talk to it through `kero message`.
+- Ask Ama "Any news from my assistants?": it reads `kero assistants news`.
+  `kero assistants` manages them from the command line, and the kero skill
+  has a new reference file, assistants.md.
+- `kero message` names Ama, and an assistant, by name as the sender.
+- Fixed: a message to an agent that set its status line blocked on a
+  question (`kero report blocked`) waited until you typed in its pane. Its
+  orchestrator's `kero message` answer, or yours, now reaches it once it
+  is at its prompt, and takes the blocked line back; news that answers
+  nothing, as a pull request watch's, reaches it too and leaves the
+  question showing. A permission or sign-in it waits on, a dialog on its
+  screen, or a turn still going still hold messages back.
+
 ## 2.1.36-fork.3
 
 - **Builds and tests** (Settings › Agents, `heavy-slots`, 2 by default):
