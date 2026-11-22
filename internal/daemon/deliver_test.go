@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -297,6 +298,18 @@ func declare(pn *pane, recs ...proto.Record) {
 	}
 }
 
+// message sends text to a session or pane as kero message does: through
+// the agent.send call, naming no pane it is from.
+func message(t *testing.T, d *Daemon, to, label, text string) proto.AgentSendResult {
+	t.Helper()
+	raw, _ := json.Marshal(proto.AgentSendParams{To: to, Label: label, Text: text, Mode: "push"})
+	res, err := d.call(nil, "agent.send", raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res.(proto.AgentSendResult)
+}
+
 func ready(pn *pane) bool {
 	pn.mu.Lock()
 	defer pn.mu.Unlock()
@@ -356,9 +369,8 @@ func TestMessageToBlockedChild(t *testing.T) {
 	if st := sessionOf(d, k.id).Pane.Status; st != proto.Waiting {
 		t.Fatalf("declared blocked: %s", st)
 	}
-	res, err := d.agentSend(proto.AgentSendParams{From: orch.info.ID, To: k.id, Text: "Keep it."})
-	if err != nil || res.State != "delivered" {
-		t.Fatalf("to the blocked child: %+v %v", res, err)
+	if res := message(t, d, k.id, "your orchestrator", "Keep it."); res.State != "delivered" {
+		t.Fatalf("to the blocked child: %+v", res)
 	}
 	typedIn(t, out, "Keep it.")
 	if p := sessionOf(d, k.id).Pane; p.Status == proto.Waiting || len(p.Records) > 0 {

@@ -29,7 +29,7 @@ description: 不属于任何项目的智能体，各有名称和角色，Kero �
 
 ## 报告和通知
 
-助手在每次检查结束时，用 `kero assistants report` 以 Kero 中所有智能体报告的四个部分（Result、Not done、Where、Next）进行报告。Kero 保留最近十份。以“Waiting on you:”开头的报告会让助手显示为等待这个问题（计入“需要你”），直到你在它的会话中回答或它再次报告。
+助手在每次检查结束时，用 `kero assistants report` 以 Kero 中所有智能体报告的四个部分（Result、Not done、Where、Next）进行报告。Kero 保留最近十份。以“Waiting on you:”开头的报告会让助手显示为等待这个问题（计入“需要你”），直到你在它的会话中回答、有人向它发送回答（如 Ama 的 `kero message`）或它再次报告。其间收到的检查或子会话报告不会让问题消失。
 
 Kero 会按照 **通知** 设置，在助手需要你或失败时，以及完成一次检查时通知你：标题为“Jira 完成了一次检查”，内容为报告的结果。它的其他回合（例如回复它启动的会话）只会标记为未读。
 

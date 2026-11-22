@@ -360,56 +360,68 @@ func readyAssistant(t *testing.T, d *Daemon, name string, checks ...proto.Assist
 }
 
 // After a report that waits on the user, the assistant still gets what
-// is for it once its agent is at its prompt: a message, which takes the
-// question back, its child's report, and its due checks; a dialog on its
-// screen still holds them all.
+// is for it once its agent is at its prompt: its child's report and its
+// due checks, which leave its question showing, and a message sent as kero
+// message sends it, which answers it; a dialog on its screen holds them.
 func TestAssistantWaitingStillReached(t *testing.T) {
 	enterWait = 50 * time.Millisecond
 	t.Cleanup(func() { enterWait = 2 * time.Second })
 	d := testDaemon(t)
 	a, pn := readyAssistant(t, d, "Mail", proto.AssistantCheck{Kind: "daily", Time: "09:00"})
-	waiting := func() {
+	sid := d.sessionIDOf(pn)
+	stillWaiting := func(what string) {
 		t.Helper()
-		if _, err := d.assistantReport(proto.AssistantReportParams{Assistant: a.ID, Text: "Waiting on you: Reply to Anna?"}); err != nil {
-			t.Fatal(err)
+		if p := sessionOf(d, sid).Pane; p.Status != proto.Waiting || p.Message != "Reply to Anna?" {
+			t.Errorf("%s: %s %q", what, p.Status, p.Message)
 		}
+	}
+	// worked lets kerod take its agent as having worked on what it was
+	// last typed, and shows its prompt again.
+	worked := func() {
+		time.Sleep(2 * time.Millisecond)
+		pn.mu.Lock()
+		pn.info.Since = time.Now().UnixMilli()
+		pn.mu.Unlock()
 		onScreen(t, pn, "idle")
-		if st := sessionOf(d, d.sessionIDOf(pn)).Pane.Status; st != proto.Waiting {
-			t.Fatalf("after a waiting report: %s", st)
-		}
 	}
-	waiting()
-	if !d.reportReady(d.sessionIDOf(pn)) {
-		t.Error("its child's report would wait")
+	if _, err := d.assistantReport(proto.AssistantReportParams{Assistant: a.ID, Text: "Waiting on you: Reply to Anna?"}); err != nil {
+		t.Fatal(err)
 	}
-	res, err := d.agentSend(proto.AgentSendParams{To: pn.info.ID, Label: "Ama", Text: "Yes, reply."})
-	if err != nil || res.State != "delivered" {
-		t.Fatalf("a message: %+v %v", res, err)
-	}
-	if st := sessionOf(d, d.sessionIDOf(pn)).Pane.Status; st == proto.Waiting {
-		t.Error("the message left it waiting")
-	}
+	onScreen(t, pn, "idle")
+	stillWaiting("after a waiting report")
 
-	waiting()
-	time.Sleep(2 * time.Millisecond)
-	setAgent(pn, proto.Waiting) // a new Since: its last delivery worked on
+	// Its child's report, as sendReports sends it.
+	if !d.reportReady(sid) {
+		t.Fatal("its child's report would wait")
+	}
+	if res, _ := d.agentSend(proto.AgentSendParams{To: sid, Label: reportLabel, Text: "Child a is done.", Mode: "push"}); res.State != "delivered" {
+		t.Fatalf("a child's report: %+v", res)
+	}
+	stillWaiting("after a child's report")
+
+	// A dialog on screen holds its checks and reports.
+	worked()
 	onScreen(t, pn, "blocked")
 	dc := dueChecks{a: a, checks: a.Checks}
-	if d.sendChecks(dc, time.Now()) || d.reportReady(d.sessionIDOf(pn)) {
+	if d.sendChecks(dc, time.Now()) || d.reportReady(sid) {
 		t.Error("a dialog on screen didn't hold the checks and reports")
 	}
-	declareRecord(pn, waitingRecord)
 	onScreen(t, pn, "idle")
 	// A run asked for meanwhile stays for the next pass.
 	if _, err := d.runAssistant(proto.AssistantParams{ID: a.ID, Check: a.Checks[0].ID}); err != nil {
 		t.Fatal(err)
 	}
-	dc.asked = nil
 	if !d.sendChecks(dc, time.Now()) {
 		t.Fatal("the due check didn't go")
 	}
-	def, _ := d.assistantDef(a.ID)
-	if def.Checks[0].Last == 0 {
+	d.mail.mu.Lock()
+	queued := len(d.mail.out[pn.info.ID])
+	d.mail.mu.Unlock()
+	if queued > 0 {
+		t.Error("the due check was queued, not delivered")
+	}
+	stillWaiting("after a due check")
+	if def, _ := d.assistantDef(a.ID); def.Checks[0].Last == 0 {
 		t.Error("its Last wasn't set")
 	}
 	d.asst.mu.Lock()
@@ -417,6 +429,15 @@ func TestAssistantWaitingStillReached(t *testing.T) {
 	d.asst.mu.Unlock()
 	if len(left) != 1 {
 		t.Errorf("a run asked for while checks went was lost: %v", left)
+	}
+
+	// Ama's answer, as kero message sends it.
+	worked()
+	if res := message(t, d, sid, "Ama", "Yes, reply."); res.State != "delivered" {
+		t.Fatalf("a message: %+v", res)
+	}
+	if p := sessionOf(d, sid).Pane; p.Status == proto.Waiting {
+		t.Errorf("the answer left it waiting on %q", p.Message)
 	}
 }
 

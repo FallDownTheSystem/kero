@@ -94,6 +94,10 @@ type outMsg struct {
 	id         int64
 	from, text string
 	user       bool // the user sent it (AgentSendParams.User)
+	// answer tells a person or an agent sent it, through agent.send,
+	// which may answer the question its agent waits on; kerod's own
+	// sends (checks, reports, a watch's news) are no answer.
+	answer bool
 }
 
 // inboxListener is an agent's own listener waiting for its messages; turns, one
@@ -144,8 +148,20 @@ func pageLabel(id, url, title string) string {
 	return fmt.Sprintf("the page %s in browser pane %s", url, id)
 }
 
-// agentSend sends a message to an agent (agent.send).
+// agentSend sends kerod's own message to an agent: news, which answers
+// no question the agent waits on.
 func (d *Daemon) agentSend(p proto.AgentSendParams) (proto.AgentSendResult, error) {
+	return d.agentSendAs(p, false)
+}
+
+// agentAnswer is agent.send: a message of a person's or an agent's, kero
+// message's, the app's, a page's, which answers the question its agent
+// waits on (pane.takeBack).
+func (d *Daemon) agentAnswer(p proto.AgentSendParams) (proto.AgentSendResult, error) {
+	return d.agentSendAs(p, true)
+}
+
+func (d *Daemon) agentSendAs(p proto.AgentSendParams, answer bool) (proto.AgentSendResult, error) {
 	if strings.TrimSpace(p.Text) == "" {
 		return proto.AgentSendResult{}, errors.New("agent.send: no text")
 	}
@@ -222,7 +238,7 @@ func (d *Daemon) agentSend(p proto.AgentSendParams) (proto.AgentSendResult, erro
 		return proto.AgentSendResult{ID: msg.ID, State: "nowhere"}, nil
 	}
 	mb.mu.Lock()
-	mb.out[to] = append(mb.out[to], outMsg{id: msg.ID, from: msg.From, text: msg.Prompt(), user: p.User})
+	mb.out[to] = append(mb.out[to], outMsg{id: msg.ID, from: msg.From, text: msg.Prompt(), user: p.User, answer: answer})
 	mb.mu.Unlock()
 	d.flushOutbox(time.Now())
 	mb.mu.Lock()
@@ -430,8 +446,8 @@ func (d *Daemon) flushOutbox(now time.Time) {
 		}
 		if !waiting {
 			d.log.Printf("message to %s's %s typed into its prompt: %s", id, orNone(agent), typing)
-			pn.paste(text)
-			go pn.submit(now)
+			pn.pasteAs(text, false)
+			go pn.submitAs(now, false)
 		}
 		d.delivered(pn, id, msgs, now)
 	}
@@ -439,10 +455,10 @@ func (d *Daemon) flushOutbox(now time.Time) {
 
 // delivered records that msgs reached the agent of pane pn, id, at now:
 // the agent is left alone till it worked on them (deliverHold), and the
-// apps hear of it. The blocks the messages answer are taken back
-// (pane.takeBack): a message from a person or another agent answers.
+// apps hear of it. The question its agent waits on is taken back when one
+// of them answers it (pane.takeBack).
 func (d *Daemon) delivered(pn *pane, id string, msgs []outMsg, now time.Time) {
-	answer := slices.ContainsFunc(msgs, func(m outMsg) bool { return m.user || m.from != "" })
+	answer := slices.ContainsFunc(msgs, func(m outMsg) bool { return m.answer })
 	pn.mu.Lock()
 	before := pn.info.Status
 	pn.takeBack(answer)

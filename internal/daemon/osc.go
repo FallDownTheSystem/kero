@@ -433,16 +433,19 @@ func (s *pane) answerable() bool {
 	return s.onlyBlocked()
 }
 
-// takeBack takes back, as a message reaches the agent, the blocks it
-// answers: the assistant's question (waitingRecord) always, as its next
-// turn starts; a block the agent declared itself only with an answer, a
-// message of a person's or another agent's, so that a report or a watch's
-// news reaching it leaves the user's question showing until the agent
-// reports again. s.mu is held.
+// takeBack takes back, as messages reach the agent, the questions they
+// answer: with an answer (agentAnswer) its blocks of kind question or
+// none, its own or an assistant's waiting record; with news alone, as a
+// check, a child's report or a watch's, nothing, so that the user's
+// question shows until it is answered, the user acts in the pane, or the
+// agent reports again. s.mu is held.
 func (s *pane) takeBack(answer bool) {
+	if !answer {
+		return
+	}
 	changed := false
 	for id, r := range s.records {
-		if r.State == "blocked" && (id == waitingRecord || answer && (r.Kind == "" || r.Kind == "question")) {
+		if r.State == "blocked" && (r.Kind == "" || r.Kind == "question") {
 			delete(s.records, id)
 			changed = true
 		}

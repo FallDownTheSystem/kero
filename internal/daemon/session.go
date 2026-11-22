@@ -509,15 +509,26 @@ func (s *pane) screen() string {
 
 // input writes what the user typed to the program.
 func (s *pane) input(p []byte) {
-	if proc := s.acted(); proc != nil {
+	s.inputAs(p, true)
+}
+
+// inputAs writes p to the program: the user's input, which acted tells,
+// or with user false kerod's own, as a message it types in (deliver.go),
+// which answers no question the pane shows.
+func (s *pane) inputAs(p []byte, user bool) {
+	if proc := s.act(user); proc != nil {
 		proc.Write(p)
 	}
 }
 
 // paste pastes text into the program, as the user's paste keys would:
 // through the terminal, which brackets it as the program asks.
-func (s *pane) paste(text string) {
-	if s.acted() != nil {
+func (s *pane) paste(text string) { s.pasteAs(text, true) }
+
+// pasteAs is paste, of the user's or, with user false, of kerod's own
+// (inputAs).
+func (s *pane) pasteAs(text string, user bool) {
+	if s.act(user) != nil {
 		s.term.Paste(text)
 	}
 }
@@ -542,7 +553,11 @@ var enterWait = 2 * time.Second // a test's shorter
 // hidden, and its pane's status is kerod's own. Once the user types after
 // the paste, the prompt is theirs: an Enter would send what they are
 // writing, half done, so none follows.
-func (s *pane) submit(from time.Time) {
+func (s *pane) submit(from time.Time) { s.submitAs(from, true) }
+
+// submitAs is submit, after the user's paste or, with user false, kerod's
+// own (inputAs).
+func (s *pane) submitAs(from time.Time, user bool) {
 	for {
 		time.Sleep(50 * time.Millisecond)
 		s.mu.Lock()
@@ -556,7 +571,7 @@ func (s *pane) submit(from time.Time) {
 			break
 		}
 	}
-	if !s.enter(from) {
+	if !s.enter(from, user) {
 		return
 	}
 	// A program that is no agent takes its Enter at once: none to retry.
@@ -571,7 +586,7 @@ func (s *pane) submit(from time.Time) {
 		s.mu.Lock()
 		idle := !s.closed && s.info.Agent != "" && s.info.Status == proto.Idle
 		s.mu.Unlock()
-		if !idle || !s.enter(from) {
+		if !idle || !s.enter(from, user) {
 			return
 		}
 	}
@@ -579,7 +594,7 @@ func (s *pane) submit(from time.Time) {
 
 // enter presses Enter for a paste at from, unless the user has typed into
 // the pane since, reporting whether it did.
-func (s *pane) enter(from time.Time) bool {
+func (s *pane) enter(from time.Time, user bool) bool {
 	s.keys.Lock()
 	defer s.keys.Unlock()
 	s.mu.Lock()
@@ -588,7 +603,7 @@ func (s *pane) enter(from time.Time) bool {
 	if keyed {
 		return false
 	}
-	s.input([]byte("\r"))
+	s.inputAs([]byte("\r"), user)
 	return true
 }
 
@@ -613,7 +628,11 @@ func (s *pane) userInput(p []byte, typed bool) {
 
 // acted is the user acting in the pane, which ends what waited for them,
 // and returns its process, nil for none.
-func (s *pane) acted() *ptyProc {
+func (s *pane) acted() *ptyProc { return s.act(true) }
+
+// act is acted, or with user false kerod typing a message in, which
+// leaves an assistant's question showing (pane.takeBack decides that).
+func (s *pane) act(user bool) *ptyProc {
 	s.mu.Lock()
 	proc := s.proc
 	changed := false
@@ -622,7 +641,7 @@ func (s *pane) acted() *ptyProc {
 	}
 	// An assistant's question (a report that waits on the user) is
 	// answered once the user acts in its pane.
-	if _, ok := s.records[waitingRecord]; ok {
+	if _, ok := s.records[waitingRecord]; ok && user {
 		delete(s.records, waitingRecord)
 		s.fromRecords()
 	}

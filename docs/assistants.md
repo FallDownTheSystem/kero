@@ -29,7 +29,7 @@ A check reaches the assistant once its agent is at its prompt, as "Kero: message
 
 ## Reports and notifications
 
-An assistant ends each check with a report, in the four parts of every agent's report in Kero (Result, Not done, Where, Next), with `kero assistants report`. Kero keeps the last ten. A report that starts "Waiting on you:" shows the assistant waiting on its question, as Needs You counts it, until you answer in its session or it reports again.
+An assistant ends each check with a report, in the four parts of every agent's report in Kero (Result, Not done, Where, Next), with `kero assistants report`. Kero keeps the last ten. A report that starts "Waiting on you:" shows the assistant waiting on its question, as Needs You counts it, until you answer in its session, an answer is sent to it (as Ama's `kero message`), or it reports again. A check or a child's report reaching it meanwhile leaves the question showing.
 
 Kero notifies you, under the **Notifications** settings, when an assistant needs you or failed, and when it finished a check: titled "Jira finished a check", with its report's result. Its other turns, as answering a session it started, only mark it unread.
 

@@ -347,7 +347,8 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
-		return d.agentSend(p)
+		// From a person or an agent: an answer, as kerod's own sends are not.
+		return d.agentAnswer(p)
 
 	case "browser.message":
 		var p proto.MessageParams

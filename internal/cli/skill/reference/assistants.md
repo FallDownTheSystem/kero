@@ -34,7 +34,9 @@ while Kero was not running comes once, late, and says so.
   The four parts, and starting with "Waiting on you:" when you need the
   user, are as reporting.md describes (`kero skill show reporting`). A
   report starting "Waiting on you:" shows the assistant waiting on its
-  question until the user answers or you report again. When nothing
+  question until the user answers, in your session or by a message sent
+  to you (as Ama's kero message), or you report again; a check or a
+  child's report reaching you meanwhile leaves it. When nothing
   changed, one line says so. `kero report --to-parent` from your session
   does the same.
 - After each check, write in MEMORY.md what the next one needs, dated,
