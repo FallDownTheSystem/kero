@@ -23,9 +23,9 @@ kero skill setup
 
 | 智能体         | 钩子位置                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------ |
-| Claude Code    | `~/.claude/settings.json` 中的 `SessionStart`、`Stop` 和 `StopFailure` 钩子，以及 Kero 的插件 `kero@kero` |
+| Claude Code    | `~/.claude/settings.json` 中的 `SessionStart`、`Stop`、`StopFailure` 钩子，`Bash` 的 `PreToolUse`、`PostToolUse`、`PostToolUseFailure` 钩子，以及 Kero 的插件 `kero@kero` |
 | CodeBuddy Code | `~/.codebuddy/settings.json` 中的 `SessionStart` 钩子                                            |
-| Codex          | `~/.codex/hooks.json` 中的 `SessionStart`、`Stop` 和 `Interrupt` 钩子                            |
+| Codex          | `~/.codex/hooks.json` 中的 `SessionStart`、`Stop`、`Interrupt` 钩子，以及 `Bash` 的 `PreToolUse`、`PostToolUse` 钩子 |
 | Pi             | 扩展 `~/.pi/agent/extensions/kero.ts`                                                            |
 | OMP            | 扩展 `~/.omp/agent/extensions/kero.ts`                                                           |
 | PiG            | 扩展 `~/.pig/agent/extensions/kero.ts`                                                           |
@@ -35,7 +35,7 @@ Claude Code 的插件位于 Kero 自己的文件夹中，是名为 `kero` 的插
 
 如果 `CLAUDE_CONFIG_DIR`、`CODEBUDDY_CONFIG_DIR`、`CODEX_HOME`、`PI_CODING_AGENT_DIR`、`PI_CONFIG_DIR`、`PIG_CODING_AGENT_DIR`、`PIG_HOME` 或 `XDG_CONFIG_HOME` 改变了智能体文件的位置，Kero 会跟着走，并且不会改动各设置文件里的其他内容。
 
-传入 `--agent` 并指定 `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig` 或 `opencode`，可以只为一个智能体安装。只需安装一次：技能的每个文件都是指向 Kero 自己那份副本的链接（在未开启开发者模式的 Windows 上是副本），会随 Kero 更新而更新，新版技能增加的文件会被加上，删去的文件会被移除，而你放在技能文件夹里的自己的文件保持不动；Pi、OMP、PiG 和 OpenCode 的插件，Kero 也会保持为最新。`kero skill status` 会告诉你各部分是否为最新。旧版 Kero 安装的 Claude Code 或 Codex 钩子会显示为“outdated”，因为还没有回合结束的钩子：再运行一次 `kero skill setup` 即可添加。
+传入 `--agent` 并指定 `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig` 或 `opencode`，可以只为一个智能体安装。只需安装一次：技能的每个文件都是指向 Kero 自己那份副本的链接（在未开启开发者模式的 Windows 上是副本），会随 Kero 更新而更新，新版技能增加的文件会被加上，删去的文件会被移除，而你放在技能文件夹里的自己的文件保持不动；Pi、OMP、PiG 和 OpenCode 的插件，Kero 也会保持为最新。`kero skill status` 会告诉你各部分是否为最新。旧版 Kero 安装的 Claude Code 或 Codex 钩子会显示为“outdated”，因为还没有回合结束或[构建](#builds-and-tests)的钩子：再运行一次 `kero skill setup`，或在 **设置 › 智能体** 中点 **更新** 即可添加。
 
 ```sh
 kero skill status    # 已安装什么，是否为最新
@@ -125,6 +125,19 @@ kero report done "Deployed to staging"
 ```
 
 `blocked` 报告会把会话变为*等待中*并通知你，所以智能体只应在离开你就无法继续时使用它。技能要求智能体让这一行保持最新，不超过七个词：正在做的事、达成的结果（写“Fixed login redirect loop”，而不是“Done”），或正在等待的问题。
+
+<a id="builds-and-tests"></a>
+
+## 构建与测试
+
+多个智能体同时构建或运行测试，无论会话有多少，都会拖慢整台机器。因此 Kero 让所有会话加起来同时只运行 `heavy-slots` 个构建和测试（默认 2 个，**设置 › 智能体 › 构建与测试**）：
+
+- **Claude Code 和 Codex** 无需额外操作：Kero 的 `PreToolUse` 钩子会让构建或测试的 shell 命令（如 `go test`、`npm run build`、`cargo check`、`pytest`、`make`）在开始前等到有空闲槽位，`PostToolUse` 钩子在结束时归还槽位。等待发生在命令之前，所以既不计入智能体的命令超时，也不计入测试自身的超时。等待期间，侧边栏中会话的行会显示*等待构建槽位*及排队位置，智能体也会被告知等了多久。
+- **其他智能体和脚本**包装命令：`kero lock heavy -- go test ./...`。它在命令运行期间占用一个槽位，无论命令如何结束都会归还；其中嵌套的 `kero lock heavy` 会立即运行。
+
+不会无限等待，也不会因槽位而失败：命令最多等待 9 分钟（或 `kero lock heavy --timeout`），之后照常运行。命令结束、智能体的回合结束、窗格关闭时槽位都会归还，被放到后台的构建则在 30 分钟后归还。开发服务器和监视器（`npm run dev`、`--watch`、`go run`）不计入。用 `heavy-command` 添加你自己的命令，或加 `!` 排除。`heavy-slots = 0` 关闭此功能。
+
+在 Windows 上，Kero 还会以低于正常的优先级运行智能体及其启动的一切（`lower-agent-priority`），让桌面和 Kero 在构建时保持流畅。WSL 或 Docker 中的工作不受影响。
 
 ## 运行其他智能体的智能体
 

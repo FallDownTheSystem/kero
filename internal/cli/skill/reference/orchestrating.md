@@ -28,6 +28,9 @@ whichever fits: a child is a session the user can watch and take over, for
 work that needs the user or runs long. Make a child of each piece that can
 ship alone, with a task it can finish alone.
 
+Children's builds and tests queue for the machine's slots (heavy-slots)
+on their own: don't stagger the children yourself to spare the machine.
+
 Before kero new, look in kero status for a child that already holds the
 work: a follow-up, a fix to what it built, the next step of its task goes
 to it with kero message, as it knows the code and the conversation. Start a

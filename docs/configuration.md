@@ -155,6 +155,9 @@ terminal, such as Powerlevel10k's, would leave a copy behind at each width.
 | `default-agent`  | `claude` | The agent the New Session dialog has chosen as it opens |
 | `orchestrator-prompt` |  | An orchestrator's role prompt, its agent's first message, with `\n` between lines; `{goal}` in it is its goal, `{agent}` `default-agent`; empty for Kero's |
 | `orchestrator-max-children` | `0` | How many of an orchestrator's child sessions may run at once: `kero new` refuses another; `0` for any number |
+| `heavy-slots` | `2` | How many builds and test runs agents may run at once over the whole machine; another waits before it starts until one ends ([more](./agents.md#builds-and-tests)); `0` for any number |
+| `heavy-command` |  | A command that counts as a build or test run for `heavy-slots`, as its start, such as `just build`; after a `!`, one that never counts, as `!make help`. Repeat it |
+| `lower-agent-priority` | `true` | Run agents, and the builds they start, below normal priority, so that your desktop stays quick (Windows) |
 | `orchestrator-agent-args` |  | Arguments an orchestrator's agent gets after its command, whichever agent it runs, as `--model opus`, read as the shell reads them; when it resumes too |
 | `ama-agent` |  | The agent command [Ama](./ama.md) runs, from its next chat on; empty for `default-agent`'s |
 | `ama-agent-args` |  | Arguments Ama's agent gets after its command, whichever agent it runs, as `--model sonnet`; when it resumes too |

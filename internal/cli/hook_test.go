@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func testHook(t *testing.T, settings string) agentHook {
@@ -131,6 +132,25 @@ func TestHookAddsTurnEnds(t *testing.T) {
 	}
 	if len(v.Hooks["StopFailure"]) != 1 || len(v.Hooks["SessionStart"]) != 1 {
 		t.Fatalf("hooks:\n%s", got)
+	}
+	// A shell command's start waits, for a slot of heavy-slots, longer
+	// than kero hook's wait for one; its end never holds the agent up.
+	var m struct {
+		Hooks map[string][]struct {
+			Matcher string
+			Hooks   []struct {
+				Async   bool
+				Timeout int
+			}
+		}
+	}
+	json.Unmarshal([]byte(got), &m)
+	pre, post := m.Hooks["PreToolUse"], m.Hooks["PostToolUse"]
+	if len(pre) != 1 || pre[0].Matcher != "Bash" || pre[0].Hooks[0].Async || time.Duration(pre[0].Hooks[0].Timeout)*time.Second <= heavyWait {
+		t.Fatalf("PreToolUse hooks:\n%s", got)
+	}
+	if len(post) != 1 || post[0].Matcher != "Bash" || !post[0].Hooks[0].Async {
+		t.Fatalf("PostToolUse hooks:\n%s", got)
 	}
 	if err := h.remove(); err != nil {
 		t.Fatal(err)

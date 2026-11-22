@@ -15711,3 +15711,83 @@ func SetAmaPromptDetail() string { return In(i18n.Locale()).SetAmaPromptDetail()
 func (msgs Messages) SetAmaPromptDetail() string {
 	return Catalog.Format(msgs.locale, "setAmaPromptDetail", nil)
 }
+
+// SetHeavy says "Builds and tests"
+// in the language the app shows.
+func SetHeavy() string { return In(i18n.Locale()).SetHeavy() }
+
+// SetHeavy says "Builds and tests"
+// in the language of msgs.
+func (msgs Messages) SetHeavy() string {
+	return Catalog.Format(msgs.locale, "setHeavy", nil)
+}
+
+// SetHeavyDetail says "Agents' builds and test runs wait for a free slot, over the whole machine, so that they don't all run at once: Claude…"
+// in the language the app shows.
+func SetHeavyDetail() string { return In(i18n.Locale()).SetHeavyDetail() }
+
+// SetHeavyDetail says "Agents' builds and test runs wait for a free slot, over the whole machine, so that they don't all run at once: Claude…"
+// in the language of msgs.
+func (msgs Messages) SetHeavyDetail() string {
+	return Catalog.Format(msgs.locale, "setHeavyDetail", nil)
+}
+
+// SetHeavySlots says "At once"
+// in the language the app shows.
+func SetHeavySlots() string { return In(i18n.Locale()).SetHeavySlots() }
+
+// SetHeavySlots says "At once"
+// in the language of msgs.
+func (msgs Messages) SetHeavySlots() string {
+	return Catalog.Format(msgs.locale, "setHeavySlots", nil)
+}
+
+// SetHeavySlotsDetail says "How many builds and test runs may run at the same time. One more waits before it starts, up to 9 minutes, then runs a…"
+// in the language the app shows.
+func SetHeavySlotsDetail() string { return In(i18n.Locale()).SetHeavySlotsDetail() }
+
+// SetHeavySlotsDetail says "How many builds and test runs may run at the same time. One more waits before it starts, up to 9 minutes, then runs a…"
+// in the language of msgs.
+func (msgs Messages) SetHeavySlotsDetail() string {
+	return Catalog.Format(msgs.locale, "setHeavySlotsDetail", nil)
+}
+
+// SetHeavySlotsAny says "Any number"
+// in the language the app shows.
+func SetHeavySlotsAny() string { return In(i18n.Locale()).SetHeavySlotsAny() }
+
+// SetHeavySlotsAny says "Any number"
+// in the language of msgs.
+func (msgs Messages) SetHeavySlotsAny() string {
+	return Catalog.Format(msgs.locale, "setHeavySlotsAny", nil)
+}
+
+// SetLowerPriority says "Lower agents' priority"
+// in the language the app shows.
+func SetLowerPriority() string { return In(i18n.Locale()).SetLowerPriority() }
+
+// SetLowerPriority says "Lower agents' priority"
+// in the language of msgs.
+func (msgs Messages) SetLowerPriority() string {
+	return Catalog.Format(msgs.locale, "setLowerPriority", nil)
+}
+
+// SetLowerPriorityDetail says "Agents, and the builds they start, run below normal priority, so that your desktop stays quick while they work. Windows."
+// in the language the app shows.
+func SetLowerPriorityDetail() string { return In(i18n.Locale()).SetLowerPriorityDetail() }
+
+// SetLowerPriorityDetail says "Agents, and the builds they start, run below normal priority, so that your desktop stays quick while they work. Windows."
+// in the language of msgs.
+func (msgs Messages) SetLowerPriorityDetail() string {
+	return Catalog.Format(msgs.locale, "setLowerPriorityDetail", nil)
+}
+
+// SidebarSlotWait says "{place, plural, one {Waiting for a build slot: next} other {Waiting for a build slot: # in line}}"
+// in the language the app shows.
+func SidebarSlotWait(place int) string { return In(i18n.Locale()).SidebarSlotWait(place) }
+
+// SidebarSlotWait says "{place, plural, one {Waiting for a build slot: next} other {Waiting for a build slot: # in line}}"
+// in the language of msgs.
+func (msgs Messages) SidebarSlotWait(place int) string {
+	return Catalog.Format(msgs.locale, "sidebarSlotWait", map[string]any{"place": place})
+}

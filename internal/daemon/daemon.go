@@ -95,6 +95,9 @@ type Daemon struct {
 	// reports are what orchestrators hear of their children
 	// (orchestrator.go).
 	reports reports
+	// slots are heavy-slots', the machine's builds and test runs
+	// (slots.go).
+	slots slots
 	// removing are the worktrees a session's close removes, from before
 	// its panes close, which the cleanup leaves to it; d.mu.
 	removing map[string]int

@@ -24,9 +24,9 @@ kero skill setup
 
 | エージェント   | フックの場所                                                                                         |
 | -------------- | ---------------------------------------------------------------------------------------------------- |
-| Claude Code    | `~/.claude/settings.json` の `SessionStart`、`Stop`、`StopFailure` フックと、Kero のプラグイン `kero@kero` |
+| Claude Code    | `~/.claude/settings.json` の `SessionStart`、`Stop`、`StopFailure` フック、`Bash` の `PreToolUse`、`PostToolUse`、`PostToolUseFailure` フックと、Kero のプラグイン `kero@kero` |
 | CodeBuddy Code | `~/.codebuddy/settings.json` の `SessionStart` フック                                                |
-| Codex          | `~/.codex/hooks.json` の `SessionStart`、`Stop`、`Interrupt` フック                                  |
+| Codex          | `~/.codex/hooks.json` の `SessionStart`、`Stop`、`Interrupt` フックと、`Bash` の `PreToolUse`、`PostToolUse` フック |
 | Pi             | 拡張機能 `~/.pi/agent/extensions/kero.ts`                                                            |
 | OMP            | 拡張機能 `~/.omp/agent/extensions/kero.ts`                                                           |
 | PiG            | 拡張機能 `~/.pig/agent/extensions/kero.ts`                                                           |
@@ -36,7 +36,7 @@ Claude Code のプラグインは Kero 自身のフォルダーにあり、プ�
 
 `CLAUDE_CONFIG_DIR`、`CODEBUDDY_CONFIG_DIR`、`CODEX_HOME`、`PI_CODING_AGENT_DIR`、`PI_CONFIG_DIR`、`PIG_CODING_AGENT_DIR`、`PIG_HOME`、`XDG_CONFIG_HOME` でエージェントのファイルの場所が変わっている場合、Kero はそれに従い、各設定ファイルのほかの部分はそのままにします。
 
-1 つのエージェントだけをセットアップするには、`--agent` に `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig`、`opencode` のいずれかを渡します。セットアップは一度だけです: スキルの各ファイルは Kero 自身のコピーへのリンク（Developer Mode でない Windows ではコピー）で、Kero のアップデートに合わせて更新され、新しいスキルが加えたファイルは追加され、なくなったファイルは削除されます。スキルのフォルダーに置いたあなた自身のファイルはそのまま残ります。Pi、OMP、PiG、OpenCode のプラグインも Kero が最新に保ちます。`kero skill status` で、各部分が最新かどうかがわかります。古い Kero が入れた Claude Code や Codex のフックは、ターン終了のフックがまだないため「outdated」と表示されます。`kero skill setup` をもう一度実行すると追加されます。
+1 つのエージェントだけをセットアップするには、`--agent` に `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig`、`opencode` のいずれかを渡します。セットアップは一度だけです: スキルの各ファイルは Kero 自身のコピーへのリンク（Developer Mode でない Windows ではコピー）で、Kero のアップデートに合わせて更新され、新しいスキルが加えたファイルは追加され、なくなったファイルは削除されます。スキルのフォルダーに置いたあなた自身のファイルはそのまま残ります。Pi、OMP、PiG、OpenCode のプラグインも Kero が最新に保ちます。`kero skill status` で、各部分が最新かどうかがわかります。古い Kero が入れた Claude Code や Codex のフックは、ターン終了や[ビルド](#builds-and-tests)のフックがまだないため「outdated」と表示されます。`kero skill setup` をもう一度実行するか、**設定 › エージェント** の **アップデート** で追加されます。
 
 ```sh
 kero skill status    # インストール済みのものと、それが最新かどうか
@@ -126,6 +126,19 @@ kero report done "Deployed to staging"
 ```
 
 `blocked` の報告でセッションは*待機中*になり、あなたに通知されます。エージェントがこれを使うのは、あなたなしでは続けられないときだけにしてください。スキルはエージェントに、この行を 7 語以内で最新に保つよう求めます: いま取り組んでいること、たどり着いた結果（「Done」ではなく「Fixed login redirect loop」）、または待っている質問です。
+
+<a id="builds-and-tests"></a>
+
+## ビルドとテスト
+
+複数のエージェントが同時にビルドやテストを走らせると、セッションの数に関係なくマシン全体が重くなります。そこで Kero は、すべてのセッションを通して同時に走るビルドとテストを `heavy-slots` 個（デフォルトは 2、**設定 › エージェント › ビルドとテスト**）に抑えます:
+
+- **Claude Code と Codex** は何もしなくてかまいません: Kero の `PreToolUse` フックが、`go test`、`npm run build`、`cargo check`、`pytest`、`make` などのビルドやテストのシェルコマンドを、スロットが空くまで開始前に待たせ、`PostToolUse` フックが終了時にスロットを返します。待ち時間はコマンドの前にあるので、エージェントのコマンドのタイムアウトにもテスト自身のタイムアウトにも数えられません。待っている間、サイドバーのセッションの行に*ビルドのスロット待ち*と順番が表示され、エージェントにはどれだけ待ったかが伝えられます。
+- **ほかのエージェントやスクリプト** はコマンドを包みます: `kero lock heavy -- go test ./...`。コマンドの実行中はスロットを持ち、どんな終わり方でも終了時に返します。その中の `kero lock heavy` はすぐに実行されます。
+
+永遠に待つことも、スロットのせいで失敗することもありません: コマンドは最大 9 分（または `kero lock heavy --timeout`）待ち、その後はそのまま実行されます。スロットは、コマンドの終了、エージェントのターンの終了、ペインを閉じたとき、またはバックグラウンドに回されたビルドなら 30 分後に戻ります。開発サーバーやウォッチャー（`npm run dev`、`--watch`、`go run`）は数えません。自分のコマンドは `heavy-command` で追加し、`!` で外せます。`heavy-slots = 0` でオフになります。
+
+Windows では、Kero はエージェントとそれが始めたすべてを通常より低い優先度でも実行します（`lower-agent-priority`）。ビルド中もデスクトップと Kero の反応が保たれます。WSL や Docker の中の作業は対象外です。
 
 ## ほかのエージェントを動かすエージェント
 

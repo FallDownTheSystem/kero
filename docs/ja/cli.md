@@ -226,6 +226,13 @@ kero notify "Need your input"             # このペインを対応が必要な
 
 状態については[状態と通知](./status.md)を参照してください。
 
+Kero のフックが待たせないエージェントのために、`heavy-slots` のスロットが空いてからビルドやテストを実行し、実行中はスロットを持つには（[詳しく](./agents.md#builds-and-tests)）:
+
+```sh
+kero lock heavy -- go test ./...
+kero lock heavy --timeout 5m -- npm run build   # その後はそのまま実行
+```
+
 ## 変更
 
 ```sh

@@ -149,6 +149,9 @@ Kero はこれらを `# kero-wash:`、`# kero-glow:`、`# kero-highlight:`、`# 
 | `default-agent`  | `claude`   | 新規セッションのダイアログを開いたときに選ばれているエージェント |
 | `orchestrator-prompt` |  | オーケストレーターの役割プロンプト（エージェントへの最初のメッセージ）。行の区切りは `\n`。`{goal}` は目標、`{agent}` は `default-agent`。空なら Kero のもの |
 | `orchestrator-max-children` | `0` | 1 つのオーケストレーターの子が同時にいくつ動けるか。超えると `kero new` は拒否する。`0` で無制限 |
+| `heavy-slots` | `2` | エージェントがマシン全体で同時に実行できるビルドとテストの数。超えた分は開始前に、どれかが終わるまで待つ（[詳しく](./agents.md#builds-and-tests)）。`0` で無制限 |
+| `heavy-command` |  | `heavy-slots` でビルドやテストとして数えるコマンドの先頭（`just build` など）。`!` を付けると数えないコマンド（`!make help` など）。繰り返して指定する |
+| `lower-agent-priority` | `true` | エージェントとそれが始めたビルドを通常より低い優先度で実行し、デスクトップの反応を保つ（Windows） |
 | `orchestrator-agent-args` |  | どのエージェントでも、オーケストレーターのエージェントのコマンドの後ろに付ける引数（`--model opus` など）。シェルが読むとおりに渡し、再開時にも付ける |
 | `ama-agent` |  | [Ama](./ama.md) が次のチャットから実行するエージェントのコマンド。空なら `default-agent` のもの |
 | `ama-agent-args` |  | どのエージェントでも、Ama のエージェントのコマンドの後ろに付ける引数（`--model sonnet` など）。再開時にも付ける |

@@ -462,6 +462,19 @@ var keys = []key{
 	stringKey("default-agent", "the agent command the New Session dialog has chosen as it opens", func(s *Settings) *string { return &s.DefaultAgent }),
 	textKey("orchestrator-prompt", "an orchestrator's role prompt, the first message its agent gets, with \\n between lines; {goal} in it is the orchestrator's goal and {agent} default-agent; empty for Kero's", func(s *Settings) *string { return &s.OrchestratorPrompt }),
 	numberKey("orchestrator-max-children", "how many child sessions an orchestrator may have running at once: kero new refuses another; 0 for any number", func(s *Settings) float64 { return float64(s.OrchestratorMaxChildren) }, func(s *Settings, n float64) { s.OrchestratorMaxChildren = max(0, int(n)) }),
+	numberKey("heavy-slots", "how many builds and test runs agents may run at once, over the whole machine: Kero holds another, before it starts, until one ends; 0 for any number", func(s *Settings) float64 { return float64(s.HeavySlots) }, func(s *Settings, n float64) { s.HeavySlots = max(0, int(n)) }),
+	{name: "heavy-command", doc: "a command that counts as a build or test run for heavy-slots, as its start: just build; one after a ! never counts, as !make help; repeat it", list: true,
+		get: func(s *Settings) []string { return slices.Clone(s.HeavyCommands) },
+		set: func(s *Settings, v []string) error {
+			s.HeavyCommands = nil
+			for _, cmd := range v {
+				if cmd = strings.TrimSpace(cmd); cmd != "" && cmd != "!" {
+					s.HeavyCommands = append(s.HeavyCommands, cmd)
+				}
+			}
+			return nil
+		}},
+	boolKey("lower-agent-priority", "run agents, and what they start, at below normal priority, so that your desktop stays quick while they build (Windows)", func(s *Settings) *bool { return &s.LowerAgentPriority }),
 	stringKey("orchestrator-agent-args", "arguments an orchestrator's agent gets after its command, whichever agent it is, as --model opus, as the shell reads them; when it resumes too", func(s *Settings) *string { return &s.OrchestratorAgentArgs }),
 	stringKey("ama-agent", "the agent command Ama, the helper agent, runs; empty for default-agent's", func(s *Settings) *string { return &s.AmaAgent }),
 	stringKey("ama-agent-args", "arguments Ama's agent gets after its command, whichever agent it is, as --model sonnet, as the shell reads them; when it resumes too", func(s *Settings) *string { return &s.AmaAgentArgs }),

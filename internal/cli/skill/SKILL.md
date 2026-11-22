@@ -23,6 +23,12 @@ server in its pane (kero key <pane> ctrl+c, then kero send <pane> "npm run
 dev" --enter) rather than open another, and close a pane once its output
 has served.
 
+Builds and test runs share a few slots over the whole machine
+(heavy-slots): one may wait before it starts while other sessions build.
+Don't retry, kill, or rerun it in the background for that wait. Claude
+Code's and Codex's wait by themselves; another agent, or a script, runs
+one as kero lock heavy -- go test ./... .
+
 ## Reference
 
 The details are in files beside this one, under reference/. Read the one

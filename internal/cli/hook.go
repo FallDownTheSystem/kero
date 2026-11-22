@@ -36,6 +36,15 @@ func hookCmd(args []string) error {
 	pane := os.Getenv("KERO_PANE")
 	var in hookInput
 	json.NewDecoder(io.LimitReader(os.Stdin, 16<<20)).Decode(&in)
+	// A tool call's start and end hold and free a slot for a build
+	// (lock.go): a subagent's too, as its builds load the machine alike.
+	switch in.Event {
+	case "PreToolUse":
+		return holdHeavy(agent, in, pane)
+	case "PostToolUse", "PostToolUseFailure":
+		freeHeavy(agent, in)
+		return nil
+	}
 	if in.AgentID != "" {
 		return nil
 	}
@@ -97,6 +106,11 @@ type hookInput struct {
 		Type string `json:"type"`
 	} `json:"background_tasks"`
 	Error string `json:"error"`
+	// Of a tool call: the tool, its input, as a shell command's
+	// {"command": …}, and the call's id.
+	ToolName  string          `json:"tool_name"`
+	ToolInput json.RawMessage `json:"tool_input"`
+	ToolUseID string          `json:"tool_use_id"`
 }
 
 // turnEnd is how the event ends the agent's turn, proto.TurnDone,
@@ -340,10 +354,13 @@ func (h agentHook) ours(command string) bool {
 }
 
 // hookEvent is an agent's event kero hooks into: SessionStart, to tell the
-// agent of Kero and kerod of the agent's session, and the end of a turn,
-// for orchestrators' reports. Async ones never hold the agent up.
+// agent of Kero and kerod of the agent's session, the end of a turn, for
+// orchestrators' reports, and a shell command's start and end, for
+// heavy-slots (lock.go). Async ones never hold the agent up; matcher
+// names the tools of a tool's event.
 type hookEvent struct {
 	name    string
+	matcher string
 	async   bool
 	timeout int // seconds
 }
@@ -351,11 +368,17 @@ type hookEvent struct {
 // events are the agent's events kero hooks into.
 func (h agentHook) events() []hookEvent {
 	start := hookEvent{name: "SessionStart", timeout: 10}
+	// The start of a build waits for a slot, up to heavyWait, which its
+	// timeout leaves room after: the agent runs the command anyway once
+	// it runs out.
+	pre := hookEvent{name: "PreToolUse", matcher: "Bash", timeout: heavyTimeout}
+	post := hookEvent{name: "PostToolUse", matcher: "Bash", async: true, timeout: 10}
 	switch h.agent {
 	case "claude":
-		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "StopFailure", async: true, timeout: 10}}
+		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "StopFailure", async: true, timeout: 10},
+			pre, post, {name: "PostToolUseFailure", matcher: "Bash", async: true, timeout: 10}}
 	case "codex":
-		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "Interrupt", async: true, timeout: 3}}
+		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "Interrupt", async: true, timeout: 3}, pre, post}
 	}
 	return []hookEvent{start}
 }
@@ -512,7 +535,11 @@ func (h agentHook) edit(add bool) error {
 				handler = append(handler, member{"async", marshal(true)})
 			}
 			handler = append(handler, member{"timeout", marshal(e.timeout)})
-			groups = append(groups, object{{"hooks", marshal([]object{handler})}})
+			group := object{}
+			if e.matcher != "" {
+				group = append(group, member{"matcher", marshal(e.matcher)})
+			}
+			groups = append(groups, append(group, member{"hooks", marshal([]object{handler})}))
 		}
 		switch {
 		case len(groups) > 0:

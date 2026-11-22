@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"slices"
 	"strconv"
 
@@ -228,5 +229,34 @@ func (a *App) orchestratorSettings(c *ui.Context, pal *palette) {
 			textField(c, "orch-args", &s.OrchestratorAgentArgs, "--model opus", 220, pal).Font("monospace")
 		})
 		promptSetting(c, pal, "orch-prompt", locales.SetOrchestratorPrompt(), locales.SetOrchestratorPromptDetail("{goal}", "{agent}"), &s.OrchestratorPrompt, orchestrator.DefaultPrompt, &a.ss.prompts[4])
+	})
+}
+
+// heavySettings are Settings › Agents' of builds and test runs: how many
+// run at once over the machine (heavy-slots), and agents' priority.
+func (a *App) heavySettings(c *ui.Context, pal *palette) {
+	s := &a.set
+	settingsGroup(c, pal, locales.SetHeavy(), locales.SetHeavyDetail(), func() {
+		settingRow(c, pal, locales.SetHeavySlots(), locales.SetHeavySlotsDetail(), func() {
+			most := strconv.Itoa(s.HeavySlots)
+			opts := []string{"0", "1", "2", "3", "4", "6", "8"}
+			if !slices.Contains(opts, most) {
+				opts = append(opts, most)
+			}
+			popup(c, "heavy-slots", &most, opts, func(v string) string {
+				if v == "0" {
+					return locales.SetHeavySlotsAny()
+				}
+				return v
+			}, 140, pal)
+			if n, err := strconv.Atoi(most); err == nil {
+				s.HeavySlots = n
+			}
+		})
+		if runtime.GOOS == "windows" {
+			settingRow(c, pal, locales.SetLowerPriority(), locales.SetLowerPriorityDetail(), func() {
+				toggle(c.Key("lower-prio"), &s.LowerAgentPriority, pal)
+			})
+		}
 	})
 }

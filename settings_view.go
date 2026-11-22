@@ -1563,6 +1563,7 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 	})
 	codeBlock(c, pal, "kero do pane.split.down\nkero do session.attention\nkero actions        # what kero do runs")
 	a.orchestratorSettings(c, pal)
+	a.heavySettings(c, pal)
 	settingsGroup(c, pal, locales.SetCli(), locales.SetCliDetail(), func() {
 		detail := locales.SetCliNotInstalled()
 		if a.ss.cliPath != "" {

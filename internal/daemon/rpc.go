@@ -545,6 +545,21 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		d.turnEnded(pn, p, time.Now())
 		return true, nil
 
+	case "slot.take":
+		var p proto.SlotParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.takeSlot(c, p)
+
+	case "slot.release":
+		var p proto.SlotParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		d.releaseSlot(p.Key)
+		return true, nil
+
 	case "conversations":
 		return d.conversations(), nil
 

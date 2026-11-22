@@ -1545,5 +1545,13 @@
   "setAmaArgsDetail": "Ama のエージェントのコマンドの後ろに付けます（どのエージェントでも）。シェルが読むとおりに渡し、再開するときにも付けます。次のチャットから有効です。",
   "setOrchestratorArgsDetail": "オーケストレーターのエージェントのコマンドの後ろに付けます（どのエージェントでも）。シェルが読むとおりに渡し、再開するときにも付けます。",
   "setAmaPrompt": "役割プロンプト",
-  "setAmaPromptDetail": "Ama への指示です。Kero がそのフォルダの CLAUDE.md と AGENTS.md に書きます。エージェントは次のチャットから読み、USER.md がその上に加わります。"
+  "setAmaPromptDetail": "Ama への指示です。Kero がそのフォルダの CLAUDE.md と AGENTS.md に書きます。エージェントは次のチャットから読み、USER.md がその上に加わります。",
+  "setHeavy": "ビルドとテスト",
+  "setHeavyDetail": "エージェントのビルドとテストは、マシン全体で空きスロットを待ってから始まるので、一度にすべてが走ることはありません。Kero のフック (kero skill setup) を入れた Claude Code と Codex のもの、そして kero lock heavy で実行したコマンドが対象です。",
+  "setHeavySlots": "同時実行数",
+  "setHeavySlotsDetail": "同時に実行できるビルドとテストの数。超えた分は開始前に最大 9 分待ち、その後はそのまま実行されます。",
+  "setHeavySlotsAny": "無制限",
+  "setLowerPriority": "エージェントの優先度を下げる",
+  "setLowerPriorityDetail": "エージェントとそれが始めたビルドを通常より低い優先度で実行し、作業中もデスクトップの反応を保ちます。Windows のみ。",
+  "sidebarSlotWait": "ビルドのスロット待ち: {place} 番目"
 }

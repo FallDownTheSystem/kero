@@ -2726,5 +2726,20 @@
   "setAmaArgsDetail": "Added after Ama's agent command, whichever agent it runs, as the shell reads them: also when it resumes. From its next chat.",
   "setOrchestratorArgsDetail": "Added after an orchestrator's agent command, whichever agent it runs, as the shell reads them: also when it resumes.",
   "setAmaPrompt": "Role prompt",
-  "setAmaPromptDetail": "Ama's instructions, which Kero writes into CLAUDE.md and AGENTS.md in its folder. Its agent reads them from its next chat; USER.md comes on top."
+  "setAmaPromptDetail": "Ama's instructions, which Kero writes into CLAUDE.md and AGENTS.md in its folder. Its agent reads them from its next chat; USER.md comes on top.",
+  "setHeavy": "Builds and tests",
+  "setHeavyDetail": "Agents' builds and test runs wait for a free slot, over the whole machine, so that they don't all run at once: Claude Code's and Codex's, with Kero's hook (kero skill setup), and any command run with kero lock heavy.",
+  "setHeavySlots": "At once",
+  "setHeavySlotsDetail": "How many builds and test runs may run at the same time. One more waits before it starts, up to 9 minutes, then runs anyway.",
+  "setHeavySlotsAny": "Any number",
+  "setLowerPriority": "Lower agents' priority",
+  "setLowerPriorityDetail": "Agents, and the builds they start, run below normal priority, so that your desktop stays quick while they work. Windows.",
+  "sidebarSlotWait": "{place, plural, one {Waiting for a build slot: next} other {Waiting for a build slot: # in line}}",
+  "@sidebarSlotWait": {
+    "placeholders": {
+      "place": {
+        "type": "int"
+      }
+    }
+  }
 }

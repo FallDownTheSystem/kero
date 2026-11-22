@@ -128,6 +128,14 @@ type Settings struct {
 	// any number.
 	OrchestratorPrompt      string `json:"orchestratorPrompt"`
 	OrchestratorMaxChildren int    `json:"orchestratorMaxChildren"`
+	// HeavySlots is how many builds and test runs agents may run at once,
+	// over the whole machine: kero hook holds another until one ends, 0
+	// for any number. HeavyCommands are the user's own, as heavy.Heavy
+	// takes them. LowerAgentPriority runs agents' panes, and what they
+	// start, at below normal priority (Windows).
+	HeavySlots         int      `json:"heavySlots"`
+	HeavyCommands      []string `json:"heavyCommands"`
+	LowerAgentPriority bool     `json:"lowerAgentPriority"`
 	// OrchestratorAgentArgs are arguments an orchestrator's agent gets
 	// after its command, whichever agent it runs, as "--model opus";
 	// AmaAgentArgs, Ama's. AmaPrompt is Ama's role prompt, which its
@@ -341,6 +349,7 @@ func Default() Settings {
 		NotifyFailed:    true,
 		DockBadge:       DockBadgeWaiting,
 		RemoteControl:   true,
+		HeavySlots:      2,
 		Agents:          []string{DefaultAgentCommand},
 		DefaultAgent:    DefaultAgentCommand,
 		GitStatus:       true,
@@ -365,6 +374,9 @@ func Default() Settings {
 
 		// Ama's window is small for Claude Code's status line.
 		AmaHideStatusLine: true,
+
+		// Agents' builds stay off the desktop's way.
+		LowerAgentPriority: true,
 	}
 }
 

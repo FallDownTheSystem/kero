@@ -166,3 +166,7 @@ func ioctl(f *os.File, req uintptr, arg unsafe.Pointer) error {
 	}
 	return nil
 }
+
+// lowerPriority is Windows' alone (lower-agent-priority): a Unix agent's
+// priority is the user's, as nice sets it.
+func (p *ptyProc) lowerPriority(bool) {}
