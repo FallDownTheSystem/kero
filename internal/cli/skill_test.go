@@ -3,9 +3,12 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
+
+	"kero/internal/orchestrator"
 )
 
 func TestSkillLinks(t *testing.T) {
@@ -211,5 +214,135 @@ func TestPiGHook(t *testing.T) {
 	t.Setenv("PI_CODING_AGENT_DIR", filepath.Join(home, "pi", "agent"))
 	if dir := agentHooks("pig")[0].(agentPlugin).dir; dir != filepath.Dir(ts) {
 		t.Errorf("dir %q, want %q", dir, filepath.Dir(ts))
+	}
+}
+
+// The skill is SKILL.md and the reference files beside it: setup installs
+// each, SyncSkill adds those an older install lacks, and both remove what
+// kero installed that it has no more, but never the user's own files.
+func TestSkillFiles(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("KERO_HOME", filepath.Join(home, "kero"))
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
+	claude := skillDirs("claude")["claude"]
+	if _, ok := skillFiles["reference/orchestrating.md"]; !ok || len(skillFiles) < 5 {
+		t.Fatalf("skill files: %v", sortedKeys(skillFiles))
+	}
+
+	// An older kero's install: SKILL.md alone, linked.
+	os.MkdirAll(claude, 0o755)
+	if err := syncSkillFiles(); err != nil {
+		t.Fatal(err)
+	}
+	if os.Symlink(skillFile(), filepath.Join(claude, "SKILL.md")) != nil {
+		os.WriteFile(filepath.Join(claude, "SKILL.md"), []byte(skillGuide), 0o644)
+	}
+	if skillState(claude) != "outdated" {
+		t.Errorf("state %s, with no reference files", skillState(claude))
+	}
+	if err := writeSkill(claude); err != nil { // kero skill setup's part
+		t.Fatal(err)
+	}
+	for rel, text := range skillFiles {
+		if b, err := os.ReadFile(filepath.Join(claude, filepath.FromSlash(rel))); err != nil || string(b) != text {
+			t.Errorf("%s: %v", rel, err)
+		}
+	}
+	if skillState(claude) != "current" {
+		t.Errorf("state %s", skillState(claude))
+	}
+
+	// What a later kero drops: Kero's own copy, a link to it and a copy of
+	// a reference file go; the user's notes, in the skill or beside the
+	// reference files, stay.
+	own := filepath.Join(skillRoot(), "reference", "dropped.md")
+	os.WriteFile(own, []byte(skillMark+" -->\n"), 0o644)
+	linked := filepath.Join(claude, "reference", "dropped.md")
+	if os.Symlink(own, linked) != nil {
+		os.WriteFile(linked, []byte(skillMark+" -->\n"), 0o644)
+	}
+	copied := filepath.Join(claude, "reference", "renamed.md")
+	os.WriteFile(copied, []byte(skillMark+" -->\n# Old\n"), 0o644)
+	mine := []string{filepath.Join(claude, "NOTES.md"), filepath.Join(claude, "reference", "mine.md")}
+	for _, p := range mine {
+		os.WriteFile(p, []byte("# My notes\n"), 0o644)
+	}
+	if skillState(claude) != "outdated" {
+		t.Errorf("state %s, with files kero dropped", skillState(claude))
+	}
+	SyncSkill()
+	for _, p := range []string{own, linked, copied} {
+		if _, err := os.Lstat(p); err == nil {
+			t.Errorf("%s stays", p)
+		}
+	}
+	for _, p := range mine {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("the user's %s: %v", p, err)
+		}
+	}
+	if skillState(claude) != "current" {
+		t.Errorf("state %s, the user's notes there", skillState(claude))
+	}
+
+	// Removing it takes kero's files alone.
+	if err := removeSkill(claude); err != nil {
+		t.Fatal(err)
+	}
+	for rel := range skillFiles {
+		if _, err := os.Lstat(filepath.Join(claude, filepath.FromSlash(rel))); err == nil {
+			t.Errorf("%s stays", rel)
+		}
+	}
+	for _, p := range mine {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("removing took the user's %s", p)
+		}
+	}
+}
+
+// SKILL.md is a directory of the reference files: it names every one, and
+// every file that it, the files, the role prompt and the hook name is
+// there, for kero skill show to print too.
+func TestSkillReferences(t *testing.T) {
+	name := regexp.MustCompile(`reference/([a-z-]+)\.md`)
+	texts := map[string]string{"role prompt": orchestrator.DefaultPrompt, "hook": hookOrchestrator + hookChild}
+	for rel, text := range skillFiles {
+		texts[rel] = text
+	}
+	for from, text := range texts {
+		for _, m := range name.FindAllStringSubmatch(text, -1) {
+			if _, ok := skillFiles[m[0]]; !ok {
+				t.Errorf("%s names %s, which isn't there", from, m[0])
+			}
+			if got, ok := skillShow(m[1]); !ok || got != skillFiles[m[0]] {
+				t.Errorf("kero skill show %s", m[1])
+			}
+		}
+	}
+	for rel, text := range skillFiles {
+		if rel == "SKILL.md" {
+			continue
+		}
+		if !strings.Contains(skillGuide, "- "+rel+":") {
+			t.Errorf("SKILL.md doesn't list %s", rel)
+		}
+		if !strings.HasPrefix(text, skillMark) {
+			t.Errorf("%s doesn't start with the mark", rel)
+		}
+	}
+	if _, ok := skillShow("nothing"); ok {
+		t.Error("kero skill show nothing")
+	}
+	// A description of triggers, not of every feature.
+	desc, _, _ := strings.Cut(strings.SplitN(skillGuide, "description: ", 2)[1], "\n")
+	if len(desc) > 600 || !strings.Contains(desc, "Use when") {
+		t.Errorf("description of %d bytes: %s", len(desc), desc)
+	}
+	for _, want := range []string{"Result", "Not done", "Where", "Next", "Waiting on you:", "kero report working"} {
+		if !strings.Contains(skillFiles["reference/reporting.md"], want) || !strings.Contains(hookChild, want) {
+			t.Errorf("the report's %q is missing", want)
+		}
 	}
 }

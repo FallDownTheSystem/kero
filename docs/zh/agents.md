@@ -16,7 +16,7 @@ kero skill setup
 
 这会安装两样东西：
 
-- 一个**技能**，教智能体使用命令行。Claude Code 从 `~/.claude/skills/kero` 读取，CodeBuddy Code 从 `~/.codebuddy/skills/kero` 读取；Codex、OpenCode 等智能体从 `~/.agents/skills/kero` 读取。
+- 一个**技能**，教智能体使用命令行。Claude Code 从 `~/.claude/skills/kero` 读取，CodeBuddy Code 从 `~/.codebuddy/skills/kero` 读取；Codex、OpenCode 等智能体从 `~/.agents/skills/kero` 读取。它的 `SKILL.md` 很短：列出旁边 `reference/` 中的参考文件，并说明各在何时阅读，例如启动子会话前读 `orchestrating.md`，向编排器报告前读 `reporting.md`，交接或合并前读 `worktrees-prs.md`。智能体只读任务需要的那些。
 - 一个**钩子**，在智能体开始会话时运行。它告诉智能体自己位于哪个 Kero 会话和窗格，省得它花时间去查；如果会话还没有名字，就让智能体按任务给它命名，例如 `fix-login-redirect`，不用你动手。它还会把智能体自己的会话告诉 Kero，这样 kerod 重启后（比如电脑重启之后），智能体就能[接上之前的对话](./sessions.md#kerod)。智能体每结束一个回合，同一个钩子也会运行，把回合的结束和最后的回复告诉 Kero，这样[编排器](./orchestrators.md)会在子会话的回合结束时得知，而不是等它的屏幕看起来空闲时。此时钩子不输出任何内容，并在后台运行，不会拖慢智能体。
 
 对于你已安装的智能体，钩子会放在各自查找钩子的位置：
@@ -35,12 +35,12 @@ Claude Code 的插件位于 Kero 自己的文件夹中，是名为 `kero` 的插
 
 如果 `CLAUDE_CONFIG_DIR`、`CODEBUDDY_CONFIG_DIR`、`CODEX_HOME`、`PI_CODING_AGENT_DIR`、`PI_CONFIG_DIR`、`PIG_CODING_AGENT_DIR`、`PIG_HOME` 或 `XDG_CONFIG_HOME` 改变了智能体文件的位置，Kero 会跟着走，并且不会改动各设置文件里的其他内容。
 
-传入 `--agent` 并指定 `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig` 或 `opencode`，可以只为一个智能体安装。只需安装一次：技能是指向 Kero 自己那份副本的链接，会随 Kero 更新而更新；Pi、OMP、PiG 和 OpenCode 的插件，Kero 也会保持为最新。`kero skill status` 会告诉你各部分是否为最新。旧版 Kero 安装的 Claude Code 或 Codex 钩子会显示为“outdated”，因为还没有回合结束的钩子：再运行一次 `kero skill setup` 即可添加。
+传入 `--agent` 并指定 `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig` 或 `opencode`，可以只为一个智能体安装。只需安装一次：技能的每个文件都是指向 Kero 自己那份副本的链接（在未开启开发者模式的 Windows 上是副本），会随 Kero 更新而更新，新版技能增加的文件会被加上，删去的文件会被移除，而你放在技能文件夹里的自己的文件保持不动；Pi、OMP、PiG 和 OpenCode 的插件，Kero 也会保持为最新。`kero skill status` 会告诉你各部分是否为最新。旧版 Kero 安装的 Claude Code 或 Codex 钩子会显示为“outdated”，因为还没有回合结束的钩子：再运行一次 `kero skill setup` 即可添加。
 
 ```sh
 kero skill status    # 已安装什么，是否为最新
-kero skill show      # 打印技能内容
-kero skill remove    # 卸载技能和钩子
+kero skill show      # 打印 SKILL.md；kero skill show reporting 打印 reference/reporting.md
+kero skill remove    # 卸载技能和钩子，保留你自己的文件
 ```
 
 钩子只对安装之后启动的智能体会话生效，而且智能体可能会先征求你的同意：
@@ -124,7 +124,7 @@ kero report blocked "Approve the production deploy?"
 kero report done "Deployed to staging"
 ```
 
-`blocked` 报告会把会话变为*等待中*并通知你，所以智能体只应在离开你就无法继续时使用它。
+`blocked` 报告会把会话变为*等待中*并通知你，所以智能体只应在离开你就无法继续时使用它。技能要求智能体让这一行保持最新，不超过七个词：正在做的事、达成的结果（写“Fixed login redirect loop”，而不是“Done”），或正在等待的问题。
 
 ## 运行其他智能体的智能体
 

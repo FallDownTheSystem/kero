@@ -17,7 +17,7 @@ kero skill setup
 
 これで 2 つのものがインストールされます:
 
-- エージェントに CLI を教える **スキル**。Claude Code は `~/.claude/skills/kero` から、CodeBuddy Code は `~/.codebuddy/skills/kero` から、Codex、OpenCode などのエージェントは `~/.agents/skills/kero` から読み込みます。
+- エージェントに CLI を教える **スキル**。Claude Code は `~/.claude/skills/kero` から、CodeBuddy Code は `~/.codebuddy/skills/kero` から、Codex、OpenCode などのエージェントは `~/.agents/skills/kero` から読み込みます。`SKILL.md` は短く、隣の `reference/` にある参照ファイルの一覧と、それぞれをいつ読むかだけを書いています。たとえば子セッションを始める前に `orchestrating.md`、オーケストレーターに報告する前に `reporting.md`、ハンドオフやマージの前に `worktrees-prs.md` です。エージェントはタスクに要るものだけを読みます。
 - エージェントがセッションを始めるときに実行される **フック**。エージェントに、どの Kero セッションとペインにいるかを伝えるので、それを調べる手間が省けます。また、名前のないセッションに `fix-login-redirect` のようなタスクにちなんだ名前を付けさせるので、あなたが付ける必要はありません。さらに、エージェント自身のセッションを Kero に伝えるので、再起動のあとなど kerod が再起動したとき、エージェントは[会話を再開](./sessions.md#kerod)します。同じフックはエージェントが各ターンを終えるときにも実行され、ターンの終わりとその返答を Kero に伝えます。そのため[オーケストレーター](./orchestrators.md)は、子の画面がアイドルに見えたときではなく、ターンが終わったときにそれを知ります。このときフックは何も出力せず、バックグラウンドで実行されるので、エージェントを待たせません。
 
 フックは、インストールされているエージェントごとに、それぞれが探す場所に置かれます:
@@ -36,12 +36,12 @@ Claude Code のプラグインは Kero 自身のフォルダーにあり、プ�
 
 `CLAUDE_CONFIG_DIR`、`CODEBUDDY_CONFIG_DIR`、`CODEX_HOME`、`PI_CODING_AGENT_DIR`、`PI_CONFIG_DIR`、`PIG_CODING_AGENT_DIR`、`PIG_HOME`、`XDG_CONFIG_HOME` でエージェントのファイルの場所が変わっている場合、Kero はそれに従い、各設定ファイルのほかの部分はそのままにします。
 
-1 つのエージェントだけをセットアップするには、`--agent` に `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig`、`opencode` のいずれかを渡します。セットアップは一度だけです: スキルは Kero 自身のコピーへのリンクで、Kero のアップデートに合わせて更新されます。Pi、OMP、PiG、OpenCode のプラグインも Kero が最新に保ちます。`kero skill status` で、各部分が最新かどうかがわかります。古い Kero が入れた Claude Code や Codex のフックは、ターン終了のフックがまだないため「outdated」と表示されます。`kero skill setup` をもう一度実行すると追加されます。
+1 つのエージェントだけをセットアップするには、`--agent` に `claude`、`codebuddy`、`codex`、`pi`、`omp`、`pig`、`opencode` のいずれかを渡します。セットアップは一度だけです: スキルの各ファイルは Kero 自身のコピーへのリンク（Developer Mode でない Windows ではコピー）で、Kero のアップデートに合わせて更新され、新しいスキルが加えたファイルは追加され、なくなったファイルは削除されます。スキルのフォルダーに置いたあなた自身のファイルはそのまま残ります。Pi、OMP、PiG、OpenCode のプラグインも Kero が最新に保ちます。`kero skill status` で、各部分が最新かどうかがわかります。古い Kero が入れた Claude Code や Codex のフックは、ターン終了のフックがまだないため「outdated」と表示されます。`kero skill setup` をもう一度実行すると追加されます。
 
 ```sh
 kero skill status    # インストール済みのものと、それが最新かどうか
-kero skill show      # スキルを出力
-kero skill remove    # スキルとフックをアンインストール
+kero skill show      # SKILL.md を出力。kero skill show reporting は reference/reporting.md を出力
+kero skill remove    # スキルとフックをアンインストール（あなた自身のファイルは残す）
 ```
 
 フックが働くのはセットアップ後に始めたエージェントのセッションだけで、エージェントが先に確認を求めることもあります:
@@ -125,7 +125,7 @@ kero report blocked "Approve the production deploy?"
 kero report done "Deployed to staging"
 ```
 
-`blocked` の報告でセッションは*待機中*になり、あなたに通知されます。エージェントがこれを使うのは、あなたなしでは続けられないときだけにしてください。
+`blocked` の報告でセッションは*待機中*になり、あなたに通知されます。エージェントがこれを使うのは、あなたなしでは続けられないときだけにしてください。スキルはエージェントに、この行を 7 語以内で最新に保つよう求めます: いま取り組んでいること、たどり着いた結果（「Done」ではなく「Fixed login redirect loop」）、または待っている質問です。
 
 ## ほかのエージェントを動かすエージェント
 

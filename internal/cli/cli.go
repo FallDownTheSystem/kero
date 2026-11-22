@@ -359,7 +359,7 @@ Usage:
   kero projects move <project> <position|top|bottom|up|down>
                                 move a project in that order (1 is the
                                 top)
-  kero skill setup|status|show|remove
+  kero skill setup|status|show [<file>]|remove
                                 teach coding agents to use kero
   kero clients [--json]         list who is connected to kerod
   kero hosts [ls]               the other machines Kero reaches

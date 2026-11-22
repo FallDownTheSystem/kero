@@ -215,6 +215,20 @@ func contextCmd(agent, session string, wait bool) error {
 	}
 }
 
+// hookOrchestrator and hookChild are what the hook tells an orchestrator
+// and a child of its part, pointing at the skill's reference files rather
+// than repeating them.
+const (
+	hookOrchestrator = " This session is an orchestrator: plan and delegate, starting sessions for the work with kero new, " +
+		"which become your children; Kero types their reports into your conversation. " +
+		"Before you start one, read reference/orchestrating.md of the kero skill (`kero skill show orchestrating`). Goal: %s"
+	hookChild = " This session is a child of orchestrator session %s. Kero sends it the last reply of each of your turns, " +
+		"and tells it when you wait for input or fail: end a turn with what the orchestrator needs, your result or your question. " +
+		"Once your task is done, or blocked, send it your report with `kero report --to-parent -` in four parts, Result, Not done, Where and Next, " +
+		"a blocked one starting \"Waiting on you:\", and keep your status line current with `kero report working|done|blocked`: " +
+		"read reference/reporting.md of the kero skill (`kero skill show reporting`) first."
+)
+
 // hookContext is what the hook tells an agent in pane, of session sid;
 // c is kerod, nil when it is unreachable. away tells an agent whose
 // commands don't run in its pane, and don't have its variables.
@@ -251,12 +265,9 @@ func hookContext(c *client.Client, pane, sid string, away bool) string {
 		// or one started anew in the session, keeps to.
 		switch {
 		case s.Orchestrator:
-			fmt.Fprintf(&b, " This session is an orchestrator: plan and delegate, starting sessions for the work with kero new, "+
-				"which become your children; Kero types their reports into your conversation. Goal: %s", orDash(s.Goal))
+			fmt.Fprintf(&b, hookOrchestrator, orDash(s.Goal))
 		case s.Parent != "":
-			fmt.Fprintf(&b, " This session is a child of orchestrator session %s. Kero sends it the last reply of each of your turns, "+
-				"and tells it when you wait for input or fail: end a turn with what the orchestrator needs, your result or your question. "+
-				"Once your task is done, send it a short summary of the result with `kero report --to-parent \"<summary>\"`.", s.Parent)
+			fmt.Fprintf(&b, hookChild, s.Parent)
 		}
 	}
 	return b.String()
