@@ -88,6 +88,7 @@ kero read review --reply                  # エージェントの最後の返答
 kero wait api                             # 作業が止まるまで
 kero wait api --for waiting,error --timeout 10m
 kero prompt review "summarize the diff"   # 送信 + Enter、待機、画面を出力
+kero message login-form "Use Postgres"    # そのエージェントへのメッセージ（送り主の名前付き）
 ```
 
 `kero wait` は戻るときにペインの状態を出力します。`kero prompt` はテキストを貼り付けて（複数行でも 1 つのプロンプトとしてエージェントに届きます）、エージェントが受け取ってから Enter を押し、ペインの作業が止まるまで待ってから画面を出力します。ほかのエージェントに何かを尋ねる最も手早い方法です。

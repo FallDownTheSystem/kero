@@ -36,7 +36,8 @@ const DefaultPrompt = "You are an orchestrator session in Kero, a terminal app f
 	"- Kero sends your children's reports into this conversation: when one finishes its turn, with the reply it ended it with, " +
 	"waits for input or fails, and the summaries they send with kero report --to-parent. " +
 	"Read a child's whole last reply with `kero read <id> --reply`, its screen with `kero read <id>`, " +
-	"answer it with `kero prompt <id> '<answer>'`, and see them all with `kero status`.\n" +
+	"answer it with `kero message <id> '<answer>'` (`kero prompt` only for a question or permission it asks in its prompt), " +
+	"and see them all with `kero status`.\n" +
 	"- To restart a child's conversation, as after a crash, use `kero resume <conversation>` from here: it stays your child " +
 	"(`--parent none` makes it none's). A session that lost its link becomes your child again with `kero parent <id>`. " +
 	"Never have a child report with kero prompt: Kero reports only on your children, and kero prompt reads as the user's words.\n" +

@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -239,7 +242,7 @@ func TestNativeFailureTypes(t *testing.T) {
 	}
 	for i := 0; ; i++ {
 		d.mail.mu.Lock()
-		waits, noNative := len(d.mail.out[id]), d.mail.noNative[id]
+		waits, noNative := len(d.mail.out[id]), d.mail.noNative[id].session
 		d.mail.mu.Unlock()
 		if waits == 1 && noNative == "019a-thread" {
 			break
@@ -315,5 +318,176 @@ func TestNativeOpenCode(t *testing.T) {
 	os.Remove(svc)
 	if d.sendNative(pn, "report") {
 		t.Error("given with no service")
+	}
+}
+
+// syncBuf is a log kerod writes to from its goroutines.
+type syncBuf struct {
+	mu sync.Mutex
+	b  strings.Builder
+}
+
+func (s *syncBuf) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuf) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
+}
+
+// A message typed into an agent's prompt is logged with why: no listener
+// waits, or the user's words a listener of events doesn't take. One a
+// listener takes isn't.
+func TestTypedLogged(t *testing.T) {
+	d := testDaemon(t)
+	var lg syncBuf
+	d.log = log.New(&lg, "", 0)
+	pn := quietAgent(t, d, "claude")
+	id := pn.info.ID
+	d.agentSend(proto.AgentSendParams{To: id, Text: "report"})
+	if n := queued(d, id); n != 0 {
+		t.Fatalf("%d not typed", n)
+	}
+	if got := lg.String(); !strings.Contains(got, "message to "+id+"'s claude typed into its prompt: no listener") {
+		t.Errorf("logged %q", got)
+	}
+	idleAgain(pn)
+	got := listen(t, d, pn)
+	waitListening(t, d, id)
+	d.agentSend(proto.AgentSendParams{To: id, Text: "picks", User: true})
+	if !strings.Contains(lg.String(), "the user's words") {
+		t.Errorf("logged %q", lg.String())
+	}
+	idleAgain(pn)
+	before := lg.String()
+	d.agentSend(proto.AgentSendParams{To: id, Text: "report"})
+	if m := <-got; !strings.Contains(m.Text, "report") {
+		t.Fatalf("the listener got %q", m.Text)
+	}
+	if lg.String() != before {
+		t.Errorf("logged a message its listener took: %q", strings.TrimPrefix(lg.String(), before))
+	}
+}
+
+func waitListening(t *testing.T, d *Daemon, id string) {
+	t.Helper()
+	for i := 0; !d.mail.listening(id); i++ {
+		if i == 500 {
+			t.Fatal("no listener")
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+}
+
+// kero status tells which agent panes have a listener taking their
+// messages.
+func TestInboxStatus(t *testing.T) {
+	d := testDaemon(t)
+	pn := quietAgent(t, d, "claude")
+	inbox := func() bool {
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		return d.sessionInfo(d.sessionByIDLocked(pn.sid)).Panes[0].Inbox
+	}
+	if inbox() {
+		t.Error("a listener before any listens")
+	}
+	got := listen(t, d, pn)
+	waitListening(t, d, pn.info.ID)
+	if !inbox() {
+		t.Error("no listener while one waits")
+	}
+	d.agentSend(proto.AgentSendParams{To: pn.info.ID, Text: "done"})
+	<-got
+}
+
+// Just after kerod starts, a message for an agent whose listener may be
+// on its way back waits for it, startHold, then is typed.
+func TestStartHold(t *testing.T) {
+	d := testDaemon(t)
+	d.started = time.Now()
+	claude, shell := quietAgent(t, d, "claude"), quietAgent(t, d, "aider")
+	d.agentSend(proto.AgentSendParams{To: claude.info.ID, Text: "report"})
+	d.agentSend(proto.AgentSendParams{To: shell.info.ID, Text: "report"})
+	if queued(d, claude.info.ID) != 1 {
+		t.Error("typed before the listener could come back")
+	}
+	if queued(d, shell.info.ID) != 0 {
+		t.Error("held for an agent with no listener of Kero's")
+	}
+	d.flushOutbox(d.started.Add(startHold))
+	if n := queued(d, claude.info.ID); n != 0 {
+		t.Errorf("%d still held after startHold", n)
+	}
+}
+
+// A session whose way in failed gets its messages typed in for
+// nativeRetry, then tries its way in again.
+func TestNativeRetry(t *testing.T) {
+	d := testDaemon(t)
+	pn := quietAgent(t, d, "codex")
+	id := pn.info.ID
+	pn.mu.Lock()
+	pn.info.AgentSession = &proto.AgentSession{Agent: "codex", ID: "019a-thread"}
+	pn.mu.Unlock()
+	tries := make(chan string, 4)
+	old := codexQueue
+	codexQueue = func(_ context.Context, _, tx string) error {
+		tries <- tx
+		return nil
+	}
+	t.Cleanup(func() { codexQueue = old })
+	failed := func(at time.Time) {
+		d.mail.mu.Lock()
+		d.mail.initLocked()
+		d.mail.noNative[id] = nativeFailure{"019a-thread", at}
+		d.mail.mu.Unlock()
+	}
+	failed(time.Now())
+	d.agentSend(proto.AgentSendParams{To: id, Text: "first"})
+	select {
+	case tx := <-tries:
+		t.Fatalf("queued %q just after its way in failed", tx)
+	case <-time.After(50 * time.Millisecond):
+	}
+	idleAgain(pn)
+	failed(time.Now().Add(-nativeRetry))
+	d.agentSend(proto.AgentSendParams{To: id, Text: "second"})
+	select {
+	case tx := <-tries:
+		if !strings.Contains(tx, "second") {
+			t.Errorf("queued %q", tx)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("its way in not tried again after nativeRetry")
+	}
+}
+
+// npm's codex.cmd stands for the codex.exe its package ships, in the
+// package or in the package of its platform, for the machine's arch.
+func TestCodexNative(t *testing.T) {
+	for _, layout := range []string{
+		"node_modules/@openai/codex/vendor/%s/codex/codex.exe",
+		"node_modules/@openai/codex/node_modules/@openai/codex-win32-x64/vendor/%s/codex/codex.exe",
+		"node_modules/@openai/codex-win32-x64/vendor/%s/codex/codex.exe",
+	} {
+		dir := t.TempDir()
+		for _, triple := range []string{"aarch64-pc-windows-msvc", "x86_64-pc-windows-msvc"} {
+			exe := filepath.Join(dir, filepath.FromSlash(fmt.Sprintf(layout, triple)))
+			os.MkdirAll(filepath.Dir(exe), 0o755)
+			os.WriteFile(exe, nil, 0o755)
+		}
+		script := filepath.Join(dir, "codex.cmd")
+		want := filepath.Join(dir, filepath.FromSlash(fmt.Sprintf(layout, "x86_64-pc-windows-msvc")))
+		if got := codexNative(script, "amd64"); got != want {
+			t.Errorf("%s: %q, want %q", layout, got, want)
+		}
+	}
+	if got := codexNative(filepath.Join(t.TempDir(), "codex.cmd"), "amd64"); got != "" {
+		t.Errorf("found %q in no package", got)
 	}
 }

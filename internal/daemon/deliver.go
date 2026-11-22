@@ -61,11 +61,34 @@ type mailbox struct {
 	heard map[string]time.Time
 	// pending are the panes whose messages are on their way through the
 	// agent's own way in (native.go); noNative, by pane, the agent's
-	// session whose way in failed, which gets its messages typed in.
+	// session whose way in failed, which gets its messages typed in for
+	// nativeRetry.
 	pending  map[string]bool
-	noNative map[string]string
+	noNative map[string]nativeFailure
 	wake     chan struct{}
 }
+
+// nativeFailure is an agent's session whose own way in failed, and when.
+type nativeFailure struct {
+	session string
+	at      time.Time
+}
+
+// nativeRetry is how long a session whose own way in failed gets its
+// messages typed in, before the next goes its way again: a codex queue
+// that failed once, as while Codex updated, isn't to fail for good.
+const nativeRetry = 5 * time.Minute
+
+// startHold is how long after kerod starts a message waits for a pane
+// whose agent's listener (Claude Code's monitor, Pi's and OMP's
+// extension) has yet to come back to this kerod, rather than be typed:
+// the listener reconnects, backing off up to 10 seconds, and kerod has no
+// record of it from before.
+const startHold = 15 * time.Second
+
+// listens are the agents whose plugin or extension of Kero's listens for
+// their messages (kero inbox).
+var listens = map[string]bool{"claude": true, "pi": true, "omp": true}
 
 type outMsg struct {
 	id         int64
@@ -85,7 +108,7 @@ func (mb *mailbox) initLocked() {
 		mb.out, mb.typed, mb.since, mb.noAgent = map[string][]outMsg{}, map[string]time.Time{}, map[string]int64{}, map[string]time.Time{}
 		mb.kept, mb.waiters = map[string][]proto.AgentMessage{}, map[string][]chan proto.AgentMessage{}
 		mb.inbox, mb.heard = map[string][]inboxListener{}, map[string]time.Time{}
-		mb.pending, mb.noNative = map[string]bool{}, map[string]string{}
+		mb.pending, mb.noNative = map[string]bool{}, map[string]nativeFailure{}
 		mb.wake = make(chan struct{}, 1)
 	}
 }
@@ -287,8 +310,10 @@ func (d *Daemon) flushOutbox(now time.Time) {
 		typed, since, lost := mb.typed[id], mb.since[id], mb.noAgent[id]
 		mb.mu.Unlock()
 		ready, gone, why := false, pn == nil, "the agent's pane closed"
+		agent := ""
 		if pn != nil {
 			pn.mu.Lock()
+			agent = pn.info.Agent
 			// Left alone after typing, until its agent has worked on it
 			// (its status changed since) or deliverHold passed.
 			ready = pn.agentReady() && (typed.IsZero() || pn.info.Since != since || now.Sub(typed) >= deliverHold)
@@ -326,17 +351,31 @@ func (d *Daemon) flushOutbox(now time.Time) {
 		// taken, so that one stopping meanwhile can't make them typed in.
 		mb.mu.Lock()
 		waiting, between := mb.listenerLocked(id, now)
+		// Just after kerod started, a listener of before may not be back
+		// yet: it gets the time to.
+		_, heard := mb.heard[id]
+		if !gone && !waiting && !heard && listens[agent] && now.Sub(d.started) < startHold {
+			between = true
+		}
 		if !gone && (between || mb.pending[id]) {
 			mb.mu.Unlock()
 			continue
 		}
 		msgs := mb.out[id]
+		// typing tells why the messages are typed in, if they are.
+		typing := "no listener of the agent's (kero inbox) waits"
 		if waiting && !mb.inbox[id][len(mb.inbox[id])-1].turns && slices.ContainsFunc(msgs, func(m outMsg) bool { return m.user }) {
 			// The user's words, which an event of the agent's own would
 			// make no word of the user's: they take the user's way in.
-			waiting = false
+			waiting, typing = false, "the user's words, which reach the agent as the user's prompt"
 		}
-		native = native && !waiting && mb.noNative[id] != as.ID
+		if f, ok := mb.noNative[id]; ok && now.Sub(f.at) >= nativeRetry {
+			delete(mb.noNative, id)
+		}
+		if native && !waiting && mb.noNative[id].session == as.ID {
+			typing = "its own way in (" + as.Agent + ") failed"
+		}
+		native = native && !waiting && mb.noNative[id].session != as.ID
 		delete(mb.out, id)
 		delete(mb.noAgent, id)
 		if gone {
@@ -377,6 +416,7 @@ func (d *Daemon) flushOutbox(now time.Time) {
 			continue
 		}
 		if !waiting {
+			d.log.Printf("message to %s's %s typed into its prompt: %s", id, orNone(agent), typing)
 			pn.paste(text)
 			go pn.submit(now)
 		}
@@ -412,7 +452,7 @@ func (d *Daemon) deliverNative(pn *pane, id string, msgs []outMsg, text string) 
 	delete(mb.pending, id)
 	if !ok {
 		mb.out[id] = append(slices.Clone(msgs), mb.out[id]...)
-		mb.noNative[id] = as.ID
+		mb.noNative[id] = nativeFailure{as.ID, time.Now()}
 	}
 	mb.mu.Unlock()
 	if ok {
@@ -423,6 +463,23 @@ func (d *Daemon) deliverNative(pn *pane, id string, msgs []outMsg, text string) 
 	case mb.wake <- struct{}{}:
 	default:
 	}
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "agent"
+	}
+	return s
+}
+
+// listening tells whether a listener of pane id's agent waits for its
+// messages, or is away between two waits (kero status's Inbox).
+func (mb *mailbox) listening(id string) bool {
+	mb.mu.Lock()
+	defer mb.mu.Unlock()
+	mb.initLocked()
+	waiting, between := mb.listenerLocked(id, time.Now())
+	return waiting || between
 }
 
 // tellDelivery tells the apps how a message went: one from no pane only

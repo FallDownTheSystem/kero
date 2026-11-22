@@ -88,6 +88,7 @@ kero read review --reply                  # its agent's last reply, whole
 kero wait api                             # until it stops working
 kero wait api --for waiting,error --timeout 10m
 kero prompt review "summarize the diff"   # send + Enter, wait, print the screen
+kero message login-form "Use Postgres"    # a message to its agent, labelled with whom it is from
 ```
 
 `kero wait` prints the pane's status when it returns. `kero prompt` pastes the text, so that its lines reach an agent as one prompt, presses Enter once the agent has it, waits until the pane stops working, then prints its screen. It's the quickest way to ask another agent something.

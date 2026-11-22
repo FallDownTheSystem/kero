@@ -5,6 +5,27 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.36-fork.2
+
+- kero message <session> "<text>" gives another session's agent a
+  message the way Kero gives its own: through Claude Code's monitor,
+  Pi's and OMP's extension, codex queue or OpenCode's service once the
+  agent is at its prompt, and typed in only when none takes it. The agent
+  reads whom it is from ("your orchestrator, session …"), so an
+  orchestrator's answers to its children no longer read as the user's
+  words, as kero prompt's did. kero prompt and kero key stay for a
+  question or permission an agent asks in its prompt
+- kerod logs each message it types into an agent's prompt, with why: no
+  listener, the user's own words, or the agent's own way in failed; and
+  kero status --json shows "inbox": true on an agent pane whose listener
+  takes its messages
+- Just after kerod starts, a message for Claude Code, Pi or OMP waits up
+  to 15 seconds for its listener to reconnect before it's typed in
+- On Windows, Codex installed with npm takes messages through the
+  codex.exe its package ships, rather than having them all typed in as
+  codex.cmd can't carry them; a Codex session whose way in failed tries
+  it again after five minutes, rather than never
+
 ## 2.1.36-fork.1
 
 Built on Kero 2.1.36, with the fork's changes on top, and on the same

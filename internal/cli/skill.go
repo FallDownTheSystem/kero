@@ -64,6 +64,7 @@ so on stderr.
     kero send <target> "some text" --enter    # type, then press Enter
     kero key <target> ctrl+c                  # enter, escape, up, tab, ctrl+d…
     kero prompt <target> "run the tests"      # send + Enter, wait, print screen
+    kero message <target> "use Postgres"      # another agent: a message labelled from you, through its inbox
     kero wait <target> [--for idle,waiting,error,exited] [--timeout 10m]
     kero wait <target> --exit                 # until its command ends; exits with its status
     kero new --worktree <branch> -- claude    # an agent on a new branch, in a worktree of its own

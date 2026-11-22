@@ -67,6 +67,10 @@ What you send yourself, a page's answers, **Send to Session…** and a review's 
 
 Other agents, and an agent whose way in fails, as one started before setup, get the message typed into their prompt and Enter pressed. Once you type in the pane after it, Kero presses no more Enters, so that your own text isn't sent.
 
+An agent sends another session's agent a message the same way with `kero message <session> "<text>"` (`-` reads it from stdin): the agent reads whom it is from, as "your orchestrator, session …", so it doesn't take it for your words, as it would `kero prompt`'s. `kero prompt` and `kero key` stay for answering a question or permission the agent asks in its prompt, which Kero's messages wait out.
+
+To see why a message was typed in: `kero status --json` shows `"inbox": true` on an agent's pane while Kero's listener takes its messages, and `kerod.log` has a line for each message typed in, with the reason: no listener, your own words, or the agent's way in failed. Just after kerod starts, a message for Claude Code, Pi or OMP waits up to 15 seconds for its listener to come back before it's typed. On Windows, Codex installed with npm takes messages through the `codex.exe` its package ships, as `codex.cmd` can't carry them; a Codex way in that fails is tried again after five minutes.
+
 ## What agents can do
 
 Run something beside themselves:

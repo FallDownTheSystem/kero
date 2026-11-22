@@ -95,6 +95,12 @@ Usage:
                                 left, right, backspace, ctrl+c, ctrl+d, …
   kero prompt <target> <text…>  send text and Enter, wait until the pane
                                 stops working, then print its screen
+  kero message <target> <text…|->
+                                give another session's agent a message,
+                                labelled with whom it is from, as Kero
+                                gives its own: through the agent's inbox
+                                once it is at its prompt, typed in only
+                                when it has none
   kero read [target] [-a] [-n lines]
                                 print the screen (-a with the scrollback)
       --reply                     print instead the last reply of the
@@ -385,7 +391,7 @@ ambiguous one), 4 kerod unreachable.
 `
 
 // Commands lists the subcommands, which main sends here.
-var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
+var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "message", "read", "capture", "wait", "events", "status", "diff",
 	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "parent", "projects", "skill", "hook", "inbox", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
@@ -1240,6 +1246,9 @@ func run(args []string, host string) error {
 			}
 		}
 		return nil
+
+	case "message":
+		return messageCmd(c, st, args)
 
 	case "orchestrator":
 		f, err := parse(args, map[string]string{"goal": "goal"}, map[string]string{"json": "json"})
