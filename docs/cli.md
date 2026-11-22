@@ -230,6 +230,13 @@ kero notify "Need your input"             # flag this pane as needing you
 
 See [Status & Notifications](./status.md) for the states.
 
+To run a build or test run once one of `heavy-slots`' slots is free, holding it while it runs, for an agent whose builds Kero's hook doesn't hold ([more](./agents.md#builds-and-tests)):
+
+```sh
+kero lock heavy -- go test ./...
+kero lock heavy --timeout 5m -- npm run build   # then run anyway
+```
+
 ## Changes
 
 ```sh

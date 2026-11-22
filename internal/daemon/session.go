@@ -54,6 +54,9 @@ type pane struct {
 	shellPID int
 	fgPGID   int
 	cwdAt    time.Time
+	// lowered: the pane runs at below normal priority, for the agent in
+	// it (lower-agent-priority).
+	lowered bool
 	// keyed is when the user last typed into the pane, from an app; keys
 	// is held while the user's input is told and written, and while
 	// submit tells it and writes its Enter, so neither comes between.
@@ -347,6 +350,7 @@ func (s *pane) tick(now time.Time) bool {
 		// session is no more to resume.
 		s.dropLive()
 		s.progress = ""
+		go s.d.releaseTurnSlots(s.info.ID) // s.mu is held
 		if s.info.AgentSession != nil {
 			s.d.noteEnded(s)
 			s.info.AgentSession = nil
@@ -360,6 +364,13 @@ func (s *pane) tick(now time.Time) bool {
 			s.progress = ""
 		}
 		s.info.Process, s.info.Agent, s.info.Runtime = proc, agent, runtime
+		// An agent's builds, and the agent, stay out of the desktop's
+		// way, as lower-agent-priority says as it starts; the shell goes
+		// back to normal once it ends.
+		if lower := agent != "" && settings.Load().LowerAgentPriority; lower != s.lowered {
+			s.proc.lowerPriority(lower)
+			s.lowered = lower
+		}
 		s.seen, s.looked = "", false
 		changed = true
 	}
@@ -865,6 +876,7 @@ func (s *pane) exited(proc *ptyProc) {
 		s.info.Unread = true
 	}
 	s.mu.Unlock()
+	s.d.releasePaneSlots(s.info.ID)
 	s.d.changed()
 }
 
@@ -908,6 +920,7 @@ func (s *pane) close() {
 		c.finish()
 	}
 	s.d.mailGone(s.info.ID)
+	s.d.releasePaneSlots(s.info.ID)
 	if proc != nil {
 		proc.Close()
 		go func() {

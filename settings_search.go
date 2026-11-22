@@ -123,6 +123,8 @@ func settingsIndex() []searchEntry {
 		{"agents", locales.SetAmaStatusLine(), "ama-hide-status-line ama claude statusline status line powerline"},
 		{"agents", locales.SetAmaWindow(), "ama window position size reset move resize"},
 		{"agents", locales.SetAmaInstructions(), "ama user instructions prompt USER.md frog helper"},
+		{"agents", locales.SetHeavySlots(), "heavy-slots heavy-command builds tests test runs at once slots load cpu parallel kero lock"},
+		{"agents", locales.SetLowerPriority(), "lower-agent-priority priority cpu below normal slow desktop windows"},
 		{"agents", locales.SetResumeCommands(), "resume-command claude codex pi opencode launcher cc yolo flags conversation restore"},
 
 		{"hosts", locales.SetHosts(), "host hosts remote server ssh tailscale tailnet wsl machine linux devbox -H kero hosts"},

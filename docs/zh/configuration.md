@@ -149,6 +149,9 @@ Kero 将它们存储在 `# kero-wash:`、`# kero-glow:`、`# kero-highlight:` �
 | `default-agent`  | `claude` | 新建会话对话框打开时选中的智能体 |
 | `orchestrator-prompt` |  | 编排器的角色提示词，即其智能体收到的第一条消息，行间用 `\n`；其中 `{goal}` 是目标，`{agent}` 是 `default-agent`；为空则使用 Kero 的 |
 | `orchestrator-max-children` | `0` | 一个编排器同时可运行的子会话数：超过时 `kero new` 会拒绝；`0` 表示不限 |
+| `heavy-slots` | `2` | 智能体在整台机器上可同时运行的构建和测试数量；超出的会在开始前等待，直到有一个结束（[详情](./agents.md#builds-and-tests)）；`0` 表示不限 |
+| `heavy-command` |  | 在 `heavy-slots` 中算作构建或测试的命令开头，如 `just build`；前面加 `!` 则永不计入，如 `!make help`。每条写一行 |
+| `lower-agent-priority` | `true` | 以低于正常的优先级运行智能体及其启动的构建，让桌面保持流畅（Windows） |
 | `orchestrator-agent-args` |  | 无论用哪个智能体，加在编排器的智能体命令之后的参数，例如 `--model opus`，按 shell 的读法传入；恢复时也会加上 |
 | `ama-agent` |  | [Ama](./ama.md) 从下一次对话起运行的智能体命令；为空时用 `default-agent` 的 |
 | `ama-agent-args` |  | 无论用哪个智能体，加在 Ama 的智能体命令之后的参数，例如 `--model sonnet`；恢复时也会加上 |

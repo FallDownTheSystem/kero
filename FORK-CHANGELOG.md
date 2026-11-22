@@ -5,6 +5,23 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.36-fork.2
+
+- **Builds and tests** (Settings › Agents, `heavy-slots`, 2 by default):
+  agents' builds and test runs share a few slots over the whole machine,
+  so that several sessions no longer compile and test all at once. In
+  Claude Code and Codex, Kero's hook holds a build or test command before
+  it starts, until a slot is free, without counting against the command's
+  timeout; the sidebar shows *Waiting for a build slot* with the session's
+  place in line. Other agents and scripts use `kero lock heavy -- <command>`.
+  Nothing waits more than 9 minutes, after which the command runs anyway;
+  dev servers and watchers never count, and `heavy-command` adds or takes
+  out commands of your own. Run `kero skill setup` again, or **Update** in
+  Settings › Agents, to add the new hooks.
+- **Lower agents' priority** (Settings › Agents, `lower-agent-priority`, on
+  by default, Windows): agents, and the builds they start, run below
+  normal priority, so that the desktop stays quick while they work.
+
 ## 2.1.36-fork.1
 
 Built on Kero 2.1.36, with the fork's changes on top, and on the same

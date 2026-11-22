@@ -476,6 +476,7 @@ func (d *Daemon) reportToParent(p proto.AgentSendParams) (proto.AgentSendResult,
 // and with the reply it came with, not as its screen and transcript let
 // it be guessed. A turn end just told from the screen is that turn's.
 func (d *Daemon) turnEnded(pn *pane, p proto.TurnParams, now time.Time) {
+	d.releaseTurnSlots(pn.info.ID)
 	d.mu.Lock()
 	sid := pn.sid
 	d.mu.Unlock()

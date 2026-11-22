@@ -317,6 +317,11 @@ Usage:
                                 send this child session's orchestrator a
                                 summary of its result, with its next
                                 report of its children
+  kero lock heavy [--timeout d] -- <command…>
+                                run a build or test run once one of
+                                heavy-slots' slots is free, holding it
+                                while it runs (Claude Code's and Codex's
+                                are held so without it)
   kero do <action> [key=value…]  run an action of the app, as its menus do
                                 (needs Remote Control, in Settings › Agents,
                                 but for Ama, whose $KERO_AMA kerod knows),
@@ -386,7 +391,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "parent", "projects", "skill", "hook", "inbox", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "parent", "projects", "skill", "hook", "lock", "inbox", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -654,6 +659,8 @@ func run(args []string, host string) error {
 		return skillCmd(args)
 	case "hook":
 		return hookCmd(args)
+	case "lock":
+		return lockCmd(args)
 	case "inbox":
 		return inboxCmd(args)
 	case "config":

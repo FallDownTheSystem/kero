@@ -1545,5 +1545,13 @@
   "setAmaArgsDetail": "加在 Ama 的智能体命令之后（无论哪个智能体），按 shell 的读法传入；恢复时也会加上。从下一次对话起生效。",
   "setOrchestratorArgsDetail": "加在编排器的智能体命令之后（无论哪个智能体），按 shell 的读法传入；恢复时也会加上。",
   "setAmaPrompt": "角色提示词",
-  "setAmaPromptDetail": "给 Ama 的指示，Kero 会把它写入其文件夹中的 CLAUDE.md 和 AGENTS.md。智能体从下一次对话起读取它；USER.md 叠加在其上。"
+  "setAmaPromptDetail": "给 Ama 的指示，Kero 会把它写入其文件夹中的 CLAUDE.md 和 AGENTS.md。智能体从下一次对话起读取它；USER.md 叠加在其上。",
+  "setHeavy": "构建与测试",
+  "setHeavyDetail": "智能体的构建和测试会在整台机器范围内等待空闲槽位，避免同时全部运行：包括装有 Kero 钩子 (kero skill setup) 的 Claude Code 和 Codex，以及用 kero lock heavy 运行的命令。",
+  "setHeavySlots": "同时运行",
+  "setHeavySlotsDetail": "可同时运行的构建和测试数量。超出的会在开始前等待，最多 9 分钟，之后照常运行。",
+  "setHeavySlotsAny": "不限",
+  "setLowerPriority": "降低智能体优先级",
+  "setLowerPriorityDetail": "以低于正常的优先级运行智能体及其启动的构建，让桌面在它们工作时保持流畅。仅限 Windows。",
+  "sidebarSlotWait": "等待构建槽位：第 {place} 位"
 }

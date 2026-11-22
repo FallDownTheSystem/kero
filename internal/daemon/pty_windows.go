@@ -351,6 +351,25 @@ func (p *ptyProc) Kill() {
 // killTree kills the program and whatever it started, as Kill does.
 func (p *ptyProc) killTree() { p.Kill() }
 
+// lowerPriority runs the program, and whatever it starts or started, at
+// below normal priority, or at normal again: its job's priority class,
+// which Windows sets on each of its processes.
+func (p *ptyProc) lowerPriority(lower bool) {
+	if p.job == 0 {
+		return
+	}
+	var info windows.JOBOBJECT_BASIC_LIMIT_INFORMATION
+	if windows.QueryInformationJobObject(p.job, windows.JobObjectBasicLimitInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil) != nil {
+		return
+	}
+	info.LimitFlags |= windows.JOB_OBJECT_LIMIT_PRIORITY_CLASS
+	info.PriorityClass = windows.NORMAL_PRIORITY_CLASS
+	if lower {
+		info.PriorityClass = windows.BELOW_NORMAL_PRIORITY_CLASS
+	}
+	windows.SetInformationJobObject(p.job, windows.JobObjectBasicLimitInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)))
+}
+
 // jobAccounting is a job's JOBOBJECT_BASIC_ACCOUNTING_INFORMATION.
 type jobAccounting struct {
 	TotalUserTime, TotalKernelTime, PeriodUserTime, PeriodKernelTime int64

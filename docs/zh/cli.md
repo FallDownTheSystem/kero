@@ -231,6 +231,13 @@ kero notify "Need your input"             # 将此窗格标记为需要你处理
 
 各状态的含义见 [状态与通知](./status.md)。
 
+对于 Kero 钩子管不到的智能体，可在 `heavy-slots` 有空闲槽位后再运行构建或测试，并在运行期间占用槽位（[详情](./agents.md#builds-and-tests)）：
+
+```sh
+kero lock heavy -- go test ./...
+kero lock heavy --timeout 5m -- npm run build   # 超时后照常运行
+```
+
 ## 改动
 
 ```sh

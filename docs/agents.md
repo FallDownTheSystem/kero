@@ -22,9 +22,9 @@ The hook goes where each agent looks for one, for the agents you have installed:
 
 | Agent          | Where the hook goes                                                                                         |
 | -------------- | ----------------------------------------------------------------------------------------------------------- |
-| Claude Code    | `SessionStart`, `Stop` and `StopFailure` hooks in `~/.claude/settings.json`, and Kero's plugin `kero@kero` |
+| Claude Code    | `SessionStart`, `Stop`, `StopFailure`, and `PreToolUse`, `PostToolUse` and `PostToolUseFailure` of `Bash` hooks in `~/.claude/settings.json`, and Kero's plugin `kero@kero` |
 | CodeBuddy Code | A `SessionStart` hook in `~/.codebuddy/settings.json`                                                       |
-| Codex          | `SessionStart`, `Stop` and `Interrupt` hooks in `~/.codex/hooks.json`                                       |
+| Codex          | `SessionStart`, `Stop`, `Interrupt`, and `PreToolUse` and `PostToolUse` of `Bash` hooks in `~/.codex/hooks.json` |
 | Pi             | An extension, `~/.pi/agent/extensions/kero.ts`                                                              |
 | OMP            | An extension, `~/.omp/agent/extensions/kero.ts`                                                             |
 | PiG            | An extension, `~/.pig/agent/extensions/kero.ts`                                                             |
@@ -34,7 +34,7 @@ Claude Code's plugin lives in Kero's own folder, as a plugin marketplace named `
 
 Kero follows `CLAUDE_CONFIG_DIR`, `CODEBUDDY_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR`, `PI_CONFIG_DIR`, `PIG_CODING_AGENT_DIR`, `PIG_HOME` and `XDG_CONFIG_HOME` when they move an agent's files, and leaves the rest of each settings file as it was.
 
-Pass `--agent` with `claude`, `codebuddy`, `codex`, `pi`, `omp`, `pig` or `opencode` to set up one agent only. Setup is once: the skill is a link to Kero's own copy, which follows Kero as it updates, and Kero keeps the Pi, OMP, PiG and OpenCode plugins current too. `kero skill status` tells you whether each part is current. A Claude Code or Codex hook that an older Kero put in shows as outdated, as it has no turn-end hooks yet: run `kero skill setup` again to add them.
+Pass `--agent` with `claude`, `codebuddy`, `codex`, `pi`, `omp`, `pig` or `opencode` to set up one agent only. Setup is once: the skill is a link to Kero's own copy, which follows Kero as it updates, and Kero keeps the Pi, OMP, PiG and OpenCode plugins current too. `kero skill status` tells you whether each part is current. A Claude Code or Codex hook that an older Kero put in shows as outdated, as it has no turn-end or [build](#builds-and-tests) hooks yet: run `kero skill setup` again to add them, or **Update** in **Settings › Agents**.
 
 ```sh
 kero skill status    # what's installed, and whether it's current
@@ -118,6 +118,17 @@ kero report done "Deployed to staging"
 ```
 
 A `blocked` report turns the session to *waiting* and notifies you, so agents should use it only when they can't continue without you.
+
+## Builds and tests
+
+Several agents that build or run tests at the same time can slow the whole machine down, whatever the number of sessions. So Kero lets only `heavy-slots` builds and test runs (2 by default, **Settings › Agents › Builds and tests**) run at once, over all sessions:
+
+- **Claude Code and Codex** need nothing more: Kero's `PreToolUse` hook holds a shell command that builds or tests, such as `go test`, `npm run build`, `cargo check`, `pytest` or `make`, before it starts, until a slot is free, and its `PostToolUse` hook gives the slot back as it ends. The wait comes before the command, so it counts against neither the agent's command timeout nor the tests' own. While it waits, the session's row in the sidebar says *Waiting for a build slot*, with its place in line, and the agent is told how long it waited.
+- **Other agents and scripts** wrap the command: `kero lock heavy -- go test ./...`. It holds a slot while the command runs, gives it back as it exits, however it exits, and runs a `kero lock heavy` inside it at once.
+
+Nothing waits for ever, and nothing fails for a slot: a command waits up to 9 minutes (or `kero lock heavy --timeout`) and then runs anyway. A slot comes back once its command ends, the agent's turn ends, the pane closes, or after 30 minutes, for a build sent to the background. Dev servers and watchers (`npm run dev`, `--watch`, `go run`) never count. Add your own commands with `heavy-command`, or take one out with a `!`. `heavy-slots = 0` turns it off.
+
+On Windows, Kero also runs agents, and everything they start, below normal priority (`lower-agent-priority`), so that your desktop and Kero stay quick while they build. Work inside WSL or Docker runs outside it.
 
 ## Agents that run other agents
 

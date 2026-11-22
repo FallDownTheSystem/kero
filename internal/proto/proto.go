@@ -239,6 +239,10 @@ type Pane struct {
 	// Turn is where the pane's agent last started working: a snapshot of
 	// its worktree, which its changes since are of.
 	Turn *Turn `json:"turn,omitempty"`
+	// SlotWait is the pane's place in the queue for a slot of
+	// heavy-slots, 1 for the next, while one of its builds or test runs
+	// waits for one: 0 for none waiting.
+	SlotWait int `json:"slotWait,omitempty"`
 }
 
 // GitInfo is a git worktree's branch and changes, as kerod last found
@@ -1143,6 +1147,34 @@ type (
 		Agent   string `json:"agent"`
 		Session string `json:"session"`
 		Dir     string `json:"dir,omitempty"` // the agent's, to tell its pane by
+	}
+	// SlotParams ask kerod for a slot of heavy-slots, for a build or a
+	// test run (kero hook, kero lock heavy), or give one back. The pane is
+	// Pane, else the one that runs the agent's Session, else as
+	// AgentSessionParams' is; Key names the slot, the agent's tool call,
+	// to give back by. Wait is how long to wait for it, in milliseconds,
+	// 0 for as long as the connection stays; Conn holds it while the
+	// connection stays, as kero lock does, rather than till Key's release
+	// or the turn's end.
+	SlotParams struct {
+		Pane    string `json:"pane,omitempty"`
+		PID     int    `json:"pid,omitempty"`
+		Agent   string `json:"agent,omitempty"`
+		Session string `json:"session,omitempty"`
+		Dir     string `json:"dir,omitempty"`
+		Key     string `json:"key,omitempty"`
+		Command string `json:"command,omitempty"`
+		Wait    int64  `json:"wait,omitempty"`
+		Conn    bool   `json:"conn,omitempty"`
+	}
+	// SlotResult is how a slot's ask went: Off, heavy-slots is 0 or the
+	// pane is none of Kero's, so nothing waits; Got, the slot is held;
+	// else the wait ran out. Waited is how long it waited, in
+	// milliseconds.
+	SlotResult struct {
+		Off    bool  `json:"off,omitempty"`
+		Got    bool  `json:"got,omitempty"`
+		Waited int64 `json:"waited,omitempty"`
 	}
 	// TurnParams tell that a pane's agent ended its turn (kero hook, of an
 	// agent's Stop hook or a plugin's event), the pane found as

@@ -956,6 +956,12 @@ func worktreeMark(c *ui.Context, pal *palette) {
 }
 
 func rowDetail(s *proto.Session, g *proto.GitInfo, dir string) (line string, msg bool) {
+	// A build of one of its panes waits for a slot of heavy-slots.
+	for _, p := range s.Panes {
+		if p.SlotWait > 0 {
+			return locales.SidebarSlotWait(p.SlotWait), true
+		}
+	}
 	if s.Message != "" {
 		// A notification's text can run over lines: the row has one.
 		return strings.Join(strings.Fields(s.Message), " "), true
