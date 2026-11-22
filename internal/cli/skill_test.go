@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"kero/internal/assistant"
 	"kero/internal/orchestrator"
+	"kero/internal/proto"
 )
 
 func TestSkillLinks(t *testing.T) {
@@ -307,7 +309,8 @@ func TestSkillFiles(t *testing.T) {
 // there, for kero skill show to print too.
 func TestSkillReferences(t *testing.T) {
 	name := regexp.MustCompile(`reference/([a-z-]+)\.md`)
-	texts := map[string]string{"role prompt": orchestrator.DefaultPrompt, "hook": hookOrchestrator + hookChild}
+	texts := map[string]string{"role prompt": orchestrator.DefaultPrompt, "hook": hookOrchestrator + hookChild + hookAssistant,
+		"assistant's prompt": assistant.Prompt(proto.Assistant{Name: "A", Role: "B"})}
 	for rel, text := range skillFiles {
 		texts[rel] = text
 	}

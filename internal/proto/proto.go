@@ -155,6 +155,9 @@ type State struct {
 	// Setups are the setups of worktrees kero made, under way or just
 	// ended, as progress cards show them.
 	Setups []WorktreeSetup `json:"setups,omitempty"`
+	// Assistants are the user's assistants, of this kerod (assistants.go
+	// in the daemon), with how each stands.
+	Assistants []Assistant `json:"assistants,omitempty"`
 }
 
 // Project groups sessions, usually those of one repository.
@@ -373,6 +376,9 @@ type Session struct {
 	// in a folder of its own (AmaDir), which the sidebar lists apart, and
 	// which kerod keeps one of.
 	Ama bool `json:"ama,omitempty"`
+	// Assistant is the id of the assistant whose session it is
+	// (Assistant): of no project, in the assistant's folder, one for each.
+	Assistant string `json:"assistant,omitempty"`
 }
 
 // Worktree is a linked git worktree kero made for a session: Path checks
@@ -859,6 +865,9 @@ type (
 		// Ama makes the session Ama's (Session.Ama), in place of the one
 		// there is, which closes once this one started.
 		Ama bool `json:"ama,omitempty"`
+		// Assistant makes the session that of the assistant of this id
+		// (Session.Assistant), in place of the one it has.
+		Assistant string `json:"assistant,omitempty"`
 	}
 	// OrchestratorParams make session ID an orchestrator, or with Off an
 	// ordinary session again, whose children become top-level sessions;

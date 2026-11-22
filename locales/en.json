@@ -2741,5 +2741,110 @@
         "type": "int"
       }
     }
-  }
+  },
+  "sidebarViewSessions": "Sessions",
+  "sidebarViewAssistants": "Assistants",
+  "sidebarAssistantChildOf": "Started by the assistant “{name}”",
+  "@sidebarAssistantChildOf": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantsEmptyTitle": "No assistants yet",
+  "assistantsEmptyDetail": "An assistant is an agent of no project, with a role and checks Kero wakes it for: daily, weekly or when Kero starts.",
+  "assistantsNew": "New Assistant…",
+  "assistantsWhileRunning": "Checks run only while Kero is running.",
+  "assistantsNext": "Next {time}",
+  "@assistantsNext": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantsPaused": "Paused",
+  "assistantsNotRunning": "Not running",
+  "assistantsRunChecks": "Run Checks Now",
+  "assistantsRunCheck": "Run “{check}” Now",
+  "@assistantsRunCheck": {
+    "placeholders": {
+      "check": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantsNewChat": "New Chat",
+  "assistantsPause": "Pause Checks",
+  "assistantsResume": "Resume Checks",
+  "assistantsEdit": "Edit…",
+  "assistantsShowFolder": "Show Folder",
+  "assistantsCloseSession": "Close Session",
+  "assistantsDelete": "Delete Assistant…",
+  "assistantsDeleteTitle": "Delete {name}?",
+  "@assistantsDeleteTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantsDeleteDetail": "Its session closes and Kero forgets it. Its folder, with your notes and its memory, stays unless you delete it too.",
+  "assistantsDeleteKeep": "Delete, Keep Folder",
+  "assistantsDeleteFolder": "Delete with Folder",
+  "assistantsProblem": "Problem: {problem}",
+  "@assistantsProblem": {
+    "placeholders": {
+      "problem": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantFormNew": "New Assistant",
+  "assistantFormEdit": "Edit {name}",
+  "@assistantFormEdit": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantFormName": "Name",
+  "assistantFormColor": "Color",
+  "assistantFormCustomColor": "Custom Color",
+  "assistantFormAvatar": "Avatar",
+  "assistantFormInitial": "Initial",
+  "assistantFormImage": "Choose Image…",
+  "assistantFormRole": "Role",
+  "assistantFormRoleHint": "Keeps my Jira tickets moving",
+  "assistantFormTracks": "What it does or keeps track of",
+  "assistantFormGroup": "Group",
+  "assistantFormGroupHint": "None",
+  "assistantFormChecks": "Checks",
+  "assistantFormAddCheck": "Add Check",
+  "assistantFormRemoveCheck": "Remove",
+  "assistantFormCheckText": "What to check",
+  "assistantFormChecksNote": "Checks run only while Kero is running on this computer. A check missed while it was closed runs once when Kero next starts.",
+  "checkKindStart": "When Kero starts",
+  "checkKindDaily": "Daily",
+  "checkKindWeekly": "Weekly",
+  "weekdaysShort": "Sun,Mon,Tue,Wed,Thu,Fri,Sat",
+  "assistantFormAgent": "Agent",
+  "assistantFormDefaultAgent": "Default ({agent})",
+  "@assistantFormDefaultAgent": {
+    "placeholders": {
+      "agent": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantFormArgs": "Arguments",
+  "assistantFormAgentNote": "Checks run unattended: an agent that asks for permission waits for you.",
+  "assistantFormCreate": "Create",
+  "assistantFormSave": "Save",
+  "actionNewAssistant": "New Assistant…",
+  "actionShowAssistants": "Sessions or Assistants",
+  "assistantNotifyDone": "{name} finished a check",
+  "assistantNotifyNoReport": "It sent no report."
 }

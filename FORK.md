@@ -22,6 +22,10 @@ Files and History tabs) and its viewer card, rather than beside them:
 - Git in the sidebar: staging and committing, branches, syncing, stashes,
   merges and conflicts, pull requests (shown in the viewer), and the
   History tab.
+- Assistants: agents of no project, with a name, a color, an avatar, a
+  role and daily, weekly or start-up checks that kerod runs while it runs
+  and catches up after, reporting to the user and to Ama (`kero
+  assistants`), in the sessions sidebar's Assistants view.
 - Ending all sessions from the app icon's menu, the split menu, the
   sidebar and viewer on the left (`sessions-sidebar = right`), theme
   previews, the theme editor and the files' own theme.

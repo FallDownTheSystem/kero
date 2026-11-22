@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"kero/internal/ama"
+	"kero/internal/assistant"
 	"kero/internal/proto"
 	"kero/internal/settings"
 )
@@ -42,6 +43,7 @@ type savedSession struct {
 	Goal         string `json:"goal,omitempty"`
 	Parent       string `json:"parent,omitempty"`
 	Ama          bool   `json:"ama,omitempty"`
+	Assistant    string `json:"assistant,omitempty"`
 }
 
 type savedPane struct {
@@ -94,7 +96,7 @@ func (d *Daemon) saveState() {
 	st := savedState{Version: 2, Projects: d.projects, Saved: time.Now().UnixMilli()}
 	for _, s := range d.sessions {
 		ss := savedSession{ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed, Created: s.created, Layout: s.layout, Focus: s.focus, Worktree: s.worktree, Review: s.review, PR: s.pr,
-			Orchestrator: s.orchestrator, Goal: s.goal, Parent: s.parent, Ama: s.ama}
+			Orchestrator: s.orchestrator, Goal: s.goal, Parent: s.parent, Ama: s.ama, Assistant: s.assistant}
 		for _, p := range s.panes {
 			p.mu.Lock()
 			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL, File: p.info.File, Preview: p.info.Preview,
@@ -160,7 +162,21 @@ func (d *Daemon) restore() {
 	when := time.UnixMilli(st.Saved).Format("Mon Jan 2 15:04")
 	for _, ss := range st.Sessions {
 		s := &session{id: ss.ID, project: ss.Project, name: ss.Name, agentNamed: ss.AgentNamed, created: ss.Created, restored: true, focus: ss.Focus, worktree: ss.Worktree, review: ss.Review, pr: ss.PR,
-			orchestrator: ss.Orchestrator, goal: ss.Goal, parent: ss.Parent, ama: ss.Ama}
+			orchestrator: ss.Orchestrator, goal: ss.Goal, parent: ss.Parent, ama: ss.Ama, assistant: ss.Assistant}
+		args := roleArgs(set, s.ama, s.orchestrator)
+		if s.assistant != "" {
+			if a, ok := d.assistantDef(s.assistant); ok {
+				d.assistantSIDs.Store(s.id, a.ID)
+				s.name, args = a.Name, a.AgentArgs
+				// Its instructions as its definition and this Kero write
+				// them, before its agent resumes and reads them.
+				assistant.Prepare(a)
+			} else {
+				// An assistant removed while kerod was down: its session
+				// comes back as one of no assistant's.
+				s.assistant = ""
+			}
+		}
 		if s.ama {
 			d.markAma(s.id)
 			// Its instructions as this Kero writes them, before its agent
@@ -168,7 +184,7 @@ func (d *Daemon) restore() {
 			ama.Prepare()
 		}
 		for _, sp := range ss.Panes {
-			if p := d.restorePane(s.id, sp, when, set.ResumeAgents, roleArgs(set, s.ama, s.orchestrator)); p != nil {
+			if p := d.restorePane(s.id, sp, when, set.ResumeAgents, args); p != nil {
 				s.panes = append(s.panes, p)
 				d.panes[p.info.ID] = p
 			}

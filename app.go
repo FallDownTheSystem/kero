@@ -80,6 +80,9 @@ type prefs struct {
 	// AmaWindow is where the user put Ama's window, of the main window
 	// (amaPlace); nil above the frog.
 	AmaWindow *amaPlace `json:"amaWindow,omitempty"`
+	// View is what the sessions sidebar lists: "" its sessions,
+	// "assistants" the user's assistants (assistants_view.go).
+	View string `json:"view,omitempty"`
 }
 
 const (
@@ -167,6 +170,12 @@ type App struct {
 	srch    convSearch
 	confirm *confirmation
 	newAsk  *newSessionAsk
+	// asstForm is the New Assistant or Edit dialog, nil while closed
+	// (assistant_form.go).
+	asstForm *assistantForm
+	// asstSeen is what the app last saw of each assistant, by id, for its
+	// notifications (notifyAssistant).
+	asstSeen map[string]assistantSeen
 	// prReview asks the prompt of a review of a pull request, and prSetup
 	// sets up a repository's reviews (pulls.go).
 	prReview *prReview
@@ -537,6 +546,11 @@ func (a *App) notifySessions(first bool) (waiting, unread int) {
 			if body == "" {
 				body = locales.NotifyFailedBody(s.PaneName())
 			}
+		// An assistant's turn ends with its own notification, when it
+		// finished a check (notifyAssistant); its other turns show its
+		// unread dot.
+		case s.Assistant != "":
+			continue
 		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
 			title, body = locales.NotifyDoneTitle(a.hostedName(s)), s.Message
 			if body == "" {
@@ -550,6 +564,7 @@ func (a *App) notifySessions(first bool) (waiting, unread int) {
 		}
 		a.showNotification(s.ID, title, body)
 	}
+	a.notifyAssistants(first)
 	for id := range a.statuses {
 		if h := a.hostOf(id); a.session(id) == nil || h.remote() && h.conn != connReady {
 			delete(a.statuses, id)
@@ -638,7 +653,7 @@ func (a *App) hostGroups(h *host) []group {
 	}
 	other := group{host: h, project: proto.Project{ID: "", Name: locales.SidebarOtherProject()}}
 	for i := range a.st.Sessions {
-		if s := &a.st.Sessions[i]; !known[s.Project] && a.hostOf(s.ID) == h && !s.Ama {
+		if s := &a.st.Sessions[i]; !known[s.Project] && a.hostOf(s.ID) == h && !s.Ama && s.Assistant == "" {
 			other.sessions = append(other.sessions, s)
 		}
 	}
@@ -661,6 +676,9 @@ func (a *App) collapsed(g group) bool { return a.prefs.Collapsed[g.key()] }
 // visibleOrder returns the sessions in the sidebar's order, those of
 // collapsed projects left out unless selected.
 func (a *App) visibleOrder() []string {
+	if a.assistantsShown() {
+		return a.assistantsOrder()
+	}
 	var ids []string
 	for _, g := range a.groups() {
 		for _, s := range g.sessions {
@@ -684,6 +702,11 @@ func (a *App) selectSession(id string) {
 	changed := a.selected != id
 	a.selected = id
 	s := a.session(id)
+	// An assistant's session shows with the Assistants view, by whatever
+	// way it is selected: Needs You, a notification, kero focus.
+	if s.Assistant != "" && !a.assistantsShown() {
+		a.prefs.View, changed = viewAssistants, true
+	}
 	for _, p := range s.Panes {
 		a.ensureTerm(p.ID)
 	}

@@ -82,7 +82,7 @@ func closeMany(c *client.Client, st proto.State, f *flags, sf sessionFilter) err
 			self = t.s.ID
 		}
 		for _, s := range sf.pick(st) {
-			if !s.Ama && s.ID != self {
+			if !s.Ama && s.Assistant == "" && s.ID != self {
 				picked = append(picked, s)
 			}
 		}

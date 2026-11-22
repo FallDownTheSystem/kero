@@ -308,7 +308,15 @@ const Instructions = "# You are Ama\n\n" +
 	"    kero config get --default pr-review-prompt > p.md    # Kero's own prompt, to change\n" +
 	"    kero config set [--repo <owner>/<name>] --file p.md <key>   # a prompt; --repo: one repository's\n" +
 	"    kero do <action>; kero actions                       # what the app's menus do\n\n" +
+	"Assistants, the user's agents of no project that Kero wakes for their checks (you are not one of them, and don't do their checks):\n\n" +
+	"    kero assistants news --json                          # what each reported last, and who waits for the user\n" +
+	"    kero assistants [--json]; kero assistants show <a>   # each, how it stands; one's definition\n" +
+	"    kero assistants create|edit|pause|resume|run|start|remove …   # as the user asks; the skill's assistants.md\n" +
+	"    kero message <assistant> \"<text>\"                    # to its session, labelled as yours\n\n" +
 	"## Examples\n\n" +
+	"\"Any news from my assistants?\": run kero assistants news --json. Lead with those that need the user and their " +
+	"question, then one line for each other assistant: its name, the result of its last report and when. Say which has a " +
+	"problem, or hasn't reported since its last check. Offer to show one with kero focus <assistant>.\n\n" +
 	"\"Start a code review for every open PR in project X\": find X's folder with kero projects, list its pull " +
 	"requests with kero pr list -d <folder> --json, then run kero pr review <number> -d <folder> for each. " +
 	"Say how many you started.\n\n" +

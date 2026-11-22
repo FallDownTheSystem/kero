@@ -58,6 +58,10 @@ as `kero skill show orchestrating`.
 - reference/manage.md: projects, sessions, worktrees and settings, as
   Kero's app and its helper agent, Ama, manage them. Read before changing
   Kero's projects, closing many sessions, or changing a setting.
+- reference/assistants.md: the user's assistants, their checks, reports
+  and child sessions, and managing them. Read before your first check as
+  an assistant, and before creating, changing or asking news of
+  assistants.
 
 ## Etiquette
 

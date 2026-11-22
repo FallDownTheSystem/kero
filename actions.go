@@ -163,6 +163,10 @@ func (a *App) run(id string, args map[string]string) {
 		a.toggleQuick()
 	case amaAction:
 		a.toggleAma()
+	case assistantsAction:
+		a.toggleAssistants()
+	case newAssistantAction:
+		a.openAssistantForm("")
 	}
 	if a.win != nil {
 		a.win.Invalidate()
@@ -251,6 +255,8 @@ var actionTitles = map[string]func() string{
 	"theme.toggle":        locales.ActionToggleDarkMode,
 	quickAction:           locales.ActionQuickTerminal,
 	amaAction:             locales.AmaTitle,
+	assistantsAction:      locales.ActionShowAssistants,
+	newAssistantAction:    locales.ActionNewAssistant,
 }
 
 // actionTitle is an action's title as the menus, the palette and
@@ -310,12 +316,12 @@ func (a *App) menuBar() []*mygo.MenuItem {
 			{Label: locales.MenuQuit(), Accelerator: quitKeys, ToolTip: locales.MenuQuitTip(), Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 			a.item("app.quitAll")}}
 	}
-	view := append(a.items("View", []string{"sidebar.toggle", "rightSidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle", "review.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{"theme.toggle"}, []string{quickAction, amaAction}),
+	view := append(a.items("View", []string{"sidebar.toggle", "rightSidebar.toggle", "changes.toggle", "files.toggle", "history.toggle", "search.toggle", "review.toggle"}, []string{"text.bigger", "text.smaller", "text.reset"}, []string{"theme.toggle"}, []string{quickAction, amaAction, assistantsAction}),
 		mygo.Separator(), &mygo.MenuItem{Role: mygo.RoleToggleFullScreen}, &mygo.MenuItem{Role: mygo.RoleToggleDevTools})
 	return []*mygo.MenuItem{
 		kero,
 		{Label: locales.MenuSession(), Submenu: a.items("Session",
-			[]string{"session.new", "session.newHome", "session.newWorktree", "project.open"},
+			[]string{"session.new", "session.newHome", "session.newWorktree", "project.open", newAssistantAction},
 			[]string{"palette.open", "files.goto", "conversation.resume", "conversation.search", "session.attention", "session.next", "session.previous"},
 			[]string{"session.rename", "pane.restart"},
 			[]string{"pane.close", "session.close"})},

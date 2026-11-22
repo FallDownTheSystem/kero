@@ -374,6 +374,8 @@ Every setting in the Settings window has a key, a GitHub repository's own settin
 - `--file <path>` sets the value from a file, or from stdin with `-`.
 - `--repo <owner>/<name>` reads or sets that repository's line of a key such as `review-prompt` alone, and keeps the other repositories' lines.
 
+Your [assistants](./assistants.md) are managed with `kero assistants`: `ls`, `show`, `news`, `reports`, `create`, `edit`, `pause`, `resume`, `run`, `start`, `remove`, and `report`, which an assistant reports to you with. `kero assistants help` lists their options. An assistant's id or name names its session too, for `kero message`, `kero read`, `kero status` and `kero focus`; `kero close --all` never closes one.
+
 ## Running app actions
 
 `kero do` runs the app's actions, as its menus do: those `kero actions` lists, which need no dialog or focus of yours. Others, such as **Quit and End All Sessions…**, **New Session in Worktree…**, **Rename Session** or **Find**, are the menus' alone, and `kero do` says `no action`. It needs Remote Control, which is on by default in **Settings › Agents**, and the app open; Ama needs no Remote Control.

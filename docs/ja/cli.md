@@ -372,6 +372,8 @@ kero config set --repo acme/web --file prompt.md review-prompt   # 1 つのリ�
 - `--file <path>` はファイルから値を設定します。`-` なら標準入力から読みます。
 - `--repo <owner>/<name>` は、`review-prompt` などのキーのそのリポジトリの行だけを読み書きし、他のリポジトリの行は残します。
 
+[アシスタント](./assistants.md)は `kero assistants` で管理します: `ls`、`show`、`news`、`reports`、`create`、`edit`、`pause`、`resume`、`run`、`start`、`remove`、そしてアシスタントがあなたに報告するための `report` です。オプションは `kero assistants help` で表示されます。アシスタントの ID や名前はそのセッションも指すので、`kero message`、`kero read`、`kero status`、`kero focus` に使えます。`kero close --all` はアシスタントのセッションを閉じません。
+
 <a id="running-app-actions"></a>
 
 ## アプリのアクションを実行する

@@ -9,7 +9,7 @@
   },
   {
     "title": "Automation",
-    "items": ["cli", "agents", "orchestrators", "ama", "remote"]
+    "items": ["cli", "agents", "orchestrators", "ama", "assistants", "remote"]
   },
   {
     "title": "Reference",

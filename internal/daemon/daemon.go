@@ -106,6 +106,11 @@ type Daemon struct {
 	amaKey  []byte
 	amaOnce sync.Once
 	amaSIDs sync.Map
+	// asst are the user's assistants, and assistantSIDs the assistants'
+	// sessions, by session id, whose panes get the assistant's id
+	// (assistants.go).
+	asst          assistants
+	assistantSIDs sync.Map
 }
 
 // Options are how kerod runs.
@@ -212,6 +217,7 @@ func Run(opts Options) error {
 	// own, which no program kerod starts may get.
 	d.net = d.listen()
 	d.loadConversations()
+	d.loadAssistants()
 	d.restore()
 
 	signal.Ignore(syscall.SIGPIPE)
@@ -241,6 +247,7 @@ func Run(opts Options) error {
 	go d.prw.loop()
 	go d.deliverLoop()
 	go d.reportLoop()
+	go d.assistantLoop()
 	uid := os.Getuid()
 	go func() {
 		for {
@@ -601,6 +608,8 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	// gives another pane.
 	env = slices.DeleteFunc(env, func(kv string) bool { return strings.HasPrefix(kv, amaEnv+"=") })
 	env = append(env, d.amaEnvOf(sid)...)
+	env = slices.DeleteFunc(env, func(kv string) bool { return strings.HasPrefix(kv, assistantEnv+"=") })
+	env = append(env, d.assistantEnvOf(sid)...)
 	return env
 }
 

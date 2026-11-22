@@ -87,6 +87,10 @@ var All = []Action{
 	{ID: "quickTerminal.toggle", Title: "Quick Terminal", Menu: "View", Remote: true, Global: true},
 	// Ama, the helper agent's window, from the sessions sidebar's frog.
 	{ID: "ama.toggle", Title: "Ama", Menu: "View", Keys: "CmdOrCtrl+Shift+A"},
+	// The sessions sidebar's view, its sessions or the user's assistants,
+	// and a new assistant; no keys until the user gives them some.
+	{ID: "sidebar.assistants", Title: "Sessions or Assistants", Menu: "View", Remote: true},
+	{ID: "assistants.new", Title: "New Assistant…", Menu: "Session", Remote: true},
 }
 
 // PRReview is the action kero pr review asks the app for: an agent's

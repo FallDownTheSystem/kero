@@ -378,6 +378,8 @@ kero config set --repo acme/web --file prompt.md review-prompt   # 只改一个�
 - `--file <path>` 从文件设置值，`-` 表示从标准输入读取。
 - `--repo <owner>/<name>` 只读写 `review-prompt` 等配置项中该仓库的那一行，其他仓库的行保持不变。
 
+用 `kero assistants` 管理你的[助手](./assistants.md)：`ls`、`show`、`news`、`reports`、`create`、`edit`、`pause`、`resume`、`run`、`start`、`remove`，以及助手用来向你报告的 `report`。`kero assistants help` 列出它们的选项。助手的 id 或名称也指代它的会话，可用于 `kero message`、`kero read`、`kero status` 和 `kero focus`；`kero close --all` 从不关闭助手的会话。
+
 <a id="running-app-actions"></a>
 
 ## 执行 app 操作

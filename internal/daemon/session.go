@@ -583,6 +583,12 @@ func (s *pane) acted() *ptyProc {
 	if len(s.records) > 0 {
 		s.dismissFinished()
 	}
+	// An assistant's question (a report that waits on the user) is
+	// answered once the user acts in its pane.
+	if _, ok := s.records[waitingRecord]; ok {
+		delete(s.records, waitingRecord)
+		s.fromRecords()
+	}
 	// Waiting is over once the user acts, unless the screen still asks,
 	// as a permission dialog does until it is answered.
 	if s.info.Status == proto.Waiting && !s.declared() && s.seen != detect.Blocked || s.info.Status == proto.Failed {

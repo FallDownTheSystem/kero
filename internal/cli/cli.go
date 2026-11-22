@@ -328,6 +328,10 @@ Usage:
                                 heavy-slots' slots is free, holding it
                                 while it runs (Claude Code's and Codex's
                                 are held so without it)
+  kero assistants [ls|show|news|reports|create|edit|pause|resume|run|start|remove|report]
+                                the user's assistants: agents of no project
+                                that Kero wakes for their checks while it
+                                runs (kero assistants help for the rest)
   kero do <action> [key=value…]  run an action of the app, as its menus do
                                 (needs Remote Control, in Settings › Agents,
                                 but for Ama, whose $KERO_AMA kerod knows),
@@ -397,7 +401,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "message", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "parent", "projects", "skill", "hook", "lock", "inbox", "daemon", "do", "actions", "config",
+	"history", "resume", "rename", "move", "focus", "close", "kill", "restart", "notify", "pr", "worktree", "report", "orchestrator", "parent", "projects", "assistants", "skill", "hook", "lock", "inbox", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -798,6 +802,10 @@ func run(args []string, host string) error {
 		// it says.
 		if dir == "" && f.vals["project"] == "" && host == "" && amaToken() != "" {
 			return usageErr("kero new from Ama: name the project (-p) or the folder (-d) the session is for")
+		}
+		// An assistant's folder is no project's either.
+		if dir == "" && f.vals["project"] == "" && host == "" && onHost == "" && os.Getenv("KERO_ASSISTANT") != "" {
+			return usageErr("kero new from an assistant: name the project (-p) or the folder (-d) the session is for")
 		}
 		// Here, unless the session is of another machine, whose kerod
 		// then starts it in the project's directory, or the home.
@@ -1257,6 +1265,9 @@ func run(args []string, host string) error {
 	case "message":
 		return messageCmd(c, st, args)
 
+	case "assistants", "assistant":
+		return assistantsCmd(c, st, args)
+
 	case "orchestrator":
 		f, err := parse(args, map[string]string{"goal": "goal"}, map[string]string{"json": "json"})
 		if err != nil {
@@ -1439,6 +1450,13 @@ func find(st proto.State, ref string) (target, error) {
 	case 1:
 		return matches[0], nil
 	case 0:
+		// An assistant, by its id or name, stands for its session.
+		if a, err := findAssistant(st, []string{ref}); err == nil {
+			if s := assistantSession(st, a); s != nil {
+				return target{s: *s}, nil
+			}
+			return target{}, fmt.Errorf("%w: assistant %s has no session: kero assistants start %s", errNotFound, a.Name, a.ID)
+		}
 		return target{}, fmt.Errorf("%w: no session or pane %q", errNotFound, ref)
 	}
 	ids := make([]string, len(matches))
@@ -1870,6 +1888,9 @@ func listSessions(st proto.State) {
 		project := names[s.Project]
 		if s.Ama {
 			project = "(Ama)" // of no project: the helper agent's
+		}
+		if s.Assistant != "" {
+			project = "(assistant " + s.Assistant + ")"
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, project, name, status(s.Pane),
 			program(s.Pane), proto.Ago(s.Since, now), where(s.Pane))

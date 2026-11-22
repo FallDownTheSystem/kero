@@ -241,6 +241,11 @@ const (
 		"Once your task is done, or blocked, send it your report with `kero report --to-parent -` in four parts, Result, Not done, Where and Next, " +
 		"a blocked one starting \"Waiting on you:\", and keep your status line current with `kero report working|done|blocked`: " +
 		"read reference/reporting.md of the kero skill (`kero skill show reporting`) first."
+	// hookAssistant is what it tells an assistant's session.
+	hookAssistant = " This session is the user's assistant %q: your instructions are CLAUDE.md or AGENTS.md in this folder, " +
+		"with USER.md and your notes, MEMORY.md. Kero wakes you for your checks (\"Kero: message from your schedule\"). " +
+		"Report to the user with `kero assistants report -` and keep your status line current; sessions you start with kero new " +
+		"(-p or -d) are your children. Read reference/assistants.md of the kero skill (`kero skill show assistants`) before your first check."
 )
 
 // hookContext is what the hook tells an agent in pane, of session sid;
@@ -278,6 +283,8 @@ func hookContext(c *client.Client, pane, sid string, away bool) string {
 		// Its part in an orchestrator's tree, which a resumed conversation,
 		// or one started anew in the session, keeps to.
 		switch {
+		case s.Assistant != "":
+			fmt.Fprintf(&b, hookAssistant, s.Name)
 		case s.Orchestrator:
 			fmt.Fprintf(&b, hookOrchestrator, orDash(s.Goal))
 		case s.Parent != "":

@@ -155,14 +155,14 @@ func (d *Daemon) sessionByIDLocked(id string) *session {
 	return nil
 }
 
-// parentLocked is the orchestrator s is a child of, "" for none: a parent
-// that closed, or is an orchestrator no more, leaves it a top-level
-// session. d.mu is held.
+// parentLocked is the orchestrator, or assistant's session, s is a child
+// of, "" for none: a parent that closed, or leads no more, leaves it a
+// top-level session. d.mu is held.
 func (d *Daemon) parentLocked(s *session) string {
-	if s.parent == "" || s.orchestrator {
+	if s.parent == "" || leads(s) {
 		return ""
 	}
-	if o := d.sessionByIDLocked(s.parent); o != nil && o.orchestrator {
+	if o := d.sessionByIDLocked(s.parent); leads(o) {
 		return o.id
 	}
 	return ""
@@ -218,7 +218,7 @@ func (d *Daemon) newParentLocked(p proto.CreateParams) (*session, error) {
 		return nil, fmt.Errorf("no session %q", ref)
 	case s == nil:
 		return nil, nil
-	case s.orchestrator:
+	case leads(s):
 		return s, nil
 	}
 	if id := d.parentLocked(s); id != "" {
@@ -290,6 +290,8 @@ func (d *Daemon) adoptLocked(s *session, p proto.ParentParams) error {
 	switch {
 	case s.ama:
 		return errors.New("Ama's session is no orchestrator's child")
+	case s.assistant != "":
+		return errors.New("an assistant's session is no other's child")
 	case s.orchestrator:
 		return errors.New("an orchestrator is no other's child: there is one level of them")
 	}
@@ -313,7 +315,11 @@ func (d *Daemon) adoptLocked(s *session, p proto.ParentParams) error {
 		last = kids[len(kids)-1]
 	}
 	d.sessions = slices.Insert(d.sessions, slices.Index(d.sessions, last)+1, s)
-	s.parent, s.project = o.id, o.project
+	// An assistant's child stays in its own project.
+	s.parent = o.id
+	if o.assistant == "" {
+		s.project = o.project
+	}
 	return nil
 }
 
@@ -365,6 +371,10 @@ func (d *Daemon) setOrchestrator(p proto.OrchestratorParams) (proto.Session, err
 	if s == nil {
 		d.mu.Unlock()
 		return proto.Session{}, fmt.Errorf("no session %q", p.ID)
+	}
+	if !p.Off && (s.ama || s.assistant != "") {
+		d.mu.Unlock()
+		return proto.Session{}, fmt.Errorf("session %s is Ama's or an assistant's, which lead their children without being orchestrators", s.id)
 	}
 	if parent := d.parentLocked(s); !p.Off && parent != "" {
 		d.mu.Unlock()
@@ -440,6 +450,16 @@ func (d *Daemon) reportToParent(p proto.AgentSendParams) (proto.AgentSendResult,
 			return proto.AgentSendResult{}, errors.New("agent.send: to whose parent? From is no session's pane")
 		}
 		return proto.AgentSendResult{}, fmt.Errorf("no session or pane %q", p.From)
+	}
+	if s.assistant != "" {
+		// An assistant reports to the user, which Kero keeps (kero
+		// assistants report): agents that read reporting.md reach for
+		// --to-parent.
+		d.mu.Unlock()
+		if _, err := d.assistantReport(proto.AssistantReportParams{From: p.From, Text: p.Text}); err != nil {
+			return proto.AgentSendResult{}, err
+		}
+		return proto.AgentSendResult{State: "delivered"}, nil
 	}
 	parent := d.parentLocked(s)
 	info := d.sessionInfo(s)
@@ -538,7 +558,7 @@ func (d *Daemon) followChildren(now time.Time) {
 	// children that are no more were of.
 	open, orchestrators := map[string]bool{}, map[string]bool{}
 	for _, s := range d.sessions {
-		open[s.id], orchestrators[s.id] = true, s.orchestrator
+		open[s.id], orchestrators[s.id] = true, leads(s)
 		parent := d.parentLocked(s)
 		if parent == "" {
 			continue
@@ -874,7 +894,7 @@ func (d *Daemon) sendReports(now time.Time) {
 		// orchestrator is one, and goes with its orchestrator.
 		d.mu.Lock()
 		o := d.sessionByIDLocked(id)
-		keep := o != nil && o.orchestrator
+		keep := leads(o)
 		d.mu.Unlock()
 		if !keep {
 			continue

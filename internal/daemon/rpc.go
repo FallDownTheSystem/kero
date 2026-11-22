@@ -65,6 +65,38 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.setOrchestrator(p)
 
+	case "assistant.create", "assistant.update":
+		var p proto.AssistantEdit
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		if method == "assistant.create" {
+			return d.createAssistant(p)
+		}
+		return d.updateAssistant(p)
+
+	case "assistant.remove", "assistant.start", "assistant.run", "assistant.reports":
+		var p proto.AssistantParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		switch method {
+		case "assistant.remove":
+			return true, d.removeAssistant(p)
+		case "assistant.start":
+			return d.startAssistant(p.ID, p.New)
+		case "assistant.run":
+			return d.runAssistant(p)
+		}
+		return d.assistantReports(p)
+
+	case "assistant.report":
+		var p proto.AssistantReportParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		return d.assistantReport(p)
+
 	case "parent":
 		var p proto.ParentParams
 		if err := decode(&p); err != nil {

@@ -73,6 +73,9 @@ func (a *App) treeTip(s *proto.Session) string {
 	case s.Orchestrator:
 		return locales.SidebarOrchestratorTip()
 	}
+	if o := a.session(s.Parent); o != nil && o.Assistant != "" {
+		return locales.SidebarAssistantChildOf(o.DisplayName(a.set.SessionName))
+	}
 	if o := a.session(s.Parent); o != nil {
 		return locales.SidebarChildOf(o.DisplayName(a.set.SessionName))
 	}
@@ -84,6 +87,12 @@ func (a *App) treeTip(s *proto.Session) string {
 // which, folded, counts in the attention color those that need the user.
 func (a *App) orchestratorMark(c *ui.Context, pal *palette, s *proto.Session) {
 	ui.Icon(c, orchestratorIcon).Size(12, 12).TextColor(pal.accent).Shrink(0)
+	a.orchestratorKids(c, pal, s)
+}
+
+// orchestratorKids is the count of a session's children and the chevron
+// that folds them, of an orchestrator's or an assistant's row.
+func (a *App) orchestratorKids(c *ui.Context, pal *palette, s *proto.Session) {
 	kids := a.childrenOf(s.ID)
 	if len(kids) == 0 {
 		return

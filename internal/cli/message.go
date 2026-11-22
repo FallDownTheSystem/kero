@@ -73,6 +73,12 @@ func messageLabel(from *proto.Session, to proto.Session) string {
 	}
 	name := fmt.Sprintf("session %s %s", from.ID, proto.Quoted(from.DisplayName(settings.Load().SessionName)))
 	switch {
+	case from.Ama:
+		name = fmt.Sprintf("Ama, Kero's helper agent (session %s)", from.ID)
+	case from.Assistant != "":
+		name = fmt.Sprintf("the assistant %s (session %s)", proto.Quoted(from.Name), from.ID)
+	}
+	switch {
 	case from.ID == to.ID:
 		return "this session (" + name + ")"
 	case to.Parent != "" && to.Parent == from.ID:

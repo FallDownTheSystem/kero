@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"kero/internal/assistant"
 	"kero/internal/proto"
 	"kero/internal/settings"
 )
@@ -35,6 +36,9 @@ type session struct {
 	// limit counts as running (childRoomLocked).
 	starting int
 	ama      bool // Ama's (proto.Session.Ama, ama.go)
+	// assistant is the id of the assistant whose session it is
+	// (assistants.go), "" for none.
+	assistant string
 }
 
 // state returns what the subscribers see.
@@ -54,6 +58,7 @@ func (d *Daemon) stateLocked() proto.State {
 		// The conversations' lock comes after d.mu.
 		Conversations: d.convs.generation(),
 		Setups:        d.setupsLocked(),
+		Assistants:    d.assistantsLocked(time.Now()),
 	}
 	for _, s := range d.sessions {
 		st.Sessions = append(st.Sessions, d.sessionInfo(s))
@@ -66,7 +71,7 @@ func (d *Daemon) sessionInfo(s *session) proto.Session {
 	info := proto.Session{
 		ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed,
 		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree, Review: s.review, PR: s.pr.link(),
-		Orchestrator: s.orchestrator, Goal: s.goal, Parent: d.parentLocked(s), Ama: s.ama,
+		Orchestrator: s.orchestrator, Goal: s.goal, Parent: d.parentLocked(s), Ama: s.ama, Assistant: s.assistant,
 		Panes: make([]proto.Pane, 0, len(s.panes)),
 	}
 	// Panes in the layout's order: left to right, top to bottom.
@@ -321,6 +326,9 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 	if p.Ama {
 		return d.createAma(p)
 	}
+	if p.Assistant != "" {
+		return d.createAssistantP(p)
+	}
 	dir, err := d.cleanDir(p.Dir)
 	if err != nil {
 		return proto.Session{}, err
@@ -336,6 +344,13 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 	project := d.projectFor(p.Project, dir)
 	switch {
 	case parent == nil:
+	case parent.assistant != "":
+		// An assistant's child is of the project its folder or -p names,
+		// never of the assistants' folders, which are no project's.
+		if _, in := assistant.Within(dir); in || dir == "" && p.Project == "" {
+			d.mu.Unlock()
+			return proto.Session{}, errors.New("an assistant's child session needs its project (-p) or its folder (-d)")
+		}
 	case p.Parent == "" && p.Project != "" && project != parent.project:
 		// Started in another project, as kero new -p asks, it is no
 		// child of the orchestrator it is started from.
@@ -620,6 +635,7 @@ func (d *Daemon) closePanes(ref string) ([]*pane, error) {
 	d.sessions = slices.DeleteFunc(d.sessions, func(o *session) bool { return o == s })
 	d.unlinkLocked(s)
 	d.amaSIDs.Delete(s.id)
+	d.assistantSIDs.Delete(s.id)
 	panes := s.panes
 	for _, p := range panes {
 		delete(d.panes, p.info.ID)
@@ -648,15 +664,19 @@ func (d *Daemon) move(p proto.MoveParams) error {
 		if s.ama {
 			return errors.New("Ama's session is of no project")
 		}
+		if s.assistant != "" {
+			return errors.New("an assistant's session is of no project")
+		}
 		s.project = d.projectFor(p.Project, "")
 	}
 	// An orchestrator takes its children along; a child taken to another
-	// project leaves its orchestrator's tree, which stays in its own.
+	// project leaves its orchestrator's tree, which stays in its own. An
+	// assistant's children are of any project: they stay its own.
 	if s.orchestrator {
 		for _, k := range d.childrenLocked(s) {
 			k.project = s.project
 		}
-	} else if o := d.sessionByIDLocked(d.parentLocked(s)); o != nil && o.project != s.project {
+	} else if o := d.sessionByIDLocked(d.parentLocked(s)); o != nil && o.assistant == "" && o.project != s.project {
 		s.parent = ""
 	}
 	i := slices.Index(d.sessions, s)

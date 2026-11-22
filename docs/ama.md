@@ -18,6 +18,8 @@ Ama is an ordinary agent session in a real terminal. It runs your default agent,
 
 Ama manages Kero with the commands in [Managing Kero](./cli.md#managing-kero), and asks before what can't be undone, such as closing sessions that work or removing a worktree with changes.
 
+Ama is not one of your [assistants](./assistants.md), but it knows them: ask "Any news from my assistants?" and it tells you which of them wait for you and what each reported last.
+
 ## Its window
 
 Ama opens in a window of its own, above Kero's. Drag its header to move it, even to another display, and drag its edges to resize it. Kero remembers its size and its place relative to Kero's window: the window follows Kero's as you move or resize it, and stays on a display when Kero's window nears a screen edge or a display goes away. Kero stores the size and place in DIPs, so the window keeps its size across displays with different scaling. Ama keeps running when you close its window, and the next time you open it you're back in the same conversation. In its header:

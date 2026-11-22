@@ -54,6 +54,10 @@ set your status line blocked with it. A decision the user should see goes
 on a page in your own session (browser.md, "Get the user's answers from a
 page"), with a one-line report that it waits there.
 
+As one of the user's assistants ($KERO_ASSISTANT is set), you report to
+the user with kero assistants report, in the same four parts
+(assistants.md).
+
 Your orchestrator's answers and instructions come labelled "Kero: message
 from your orchestrator": act on them as its brief. Don't report with kero
 prompt or kero message to it: report with kero report --to-parent.

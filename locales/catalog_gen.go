@@ -15791,3 +15791,567 @@ func SidebarSlotWait(place int) string { return In(i18n.Locale()).SidebarSlotWai
 func (msgs Messages) SidebarSlotWait(place int) string {
 	return Catalog.Format(msgs.locale, "sidebarSlotWait", map[string]any{"place": place})
 }
+
+// SidebarViewSessions says "Sessions"
+// in the language the app shows.
+func SidebarViewSessions() string { return In(i18n.Locale()).SidebarViewSessions() }
+
+// SidebarViewSessions says "Sessions"
+// in the language of msgs.
+func (msgs Messages) SidebarViewSessions() string {
+	return Catalog.Format(msgs.locale, "sidebarViewSessions", nil)
+}
+
+// SidebarViewAssistants says "Assistants"
+// in the language the app shows.
+func SidebarViewAssistants() string { return In(i18n.Locale()).SidebarViewAssistants() }
+
+// SidebarViewAssistants says "Assistants"
+// in the language of msgs.
+func (msgs Messages) SidebarViewAssistants() string {
+	return Catalog.Format(msgs.locale, "sidebarViewAssistants", nil)
+}
+
+// SidebarAssistantChildOf says "Started by the assistant “{name}”"
+// in the language the app shows.
+func SidebarAssistantChildOf(name string) string {
+	return In(i18n.Locale()).SidebarAssistantChildOf(name)
+}
+
+// SidebarAssistantChildOf says "Started by the assistant “{name}”"
+// in the language of msgs.
+func (msgs Messages) SidebarAssistantChildOf(name string) string {
+	return Catalog.Format(msgs.locale, "sidebarAssistantChildOf", map[string]any{"name": name})
+}
+
+// AssistantsEmptyTitle says "No assistants yet"
+// in the language the app shows.
+func AssistantsEmptyTitle() string { return In(i18n.Locale()).AssistantsEmptyTitle() }
+
+// AssistantsEmptyTitle says "No assistants yet"
+// in the language of msgs.
+func (msgs Messages) AssistantsEmptyTitle() string {
+	return Catalog.Format(msgs.locale, "assistantsEmptyTitle", nil)
+}
+
+// AssistantsEmptyDetail says "An assistant is an agent of no project, with a role and checks Kero wakes it for: daily, weekly or when Kero starts."
+// in the language the app shows.
+func AssistantsEmptyDetail() string { return In(i18n.Locale()).AssistantsEmptyDetail() }
+
+// AssistantsEmptyDetail says "An assistant is an agent of no project, with a role and checks Kero wakes it for: daily, weekly or when Kero starts."
+// in the language of msgs.
+func (msgs Messages) AssistantsEmptyDetail() string {
+	return Catalog.Format(msgs.locale, "assistantsEmptyDetail", nil)
+}
+
+// AssistantsNew says "New Assistant…"
+// in the language the app shows.
+func AssistantsNew() string { return In(i18n.Locale()).AssistantsNew() }
+
+// AssistantsNew says "New Assistant…"
+// in the language of msgs.
+func (msgs Messages) AssistantsNew() string {
+	return Catalog.Format(msgs.locale, "assistantsNew", nil)
+}
+
+// AssistantsWhileRunning says "Checks run only while Kero is running."
+// in the language the app shows.
+func AssistantsWhileRunning() string { return In(i18n.Locale()).AssistantsWhileRunning() }
+
+// AssistantsWhileRunning says "Checks run only while Kero is running."
+// in the language of msgs.
+func (msgs Messages) AssistantsWhileRunning() string {
+	return Catalog.Format(msgs.locale, "assistantsWhileRunning", nil)
+}
+
+// AssistantsNext says "Next {time}"
+// in the language the app shows.
+func AssistantsNext(time_ string) string { return In(i18n.Locale()).AssistantsNext(time_) }
+
+// AssistantsNext says "Next {time}"
+// in the language of msgs.
+func (msgs Messages) AssistantsNext(time_ string) string {
+	return Catalog.Format(msgs.locale, "assistantsNext", map[string]any{"time": time_})
+}
+
+// AssistantsPaused says "Paused"
+// in the language the app shows.
+func AssistantsPaused() string { return In(i18n.Locale()).AssistantsPaused() }
+
+// AssistantsPaused says "Paused"
+// in the language of msgs.
+func (msgs Messages) AssistantsPaused() string {
+	return Catalog.Format(msgs.locale, "assistantsPaused", nil)
+}
+
+// AssistantsNotRunning says "Not running"
+// in the language the app shows.
+func AssistantsNotRunning() string { return In(i18n.Locale()).AssistantsNotRunning() }
+
+// AssistantsNotRunning says "Not running"
+// in the language of msgs.
+func (msgs Messages) AssistantsNotRunning() string {
+	return Catalog.Format(msgs.locale, "assistantsNotRunning", nil)
+}
+
+// AssistantsRunChecks says "Run Checks Now"
+// in the language the app shows.
+func AssistantsRunChecks() string { return In(i18n.Locale()).AssistantsRunChecks() }
+
+// AssistantsRunChecks says "Run Checks Now"
+// in the language of msgs.
+func (msgs Messages) AssistantsRunChecks() string {
+	return Catalog.Format(msgs.locale, "assistantsRunChecks", nil)
+}
+
+// AssistantsRunCheck says "Run “{check}” Now"
+// in the language the app shows.
+func AssistantsRunCheck(check string) string { return In(i18n.Locale()).AssistantsRunCheck(check) }
+
+// AssistantsRunCheck says "Run “{check}” Now"
+// in the language of msgs.
+func (msgs Messages) AssistantsRunCheck(check string) string {
+	return Catalog.Format(msgs.locale, "assistantsRunCheck", map[string]any{"check": check})
+}
+
+// AssistantsNewChat says "New Chat"
+// in the language the app shows.
+func AssistantsNewChat() string { return In(i18n.Locale()).AssistantsNewChat() }
+
+// AssistantsNewChat says "New Chat"
+// in the language of msgs.
+func (msgs Messages) AssistantsNewChat() string {
+	return Catalog.Format(msgs.locale, "assistantsNewChat", nil)
+}
+
+// AssistantsPause says "Pause Checks"
+// in the language the app shows.
+func AssistantsPause() string { return In(i18n.Locale()).AssistantsPause() }
+
+// AssistantsPause says "Pause Checks"
+// in the language of msgs.
+func (msgs Messages) AssistantsPause() string {
+	return Catalog.Format(msgs.locale, "assistantsPause", nil)
+}
+
+// AssistantsResume says "Resume Checks"
+// in the language the app shows.
+func AssistantsResume() string { return In(i18n.Locale()).AssistantsResume() }
+
+// AssistantsResume says "Resume Checks"
+// in the language of msgs.
+func (msgs Messages) AssistantsResume() string {
+	return Catalog.Format(msgs.locale, "assistantsResume", nil)
+}
+
+// AssistantsEdit says "Edit…"
+// in the language the app shows.
+func AssistantsEdit() string { return In(i18n.Locale()).AssistantsEdit() }
+
+// AssistantsEdit says "Edit…"
+// in the language of msgs.
+func (msgs Messages) AssistantsEdit() string {
+	return Catalog.Format(msgs.locale, "assistantsEdit", nil)
+}
+
+// AssistantsShowFolder says "Show Folder"
+// in the language the app shows.
+func AssistantsShowFolder() string { return In(i18n.Locale()).AssistantsShowFolder() }
+
+// AssistantsShowFolder says "Show Folder"
+// in the language of msgs.
+func (msgs Messages) AssistantsShowFolder() string {
+	return Catalog.Format(msgs.locale, "assistantsShowFolder", nil)
+}
+
+// AssistantsCloseSession says "Close Session"
+// in the language the app shows.
+func AssistantsCloseSession() string { return In(i18n.Locale()).AssistantsCloseSession() }
+
+// AssistantsCloseSession says "Close Session"
+// in the language of msgs.
+func (msgs Messages) AssistantsCloseSession() string {
+	return Catalog.Format(msgs.locale, "assistantsCloseSession", nil)
+}
+
+// AssistantsDelete says "Delete Assistant…"
+// in the language the app shows.
+func AssistantsDelete() string { return In(i18n.Locale()).AssistantsDelete() }
+
+// AssistantsDelete says "Delete Assistant…"
+// in the language of msgs.
+func (msgs Messages) AssistantsDelete() string {
+	return Catalog.Format(msgs.locale, "assistantsDelete", nil)
+}
+
+// AssistantsDeleteTitle says "Delete {name}?"
+// in the language the app shows.
+func AssistantsDeleteTitle(name string) string { return In(i18n.Locale()).AssistantsDeleteTitle(name) }
+
+// AssistantsDeleteTitle says "Delete {name}?"
+// in the language of msgs.
+func (msgs Messages) AssistantsDeleteTitle(name string) string {
+	return Catalog.Format(msgs.locale, "assistantsDeleteTitle", map[string]any{"name": name})
+}
+
+// AssistantsDeleteDetail says "Its session closes and Kero forgets it. Its folder, with your notes and its memory, stays unless you delete it too."
+// in the language the app shows.
+func AssistantsDeleteDetail() string { return In(i18n.Locale()).AssistantsDeleteDetail() }
+
+// AssistantsDeleteDetail says "Its session closes and Kero forgets it. Its folder, with your notes and its memory, stays unless you delete it too."
+// in the language of msgs.
+func (msgs Messages) AssistantsDeleteDetail() string {
+	return Catalog.Format(msgs.locale, "assistantsDeleteDetail", nil)
+}
+
+// AssistantsDeleteKeep says "Delete, Keep Folder"
+// in the language the app shows.
+func AssistantsDeleteKeep() string { return In(i18n.Locale()).AssistantsDeleteKeep() }
+
+// AssistantsDeleteKeep says "Delete, Keep Folder"
+// in the language of msgs.
+func (msgs Messages) AssistantsDeleteKeep() string {
+	return Catalog.Format(msgs.locale, "assistantsDeleteKeep", nil)
+}
+
+// AssistantsDeleteFolder says "Delete with Folder"
+// in the language the app shows.
+func AssistantsDeleteFolder() string { return In(i18n.Locale()).AssistantsDeleteFolder() }
+
+// AssistantsDeleteFolder says "Delete with Folder"
+// in the language of msgs.
+func (msgs Messages) AssistantsDeleteFolder() string {
+	return Catalog.Format(msgs.locale, "assistantsDeleteFolder", nil)
+}
+
+// AssistantsProblem says "Problem: {problem}"
+// in the language the app shows.
+func AssistantsProblem(problem string) string { return In(i18n.Locale()).AssistantsProblem(problem) }
+
+// AssistantsProblem says "Problem: {problem}"
+// in the language of msgs.
+func (msgs Messages) AssistantsProblem(problem string) string {
+	return Catalog.Format(msgs.locale, "assistantsProblem", map[string]any{"problem": problem})
+}
+
+// AssistantFormNew says "New Assistant"
+// in the language the app shows.
+func AssistantFormNew() string { return In(i18n.Locale()).AssistantFormNew() }
+
+// AssistantFormNew says "New Assistant"
+// in the language of msgs.
+func (msgs Messages) AssistantFormNew() string {
+	return Catalog.Format(msgs.locale, "assistantFormNew", nil)
+}
+
+// AssistantFormEdit says "Edit {name}"
+// in the language the app shows.
+func AssistantFormEdit(name string) string { return In(i18n.Locale()).AssistantFormEdit(name) }
+
+// AssistantFormEdit says "Edit {name}"
+// in the language of msgs.
+func (msgs Messages) AssistantFormEdit(name string) string {
+	return Catalog.Format(msgs.locale, "assistantFormEdit", map[string]any{"name": name})
+}
+
+// AssistantFormName says "Name"
+// in the language the app shows.
+func AssistantFormName() string { return In(i18n.Locale()).AssistantFormName() }
+
+// AssistantFormName says "Name"
+// in the language of msgs.
+func (msgs Messages) AssistantFormName() string {
+	return Catalog.Format(msgs.locale, "assistantFormName", nil)
+}
+
+// AssistantFormColor says "Color"
+// in the language the app shows.
+func AssistantFormColor() string { return In(i18n.Locale()).AssistantFormColor() }
+
+// AssistantFormColor says "Color"
+// in the language of msgs.
+func (msgs Messages) AssistantFormColor() string {
+	return Catalog.Format(msgs.locale, "assistantFormColor", nil)
+}
+
+// AssistantFormCustomColor says "Custom Color"
+// in the language the app shows.
+func AssistantFormCustomColor() string { return In(i18n.Locale()).AssistantFormCustomColor() }
+
+// AssistantFormCustomColor says "Custom Color"
+// in the language of msgs.
+func (msgs Messages) AssistantFormCustomColor() string {
+	return Catalog.Format(msgs.locale, "assistantFormCustomColor", nil)
+}
+
+// AssistantFormAvatar says "Avatar"
+// in the language the app shows.
+func AssistantFormAvatar() string { return In(i18n.Locale()).AssistantFormAvatar() }
+
+// AssistantFormAvatar says "Avatar"
+// in the language of msgs.
+func (msgs Messages) AssistantFormAvatar() string {
+	return Catalog.Format(msgs.locale, "assistantFormAvatar", nil)
+}
+
+// AssistantFormInitial says "Initial"
+// in the language the app shows.
+func AssistantFormInitial() string { return In(i18n.Locale()).AssistantFormInitial() }
+
+// AssistantFormInitial says "Initial"
+// in the language of msgs.
+func (msgs Messages) AssistantFormInitial() string {
+	return Catalog.Format(msgs.locale, "assistantFormInitial", nil)
+}
+
+// AssistantFormImage says "Choose Image…"
+// in the language the app shows.
+func AssistantFormImage() string { return In(i18n.Locale()).AssistantFormImage() }
+
+// AssistantFormImage says "Choose Image…"
+// in the language of msgs.
+func (msgs Messages) AssistantFormImage() string {
+	return Catalog.Format(msgs.locale, "assistantFormImage", nil)
+}
+
+// AssistantFormRole says "Role"
+// in the language the app shows.
+func AssistantFormRole() string { return In(i18n.Locale()).AssistantFormRole() }
+
+// AssistantFormRole says "Role"
+// in the language of msgs.
+func (msgs Messages) AssistantFormRole() string {
+	return Catalog.Format(msgs.locale, "assistantFormRole", nil)
+}
+
+// AssistantFormRoleHint says "Keeps my Jira tickets moving"
+// in the language the app shows.
+func AssistantFormRoleHint() string { return In(i18n.Locale()).AssistantFormRoleHint() }
+
+// AssistantFormRoleHint says "Keeps my Jira tickets moving"
+// in the language of msgs.
+func (msgs Messages) AssistantFormRoleHint() string {
+	return Catalog.Format(msgs.locale, "assistantFormRoleHint", nil)
+}
+
+// AssistantFormTracks says "What it does or keeps track of"
+// in the language the app shows.
+func AssistantFormTracks() string { return In(i18n.Locale()).AssistantFormTracks() }
+
+// AssistantFormTracks says "What it does or keeps track of"
+// in the language of msgs.
+func (msgs Messages) AssistantFormTracks() string {
+	return Catalog.Format(msgs.locale, "assistantFormTracks", nil)
+}
+
+// AssistantFormGroup says "Group"
+// in the language the app shows.
+func AssistantFormGroup() string { return In(i18n.Locale()).AssistantFormGroup() }
+
+// AssistantFormGroup says "Group"
+// in the language of msgs.
+func (msgs Messages) AssistantFormGroup() string {
+	return Catalog.Format(msgs.locale, "assistantFormGroup", nil)
+}
+
+// AssistantFormGroupHint says "None"
+// in the language the app shows.
+func AssistantFormGroupHint() string { return In(i18n.Locale()).AssistantFormGroupHint() }
+
+// AssistantFormGroupHint says "None"
+// in the language of msgs.
+func (msgs Messages) AssistantFormGroupHint() string {
+	return Catalog.Format(msgs.locale, "assistantFormGroupHint", nil)
+}
+
+// AssistantFormChecks says "Checks"
+// in the language the app shows.
+func AssistantFormChecks() string { return In(i18n.Locale()).AssistantFormChecks() }
+
+// AssistantFormChecks says "Checks"
+// in the language of msgs.
+func (msgs Messages) AssistantFormChecks() string {
+	return Catalog.Format(msgs.locale, "assistantFormChecks", nil)
+}
+
+// AssistantFormAddCheck says "Add Check"
+// in the language the app shows.
+func AssistantFormAddCheck() string { return In(i18n.Locale()).AssistantFormAddCheck() }
+
+// AssistantFormAddCheck says "Add Check"
+// in the language of msgs.
+func (msgs Messages) AssistantFormAddCheck() string {
+	return Catalog.Format(msgs.locale, "assistantFormAddCheck", nil)
+}
+
+// AssistantFormRemoveCheck says "Remove"
+// in the language the app shows.
+func AssistantFormRemoveCheck() string { return In(i18n.Locale()).AssistantFormRemoveCheck() }
+
+// AssistantFormRemoveCheck says "Remove"
+// in the language of msgs.
+func (msgs Messages) AssistantFormRemoveCheck() string {
+	return Catalog.Format(msgs.locale, "assistantFormRemoveCheck", nil)
+}
+
+// AssistantFormCheckText says "What to check"
+// in the language the app shows.
+func AssistantFormCheckText() string { return In(i18n.Locale()).AssistantFormCheckText() }
+
+// AssistantFormCheckText says "What to check"
+// in the language of msgs.
+func (msgs Messages) AssistantFormCheckText() string {
+	return Catalog.Format(msgs.locale, "assistantFormCheckText", nil)
+}
+
+// AssistantFormChecksNote says "Checks run only while Kero is running on this computer. A check missed while it was closed runs once when Kero next s…"
+// in the language the app shows.
+func AssistantFormChecksNote() string { return In(i18n.Locale()).AssistantFormChecksNote() }
+
+// AssistantFormChecksNote says "Checks run only while Kero is running on this computer. A check missed while it was closed runs once when Kero next s…"
+// in the language of msgs.
+func (msgs Messages) AssistantFormChecksNote() string {
+	return Catalog.Format(msgs.locale, "assistantFormChecksNote", nil)
+}
+
+// CheckKindStart says "When Kero starts"
+// in the language the app shows.
+func CheckKindStart() string { return In(i18n.Locale()).CheckKindStart() }
+
+// CheckKindStart says "When Kero starts"
+// in the language of msgs.
+func (msgs Messages) CheckKindStart() string {
+	return Catalog.Format(msgs.locale, "checkKindStart", nil)
+}
+
+// CheckKindDaily says "Daily"
+// in the language the app shows.
+func CheckKindDaily() string { return In(i18n.Locale()).CheckKindDaily() }
+
+// CheckKindDaily says "Daily"
+// in the language of msgs.
+func (msgs Messages) CheckKindDaily() string {
+	return Catalog.Format(msgs.locale, "checkKindDaily", nil)
+}
+
+// CheckKindWeekly says "Weekly"
+// in the language the app shows.
+func CheckKindWeekly() string { return In(i18n.Locale()).CheckKindWeekly() }
+
+// CheckKindWeekly says "Weekly"
+// in the language of msgs.
+func (msgs Messages) CheckKindWeekly() string {
+	return Catalog.Format(msgs.locale, "checkKindWeekly", nil)
+}
+
+// WeekdaysShort says "Sun,Mon,Tue,Wed,Thu,Fri,Sat"
+// in the language the app shows.
+func WeekdaysShort() string { return In(i18n.Locale()).WeekdaysShort() }
+
+// WeekdaysShort says "Sun,Mon,Tue,Wed,Thu,Fri,Sat"
+// in the language of msgs.
+func (msgs Messages) WeekdaysShort() string {
+	return Catalog.Format(msgs.locale, "weekdaysShort", nil)
+}
+
+// AssistantFormAgent says "Agent"
+// in the language the app shows.
+func AssistantFormAgent() string { return In(i18n.Locale()).AssistantFormAgent() }
+
+// AssistantFormAgent says "Agent"
+// in the language of msgs.
+func (msgs Messages) AssistantFormAgent() string {
+	return Catalog.Format(msgs.locale, "assistantFormAgent", nil)
+}
+
+// AssistantFormDefaultAgent says "Default ({agent})"
+// in the language the app shows.
+func AssistantFormDefaultAgent(agent string) string {
+	return In(i18n.Locale()).AssistantFormDefaultAgent(agent)
+}
+
+// AssistantFormDefaultAgent says "Default ({agent})"
+// in the language of msgs.
+func (msgs Messages) AssistantFormDefaultAgent(agent string) string {
+	return Catalog.Format(msgs.locale, "assistantFormDefaultAgent", map[string]any{"agent": agent})
+}
+
+// AssistantFormArgs says "Arguments"
+// in the language the app shows.
+func AssistantFormArgs() string { return In(i18n.Locale()).AssistantFormArgs() }
+
+// AssistantFormArgs says "Arguments"
+// in the language of msgs.
+func (msgs Messages) AssistantFormArgs() string {
+	return Catalog.Format(msgs.locale, "assistantFormArgs", nil)
+}
+
+// AssistantFormAgentNote says "Checks run unattended: an agent that asks for permission waits for you."
+// in the language the app shows.
+func AssistantFormAgentNote() string { return In(i18n.Locale()).AssistantFormAgentNote() }
+
+// AssistantFormAgentNote says "Checks run unattended: an agent that asks for permission waits for you."
+// in the language of msgs.
+func (msgs Messages) AssistantFormAgentNote() string {
+	return Catalog.Format(msgs.locale, "assistantFormAgentNote", nil)
+}
+
+// AssistantFormCreate says "Create"
+// in the language the app shows.
+func AssistantFormCreate() string { return In(i18n.Locale()).AssistantFormCreate() }
+
+// AssistantFormCreate says "Create"
+// in the language of msgs.
+func (msgs Messages) AssistantFormCreate() string {
+	return Catalog.Format(msgs.locale, "assistantFormCreate", nil)
+}
+
+// AssistantFormSave says "Save"
+// in the language the app shows.
+func AssistantFormSave() string { return In(i18n.Locale()).AssistantFormSave() }
+
+// AssistantFormSave says "Save"
+// in the language of msgs.
+func (msgs Messages) AssistantFormSave() string {
+	return Catalog.Format(msgs.locale, "assistantFormSave", nil)
+}
+
+// ActionNewAssistant says "New Assistant…"
+// in the language the app shows.
+func ActionNewAssistant() string { return In(i18n.Locale()).ActionNewAssistant() }
+
+// ActionNewAssistant says "New Assistant…"
+// in the language of msgs.
+func (msgs Messages) ActionNewAssistant() string {
+	return Catalog.Format(msgs.locale, "actionNewAssistant", nil)
+}
+
+// ActionShowAssistants says "Sessions or Assistants"
+// in the language the app shows.
+func ActionShowAssistants() string { return In(i18n.Locale()).ActionShowAssistants() }
+
+// ActionShowAssistants says "Sessions or Assistants"
+// in the language of msgs.
+func (msgs Messages) ActionShowAssistants() string {
+	return Catalog.Format(msgs.locale, "actionShowAssistants", nil)
+}
+
+// AssistantNotifyDone says "{name} finished a check"
+// in the language the app shows.
+func AssistantNotifyDone(name string) string { return In(i18n.Locale()).AssistantNotifyDone(name) }
+
+// AssistantNotifyDone says "{name} finished a check"
+// in the language of msgs.
+func (msgs Messages) AssistantNotifyDone(name string) string {
+	return Catalog.Format(msgs.locale, "assistantNotifyDone", map[string]any{"name": name})
+}
+
+// AssistantNotifyNoReport says "It sent no report."
+// in the language the app shows.
+func AssistantNotifyNoReport() string { return In(i18n.Locale()).AssistantNotifyNoReport() }
+
+// AssistantNotifyNoReport says "It sent no report."
+// in the language of msgs.
+func (msgs Messages) AssistantNotifyNoReport() string {
+	return Catalog.Format(msgs.locale, "assistantNotifyNoReport", nil)
+}

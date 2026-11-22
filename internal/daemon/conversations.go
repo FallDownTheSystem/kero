@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"kero/internal/ama"
+	"kero/internal/assistant"
 	"kero/internal/convsearch"
 	"kero/internal/proto"
 	"kero/internal/settings"
@@ -377,13 +378,21 @@ func (d *Daemon) resumeConversation(p proto.ConversationParams) (proto.Session, 
 	// A conversation of Ama's folder goes on as Ama's, in its place, with
 	// the arguments Ama's agent gets.
 	isAma := p.Ama || ama.Within(c.Dir)
+	// One of an assistant's folder goes on as that assistant's session,
+	// with its arguments.
+	args, of := roleArgs(settings.Load(), isAma, false), ""
+	if id, in := assistant.Within(c.Dir); in && !isAma {
+		if a, ok := d.assistantDef(id); ok {
+			args, of = a.AgentArgs, a.ID
+		}
+	}
 	parent := ""
-	if !isAma {
+	if !isAma && of == "" {
 		parent = d.resumeParent(p, c)
 	}
 	info, err := d.create(proto.CreateParams{
-		Project: project, Name: c.Name, Dir: c.Dir, Command: withArgs(resumeCommand(&as), roleArgs(settings.Load(), isAma, false)), After: p.After, Cols: p.Cols, Rows: p.Rows,
-		Ama: isAma, Parent: parent,
+		Project: project, Name: c.Name, Dir: c.Dir, Command: withArgs(resumeCommand(&as), args), After: p.After, Cols: p.Cols, Rows: p.Rows,
+		Ama: isAma, Assistant: of, Parent: parent,
 	})
 	if err != nil {
 		return info, err
