@@ -29,8 +29,8 @@ func assistantApp(t *testing.T) *App {
 	mail := sess("am", "mail", "Mail", proto.Idle, "")
 	kid := sess("kc", "", "fix flaky login test", proto.Working, "Running the test suite")
 	kid.Project, kid.Parent, kid.Pane.Agent = "p1", "am", "claude"
-	a.st.Sessions = append(a.st.Sessions, jira, mail, kid)
-	a.st.Assistants = []proto.Assistant{
+	st := proto.State{Projects: a.st.Projects, Sessions: append(slices.Clone(a.st.Sessions), jira, mail, kid)}
+	st.Assistants = []proto.Assistant{
 		{ID: "jira", Name: "Jira", Color: "blue", Avatar: "bolt", Group: "Work", Role: "Keeps my Jira tickets moving", Session: "aj",
 			Checks: []proto.AssistantCheck{{ID: "c1", Kind: "daily", Time: "09:00"}}, NextCheck: now.Add(3 * time.Hour).UnixMilli()},
 		{ID: "mail", Name: "Mail", Color: "pink", Avatar: "mail", Group: "Work", Role: "Reads my inbox", Session: "am",
@@ -38,6 +38,8 @@ func assistantApp(t *testing.T) *App {
 			NextCheck:  now.Add(5 * time.Hour).UnixMilli()},
 		{ID: "branches", Name: "Branches", Color: "green", Role: "Cleans up merged branches", Paused: true},
 	}
+	// As the local kerod's state message brings them (setState).
+	a.mergeState(a.local(), st)
 	return a
 }
 
@@ -235,5 +237,51 @@ func TestReportResult(t *testing.T) {
 		if got := reportResult(in); got != want {
 			t.Errorf("reportResult(%q) = %q, want %q", strings.SplitN(in, "\n", 2)[0], got, want)
 		}
+	}
+}
+
+// The local kerod's state brings the assistants; another host's neither
+// brings nor clears them, and its sessions of an assistant, or one whose
+// assistant is gone, list as any other session.
+func TestAssistantsFromState(t *testing.T) {
+	a := testApp(t)
+	st := proto.State{Projects: a.st.Projects, Sessions: append(slices.Clone(a.st.Sessions),
+		proto.Session{ID: "aj", Name: "Jira", Assistant: "jira", Panes: []proto.Pane{{ID: "aj-p"}}},
+		proto.Session{ID: "gone", Name: "Old", Assistant: "old", Panes: []proto.Pane{{ID: "gone-p"}}}),
+		Assistants: []proto.Assistant{{ID: "jira", Name: "Jira", Role: "x", Session: "aj"}}}
+	a.mergeState(a.local(), st)
+	if a.assistantByID("jira") == nil {
+		t.Fatal("the local state's assistants weren't taken")
+	}
+	a.prefs.View = viewAssistants
+	if got := a.visibleOrder(); !slices.Contains(got, "aj") {
+		t.Errorf("the Assistants view lists %v", got)
+	}
+	a.prefs.View = ""
+	if got := a.visibleOrder(); slices.Contains(got, "aj") || !slices.Contains(got, "gone") {
+		t.Errorf("the Sessions view lists %v", got)
+	}
+	a.syncHosts()
+	if a.assistantByID("jira") == nil {
+		t.Error("the hosts' change dropped the assistants")
+	}
+}
+
+// Jump to Attention reaches a waiting assistant; selecting an ordinary
+// session leaves the Assistants view, an assistant's child doesn't.
+func TestAssistantJumpAndView(t *testing.T) {
+	a := assistantApp(t)
+	a.selected = "s1"
+	a.jumpToAttention()
+	if a.selected != "aj" || !a.assistantsShown() {
+		t.Fatalf("jumped to %q, view %q", a.selected, a.prefs.View)
+	}
+	a.selectSession("kc")
+	if !a.assistantsShown() {
+		t.Error("an assistant's child left the Assistants view")
+	}
+	a.selectSession("s1")
+	if a.assistantsShown() {
+		t.Error("an ordinary session stayed in the Assistants view")
 	}
 }

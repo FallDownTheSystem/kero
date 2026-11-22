@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"kero/internal/assistant"
 	"kero/internal/proto"
@@ -58,7 +59,11 @@ const (
 // assistants are the definitions and what the schedule keeps of them; its
 // own lock, taken after d.mu, never while holding it the other way round.
 type assistants struct {
-	mu   sync.Mutex
+	mu sync.Mutex
+	// save is held from a change through the write of assistants.json,
+	// which is made after mu is let go, so that writes land in order
+	// without the disk holding up the state (stateLocked takes mu).
+	save sync.Mutex
 	list []*savedAssistant
 	// starting are the sessions on their way, by assistant: a second
 	// start waits for the first's (startAssistant).
@@ -119,16 +124,54 @@ func (d *Daemon) loadAssistants() {
 		d.log.Printf("assistants.json: %v", err)
 		return
 	}
-	as.list = slices.DeleteFunc(saved.Assistants, func(a *savedAssistant) bool { return a == nil || a.ID == "" })
+	// An id names a folder kerod makes and may remove: one that is no
+	// slug, as ".." in a damaged file, is dropped.
+	as.list = slices.DeleteFunc(saved.Assistants, func(a *savedAssistant) bool {
+		if a == nil || !assistant.ValidID(a.ID) {
+			if a != nil {
+				d.log.Printf("assistants.json: dropped an assistant of id %q, which is no assistant's", a.ID)
+			}
+			return true
+		}
+		return false
+	})
 }
 
-// saveAssistantsLocked writes assistants.json; as.mu is held.
-func (d *Daemon) saveAssistantsLocked() {
-	data, err := json.MarshalIndent(savedAssistants{Version: 1, Assistants: d.asst.list}, "", "  ")
-	if err == nil {
-		err = assistant.WriteFile(d.assistantsPath(), data, 0o600)
+// editAssistants runs fn under as.mu and, when it returns nil, writes
+// assistants.json as fn left it, after as.mu is let go.
+func (d *Daemon) editAssistants(fn func(as *assistants) error) error {
+	as := &d.asst
+	as.save.Lock()
+	defer as.save.Unlock()
+	as.mu.Lock()
+	as.initLocked()
+	if err := fn(as); err != nil {
+		as.mu.Unlock()
+		return err
 	}
+	data := d.assistantsJSONLocked()
+	as.mu.Unlock()
+	d.writeAssistants(data)
+	return nil
+}
+
+// assistantsJSONLocked is assistants.json as the list stands; as.mu is
+// held.
+func (d *Daemon) assistantsJSONLocked() []byte {
+	data, err := json.MarshalIndent(savedAssistants{Version: 1, Assistants: d.asst.list}, "", "  ")
 	if err != nil {
+		d.log.Printf("saving assistants.json: %v", err)
+		return nil
+	}
+	return data
+}
+
+// writeAssistants writes assistants.json; as.save is held, as.mu not.
+func (d *Daemon) writeAssistants(data []byte) {
+	if data == nil {
+		return
+	}
+	if err := assistant.WriteFile(d.assistantsPath(), data, 0o600); err != nil {
 		d.log.Printf("saving assistants.json: %v", err)
 	}
 }
@@ -161,7 +204,11 @@ func (as *assistants) findLocked(ref string) (*savedAssistant, error) {
 }
 
 // assistantDef is assistant id's definition, a copy; ok false for none.
-func (d *Daemon) assistantDef(id string) (proto.Assistant, bool) {
+func (d *Daemon) assistantDef(id string) (proto.Assistant, bool) { return d.assistantDefLocked(id) }
+
+// assistantDefLocked is assistantDef, which d.mu may be held for, as it
+// is taken before as.mu.
+func (d *Daemon) assistantDefLocked(id string) (proto.Assistant, bool) {
 	as := &d.asst
 	as.mu.Lock()
 	defer as.mu.Unlock()
@@ -266,8 +313,8 @@ func applyEdit(a *proto.Assistant, e proto.AssistantEdit, now int64) error {
 		return errors.New("an assistant needs a name")
 	case strings.TrimSpace(a.Role) == "":
 		return errors.New("an assistant needs a role: a line of what it does")
-	case len(a.Tracks) > assistantMaxTracks:
-		return fmt.Errorf("what it keeps track of is %d characters long, more than %d", len(a.Tracks), assistantMaxTracks)
+	case utf8.RuneCountInString(a.Tracks) > assistantMaxTracks:
+		return fmt.Errorf("what it keeps track of is %d characters long, more than %d", utf8.RuneCountInString(a.Tracks), assistantMaxTracks)
 	case !assistant.ColorValid(a.Color):
 		return fmt.Errorf("no color %q: %s, or #rrggbb", a.Color, strings.Join(settings.HostColors, ", "))
 	case strings.HasPrefix(a.Avatar, "file:") && strings.ContainsAny(strings.TrimPrefix(a.Avatar, "file:"), `/\`):
@@ -354,13 +401,14 @@ func copyAvatar(id, src string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
+	// The new one first: a failed write leaves the old.
+	if err := assistant.WriteFile(filepath.Join(dir, "avatar"+ext), data, 0o644); err != nil {
+		return "", err
+	}
 	for _, e := range avatarExts {
 		if e != ext {
 			os.Remove(filepath.Join(dir, "avatar"+e))
 		}
-	}
-	if err := assistant.WriteFile(filepath.Join(dir, "avatar"+ext), data, 0o644); err != nil {
-		return "", err
 	}
 	return "file:avatar" + ext, nil
 }
@@ -374,6 +422,10 @@ func (d *Daemon) createAssistant(e proto.AssistantEdit) (proto.Assistant, error)
 		return a, err
 	}
 	as := &d.asst
+	// as.save keeps other edits out while the folder is made without
+	// as.mu, which the state takes.
+	as.save.Lock()
+	defer as.save.Unlock()
 	as.mu.Lock()
 	as.initLocked()
 	for _, o := range as.list {
@@ -382,8 +434,13 @@ func (d *Daemon) createAssistant(e proto.AssistantEdit) (proto.Assistant, error)
 			return a, fmt.Errorf("there is an assistant named %s already", o.Name)
 		}
 	}
+	taken := make([]string, 0, len(as.list))
+	for _, o := range as.list {
+		taken = append(taken, o.ID)
+	}
+	as.mu.Unlock()
 	a.ID = assistant.NewID(a.Name, func(id string) bool {
-		if slices.ContainsFunc(as.list, func(o *savedAssistant) bool { return strings.EqualFold(o.ID, id) }) {
+		if slices.ContainsFunc(taken, func(o string) bool { return strings.EqualFold(o, id) }) {
 			return true
 		}
 		// A folder left by one removed holds its notes: a new one doesn't
@@ -394,18 +451,18 @@ func (d *Daemon) createAssistant(e proto.AssistantEdit) (proto.Assistant, error)
 	if e.Image != "" {
 		avatar, err := copyAvatar(a.ID, e.Image)
 		if err != nil {
-			as.mu.Unlock()
 			return a, err
 		}
 		a.Avatar = avatar
 	}
 	if _, err := assistant.Prepare(a); err != nil {
-		as.mu.Unlock()
 		return a, err
 	}
+	as.mu.Lock()
 	as.list = append(as.list, &savedAssistant{Assistant: a})
-	d.saveAssistantsLocked()
+	data := d.assistantsJSONLocked()
 	as.mu.Unlock()
+	d.writeAssistants(data)
 	d.log.Printf("assistant %s created", a.ID)
 	d.changed()
 	if e.Start {
@@ -434,6 +491,8 @@ func (d *Daemon) assistantInfo(id string) (proto.Assistant, error) {
 // is its session's too.
 func (d *Daemon) updateAssistant(e proto.AssistantEdit) (proto.Assistant, error) {
 	as := &d.asst
+	as.save.Lock()
+	defer as.save.Unlock()
 	as.mu.Lock()
 	as.initLocked()
 	sa, err := as.findLocked(e.ID)
@@ -452,25 +511,32 @@ func (d *Daemon) updateAssistant(e proto.AssistantEdit) (proto.Assistant, error)
 			return a, fmt.Errorf("there is an assistant named %s already", o.Name)
 		}
 	}
+	as.mu.Unlock()
+	// The disk's work, without as.mu: as.save keeps every other change of
+	// the list out meanwhile.
 	if e.Image != "" {
 		avatar, err := copyAvatar(a.ID, e.Image)
 		if err != nil {
-			as.mu.Unlock()
 			return a, err
 		}
 		a.Avatar = avatar
 	}
 	changed, err := assistant.Prepare(a)
 	if err != nil {
-		as.mu.Unlock()
 		return a, err
+	}
+	as.mu.Lock()
+	if !slices.Contains(as.list, sa) {
+		as.mu.Unlock()
+		return a, fmt.Errorf("no assistant %q", e.ID)
 	}
 	sa.Assistant = a
 	if a.Paused {
 		delete(as.problem, a.ID)
 	}
-	d.saveAssistantsLocked()
+	data := d.assistantsJSONLocked()
 	as.mu.Unlock()
+	d.writeAssistants(data)
 	d.mu.Lock()
 	s := d.assistantSessionLocked(a.ID)
 	sid := ""
@@ -492,20 +558,27 @@ func (d *Daemon) updateAssistant(e proto.AssistantEdit) (proto.Assistant, error)
 // p.Folder, its folder goes too, which Windows lets go only once no
 // program runs in it: it tries for a while, and says where it stays.
 func (d *Daemon) removeAssistant(p proto.AssistantParams) error {
-	as := &d.asst
-	as.mu.Lock()
-	sa, err := as.findLocked(p.ID)
-	if err != nil {
-		as.mu.Unlock()
+	var id string
+	var start *assistantStart
+	if err := d.editAssistants(func(as *assistants) error {
+		sa, err := as.findLocked(p.ID)
+		if err != nil {
+			return err
+		}
+		id, start = sa.ID, as.starting[sa.ID]
+		as.list = slices.DeleteFunc(as.list, func(o *savedAssistant) bool { return o == sa })
+		delete(as.forced, id)
+		delete(as.problem, id)
+		delete(as.noAgent, id)
+		delete(as.replaced, id)
+		return nil
+	}); err != nil {
 		return err
 	}
-	id := sa.ID
-	as.list = slices.DeleteFunc(as.list, func(o *savedAssistant) bool { return o == sa })
-	delete(as.forced, id)
-	delete(as.problem, id)
-	delete(as.noAgent, id)
-	d.saveAssistantsLocked()
-	as.mu.Unlock()
+	// A start on its way ends first, so that its session closes too.
+	if start != nil {
+		<-start.done
+	}
 	d.mu.Lock()
 	var sids []string
 	for _, s := range d.sessions {
@@ -525,6 +598,7 @@ func (d *Daemon) removeAssistant(p proto.AssistantParams) error {
 		return nil
 	}
 	dir := assistant.Dir(id)
+	var err error
 	for i := 0; i < 20; i++ {
 		if err = os.RemoveAll(dir); err == nil {
 			return nil
@@ -540,16 +614,22 @@ func (d *Daemon) removeAssistant(p proto.AssistantParams) error {
 // session: the second waits for the first's.
 func (d *Daemon) startAssistant(ref string, fresh bool) (proto.Session, error) {
 	as := &d.asst
+	// Its session and a start on its way are looked at together, d.mu
+	// then as.mu, so that a start ending between the two can't be
+	// missed.
+	d.mu.Lock()
 	as.mu.Lock()
 	as.initLocked()
 	sa, err := as.findLocked(ref)
 	if err != nil {
 		as.mu.Unlock()
+		d.mu.Unlock()
 		return proto.Session{}, err
 	}
 	id := sa.ID
 	if st := as.starting[id]; st != nil {
 		as.mu.Unlock()
+		d.mu.Unlock()
 		<-st.done
 		if !fresh {
 			return st.s, st.err
@@ -557,25 +637,18 @@ func (d *Daemon) startAssistant(ref string, fresh bool) (proto.Session, error) {
 		return d.startAssistant(id, true)
 	}
 	if !fresh {
-		as.mu.Unlock()
-		d.mu.Lock()
 		if s := d.assistantSessionLocked(id); s != nil {
+			as.mu.Unlock()
 			info := d.sessionInfo(s)
 			d.mu.Unlock()
 			return info, nil
-		}
-		d.mu.Unlock()
-		as.mu.Lock()
-		if st := as.starting[id]; st != nil {
-			as.mu.Unlock()
-			<-st.done
-			return st.s, st.err
 		}
 	}
 	st := &assistantStart{done: make(chan struct{})}
 	as.starting[id] = st
 	a := copyAssistant(sa.Assistant)
 	as.mu.Unlock()
+	d.mu.Unlock()
 	st.s, st.err = d.createAssistantSession(proto.CreateParams{Assistant: id, Command: assistant.Command(a, settings.Load()), Cols: 100, Rows: 30}, a)
 	as.mu.Lock()
 	delete(as.starting, id)
@@ -610,9 +683,25 @@ func (d *Daemon) createAssistantSession(p proto.CreateParams, a proto.Assistant)
 	}
 	d.sessions = append(d.sessions, s)
 	d.panes[pn.info.ID] = pn
+	// The children of the session it replaces are its: closing that one
+	// would leave them no parent.
+	for _, k := range d.sessions {
+		if k.parent != "" && slices.Contains(old, k.parent) {
+			k.parent = s.id
+		}
+	}
+	_, defined := d.assistantDefLocked(a.ID)
 	d.mu.Unlock()
+	if !defined {
+		// Removed while it started: it goes too.
+		old = append(old, s.id)
+	}
 	for _, id := range old {
 		d.removeSession(id)
+	}
+	if !defined {
+		d.changed()
+		return proto.Session{}, fmt.Errorf("no assistant %q: it was removed", a.ID)
 	}
 	d.mu.Lock()
 	info := d.sessionInfo(s)
@@ -687,30 +776,30 @@ func (d *Daemon) assistantReport(p proto.AssistantReportParams) (proto.Assistant
 		text = string(rs[:assistantReportMax]) + "\n[… cut: a report keeps " + fmt.Sprint(assistantReportMax) + " characters]"
 	}
 	r := proto.AssistantReport{At: time.Now().UnixMilli(), Text: text, Waiting: proto.ReportWaits(text)}
-	as := &d.asst
-	as.mu.Lock()
-	sa, err := as.findLocked(id)
-	if err != nil {
-		as.mu.Unlock()
+	if err := d.editAssistants(func(as *assistants) error {
+		sa, err := as.findLocked(id)
+		if err != nil {
+			return err
+		}
+		id = sa.ID
+		// The checks it followed: those last sent, since its last report.
+		since := int64(0)
+		if n := len(sa.Reports); n > 0 {
+			since = sa.Reports[n-1].At
+		}
+		for _, c := range sa.Checks {
+			if c.Last > since {
+				r.Checks = append(r.Checks, c.ID)
+			}
+		}
+		sa.Reports = append(sa.Reports, r)
+		if n := len(sa.Reports); n > assistantReports {
+			sa.Reports = slices.Clone(sa.Reports[n-assistantReports:])
+		}
+		return nil
+	}); err != nil {
 		return r, err
 	}
-	id = sa.ID
-	// The checks it followed: those last sent, since its last report.
-	since := int64(0)
-	if n := len(sa.Reports); n > 0 {
-		since = sa.Reports[n-1].At
-	}
-	for _, c := range sa.Checks {
-		if c.Last > since {
-			r.Checks = append(r.Checks, c.ID)
-		}
-	}
-	sa.Reports = append(sa.Reports, r)
-	if n := len(sa.Reports); n > assistantReports {
-		sa.Reports = slices.Clone(sa.Reports[n-assistantReports:])
-	}
-	d.saveAssistantsLocked()
-	as.mu.Unlock()
 	d.declareWaiting(id, r)
 	d.changed()
 	return r, nil
@@ -792,6 +881,9 @@ type dueChecks struct {
 	a      proto.Assistant
 	checks []proto.AssistantCheck
 	forced bool
+	// asked are the requests of run this pass took, which sending them
+	// answers: one made meanwhile stays for the next.
+	asked []string
 }
 
 // runDueChecks sends each assistant whose agent is at its prompt the
@@ -806,7 +898,7 @@ func (d *Daemon) runDueChecks(now time.Time) {
 	var due []dueChecks
 	for _, sa := range as.list {
 		f := as.forced[sa.ID]
-		dc := dueChecks{a: copyAssistant(sa.Assistant), forced: len(f) > 0}
+		dc := dueChecks{a: copyAssistant(sa.Assistant), forced: len(f) > 0, asked: slices.Clone(f)}
 		for _, c := range sa.Checks {
 			if slices.Contains(f, "") || slices.Contains(f, c.ID) || !sa.Paused && assistant.Due(c, d.started, now) {
 				dc.checks = append(dc.checks, c)
@@ -871,6 +963,8 @@ func (d *Daemon) sendChecks(dc dueChecks, now time.Time) bool {
 			if _, err := d.startAssistant(id, true); err != nil {
 				return d.assistantProblem(id, "its session would not start: "+err.Error())
 			}
+			// A fresh session: its agent gets the checks at a later look.
+			return d.assistantProblem(id, "")
 		}
 		if now.Sub(since) >= assistantNoAgent {
 			return d.assistantProblem(id, "no agent runs in its session: start it again from its menu (New Chat)")
@@ -894,23 +988,26 @@ func (d *Daemon) sendChecks(dc dueChecks, now time.Time) bool {
 	if _, err := d.agentSend(proto.AgentSendParams{To: to, Label: assistantLabel, Text: text, Mode: "push"}); err != nil {
 		return d.assistantProblem(id, "its checks could not reach its agent: "+err.Error())
 	}
-	as := &d.asst
-	as.mu.Lock()
-	defer as.mu.Unlock()
-	delete(as.forced, id)
-	delete(as.noAgent, id)
-	delete(as.problem, id)
-	for _, sa := range as.list {
-		if sa.ID != id {
-			continue
+	d.editAssistants(func(as *assistants) error {
+		if f := slices.DeleteFunc(as.forced[id], func(c string) bool { return slices.Contains(dc.asked, c) }); len(f) > 0 {
+			as.forced[id] = f
+		} else {
+			delete(as.forced, id)
 		}
-		for i := range sa.Checks {
-			if slices.ContainsFunc(dc.checks, func(c proto.AssistantCheck) bool { return c.ID == sa.Checks[i].ID }) {
-				sa.Checks[i].Last = now.UnixMilli()
+		delete(as.noAgent, id)
+		delete(as.problem, id)
+		for _, sa := range as.list {
+			if sa.ID != id {
+				continue
+			}
+			for i := range sa.Checks {
+				if slices.ContainsFunc(dc.checks, func(c proto.AssistantCheck) bool { return c.ID == sa.Checks[i].ID }) {
+					sa.Checks[i].Last = now.UnixMilli()
+				}
 			}
 		}
-	}
-	d.saveAssistantsLocked()
+		return nil
+	})
 	d.log.Printf("assistant %s: %d checks sent", id, len(dc.checks))
 	return true
 }
@@ -923,6 +1020,10 @@ func (d *Daemon) assistantProblem(id, problem string) bool {
 	defer as.mu.Unlock()
 	if as.problem[id] == problem {
 		return false
+	}
+	if problem == "" {
+		delete(as.problem, id)
+		return true
 	}
 	as.problem[id] = problem
 	d.log.Printf("assistant %s: %s", id, problem)
@@ -946,7 +1047,7 @@ func checksMessage(dc dueChecks, started, now time.Time) string {
 				case at.Before(started):
 					when += ", late because Kero was not running"
 				case now.Sub(at) > 30*time.Minute:
-					when += ", late because you were busy"
+					when += ", late"
 				}
 			} else {
 				when += ", run now as the user asked"

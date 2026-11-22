@@ -20,7 +20,11 @@ which the user reads instead of your screen:
 - done, in the past tense, naming the result: "Fixed login redirect
   loop", not "Done" or "Committed the fix".
 - blocked, as the question you wait on, when you truly can't go on
-  without the user: it notifies them.
+  without the user: it notifies them. Stay at your prompt: an answer, the
+  user's or your orchestrator's kero message, reaches you there and takes
+  your blocked line back. A message that answers nothing, as a pull
+  request's news or a child's report, reaches you too and leaves it; set
+  it again, or another, once you know more.
 
 ## Report to your orchestrator
 

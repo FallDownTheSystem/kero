@@ -259,7 +259,7 @@ func (a *App) syncHosts() {
 	}
 	a.hosts = keep
 	// The sessions shown follow the hosts' order.
-	a.mergeState(a.local(), proto.State{Projects: a.projectsOf(a.local()), Sessions: a.sessionsOf(a.local())})
+	a.mergeState(a.local(), proto.State{Projects: a.projectsOf(a.local()), Sessions: a.sessionsOf(a.local()), Assistants: a.st.Assistants})
 	for _, h := range added {
 		if h.err == "" {
 			a.connectHost(h)
@@ -527,6 +527,11 @@ func (a *App) mergeState(h *host, st proto.State) {
 		sessions = append(sessions, ss...)
 	}
 	a.st.Projects, a.st.Sessions, a.owner = projects, sessions, owner
+	if h == a.local() {
+		// Assistants are this machine's kerod's only; another host's
+		// state neither brings nor clears them.
+		a.st.Assistants = st.Assistants
+	}
 }
 
 // own records a session the app just made as a host's, before its

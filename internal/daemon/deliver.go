@@ -115,11 +115,24 @@ func (mb *mailbox) initLocked() {
 
 // agentReady tells that a pane's agent is at its prompt, or done and
 // waiting for the user to look; not working, nor asking for a permission
-// or an answer, which typing would give. p.mu is held.
+// or a login, which typing would give. An agent that declared it waits on
+// a question (kero report blocked, an assistant's "Waiting on you:") is
+// ready once its screen shows it at its prompt: a message may be the
+// answer. p.mu is held.
 func (p *pane) agentReady() bool {
-	st := p.info.Status
-	return p.term != nil && !p.closed && p.info.Agent != "" &&
-		(st == proto.Idle || st == proto.Waiting && p.seen != detect.Blocked && !p.declared() && p.info.Kind == "")
+	if p.term == nil || p.closed || p.info.Agent == "" {
+		return false
+	}
+	switch p.info.Status {
+	case proto.Idle:
+		return true
+	case proto.Waiting:
+		if p.declared() {
+			return p.answerable() && p.under == detect.Idle
+		}
+		return p.seen != detect.Blocked && p.info.Kind == ""
+	}
+	return false
 }
 
 // pageLabel is how the agent is told of a browser pane's page: its title
@@ -426,15 +439,23 @@ func (d *Daemon) flushOutbox(now time.Time) {
 
 // delivered records that msgs reached the agent of pane pn, id, at now:
 // the agent is left alone till it worked on them (deliverHold), and the
-// apps hear of it.
+// apps hear of it. The blocks the messages answer are taken back
+// (pane.takeBack): a message from a person or another agent answers.
 func (d *Daemon) delivered(pn *pane, id string, msgs []outMsg, now time.Time) {
+	answer := slices.ContainsFunc(msgs, func(m outMsg) bool { return m.user || m.from != "" })
 	pn.mu.Lock()
+	before := pn.info.Status
+	pn.takeBack(answer)
+	changed := pn.info.Status != before
 	after := pn.info.Since
 	pn.mu.Unlock()
 	mb := &d.mail
 	mb.mu.Lock()
 	mb.typed[id], mb.since[id] = now, after
 	mb.mu.Unlock()
+	if changed {
+		d.changed()
+	}
 	for _, m := range msgs {
 		d.tellDelivery(proto.Delivery{ID: m.id, From: m.from, To: id, State: "delivered"})
 	}

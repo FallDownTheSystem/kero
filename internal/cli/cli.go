@@ -1450,8 +1450,9 @@ func find(st proto.State, ref string) (target, error) {
 	case 1:
 		return matches[0], nil
 	case 0:
-		// An assistant, by its id or name, stands for its session.
-		if a, err := findAssistant(st, []string{ref}); err == nil {
+		// An assistant, by its exact id or name, stands for its session: a
+		// prefix stays a session's, so a mistyped one finds no assistant.
+		if a, err := findAssistant(st, []string{ref}); err == nil && (a.ID == ref || strings.EqualFold(a.Name, ref)) {
 			if s := assistantSession(st, a); s != nil {
 				return target{s: *s}, nil
 			}

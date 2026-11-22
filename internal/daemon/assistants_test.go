@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"os"
 	"runtime"
 	"slices"
 	"strings"
@@ -281,10 +282,10 @@ func TestAssistantCatchUpAcrossRestart(t *testing.T) {
 	d := testDaemon(t)
 	newAssistant(t, d, "Morning", proto.AssistantCheck{Kind: "daily", Time: "09:00"})
 	twoDays := time.Now().Add(-48 * time.Hour).UnixMilli()
-	d.asst.mu.Lock()
-	d.asst.list[0].Checks[0].Created, d.asst.list[0].Checks[0].Last = twoDays-1, twoDays
-	d.saveAssistantsLocked()
-	d.asst.mu.Unlock()
+	d.editAssistants(func(as *assistants) error {
+		as.list[0].Checks[0].Created, as.list[0].Checks[0].Last = twoDays-1, twoDays
+		return nil
+	})
 
 	due := func(d *Daemon) bool {
 		d.asst.mu.Lock()
@@ -300,10 +301,10 @@ func TestAssistantCatchUpAcrossRestart(t *testing.T) {
 		t.Fatal("a check missed while kerod was down isn't due after it starts")
 	}
 	// It ran: sendChecks sets its Last and saves.
-	d2.asst.mu.Lock()
-	d2.asst.list[0].Checks[0].Last = time.Now().UnixMilli()
-	d2.saveAssistantsLocked()
-	d2.asst.mu.Unlock()
+	d2.editAssistants(func(as *assistants) error {
+		as.list[0].Checks[0].Last = time.Now().UnixMilli()
+		return nil
+	})
 	if due(d2) {
 		t.Error("the check is due again in the same run")
 	}
@@ -340,5 +341,135 @@ func TestAssistantColor(t *testing.T) {
 	defer d2.asst.mu.Unlock()
 	if len(d2.asst.list) != 1 || d2.asst.list[0].Color != "#b5179e" {
 		t.Errorf("after a load: %+v", d2.asst.list)
+	}
+}
+
+// readyAssistant starts an assistant's session whose agent kerod takes
+// for Claude Code at its prompt.
+func readyAssistant(t *testing.T, d *Daemon, name string, checks ...proto.AssistantCheck) (proto.Assistant, *pane) {
+	t.Helper()
+	a := newAssistant(t, d, name, checks...)
+	s, err := d.startAssistant(a.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pn := d.findPane(s.Panes[0].ID)
+	setAgent(pn, proto.Idle)
+	onScreen(t, pn, "idle")
+	return a, pn
+}
+
+// After a report that waits on the user, the assistant still gets what
+// is for it once its agent is at its prompt: a message, which takes the
+// question back, its child's report, and its due checks; a dialog on its
+// screen still holds them all.
+func TestAssistantWaitingStillReached(t *testing.T) {
+	enterWait = 50 * time.Millisecond
+	t.Cleanup(func() { enterWait = 2 * time.Second })
+	d := testDaemon(t)
+	a, pn := readyAssistant(t, d, "Mail", proto.AssistantCheck{Kind: "daily", Time: "09:00"})
+	waiting := func() {
+		t.Helper()
+		if _, err := d.assistantReport(proto.AssistantReportParams{Assistant: a.ID, Text: "Waiting on you: Reply to Anna?"}); err != nil {
+			t.Fatal(err)
+		}
+		onScreen(t, pn, "idle")
+		if st := sessionOf(d, d.sessionIDOf(pn)).Pane.Status; st != proto.Waiting {
+			t.Fatalf("after a waiting report: %s", st)
+		}
+	}
+	waiting()
+	if !d.reportReady(d.sessionIDOf(pn)) {
+		t.Error("its child's report would wait")
+	}
+	res, err := d.agentSend(proto.AgentSendParams{To: pn.info.ID, Label: "Ama", Text: "Yes, reply."})
+	if err != nil || res.State != "delivered" {
+		t.Fatalf("a message: %+v %v", res, err)
+	}
+	if st := sessionOf(d, d.sessionIDOf(pn)).Pane.Status; st == proto.Waiting {
+		t.Error("the message left it waiting")
+	}
+
+	waiting()
+	time.Sleep(2 * time.Millisecond)
+	setAgent(pn, proto.Waiting) // a new Since: its last delivery worked on
+	onScreen(t, pn, "blocked")
+	dc := dueChecks{a: a, checks: a.Checks}
+	if d.sendChecks(dc, time.Now()) || d.reportReady(d.sessionIDOf(pn)) {
+		t.Error("a dialog on screen didn't hold the checks and reports")
+	}
+	declareRecord(pn, waitingRecord)
+	onScreen(t, pn, "idle")
+	// A run asked for meanwhile stays for the next pass.
+	if _, err := d.runAssistant(proto.AssistantParams{ID: a.ID, Check: a.Checks[0].ID}); err != nil {
+		t.Fatal(err)
+	}
+	dc.asked = nil
+	if !d.sendChecks(dc, time.Now()) {
+		t.Fatal("the due check didn't go")
+	}
+	def, _ := d.assistantDef(a.ID)
+	if def.Checks[0].Last == 0 {
+		t.Error("its Last wasn't set")
+	}
+	d.asst.mu.Lock()
+	left := d.asst.forced[a.ID]
+	d.asst.mu.Unlock()
+	if len(left) != 1 {
+		t.Errorf("a run asked for while checks went was lost: %v", left)
+	}
+}
+
+// declareRecord declares the assistant's waiting record on pn again.
+func declareRecord(pn *pane, id string) {
+	pn.mu.Lock()
+	defer pn.mu.Unlock()
+	pn.applyReport(proto.Record{ID: id, State: "blocked", Kind: "question", Msg: "Reply?", Progress: -1, Updated: time.Now().UnixMilli()})
+}
+
+func (d *Daemon) sessionIDOf(pn *pane) string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.sessionOfLocked(pn).id
+}
+
+// A fresh chat keeps the assistant's children: their parent is the new
+// session, which their news then goes to.
+func TestAssistantFreshKeepsChildren(t *testing.T) {
+	d := testDaemon(t)
+	newAssistant(t, d, "Branches")
+	s, err := d.startAssistant("branches", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kid := quietSession(t, d, proto.CreateParams{By: s.Panes[0].ID, Project: "pr"})
+	fresh, err := d.startAssistant("branches", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sessionOf(d, kid.ID).Parent; got != fresh.ID {
+		t.Fatalf("the child's parent is %q, not the fresh session %s", got, fresh.ID)
+	}
+	d.followChildren(time.Now())
+	d.reports.mu.Lock()
+	k := d.reports.kids[kid.ID]
+	d.reports.mu.Unlock()
+	if k == nil || k.parent != fresh.ID {
+		t.Errorf("the reports follow %+v", k)
+	}
+}
+
+// assistants.json's ids name folders: one that is no slug is dropped.
+func TestAssistantsLoadBadID(t *testing.T) {
+	d := testDaemon(t)
+	data := `{"version":1,"assistants":[{"id":"..","name":"Evil","role":"x"},{"id":"a/b","name":"Path","role":"x"},{"id":"ok","name":"OK","role":"x"}]}`
+	if err := os.WriteFile(d.assistantsPath(), []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	d.loadAssistants()
+	d.asst.mu.Lock()
+	defer d.asst.mu.Unlock()
+	if len(d.asst.list) != 1 || d.asst.list[0].ID != "ok" {
+		t.Errorf("loaded %d: %+v", len(d.asst.list), d.asst.list)
 	}
 }

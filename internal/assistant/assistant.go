@@ -70,6 +70,14 @@ func Slug(name string) string {
 	return s
 }
 
+// ValidID reports whether id is one an assistant may have: lowercase
+// letters, digits and dashes, at most MaxID long, not a device's name on
+// Windows; so never a path, as "..".
+func ValidID(id string) bool {
+	return id != "" && len(id) <= MaxID && !notSlug.MatchString(strings.ReplaceAll(id, "-", "")) &&
+		strings.Trim(id, "-") == id && !reserved.MatchString(id)
+}
+
 // NewID is the id for a new assistant of name, which taken tells is in
 // use: its Slug, with -2, -3… after it on a clash, else assistant-<n>.
 func NewID(name string, taken func(string) bool) string {
@@ -169,11 +177,24 @@ func writeIfChanged(path, text string) (changed bool, err error) {
 // WriteFile writes data to path through a file beside it, renamed over
 // it, retrying the rename a few times (writeIfChanged).
 func WriteFile(path string, data []byte, perm os.FileMode) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, perm); err != nil {
+	// A file of its own, so that two writers of one file at once don't
+	// share one.
+	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
 		return err
 	}
-	var err error
+	tmp := f.Name()
+	_, err = f.Write(data)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Chmod(tmp, perm)
+	}
+	if err != nil {
+		os.Remove(tmp)
+		return err
+	}
 	for i := 0; i < 5; i++ {
 		if err = os.Rename(tmp, path); err == nil {
 			return nil

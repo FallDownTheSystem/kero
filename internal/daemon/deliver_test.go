@@ -269,3 +269,114 @@ func TestAgentSendAgentQuit(t *testing.T) {
 		t.Errorf("typed %q into the next agent", b)
 	}
 }
+
+// onScreen shows one of Claude Code's screens in pn and lets kerod read
+// it, as its poll would, past idleHold.
+func onScreen(t *testing.T, pn *pane, name string) {
+	t.Helper()
+	pn.mu.Lock()
+	pn.info.Title = "✳ Claude Code"
+	pn.mu.Unlock()
+	pn.show(claudeScreen(t, name))
+	now := time.Now()
+	pn.mu.Lock()
+	pn.look(now)
+	pn.look(now.Add(idleHold + time.Second))
+	pn.mu.Unlock()
+}
+
+// declare puts records on pn, as kero report would, in place of those it
+// had.
+func declare(pn *pane, recs ...proto.Record) {
+	pn.mu.Lock()
+	defer pn.mu.Unlock()
+	pn.applyReport(proto.Record{State: "clear", Progress: -1})
+	for _, r := range recs {
+		r.Progress, r.Updated = -1, time.Now().UnixMilli()
+		pn.applyReport(r)
+	}
+}
+
+func ready(pn *pane) bool {
+	pn.mu.Lock()
+	defer pn.mu.Unlock()
+	return pn.agentReady()
+}
+
+// An agent that declared it waits on a question takes a message once its
+// screen shows it at its prompt: not while a dialog shows, nor while its
+// turn goes on, nor when it declared it works too, nor for a permission or
+// a login it waits on, which typing would answer.
+func TestReadyWhileBlocked(t *testing.T) {
+	d := testDaemon(t)
+	pn, _ := agentSession(t, d)
+	setAgent(pn, proto.Idle)
+	question := proto.Record{ID: "kero", State: "blocked", Kind: "question", Msg: "Keep the legacy export?"}
+	for _, tc := range []struct {
+		name   string
+		recs   []proto.Record
+		screen string
+		want   bool
+	}{
+		{"a question, at its prompt", []proto.Record{question}, "idle", true},
+		{"a block of no kind, at its prompt", []proto.Record{{ID: "kero", State: "blocked", Msg: "Which?"}}, "idle", true},
+		{"a question, a dialog on screen", []proto.Record{question}, "blocked", false},
+		{"a question, its turn going on", []proto.Record{question}, "working", false},
+		{"a permission, at its prompt", []proto.Record{{ID: "kero", State: "blocked", Kind: "permission", Msg: "Run rm?"}}, "idle", false},
+		{"a login, at its prompt", []proto.Record{{ID: "kero", State: "blocked", Kind: "auth", Msg: "Sign in"}}, "idle", false},
+		{"working declared, at its prompt", []proto.Record{{ID: "kero", State: "working", Msg: "Building"}}, "idle", false},
+		{"working and a question, at its prompt", []proto.Record{{ID: "kero/a", State: "working"}, question}, "idle", false},
+	} {
+		declare(pn, tc.recs...)
+		onScreen(t, pn, tc.screen)
+		if got := ready(pn); got != tc.want {
+			t.Errorf("%s: ready %v", tc.name, got)
+		}
+	}
+}
+
+// An orchestrator's kero message reaches a child that declared it waits
+// on a question and is back at its prompt; the answer takes the block
+// back. A message that answers nothing, as a pull request watch's,
+// reaches it too, and leaves the question showing for the user.
+func TestMessageToBlockedChild(t *testing.T) {
+	enterWait = 50 * time.Millisecond
+	t.Cleanup(func() { enterWait = 2 * time.Second })
+	d := testDaemon(t)
+	orch, _ := agentSession(t, d)
+	child, out := agentSession(t, d)
+	setAgent(orch, proto.Idle)
+	setAgent(child, proto.Idle)
+	d.mu.Lock()
+	o, k := d.sessionOfLocked(orch), d.sessionOfLocked(child)
+	o.orchestrator, k.parent = true, o.id
+	d.mu.Unlock()
+	declare(child, proto.Record{ID: "kero", State: "blocked", Kind: "question", Msg: "Keep the legacy export?"})
+	onScreen(t, child, "idle")
+	if st := sessionOf(d, k.id).Pane.Status; st != proto.Waiting {
+		t.Fatalf("declared blocked: %s", st)
+	}
+	res, err := d.agentSend(proto.AgentSendParams{From: orch.info.ID, To: k.id, Text: "Keep it."})
+	if err != nil || res.State != "delivered" {
+		t.Fatalf("to the blocked child: %+v %v", res, err)
+	}
+	typedIn(t, out, "Keep it.")
+	if p := sessionOf(d, k.id).Pane; p.Status == proto.Waiting || len(p.Records) > 0 {
+		t.Errorf("answered, it still waits: %s %+v", p.Status, p.Records)
+	}
+
+	other, out2 := agentSession(t, d)
+	setAgent(other, proto.Idle)
+	declare(other, proto.Record{ID: "kero", State: "blocked", Kind: "question", Msg: "Merge it?"})
+	onScreen(t, other, "idle")
+	if res, _ := d.agentSend(proto.AgentSendParams{To: other.info.ID, Text: "PR #4: checks passed."}); res.State != "delivered" {
+		t.Fatalf("a watch's news: %+v", res)
+	}
+	typedIn(t, out2, "checks passed")
+	d.mu.Lock()
+	oid := d.sessionOfLocked(other).id
+	d.mu.Unlock()
+	if p := sessionOf(d, oid).Pane; p.Status != proto.Waiting || p.Message != "Merge it?" {
+		t.Errorf("news that answers nothing took the question away: %s %q", p.Status, p.Message)
+	}
+}

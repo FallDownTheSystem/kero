@@ -549,7 +549,7 @@ func (a *App) notifySessions(first bool) (waiting, unread int) {
 		// An assistant's turn ends with its own notification, when it
 		// finished a check (notifyAssistant); its other turns show its
 		// unread dot.
-		case s.Assistant != "":
+		case a.assistantOf(s) != nil:
 			continue
 		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
 			title, body = locales.NotifyDoneTitle(a.hostedName(s)), s.Message
@@ -653,7 +653,7 @@ func (a *App) hostGroups(h *host) []group {
 	}
 	other := group{host: h, project: proto.Project{ID: "", Name: locales.SidebarOtherProject()}}
 	for i := range a.st.Sessions {
-		if s := &a.st.Sessions[i]; !known[s.Project] && a.hostOf(s.ID) == h && !s.Ama && s.Assistant == "" {
+		if s := &a.st.Sessions[i]; !known[s.Project] && a.hostOf(s.ID) == h && !s.Ama && a.assistantOf(s) == nil {
 			other.sessions = append(other.sessions, s)
 		}
 	}
@@ -703,9 +703,14 @@ func (a *App) selectSession(id string) {
 	a.selected = id
 	s := a.session(id)
 	// An assistant's session shows with the Assistants view, by whatever
-	// way it is selected: Needs You, a notification, kero focus.
-	if s.Assistant != "" && !a.assistantsShown() {
+	// way it is selected: Needs You, a notification, kero focus; any other
+	// session but an assistant's child, which both views list, with the
+	// Sessions view.
+	switch {
+	case a.assistantOf(s) != nil && !a.assistantsShown():
 		a.prefs.View, changed = viewAssistants, true
+	case a.assistantOf(s) == nil && a.assistantOf(a.session(s.Parent)) == nil && a.assistantsShown():
+		a.prefs.View, changed = "", true
 	}
 	for _, p := range s.Panes {
 		a.ensureTerm(p.ID)
@@ -1655,9 +1660,9 @@ func (a *App) closeSession(id string, ask bool) {
 	if s == nil {
 		return
 	}
-	// An orchestrator's children are closed with it, or kept, as the
-	// user says.
-	if ask && s.Orchestrator && a.askCloseOrchestrator(s) {
+	// An orchestrator's children, or an assistant's, are closed with it,
+	// or kept, as the user says.
+	if ask && (s.Orchestrator || a.assistantOf(s) != nil) && a.askCloseOrchestrator(s) {
 		return
 	}
 	a.closeOne(id, ask)
@@ -1832,11 +1837,21 @@ func (a *App) jumpTo(want func(*proto.Session) bool) bool {
 			ids = append(ids, s.ID)
 		}
 	}
+	// Then the assistants' sessions and their children, which the
+	// Sessions view doesn't list.
+	for _, id := range a.assistantSessionIDs() {
+		if !slices.Contains(ids, id) {
+			ids = append(ids, id)
+		}
+	}
 	i := slices.Index(ids, a.selected)
 	for k := 1; k <= len(ids); k++ {
 		id := ids[(i+k+len(ids))%len(ids)]
 		if s := a.session(id); s != nil && id != a.selected && want(s) {
 			delete(a.prefs.Collapsed, s.Project)
+			if as := a.assistantOf(s); as != nil {
+				delete(a.prefs.Collapsed, "assistants:"+as.Group)
+			}
 			a.selectSession(id)
 			return true
 		}

@@ -406,6 +406,52 @@ func (s *pane) reportedStatus() bool {
 	return s.reported && (s.info.Status == proto.Working || s.info.Status == proto.Waiting)
 }
 
+// onlyBlocked reports whether every record a program declared that holds
+// the status is a block, none working; s.mu is held.
+func (s *pane) onlyBlocked() bool {
+	blocked := false
+	for _, r := range s.records {
+		switch r.State {
+		case "working":
+			return false
+		case "blocked":
+			blocked = true
+		}
+	}
+	return blocked
+}
+
+// answerable reports whether the blocks declared on the pane are ones a
+// message may answer: a question, or of no kind; not a permission or a
+// login, which typing would answer for the user. s.mu is held.
+func (s *pane) answerable() bool {
+	for _, r := range s.records {
+		if r.State == "blocked" && r.Kind != "" && r.Kind != "question" {
+			return false
+		}
+	}
+	return s.onlyBlocked()
+}
+
+// takeBack takes back, as a message reaches the agent, the blocks it
+// answers: the assistant's question (waitingRecord) always, as its next
+// turn starts; a block the agent declared itself only with an answer, a
+// message of a person's or another agent's, so that a report or a watch's
+// news reaching it leaves the user's question showing until the agent
+// reports again. s.mu is held.
+func (s *pane) takeBack(answer bool) {
+	changed := false
+	for id, r := range s.records {
+		if r.State == "blocked" && (id == waitingRecord || answer && (r.Kind == "" || r.Kind == "question")) {
+			delete(s.records, id)
+			changed = true
+		}
+	}
+	if changed {
+		s.fromRecords()
+	}
+}
+
 // declared reports whether a program declared it works or waits, which
 // the daemon's guesses then leave alone; s.mu is held.
 func (s *pane) declared() bool {

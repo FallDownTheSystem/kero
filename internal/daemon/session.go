@@ -72,6 +72,12 @@ type pane struct {
 	seen     detect.State
 	looked   bool
 	idleFrom time.Time
+	// under is what the screen shows while the agent declared a block,
+	// which its status doesn't follow then, but which tells whether a
+	// message may be typed in (agentReady); underFrom holds back idle as
+	// idleFrom does.
+	under     detect.State
+	underFrom time.Time
 	// osc finds OSC 7501, 133 and 9;4 in the output; records are the
 	// programs' status reports (OSC 7501), by id, and reported tells that
 	// one came; progress is the last OSC 9;4 after "9;", as "4;1;40",
@@ -413,8 +419,10 @@ func (s *pane) look(now time.Time) bool {
 		// What the program declares stands; once it ends, the screen
 		// tells again.
 		s.seen = ""
+		s.lookUnder(now)
 		return false
 	}
+	s.under, s.underFrom = "", time.Time{}
 	if s.looked && s.idleFrom.IsZero() || s.info.Status == proto.Exited {
 		return false
 	}
@@ -460,6 +468,35 @@ func (s *pane) look(now time.Time) bool {
 		}
 	}
 	return s.info.Status != before
+}
+
+// lookUnder reads the screen of an agent that declared only blocks, for
+// agentReady: a dialog on it, or its turn still going, holds messages
+// back though its status says it waits. s.mu is held.
+func (s *pane) lookUnder(now time.Time) {
+	if !s.onlyBlocked() || !detect.Known(s.info.Agent) || s.info.Status == proto.Exited {
+		s.under, s.underFrom = "", time.Time{}
+		return
+	}
+	r := detect.Detect(s.info.Agent, detect.Input{Screen: s.screen(), Title: s.info.Title, Progress: s.progress})
+	if r.Skip {
+		return
+	}
+	if r.State == detect.Idle && !r.Visible {
+		// Maybe idle: so once it stayed so a while, as look holds it.
+		if s.underFrom.IsZero() {
+			s.underFrom = now
+		}
+		if now.Sub(s.underFrom) < idleHold {
+			if s.under == "" {
+				s.under = detect.Working
+			}
+			return
+		}
+	} else {
+		s.underFrom = time.Time{}
+	}
+	s.under = r.State
 }
 
 // screen returns the text of the screen: the last rows of the terminal's

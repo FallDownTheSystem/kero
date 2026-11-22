@@ -464,22 +464,25 @@ func (a *App) assistantRow(c *ui.Context, pal *palette, as *proto.Assistant, n *
 				if s != nil && len(a.childrenOf(s.ID)) > 0 && !detailed {
 					a.childrenChevron(c, pal, s)
 				}
+				// Its next check, or why none runs, beside its name, which
+				// leaves the line below to what it said.
+				if note, bad := assistantNote(as, time.Now()); note != "" && detailed {
+					fg := pal.textFaint
+					if bad {
+						fg = pal.danger
+					}
+					ui.Spacer(c)
+					ui.Text(c, note).FontSize(11.5).TextColor(fg).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
+				}
 			})
 			if !detailed {
 				return
 			}
 			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, assistantLine(as, s)).FontSize(12).TextColor(pal.textMuted).SingleLine().Ellipsis("…").Shrink(1).MinWidth(0)
-				ui.Spacer(c)
 				if s != nil && len(a.childrenOf(s.ID)) > 0 {
+					ui.Spacer(c)
 					a.childrenChevron(c, pal, s)
-				}
-				if note, bad := assistantNote(as, time.Now()); note != "" {
-					fg := pal.textFaint
-					if bad {
-						fg = pal.danger
-					}
-					ui.Text(c, note).FontSize(11.5).TextColor(fg).SingleLine().Shrink(0)
 				}
 			})
 		})
@@ -596,7 +599,8 @@ func (a *App) assistantMenu(m *ui.Menu, as *proto.Assistant) {
 	}
 	m.Separator()
 	if m.Item(locales.AssistantsCloseSession()).Disabled(s == nil).Chosen() && s != nil {
-		a.assistantCall("close", proto.CloseParams{ID: s.ID})
+		// With children, it asks what an orchestrator's close asks.
+		a.closeSession(s.ID, true)
 	}
 	if m.Item(locales.AssistantsDelete()).Chosen() {
 		a.defer_(func() { a.askDeleteAssistant(id, name) })
@@ -617,6 +621,24 @@ func (a *App) askDeleteAssistant(id, name string) {
 // assistantsOrder is the Assistants view's sessions, in its order, for
 // ⌘1–9 and next and previous session: each assistant's, then its
 // children's.
+// assistantSessionIDs are every assistant's session, each followed by its
+// children, in the view's order, folded or not.
+func (a *App) assistantSessionIDs() []string {
+	var ids []string
+	names, by := a.assistantGroups()
+	for _, g := range names {
+		for _, as := range by[g] {
+			if s := a.assistantSession(as); s != nil {
+				ids = append(ids, s.ID)
+				for _, k := range a.childrenOf(s.ID) {
+					ids = append(ids, k.ID)
+				}
+			}
+		}
+	}
+	return ids
+}
+
 func (a *App) assistantsOrder() []string {
 	var ids []string
 	names, by := a.assistantGroups()

@@ -1,8 +1,11 @@
 package assistant
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -150,4 +153,41 @@ func read(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func TestValidID(t *testing.T) {
+	for id, want := range map[string]bool{"jira": true, "mail-2": true, "assistant-1": true,
+		"": false, "..": false, "a/b": false, `a\b`: false, "Jira": false, "con": false, "-a": false,
+		"abcdefghijklmnopqrstuvwxyzabcdefg": false} {
+		if got := ValidID(id); got != want {
+			t.Errorf("ValidID(%q) = %v", id, got)
+		}
+	}
+}
+
+// Writers of one file at once each finish, the file whole.
+func TestWriteFileTogether(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "CLAUDE.md")
+	var wg sync.WaitGroup
+	errs := make(chan error, 8)
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- WriteFile(path, []byte(strings.Repeat(fmt.Sprint(i), 1000)), 0o644)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if b, _ := os.ReadFile(path); len(b) != 1000 {
+		t.Errorf("%d bytes", len(b))
+	}
+	if left, _ := filepath.Glob(filepath.Join(filepath.Dir(path), "*.tmp")); len(left) > 0 {
+		t.Errorf("left %v", left)
+	}
 }
