@@ -81,6 +81,7 @@ func (d *Daemon) sessionInfo(s *session) proto.Session {
 		pi.Command = slices.Clone(pi.Command)
 		pi.Records = slices.Clone(pi.Records)
 		p.mu.Unlock()
+		pi.Inbox = pi.Agent != "" && d.mail.listening(pi.ID)
 		info.Panes = append(info.Panes, pi)
 	}
 	if i := proto.Lead(info.Panes, s.focus); i >= 0 {

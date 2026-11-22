@@ -70,6 +70,10 @@ Kero 会向智能体发送消息：通过[编排器](./orchestrators.md)转达�
 
 其他智能体，以及接收方式失败的智能体（例如在安装前启动的智能体），会收到输入到提示符中的消息，并由 Kero 按下 Enter。之后，只要你开始在窗格中输入，Kero 就不会再按 Enter，因此不会发送你自己的文字。
 
+智能体也可以用 `kero message <session> "<text>"`（`-` 表示从标准输入读取）以同样的方式给其他会话的智能体发消息：接收方会看到发送方，例如“your orchestrator, session …”，因此不会像 `kero prompt` 那样把它当成你的话。`kero prompt` 和 `kero key` 仍用于回答智能体在提示符中提出的问题或权限请求，Kero 的消息会等这些处理完。
+
+想知道某条消息为什么被输入到提示符：`kero status --json` 会在 Kero 的监听器接收消息期间，在智能体的窗格上显示 `"inbox": true`；`kerod.log` 会为每条被输入的消息记录原因：没有监听器、你自己的话，或智能体的接收方式失败。kerod 刚启动时，发给 Claude Code、Pi 或 OMP 的消息最多会等 15 秒，让监听器重新连上，然后才输入。在 Windows 上，用 npm 安装的 Codex 无法通过 `codex.cmd` 传递消息，因此改用其软件包自带的 `codex.exe`；Codex 的接收方式失败后，会在五分钟后再次尝试。
+
 ## 智能体能做什么
 
 在身边运行任务：

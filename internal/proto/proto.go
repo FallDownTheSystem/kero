@@ -233,6 +233,10 @@ type Pane struct {
 	Cols     int  `json:"cols"`
 	Rows     int  `json:"rows"`
 	PID      int  `json:"pid,omitempty"`
+	// Inbox tells that a listener of its agent's (kero inbox: Claude
+	// Code's monitor, Pi's and OMP's extension) takes Kero's messages for
+	// it, which are typed into its prompt only without one.
+	Inbox bool `json:"inbox,omitempty"`
 	// Git is the git worktree the pane works in (WorkDir), nil for none,
 	// or while the configuration's git-status is off.
 	Git *GitInfo `json:"git,omitempty"`

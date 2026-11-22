@@ -75,9 +75,14 @@ var codexQueue = func(ctx context.Context, thread, text string) error {
 		return err
 	}
 	// npm's codex.cmd runs in cmd.exe, which reads the message for its own
-	// syntax: a line break ends it, and & or | in it starts a command.
+	// syntax: a line break ends it, and & or | in it starts a command. The
+	// program the package ships beside it reads it as it is.
 	if runtime.GOOS == "windows" && !strings.EqualFold(filepath.Ext(exe), ".exe") {
-		return fmt.Errorf("%s is a script, which would read the message as commands", exe)
+		native := codexNative(exe, runtime.GOARCH)
+		if native == "" {
+			return fmt.Errorf("%s is a script, which would read the message as commands, and no codex.exe of its package was found", exe)
+		}
+		exe = native
 	}
 	cmd := exec.CommandContext(ctx, exe, "queue", "--thread", thread, "--message", text)
 	hideWindow(cmd)
@@ -85,6 +90,29 @@ var codexQueue = func(ctx context.Context, thread, text string) error {
 		return fmt.Errorf("codex queue: %v: %s", err, proto.OneLine(string(out)))
 	}
 	return nil
+}
+
+// codexNative is the codex.exe of the npm package whose launcher script
+// is script, for arch (GOARCH), "" for none: the package's own, or that of
+// the package of its platform, which newer versions ship it in, nested or
+// beside it.
+func codexNative(script, arch string) string {
+	triple := map[string]string{"amd64": "x86_64-pc-windows-msvc", "arm64": "aarch64-pc-windows-msvc"}[arch]
+	if triple == "" {
+		return ""
+	}
+	modules := filepath.Join(filepath.Dir(script), "node_modules")
+	exe := filepath.Join("vendor", triple, "codex", "codex.exe")
+	for _, pattern := range []string{
+		filepath.Join(modules, "@openai", "codex", exe),
+		filepath.Join(modules, "@openai", "codex", "node_modules", "@openai", "*", exe),
+		filepath.Join(modules, "@openai", "*", exe),
+	} {
+		if found, _ := filepath.Glob(pattern); len(found) > 0 {
+			return found[0]
+		}
+	}
+	return ""
 }
 
 // openCodeService is the file where OpenCode's background service, which
