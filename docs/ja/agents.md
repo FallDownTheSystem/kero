@@ -24,7 +24,7 @@ kero skill setup
 
 | エージェント   | フックの場所                                                                                         |
 | -------------- | ---------------------------------------------------------------------------------------------------- |
-| Claude Code    | `~/.claude/settings.json` の `SessionStart`、`Stop`、`StopFailure` フック、`Bash` の `PreToolUse`、`PostToolUse`、`PostToolUseFailure` フックと、Kero のプラグイン `kero@kero` |
+| Claude Code    | `~/.claude/settings.json` の `SessionStart`、`Stop`、`StopFailure`、`UserPromptSubmit` フック、`Bash` の `PreToolUse`、`PostToolUse`、`PostToolUseFailure` フックと、Kero のプラグイン `kero@kero` |
 | CodeBuddy Code | `~/.codebuddy/settings.json` の `SessionStart` フック                                                |
 | Codex          | `~/.codex/hooks.json` の `SessionStart`、`Stop`、`Interrupt` フックと、`Bash` の `PreToolUse`、`PostToolUse` フック |
 | Pi             | 拡張機能 `~/.pi/agent/extensions/kero.ts`                                                            |
@@ -69,11 +69,13 @@ Kero はエージェントにメッセージを送ります: 子の報告を伝�
 
 あなた自身が送るもの（ページの回答、**セッションに送信…**、レビューの **エージェントに送信**）は、Claude Code にイベントとして届くことはありません。Claude はイベントをあなたの言葉とは受け取らず、あなたの回答どおりに動かないためです。代わりに、あなたの入力として Claude のプロンプトに入力されます。
 
+Claude Code は、バックグラウンドに送ったサブエージェントやシェルコマンドがまだ動いていても、ターンが終わればすぐにプロンプトに戻ります。そのときあなたも Kero も入力できます。エージェントはまだ作業中で、それらの結果は自分の次のターンで受け取るため、サイドバーと `kero wait` での状態は **working** のままです。Kero は、Claude Code の `Stop` フックでターンの終わりを知り、`UserPromptSubmit` フック、またはプロンプトを送る Enter で次のターンの始まりを知ります。まだ `Stop` フックがなかった Kero のフックのままだと、`kero skill setup` をもう一度実行するまで、メッセージはバックグラウンドの作業が終わるまで待ちます。
+
 ほかのエージェントや、受け取りに失敗したエージェント（セットアップ前に起動したものなど）には、プロンプトにメッセージを入力して Enter を押します。その後あなたがペインに入力し始めると、Kero はそれ以上 Enter を押さないため、あなた自身の入力が送信されることはありません。
 
 エージェントは `kero message <session> "<text>"`（`-` で標準入力から）で、ほかのセッションのエージェントに同じ方法でメッセージを送れます。受け取ったエージェントには「your orchestrator, session …」のように送り主が示されるので、`kero prompt` で送ったときのようにあなたの言葉と取り違えることはありません。`kero prompt` と `kero key` は、エージェントがプロンプトで尋ねる質問や許可に答えるために使います。Kero のメッセージはそれが済むまで待ちます。
 
-メッセージが入力された理由を確かめるには: `kero status --json` では、Kero のリスナーがメッセージを受け取っている間、エージェントのペインに `"inbox": true` が表示されます。`kerod.log` には、入力したメッセージごとに理由（リスナーがない、あなた自身の言葉、エージェントの受け取り方法の失敗）が記録されます。kerod の起動直後は、Claude Code、Pi、OMP へのメッセージは、リスナーが戻るのを最大 15 秒待ってから入力されます。Windows で npm からインストールした Codex には、`codex.cmd` ではメッセージを渡せないため、パッケージに含まれる `codex.exe` を通して届けます。Codex の受け取りに失敗した場合は、5 分後に再び試します。
+メッセージが入力された理由を確かめるには: `kero status --json` では、Kero のリスナーがメッセージを受け取っている間、エージェントのペインに `"inbox": true` が表示されます。`kerod.log` には、メッセージごとに、待っているときとその理由（エージェントが作業中、または許可を待っている）、エージェントへの届き方、入力したものはその理由（リスナーがない、あなた自身の言葉、エージェントの受け取り方法の失敗）、届かないときはその理由（ペインが閉じたなど）が記録されます。ペインが閉じたことも、誰が閉じたか（アプリでのあなた、`kero close` とそれを実行したペイン、終了したペインのプログラム）とともに記録されます。kerod の起動直後は、Claude Code、Pi、OMP へのメッセージは、リスナーが戻るのを最大 15 秒待ってから入力されます。Windows で npm からインストールした Codex には、`codex.cmd` ではメッセージを渡せないため、パッケージに含まれる `codex.exe` を通して届けます。Codex の受け取りに失敗した場合は、5 分後に再び試します。
 
 ## エージェントにできること
 

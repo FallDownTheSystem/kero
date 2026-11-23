@@ -889,6 +889,13 @@ type (
 	IDParams struct {
 		ID string `json:"id"`
 	}
+	// ClosePaneParams closes pane ID (pane.close); By tells who, for
+	// kerod's log: the app, or kero close and the pane it ran in. An
+	// older client tells none.
+	ClosePaneParams struct {
+		ID string `json:"id"`
+		By string `json:"by,omitempty"`
+	}
 	// CloseParams closes a session; RemoveWorktree removes the worktree
 	// kero made for it too, unless another session works in it, and
 	// unless changes it would lose (WorktreeCheck.Files) need Force.
@@ -1197,7 +1204,10 @@ type (
 	// the turn, as "1 shell, 1 monitor", when HasBackground; Error, a
 	// failed turn's error. BySession: only the pane that runs Session is
 	// the one, as for a hook run with no pane's environment, which may be
-	// of an agent outside Kero.
+	// of an agent outside Kero. At is when the hook started, unix ms, which
+	// orders it against the pane's other turns, as async hooks may come
+	// late; an older kero sends none. pane.prompted takes them too, of a
+	// prompt the agent was given (its UserPromptSubmit hook), End unset.
 	TurnParams struct {
 		PID           int    `json:"pid"`
 		BySession     bool   `json:"bySession,omitempty"`
@@ -1210,6 +1220,7 @@ type (
 		Background    string `json:"background,omitempty"`
 		HasBackground bool   `json:"hasBackground,omitempty"`
 		Error         string `json:"error,omitempty"`
+		At            int64  `json:"at,omitempty"`
 	}
 	// ConversationParams names a conversation (Conversation), to resume
 	// in a session after After, of Cols and Rows, to forget, or to

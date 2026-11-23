@@ -258,11 +258,23 @@ func (s *pane) fullReset() {
 	}
 	s.reported = false
 	s.progress = ""
+	s.free = false
 }
 
 func (s *pane) applyReport(r proto.Record) {
 	if s.records == nil {
 		s.records = map[string]proto.Record{}
+	}
+	// Turns no hook marks the start of: Claude Code's own record going to
+	// work, as for a monitor's event, and a background task of its ending,
+	// even one that asked for a permission on its way, which it tells its
+	// agent of in a turn of its own.
+	old, had := s.records[r.ID]
+	live := func(state string) bool { return state == "working" || state == "blocked" }
+	switch {
+	case r.ID == "" && r.State == "working" && (!had || old.State != "working"),
+		r.ID != "" && had && live(old.State) && !live(r.State):
+		s.turnStarted(time.Now())
 	}
 	if r.State == "clear" {
 		if r.ID == "" {
@@ -294,6 +306,7 @@ func (s *pane) applyReport(r proto.Record) {
 // dropLive drops the records that end with their program: working and
 // blocked ones, as its process exits or a prompt starts; s.mu is held.
 func (s *pane) dropLive() {
+	s.free = false
 	changed := false
 	for id, r := range s.records {
 		if r.State == "working" || r.State == "blocked" || r.State == "idle" {

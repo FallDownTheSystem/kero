@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -130,6 +131,12 @@ func (p *pane) agentReady() bool {
 	switch p.info.Status {
 	case proto.Idle:
 		return true
+	case proto.Working:
+		// Its turn ended, while what it declared still works: Claude
+		// Code's background tasks, which keep its own record working
+		// too, and which the agent takes input beside. A block would make
+		// it Waiting instead.
+		return p.free && p.backgroundWorks()
 	case proto.Waiting:
 		if p.declared() {
 			return p.answerable() && p.under == detect.Idle
@@ -137,6 +144,61 @@ func (p *pane) agentReady() bool {
 		return p.seen != detect.Blocked && p.info.Kind == ""
 	}
 	return false
+}
+
+// backgroundWorks tells that only Claude Code declares the pane works,
+// which it does while its background tasks run, its prompt free after its
+// turn; not a status the agent set itself with kero report, which no
+// turn's end makes stale. p.mu is held.
+func (p *pane) backgroundWorks() bool {
+	works := false
+	for _, r := range p.info.Records {
+		if r.State == "working" {
+			if r.App != "claude-code" {
+				return false
+			}
+			works = true
+		}
+	}
+	return works
+}
+
+// turnStarted records that the agent started a turn at, which takes its
+// prompt; p.mu is held.
+func (p *pane) turnStarted(at time.Time) {
+	// Even one told late, of a turn before the end that freed the prompt:
+	// messages then wait for the next end, which is safer than typing
+	// into a turn going on.
+	p.free = false
+	if at.After(p.turned) {
+		p.turned = at
+	}
+}
+
+// turnEnded records that the agent's turn ended, its hook started at at,
+// telling whether its prompt is free now: not when a turn started since,
+// whose end this is not. p.mu is held.
+func (p *pane) turnEnded(at time.Time) bool {
+	// In milliseconds, as hooks tell their time.
+	if at.UnixMilli() < p.turned.UnixMilli() {
+		return false
+	}
+	p.free, p.freed = true, at
+	return true
+}
+
+// wakeMail has the outbox flushed soon, as an agent may have become
+// ready.
+func (d *Daemon) wakeMail() {
+	mb := &d.mail
+	mb.mu.Lock()
+	mb.initLocked()
+	wake := mb.wake
+	mb.mu.Unlock()
+	select {
+	case wake <- struct{}{}:
+	default:
+	}
 }
 
 // pageLabel is how the agent is told of a browser pane's page: its title
@@ -225,6 +287,7 @@ func (d *Daemon) agentSendAs(p proto.AgentSendParams, answer bool) (proto.AgentS
 		}
 		mb.kept[msg.From] = append(mb.kept[msg.From], msg)
 		mb.mu.Unlock()
+		d.log.Printf("message %d from pane %s kept for kero browser wait-message", msg.ID, msg.From)
 		return proto.AgentSendResult{ID: msg.ID, State: "waiting"}, nil
 	}
 	mb.mu.Unlock()
@@ -247,12 +310,36 @@ func (d *Daemon) agentSendAs(p proto.AgentSendParams, answer bool) (proto.AgentS
 	state := "delivered"
 	if queued {
 		state = "queued"
+		d.log.Printf("%s for %s queued: %s", msgIDs([]outMsg{{id: msg.ID, from: msg.From}}), to, d.notReady(to))
 		select {
 		case mb.wake <- struct{}{}:
 		default:
 		}
 	}
 	return proto.AgentSendResult{ID: msg.ID, To: to, State: state}, nil
+}
+
+// notReady tells, for kerod's log, why a message for pane id waits.
+func (d *Daemon) notReady(id string) string {
+	pn := d.findPane(id)
+	if pn == nil {
+		return "its pane closed"
+	}
+	pn.mu.Lock()
+	defer pn.mu.Unlock()
+	switch {
+	case pn.info.Agent == "" || pn.info.Status == proto.Exited:
+		return "no agent runs in its pane now"
+	case pn.agentReady():
+		return "its agent is at its prompt, but was given a message just now, or kerod just started, or the agent's listener or own way in is busy"
+	case pn.info.Status == proto.Working && pn.declared():
+		return "its agent works, as it declared (OSC 7501), and no turn's end came since"
+	case pn.info.Status == proto.Working:
+		return "its agent works, as its screen shows"
+	case pn.info.Status == proto.Waiting:
+		return "its agent waits on a permission, a login or a dialog"
+	}
+	return "its agent is " + string(pn.info.Status)
 }
 
 // agentTarget is the agent's pane a message goes to: to, a pane or a
@@ -344,8 +431,10 @@ func (d *Daemon) flushOutbox(now time.Time) {
 			pn.mu.Lock()
 			agent = pn.info.Agent
 			// Left alone after typing, until its agent has worked on it
-			// (its status changed since) or deliverHold passed.
-			ready = pn.agentReady() && (typed.IsZero() || pn.info.Since != since || now.Sub(typed) >= deliverHold)
+			// (its status changed since, or a turn ended since, which its
+			// background tasks may keep the status through) or
+			// deliverHold passed.
+			ready = pn.agentReady() && (typed.IsZero() || pn.info.Since != since || pn.free && pn.freed.After(typed) || now.Sub(typed) >= deliverHold)
 			gone = pn.closed
 			noAgent := pn.info.Agent == "" || pn.info.Status == proto.Exited
 			pn.mu.Unlock()
@@ -433,9 +522,7 @@ func (d *Daemon) flushOutbox(now time.Time) {
 			continue
 		}
 		if gone {
-			for _, m := range msgs {
-				d.tellDelivery(proto.Delivery{ID: m.id, From: m.from, To: id, State: "failed", Error: why})
-			}
+			d.failed(id, msgs, why)
 			continue
 		}
 		if native && !waiting {
@@ -444,23 +531,66 @@ func (d *Daemon) flushOutbox(now time.Time) {
 			go d.deliverNative(pn, id, msgs, text)
 			continue
 		}
+		how := "through its listener (kero inbox)"
 		if !waiting {
-			d.log.Printf("message to %s's %s typed into its prompt: %s", id, orNone(agent), typing)
+			how = "typed into its prompt: " + typing
 			pn.pasteAs(text, false)
 			go pn.submitAs(now, false)
 		}
-		d.delivered(pn, id, msgs, now)
+		d.delivered(pn, id, msgs, now, how)
 	}
 }
 
-// delivered records that msgs reached the agent of pane pn, id, at now:
-// the agent is left alone till it worked on them (deliverHold), and the
-// apps hear of it. The question its agent waits on is taken back when one
-// of them answers it (pane.takeBack).
-func (d *Daemon) delivered(pn *pane, id string, msgs []outMsg, now time.Time) {
+// failed tells that msgs for pane id never reach its agent, and why.
+func (d *Daemon) failed(id string, msgs []outMsg, why string) {
+	if len(msgs) == 0 {
+		return
+	}
+	d.log.Printf("%s for %s failed: %s", msgIDs(msgs), id, why)
+	for _, m := range msgs {
+		d.tellDelivery(proto.Delivery{ID: m.id, From: m.from, To: id, State: "failed", Error: why})
+	}
+}
+
+// msgIDs names messages for kerod's log, as "messages 4, 5 (from pane
+// 3f2a)".
+func msgIDs(msgs []outMsg) string {
+	ids := make([]string, len(msgs))
+	var from []string
+	for i, m := range msgs {
+		ids[i] = strconv.FormatInt(m.id, 10)
+		if m.from != "" && !slices.Contains(from, m.from) {
+			from = append(from, m.from)
+		}
+	}
+	s := "message " + ids[0]
+	if len(ids) > 1 {
+		s = "messages " + strings.Join(ids, ", ")
+	}
+	if len(from) > 0 {
+		s += " (from pane " + strings.Join(from, ", pane ") + ")"
+	}
+	return s
+}
+
+// agentOf is the agent pane pn runs, "" for none.
+func agentOf(pn *pane) string {
+	pn.mu.Lock()
+	defer pn.mu.Unlock()
+	return pn.info.Agent
+}
+
+// delivered records that msgs reached the agent of pane pn, id, at now,
+// as how tells: the agent is left alone till it worked on them
+// (deliverHold), and the apps hear of it. The question its agent waits on
+// is taken back when one of them answers it (pane.takeBack).
+func (d *Daemon) delivered(pn *pane, id string, msgs []outMsg, now time.Time, how string) {
 	answer := slices.ContainsFunc(msgs, func(m outMsg) bool { return m.answer })
+	d.log.Printf("%s reached %s's %s, %s", msgIDs(msgs), id, orNone(agentOf(pn)), how)
 	pn.mu.Lock()
 	before := pn.info.Status
+	// The agent works on them: its prompt is taken till its turn ends.
+	pn.turnStarted(now)
 	pn.takeBack(answer)
 	changed := pn.info.Status != before
 	after := pn.info.Since
@@ -493,9 +623,10 @@ func (d *Daemon) deliverNative(pn *pane, id string, msgs []outMsg, text string) 
 	}
 	mb.mu.Unlock()
 	if ok {
-		d.delivered(pn, id, msgs, time.Now())
+		d.delivered(pn, id, msgs, time.Now(), "through its own way in ("+as.Agent+")")
 		return
 	}
+	d.log.Printf("%s for %s: its own way in (%s) failed, to be typed in instead", msgIDs(msgs), id, as.Agent)
 	select {
 	case mb.wake <- struct{}{}:
 	default:
@@ -552,6 +683,7 @@ func (d *Daemon) waitMessage(c *controlConn, pn *pane, timeout time.Duration) (p
 		msg := kept[0]
 		mb.kept[id] = kept[1:]
 		mb.mu.Unlock()
+		d.log.Printf("message %d from pane %s taken by kero browser wait-message", msg.ID, id)
 		d.tellDelivery(proto.Delivery{ID: msg.ID, From: id, State: "delivered"})
 		return msg, nil
 	}
@@ -581,6 +713,7 @@ func (d *Daemon) waitMessage(c *controlConn, pn *pane, timeout time.Duration) (p
 		if !ok {
 			return proto.AgentMessage{}, errors.New("pane closed")
 		}
+		d.log.Printf("message %d from pane %s taken by kero browser wait-message", msg.ID, id)
 		d.tellDelivery(proto.Delivery{ID: msg.ID, From: id, State: "delivered"})
 		return msg, nil
 	case <-expired:
@@ -614,6 +747,9 @@ func (d *Daemon) mailGone(id string) {
 	delete(mb.typed, id)
 	delete(mb.since, id)
 	delete(mb.noAgent, id)
+	if kept := len(mb.kept[id]); kept > 0 {
+		d.log.Printf("%d message(s) of pane %s kept for kero browser wait-message dropped: the pane closed", kept, id)
+	}
 	delete(mb.kept, id)
 	for _, w := range mb.waiters[id] {
 		close(w)
@@ -627,7 +763,5 @@ func (d *Daemon) mailGone(id string) {
 	delete(mb.pending, id)
 	delete(mb.noNative, id)
 	mb.mu.Unlock()
-	for _, m := range out {
-		d.tellDelivery(proto.Delivery{ID: m.id, From: m.from, To: id, State: "failed", Error: "the agent's pane closed"})
-	}
+	d.failed(id, out, "the agent's pane closed")
 }

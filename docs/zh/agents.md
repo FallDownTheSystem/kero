@@ -23,7 +23,7 @@ kero skill setup
 
 | 智能体         | 钩子位置                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------ |
-| Claude Code    | `~/.claude/settings.json` 中的 `SessionStart`、`Stop`、`StopFailure` 钩子，`Bash` 的 `PreToolUse`、`PostToolUse`、`PostToolUseFailure` 钩子，以及 Kero 的插件 `kero@kero` |
+| Claude Code    | `~/.claude/settings.json` 中的 `SessionStart`、`Stop`、`StopFailure`、`UserPromptSubmit` 钩子，`Bash` 的 `PreToolUse`、`PostToolUse`、`PostToolUseFailure` 钩子，以及 Kero 的插件 `kero@kero` |
 | CodeBuddy Code | `~/.codebuddy/settings.json` 中的 `SessionStart` 钩子                                            |
 | Codex          | `~/.codex/hooks.json` 中的 `SessionStart`、`Stop`、`Interrupt` 钩子，以及 `Bash` 的 `PreToolUse`、`PostToolUse` 钩子 |
 | Pi             | 扩展 `~/.pi/agent/extensions/kero.ts`                                                            |
@@ -68,11 +68,13 @@ Kero 会向智能体发送消息：通过[编排器](./orchestrators.md)转达�
 
 你自己发送的内容（页面的回答、**发送到会话…** 和评审的 **发送给智能体**）不会以事件的形式送达 Claude Code：Claude 不会把事件当作你说的话，也就不会按你的回答行事。这些内容会改为输入到 Claude 的提示词中，作为你的输入。
 
+只要 Claude Code 的回合结束，它就回到提示符，即使它放到后台的子智能体或 shell 命令仍在运行：这时你可以输入，Kero 也可以。由于智能体仍在工作，并会在自己的下一个回合中处理这些结果，它在侧边栏和 `kero wait` 中的状态仍是 **working**。Kero 通过 Claude Code 的 `Stop` 钩子得知回合何时结束，并通过 `UserPromptSubmit` 钩子或发送提示词的 Enter 得知下一个回合何时开始。如果钩子来自还没有 `Stop` 钩子的旧版 Kero，在你重新运行 `kero skill setup` 之前，消息会等到后台工作完成。
+
 其他智能体，以及接收方式失败的智能体（例如在安装前启动的智能体），会收到输入到提示符中的消息，并由 Kero 按下 Enter。之后，只要你开始在窗格中输入，Kero 就不会再按 Enter，因此不会发送你自己的文字。
 
 智能体也可以用 `kero message <session> "<text>"`（`-` 表示从标准输入读取）以同样的方式给其他会话的智能体发消息：接收方会看到发送方，例如“your orchestrator, session …”，因此不会像 `kero prompt` 那样把它当成你的话。`kero prompt` 和 `kero key` 仍用于回答智能体在提示符中提出的问题或权限请求，Kero 的消息会等这些处理完。
 
-想知道某条消息为什么被输入到提示符：`kero status --json` 会在 Kero 的监听器接收消息期间，在智能体的窗格上显示 `"inbox": true`；`kerod.log` 会为每条被输入的消息记录原因：没有监听器、你自己的话，或智能体的接收方式失败。kerod 刚启动时，发给 Claude Code、Pi 或 OMP 的消息最多会等 15 秒，让监听器重新连上，然后才输入。在 Windows 上，用 npm 安装的 Codex 无法通过 `codex.cmd` 传递消息，因此改用其软件包自带的 `codex.exe`；Codex 的接收方式失败后，会在五分钟后再次尝试。
+想知道某条消息为什么被输入到提示符：`kero status --json` 会在 Kero 的监听器接收消息期间，在智能体的窗格上显示 `"inbox": true`；`kerod.log` 会为每条消息记录：何时等待及原因（智能体正在工作，或在等待权限）、如何送达智能体；被输入的消息还会记录原因：没有监听器、你自己的话，或智能体的接收方式失败；无法送达的消息会记录原因，例如窗格已关闭。窗格关闭也会记录，并写明是谁关闭的：你在应用中、`kero close` 及其运行所在的窗格，或窗格的程序退出。kerod 刚启动时，发给 Claude Code、Pi 或 OMP 的消息最多会等 15 秒，让监听器重新连上，然后才输入。在 Windows 上，用 npm 安装的 Codex 无法通过 `codex.cmd` 传递消息，因此改用其软件包自带的 `codex.exe`；Codex 的接收方式失败后，会在五分钟后再次尝试。
 
 ## 智能体能做什么
 

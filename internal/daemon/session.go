@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -78,6 +79,18 @@ type pane struct {
 	// idleFrom does.
 	under     detect.State
 	underFrom time.Time
+	// free tells that the agent's turn ended (its Stop hook, pane.turn)
+	// and its prompt takes input, though the status it declares may say it
+	// works: Claude Code's does while its background tasks run. turned is
+	// when the agent last started a turn, as far as kerod knows: an Enter
+	// to it, a message it was given, its prompt hook; a turn's end older
+	// than that is of the turn before, which an async hook told late.
+	// freed is when the turn ended that last freed it, which ends the hold
+	// on a pane typed into (deliverHold); prompted when its prompt
+	// hook last told a turn's start (pane.prompted), which only an
+	// agent's updated hooks tell.
+	free                    bool
+	turned, freed, prompted time.Time
 	// osc finds OSC 7501, 133 and 9;4 in the output; records are the
 	// programs' status reports (OSC 7501), by id, and reported tells that
 	// one came; progress is the last OSC 9;4 after "9;", as "4;1;40",
@@ -516,6 +529,13 @@ func (s *pane) input(p []byte) {
 // or with user false kerod's own, as a message it types in (deliver.go),
 // which answers no question the pane shows.
 func (s *pane) inputAs(p []byte, user bool) {
+	if bytes.IndexByte(p, '\r') >= 0 {
+		// An Enter sends a prompt, the user's or kerod's, which starts a
+		// turn; with hooks that tell none, as an older kero's.
+		s.mu.Lock()
+		s.turnStarted(time.Now())
+		s.mu.Unlock()
+	}
 	if proc := s.act(user); proc != nil {
 		proc.Write(p)
 	}
@@ -584,7 +604,11 @@ func (s *pane) submitAs(from time.Time, user bool) {
 	for range enterTries {
 		time.Sleep(enterWait)
 		s.mu.Lock()
-		idle := !s.closed && s.info.Agent != "" && s.info.Status == proto.Idle
+		// Claude Code's background tasks keep it working at its prompt:
+		// then only its prompt hook tells that the Enter took, and an
+		// Enter more on its empty prompt does nothing.
+		idle := !s.closed && s.info.Agent != "" && (s.info.Status == proto.Idle ||
+			s.info.Status == proto.Working && s.backgroundWorks() && !s.prompted.After(from))
 		s.mu.Unlock()
 		if !idle || !s.enter(from, user) {
 			return
@@ -927,7 +951,7 @@ func (s *pane) exited(proc *ptyProc) {
 	s.info.Process, s.info.Agent, s.info.Runtime, s.info.PID = "", "", "", 0
 	if code == 0 {
 		s.mu.Unlock()
-		s.d.removePane(s.info.ID)
+		s.d.removePane(s.info.ID, "as its program exited")
 		return
 	}
 	msg := fmt.Sprintf("\r\n\x1b[0;2m[Process exited with code %d]\x1b[0m", code)

@@ -1465,7 +1465,7 @@ func (a *App) closePane(s *proto.Session, pane string, ask bool) {
 	a.dropTerm(pane)
 	a.dropWeb(pane)
 	delete(a.edits, pane)
-	a.call(pane, "pane.close", proto.IDParams{ID: pane}, nil)
+	a.call(pane, "pane.close", proto.ClosePaneParams{ID: pane, By: "the user, in the app"}, nil)
 	a.focusTerminal()
 }
 

@@ -26,6 +26,9 @@ import (
 // resume after a restart. It never fails the agent: outside Kero, or on
 // any trouble, it says nothing.
 func hookCmd(args []string) error {
+	// As near the agent's event as kero gets: kerod orders an async hook,
+	// which may come late, by it.
+	started := time.Now()
 	agent := ""
 	if len(args) > 0 {
 		agent = args[0]
@@ -56,7 +59,13 @@ func hookCmd(args []string) error {
 	// share, or of an agent outside Kero, by that alone.
 	if end := in.turnEnd(); end != "" {
 		if in.Session != "" || pane != "" {
-			turnEnded(agent, end, in, pane == "")
+			turnEnded(agent, end, in, pane == "", started)
+		}
+		return nil
+	}
+	if in.Event == "UserPromptSubmit" {
+		if in.Session != "" || pane != "" {
+			prompted(agent, in, pane == "", started)
 		}
 		return nil
 	}
@@ -130,13 +139,13 @@ func (in hookInput) turnEnd() string {
 // turnEnded tells kerod that the agent ended its turn, for its
 // orchestrator's report. It prints nothing, which the agent takes as
 // nothing to do.
-func turnEnded(agent, end string, in hookInput, bySession bool) {
+func turnEnded(agent, end string, in hookInput, bySession bool, at time.Time) {
 	c, err := client.Connect(true)
 	if err != nil {
 		return
 	}
 	defer c.Close()
-	p := proto.TurnParams{PID: os.Getpid(), BySession: bySession, Agent: agent, Session: in.Session, Dir: in.Cwd, End: end}
+	p := proto.TurnParams{PID: os.Getpid(), BySession: bySession, Agent: agent, Session: in.Session, Dir: in.Cwd, End: end, At: at.UnixMilli()}
 	switch end {
 	case proto.TurnFailed:
 		p.Error = in.Error
@@ -157,6 +166,18 @@ func turnEnded(agent, end string, in hookInput, bySession bool) {
 		}
 	}
 	c.Call("pane.turn", p, nil)
+}
+
+// prompted tells kerod that the agent was given a prompt, which starts a
+// turn: its prompt is no longer free for messages till the turn ends. An
+// older kerod knows no pane.prompted, which changes nothing.
+func prompted(agent string, in hookInput, bySession bool, at time.Time) {
+	c, err := client.Connect(true)
+	if err != nil {
+		return
+	}
+	defer c.Close()
+	c.Call("pane.prompted", proto.TurnParams{PID: os.Getpid(), BySession: bySession, Agent: agent, Session: in.Session, Dir: in.Cwd, At: at.UnixMilli()}, nil)
 }
 
 // countOf tells how many of each there are, in the order they first come:
@@ -382,7 +403,11 @@ func (h agentHook) events() []hookEvent {
 	post := hookEvent{name: "PostToolUse", matcher: "Bash", async: true, timeout: 10}
 	switch h.agent {
 	case "claude":
+		// A turn's end frees the agent's prompt for messages, which its
+		// background tasks keep it working through; its next prompt takes
+		// it again (agentReady).
 		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "StopFailure", async: true, timeout: 10},
+			{name: "UserPromptSubmit", async: true, timeout: 10},
 			pre, post, {name: "PostToolUseFailure", matcher: "Bash", async: true, timeout: 10}}
 	case "codex":
 		return []hookEvent{start, {name: "Stop", async: true, timeout: 10}, {name: "Interrupt", async: true, timeout: 3}, pre, post}

@@ -255,7 +255,7 @@ func (d *Daemon) runSetup(t *worktreeSetup) {
 	}
 	// Cancelling stops the script, as closing its terminal does.
 	if ok || t.ctx.Err() != nil && !errors.Is(err, errClosed) {
-		d.removePane(pane)
+		d.removePane(pane, "as its worktree's setup script ended")
 	}
 	d.endSetup(t, "")
 }

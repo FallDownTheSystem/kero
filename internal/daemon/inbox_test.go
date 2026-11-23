@@ -341,7 +341,7 @@ func (s *syncBuf) String() string {
 
 // A message typed into an agent's prompt is logged with why: no listener
 // waits, or the user's words a listener of events doesn't take. One a
-// listener takes isn't.
+// listener takes is logged as taken by it.
 func TestTypedLogged(t *testing.T) {
 	d := testDaemon(t)
 	var lg syncBuf
@@ -352,7 +352,7 @@ func TestTypedLogged(t *testing.T) {
 	if n := queued(d, id); n != 0 {
 		t.Fatalf("%d not typed", n)
 	}
-	if got := lg.String(); !strings.Contains(got, "message to "+id+"'s claude typed into its prompt: no listener") {
+	if got := lg.String(); !strings.Contains(got, "reached "+id+"'s claude, typed into its prompt: no listener") {
 		t.Errorf("logged %q", got)
 	}
 	idleAgain(pn)
@@ -368,8 +368,8 @@ func TestTypedLogged(t *testing.T) {
 	if m := <-got; !strings.Contains(m.Text, "report") {
 		t.Fatalf("the listener got %q", m.Text)
 	}
-	if lg.String() != before {
-		t.Errorf("logged a message its listener took: %q", strings.TrimPrefix(lg.String(), before))
+	if after := strings.TrimPrefix(lg.String(), before); !strings.Contains(after, "reached "+id+"'s claude, through its listener (kero inbox)") || strings.Contains(after, "typed into") {
+		t.Errorf("logged a message its listener took as %q", after)
 	}
 }
 

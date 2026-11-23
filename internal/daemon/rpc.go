@@ -116,6 +116,11 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
+		if p.By != "" {
+			// The app tells none: a command run in a session's pane
+			// does, as kero close of a session's last pane.
+			d.log.Printf("session %s to close, as a command run in %s asks", p.ID, p.By)
+		}
 		return true, d.closeSession(p)
 
 	case "worktree.check":
@@ -150,7 +155,7 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		return d.cleanWorktrees(), nil
 
 	case "pane.close":
-		var p proto.IDParams
+		var p proto.ClosePaneParams
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
@@ -158,7 +163,11 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		if err != nil {
 			return nil, err
 		}
-		return true, d.removePane(pn.info.ID)
+		by := "by a client that does not say who, an older app or kero"
+		if p.By != "" {
+			by = "by " + p.By
+		}
+		return true, d.removePane(pn.info.ID, by)
 
 	case "restart":
 		var p proto.IDParams
@@ -551,31 +560,20 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		d.noteConversations()
 		return proto.AgentSessionResult{Pane: id, Session: sid, Away: away}, nil
 
-	case "pane.turn":
+	case "pane.turn", "pane.prompted":
 		var p proto.TurnParams
 		if err := decode(&p); err != nil {
 			return nil, err
 		}
-		var pn *pane
-		if ids, ok := d.runningConversations()[proto.AgentSession{Agent: p.Agent, ID: p.Session}]; ok {
-			pn = d.findPane(ids[1])
+		pn, err := d.turnPane(p)
+		if err != nil {
+			return nil, err
 		}
-		if pn == nil && !p.BySession {
-			// A pane that runs another session of the agent's is not
-			// this one's: that session may be a subagent's.
-			if found, _ := d.agentPane(p.PID, p.Agent, p.Dir); found != nil {
-				found.mu.Lock()
-				as := found.info.AgentSession
-				found.mu.Unlock()
-				if as == nil || as.ID == p.Session {
-					pn = found
-				}
-			}
+		if method == "pane.prompted" {
+			d.prompted(pn, p, time.Now())
+		} else {
+			d.turnEnded(pn, p, time.Now())
 		}
-		if pn == nil {
-			return nil, fmt.Errorf("no pane runs %s session %q", p.Agent, p.Session)
-		}
-		d.turnEnded(pn, p, time.Now())
 		return true, nil
 
 	case "slot.take":

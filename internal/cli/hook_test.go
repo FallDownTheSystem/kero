@@ -133,6 +133,9 @@ func TestHookAddsTurnEnds(t *testing.T) {
 	if len(v.Hooks["StopFailure"]) != 1 || len(v.Hooks["SessionStart"]) != 1 {
 		t.Fatalf("hooks:\n%s", got)
 	}
+	if p := v.Hooks["UserPromptSubmit"]; len(p) != 1 || !p[0].Hooks[0].Async {
+		t.Fatalf("UserPromptSubmit hook, which never holds a prompt up:\n%s", got)
+	}
 	// A shell command's start waits, for a slot of heavy-slots, longer
 	// than kero hook's wait for one; its end never holds the agent up.
 	var m struct {

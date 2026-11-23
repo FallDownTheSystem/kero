@@ -497,6 +497,14 @@ func (d *Daemon) reportToParent(p proto.AgentSendParams) (proto.AgentSendResult,
 // it be guessed. A turn end just told from the screen is that turn's.
 func (d *Daemon) turnEnded(pn *pane, p proto.TurnParams, now time.Time) {
 	d.releaseTurnSlots(pn.info.ID)
+	pn.mu.Lock()
+	free := pn.turnEnded(hookTime(p, now))
+	pn.mu.Unlock()
+	if free {
+		// What waits for its prompt goes now, though its background
+		// tasks may keep it working (agentReady).
+		d.wakeMail()
+	}
 	d.mu.Lock()
 	sid := pn.sid
 	d.mu.Unlock()
@@ -505,6 +513,51 @@ func (d *Daemon) turnEnded(pn *pane, p proto.TurnParams, now time.Time) {
 	defer r.mu.Unlock()
 	r.initLocked()
 	r.endTurnLocked(sid, p, now)
+}
+
+// prompted records that pane pn's agent was given a prompt (its
+// UserPromptSubmit hook), which starts a turn and takes its prompt.
+func (d *Daemon) prompted(pn *pane, p proto.TurnParams, now time.Time) {
+	at := hookTime(p, now)
+	pn.mu.Lock()
+	pn.turnStarted(at)
+	if at.After(pn.prompted) {
+		pn.prompted = at
+	}
+	pn.mu.Unlock()
+}
+
+// hookTime is when a hook of the agent's started, which an older kero
+// does not tell: then now, as it came.
+func hookTime(p proto.TurnParams, now time.Time) time.Time {
+	if p.At > 0 {
+		return time.UnixMilli(p.At)
+	}
+	return now
+}
+
+// turnPane is the pane whose agent a turn's hook is of: the one that runs
+// its session, else, unless only that one will do (BySession), the agent
+// the hook's process runs under.
+func (d *Daemon) turnPane(p proto.TurnParams) (*pane, error) {
+	if ids, ok := d.runningConversations()[proto.AgentSession{Agent: p.Agent, ID: p.Session}]; ok {
+		if pn := d.findPane(ids[1]); pn != nil {
+			return pn, nil
+		}
+	}
+	if !p.BySession {
+		// A pane that runs another session of the agent's is not this
+		// one's: that session may be a subagent's.
+		if found, _ := d.agentPane(p.PID, p.Agent, p.Dir); found != nil {
+			found.mu.Lock()
+			as := found.info.AgentSession
+			found.mu.Unlock()
+			if as == nil || as.ID == p.Session {
+				return found, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("no pane runs %s session %q", p.Agent, p.Session)
 }
 
 // endTurnLocked notes that child id's agent ended its turn; r.mu is held.

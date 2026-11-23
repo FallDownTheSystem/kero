@@ -225,7 +225,7 @@ func TestAgentSendGone(t *testing.T) {
 	if err != nil || res.State != "queued" {
 		t.Fatalf("%+v, %v", res, err)
 	}
-	if err := d.removePane(agent.info.ID); err != nil {
+	if err := d.removePane(agent.info.ID, "by a test"); err != nil {
 		t.Fatal(err)
 	}
 	if dl := delivery(t, events); dl.ID != res.ID || dl.State != "failed" || dl.From != s.Focus {

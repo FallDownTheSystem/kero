@@ -1245,7 +1245,7 @@ func run(args []string, host string) error {
 		case cmd == "restart":
 			return c.Call("restart", proto.IDParams{ID: t.ref()}, nil)
 		case t.pane != "" && len(t.s.Panes) > 1 && !remove:
-			return c.Call("pane.close", proto.IDParams{ID: t.pane}, nil)
+			return c.Call("pane.close", proto.ClosePaneParams{ID: t.pane, By: closedBy()}, nil)
 		}
 		if err := c.Call("close", proto.CloseParams{ID: t.s.ID, RemoveWorktree: remove, Force: f.set["force"], By: current()}, nil); err != nil {
 			return err
@@ -1541,6 +1541,15 @@ func current() string {
 		return p
 	}
 	return os.Getenv("KERO_SESSION")
+}
+
+// closedBy is who closes a pane with kero close, for kerod's log: the
+// pane or session it runs in, as an agent's would.
+func closedBy() string {
+	if ref := current(); ref != "" {
+		return "kero close, run in " + ref
+	}
+	return "kero close, run outside Kero's panes"
 }
 
 func findOrCurrent(st proto.State, pos []string) (target, error) {

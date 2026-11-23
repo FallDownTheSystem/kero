@@ -22,7 +22,7 @@ The hook goes where each agent looks for one, for the agents you have installed:
 
 | Agent          | Where the hook goes                                                                                         |
 | -------------- | ----------------------------------------------------------------------------------------------------------- |
-| Claude Code    | `SessionStart`, `Stop`, `StopFailure`, and `PreToolUse`, `PostToolUse` and `PostToolUseFailure` of `Bash` hooks in `~/.claude/settings.json`, and Kero's plugin `kero@kero` |
+| Claude Code    | `SessionStart`, `Stop`, `StopFailure`, `UserPromptSubmit`, and `PreToolUse`, `PostToolUse` and `PostToolUseFailure` of `Bash` hooks in `~/.claude/settings.json`, and Kero's plugin `kero@kero` |
 | CodeBuddy Code | A `SessionStart` hook in `~/.codebuddy/settings.json`                                                       |
 | Codex          | `SessionStart`, `Stop`, `Interrupt`, and `PreToolUse` and `PostToolUse` of `Bash` hooks in `~/.codex/hooks.json` |
 | Pi             | An extension, `~/.pi/agent/extensions/kero.ts`                                                              |
@@ -65,11 +65,13 @@ Kero sends agents messages: an [orchestrator's](./orchestrators.md) reports of i
 
 What you send yourself, a page's answers, **Send to Session…** and a review's **Send to Agent**, never reaches Claude Code as an event: Claude rightly takes an event for none of your words, and would not act on your answer. It is typed into Claude's prompt instead, as yours.
 
+Claude Code is at its prompt as soon as its turn ends, even while subagents or shell commands it sent to the background still run: you can type to it then, and so can Kero. Its status stays **working** in the sidebar and for `kero wait`, as the agent still works and takes up their results in a turn of its own. Kero tells by Claude Code's `Stop` hook when the turn ends, and by its `UserPromptSubmit` hook, or the Enter that sends a prompt, when the next one starts. With hooks of a Kero that had no `Stop` hook yet, its messages wait until the background work is done, until you run `kero skill setup` again.
+
 Other agents, and an agent whose way in fails, as one started before setup, get the message typed into their prompt and Enter pressed. Once you type in the pane after it, Kero presses no more Enters, so that your own text isn't sent.
 
 An agent sends another session's agent a message the same way with `kero message <session> "<text>"` (`-` reads it from stdin): the agent reads whom it is from, as "your orchestrator, session …", so it doesn't take it for your words, as it would `kero prompt`'s. `kero prompt` and `kero key` stay for answering a question or permission the agent asks in its prompt, which Kero's messages wait out.
 
-To see why a message was typed in: `kero status --json` shows `"inbox": true` on an agent's pane while Kero's listener takes its messages, and `kerod.log` has a line for each message typed in, with the reason: no listener, your own words, or the agent's way in failed. Just after kerod starts, a message for Claude Code, Pi or OMP waits up to 15 seconds for its listener to come back before it's typed. On Windows, Codex installed with npm takes messages through the `codex.exe` its package ships, as `codex.cmd` can't carry them; a Codex way in that fails is tried again after five minutes.
+To see why a message was typed in: `kero status --json` shows `"inbox": true` on an agent's pane while Kero's listener takes its messages, and `kerod.log` has a line for each message: when it waits, and why (the agent works, or waits on a permission), how it reached the agent, and, for one typed in, the reason: no listener, your own words, or the agent's way in failed; or why it never will, as its pane closed. A pane's closing is there too, with who closed it: you in the app, `kero close` and the pane it ran in, or the pane's program as it exited. Just after kerod starts, a message for Claude Code, Pi or OMP waits up to 15 seconds for its listener to come back before it's typed. On Windows, Codex installed with npm takes messages through the `codex.exe` its package ships, as `codex.cmd` can't carry them; a Codex way in that fails is tried again after five minutes.
 
 ## What agents can do
 

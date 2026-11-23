@@ -573,8 +573,9 @@ func samePath(a, b string) bool {
 	return a == b
 }
 
-// removePane closes a pane; its session goes with its last pane.
-func (d *Daemon) removePane(id string) error {
+// removePane closes a pane, why telling kerod's log who or what closed it;
+// its session goes with its last pane.
+func (d *Daemon) removePane(id, why string) error {
 	d.mu.Lock()
 	p := d.panes[id]
 	if p == nil {
@@ -614,7 +615,7 @@ func (d *Daemon) removePane(id string) error {
 	p.close()
 	os.Remove(d.historyPath(id))
 	d.changed()
-	d.log.Printf("pane %s closed", id)
+	d.log.Printf("pane %s closed %s", id, why)
 	return nil
 }
 
