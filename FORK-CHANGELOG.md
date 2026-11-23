@@ -5,6 +5,22 @@ window shows. Each version is upstream's, X.Y.Z, with what that version
 brings in [upstream's changelog](CHANGELOG.md), and the fork's changes on
 top of it.
 
+## 2.1.36-fork.5
+
+- Fixed: a page's answer, `kero message`, an orchestrator's report and
+  Kero's other messages waited until every subagent or shell command that
+  Claude Code ran in the background was done, although Claude Code's
+  prompt took input as soon as its turn ended. They now reach Claude Code
+  when its turn ends. Its status stays **working** in the sidebar and for
+  `kero wait` while the background work runs. Kero sees the next turn
+  start by the Enter that sends a prompt, and now also by a new
+  `UserPromptSubmit` hook, which sees prompts sent in other ways too: run
+  `kero skill setup` again, or **Update** in **Settings › Agents**.
+- `kerod.log` now has a line for each message from Kero: when it waits,
+  and why; how it reached the agent; or why it never will. Closing a
+  pane is logged with who closed it: you in the app, `kero close` and the
+  pane it ran in, or the pane's program as it exited.
+
 ## 2.1.36-fork.4
 
 - **Assistants**: agents of yours that belong to no project, each with a
